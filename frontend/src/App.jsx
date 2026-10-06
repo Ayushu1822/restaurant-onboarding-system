@@ -6,11 +6,13 @@ function App() {
   // Login States
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   
   // Forgot Password States
   const [forgotEmail, setForgotEmail] = useState('');
 
   // Signup States
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [formData, setFormData] = useState({
     businessName: '',
     ownerName: '',
@@ -53,7 +55,7 @@ function App() {
       if (response.ok) {
         setUserToken(data.token);
         localStorage.setItem('auth_token', data.token);
-        setCurrentView('dashboard'); // <--- SWITCHES TO DASHBOARD ON SUCCESS!
+        setCurrentView('dashboard');
         setMessage('');
       } else {
         setMessage(data.message || 'Invalid credentials or account locked.');
@@ -152,30 +154,53 @@ function App() {
     setLoginPassword('');
   };
 
+  // Eye Icons SVGs
+  const EyeIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+      <circle cx="12" cy="12" r="3"></circle>
+    </svg>
+  );
+
+  const EyeOffIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+      <line x1="1" y1="1" x2="23" y2="23"></line>
+    </svg>
+  );
+
   return (
     <div style={styles.pageContainer}>
-      <div style={styles.brandTitle}>restaurant<span style={{color: '#0066ff'}}>portal</span></div>
+      <div style={styles.brandContainer}>
+        <div style={styles.brandTitle}>restaurant<span style={{color: '#3b82f6'}}>portal</span></div>
+        <div style={styles.brandSubtitle}>Secure Onboarding & Management Platform</div>
+      </div>
 
-      {/* 4. DASHBOARD VIEW (Shown after successful login) */}
+      {/* DASHBOARD VIEW */}
       {currentView === 'dashboard' ? (
-        <div style={{ ...styles.card, maxWidth: '600px', textAlign: 'center' }}>
-          <h2 style={{ color: '#4ade80', marginBottom: '10px' }}>Welcome to Your Dashboard!</h2>
-          <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px' }}>
-            You are successfully authenticated and logged into the restaurant portal.
+        <div style={{ ...styles.card, maxWidth: '650px', textAlign: 'center' }}>
+          <div style={styles.successBadge}>Active Session</div>
+          <h2 style={{ color: '#ffffff', marginBottom: '8px', fontSize: '22px' }}>Welcome to Your Dashboard</h2>
+          <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '24px' }}>
+            You are successfully authenticated and connected to the restaurant backend portal.
           </p>
           
           <div style={styles.tokenBox}>
-            <strong>Active JWT Token:</strong>
-            <p style={{ wordBreak: 'break-all', fontSize: '12px', color: '#38bdf8', marginTop: '5px' }}>{userToken}</p>
+            <strong style={{ color: '#3b82f6', fontSize: '12px' }}>Active JWT Token:</strong>
+            <p style={{ wordBreak: 'break-all', fontSize: '11px', color: '#cbd5e1', marginTop: '6px', fontFamily: 'monospace' }}>{userToken}</p>
           </div>
 
-          <button onClick={handleLogout} style={{ ...styles.primaryButton, backgroundColor: '#ef4444', marginTop: '20px' }}>
+          <button onClick={handleLogout} style={styles.logoutButton}>
             Sign Out
           </button>
         </div>
       ) : (
         /* AUTH VIEWS (Sign in, Signup, Forgot Password) */
-        <div style={{ ...styles.card, maxWidth: currentView === 'signup' ? '540px' : '420px' }}>
+        <div style={{ 
+          ...styles.card, 
+          maxWidth: currentView === 'signup' ? '720px' : '500px',
+          padding: currentView === 'signup' ? '40px' : '44px'
+        }}>
           
           <div style={styles.tabContainer}>
             <button 
@@ -183,22 +208,24 @@ function App() {
               style={{
                 ...styles.tabButton, 
                 backgroundColor: currentView === 'signin' ? '#1e293b' : 'transparent',
-                color: currentView === 'signin' ? '#ffffff' : '#94a3b8'
+                color: currentView === 'signin' ? '#ffffff' : '#94a3b8',
+                boxShadow: currentView === 'signin' ? '0 4px 12px rgba(0,0,0,0.3)' : 'none'
               }}
               onClick={() => { setCurrentView('signin'); setMessage(''); }}
             >
-              Sign in
+              Sign In
             </button>
             <button 
               type="button" 
               style={{
                 ...styles.tabButton, 
                 backgroundColor: currentView === 'signup' ? '#1e293b' : 'transparent',
-                color: currentView === 'signup' ? '#ffffff' : '#94a3b8'
+                color: currentView === 'signup' ? '#ffffff' : '#94a3b8',
+                boxShadow: currentView === 'signup' ? '0 4px 12px rgba(0,0,0,0.3)' : 'none'
               }}
               onClick={() => { setCurrentView('signup'); setMessage(''); }}
             >
-              Create account
+              Create Account
             </button>
           </div>
 
@@ -206,10 +233,10 @@ function App() {
           {currentView === 'signin' && (
             <form onSubmit={handleLogin} style={styles.form}>
               <div style={styles.inputGroup}>
-                <label style={styles.label}>Email</label>
+                <label style={styles.label}>Email Address</label>
                 <input 
                   type="email" 
-                  placeholder="name@example.com" 
+                  placeholder="owner@restaurant.com" 
                   value={loginEmail} 
                   onChange={(e) => setLoginEmail(e.target.value)} 
                   style={styles.input}
@@ -220,20 +247,30 @@ function App() {
               <div style={styles.inputGroup}>
                 <div style={styles.labelRow}>
                   <label style={styles.label}>Password</label>
-                  <a href="#forgot" onClick={(e) => { e.preventDefault(); setCurrentView('forgot'); setMessage(''); }} style={styles.forgotLink}>Forgot?</a>
+                  <a href="#forgot" onClick={(e) => { e.preventDefault(); setCurrentView('forgot'); setMessage(''); }} style={styles.forgotLink}>Forgot password?</a>
                 </div>
-                <input 
-                  type="password" 
-                  placeholder="••••••••" 
-                  value={loginPassword} 
-                  onChange={(e) => setLoginPassword(e.target.value)} 
-                  style={styles.input}
-                  required 
-                />
+                <div style={styles.passwordWrapper}>
+                  <input 
+                    type={showLoginPassword ? 'text' : 'password'} 
+                    placeholder="••••••••" 
+                    value={loginPassword} 
+                    onChange={(e) => setLoginPassword(e.target.value)} 
+                    style={{ ...styles.input, paddingRight: '45px' }}
+                    required 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowLoginPassword(!showLoginPassword)} 
+                    style={styles.eyeButton}
+                    title={showLoginPassword ? "Hide password" : "Show password"}
+                  >
+                    {showLoginPassword ? <EyeOffIcon /> : <EyeIcon />}
+                  </button>
+                </div>
               </div>
 
               <button type="submit" style={styles.primaryButton} disabled={loading}>
-                {loading ? 'Signing in...' : 'Sign in'}
+                {loading ? 'Signing in...' : 'Sign In'}
               </button>
             </form>
           )}
@@ -241,14 +278,16 @@ function App() {
           {/* FORGOT PASSWORD VIEW */}
           {currentView === 'forgot' && (
             <form onSubmit={handleForgotPassword} style={styles.form}>
-              <h3 style={{margin: '0 0 10px 0', fontSize: '16px'}}>Reset Password</h3>
-              <p style={{fontSize: '12px', color: '#94a3b8', margin: '0 0 15px 0'}}>Enter your registered email to receive a recovery token.</p>
+              <div style={styles.headerTextGroup}>
+                <h2 style={styles.cardHeaderTitle}>Reset Password</h2>
+                <p style={styles.cardHeaderSubtitle}>Enter your registered email address to generate a recovery token.</p>
+              </div>
               
               <div style={styles.inputGroup}>
                 <label style={styles.label}>Email Address</label>
                 <input 
                   type="email" 
-                  placeholder="name@example.com" 
+                  placeholder="owner@restaurant.com" 
                   value={forgotEmail} 
                   onChange={(e) => setForgotEmail(e.target.value)} 
                   style={styles.input}
@@ -257,7 +296,7 @@ function App() {
               </div>
 
               <button type="submit" style={styles.primaryButton} disabled={loading}>
-                {loading ? 'Sending...' : 'Send Reset Link'}
+                {loading ? 'Processing...' : 'Send Reset Token'}
               </button>
               <button type="button" onClick={() => setCurrentView('signin')} style={styles.secondaryButton}>
                 Back to Sign In
@@ -268,42 +307,103 @@ function App() {
           {/* SIGN UP VIEW */}
           {currentView === 'signup' && (
             <form onSubmit={handleRegister} style={styles.form}>
-              <h3 style={{margin: '0 0 5px 0', fontSize: '16px', color: '#38bdf8'}}>Restaurant & Owner Details</h3>
+              <div style={styles.headerTextGroup}>
+                <h2 style={styles.cardHeaderTitle}>Restaurant Onboarding</h2>
+                <p style={styles.cardHeaderSubtitle}>Register your restaurant and configure your administrative profile.</p>
+              </div>
+              
+              <div style={styles.sectionTitle}>Business & Owner Information</div>
+              <div style={styles.row}>
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>Business Name *</label>
+                  <input type="text" name="businessName" placeholder="e.g. Spice Garden" value={formData.businessName} onChange={handleInputChange} style={styles.input} required />
+                </div>
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>Owner Name *</label>
+                  <input type="text" name="ownerName" placeholder="e.g. John Doe" value={formData.ownerName} onChange={handleInputChange} style={styles.input} required />
+                </div>
+              </div>
+
+              <div style={styles.row}>
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>Email Address *</label>
+                  <input type="email" name="email" placeholder="owner@restaurant.com" value={formData.email} onChange={handleInputChange} style={styles.input} required />
+                </div>
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>Password (min 8 chars) *</label>
+                  <div style={styles.passwordWrapper}>
+                    <input 
+                      type={showSignupPassword ? 'text' : 'password'} 
+                      placeholder="••••••••" 
+                      value={formData.password} 
+                      name="password"
+                      onChange={handleInputChange} 
+                      style={{ ...styles.input, paddingRight: '45px' }}
+                      required 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowSignupPassword(!showSignupPassword)} 
+                      style={styles.eyeButton}
+                      title={showSignupPassword ? "Hide password" : "Show password"}
+                    >
+                      {showSignupPassword ? <EyeOffIcon /> : <EyeIcon />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div style={styles.row}>
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>Phone Number (10 digits) *</label>
+                  <input type="text" name="phoneNumber" placeholder="9876543210" value={formData.phoneNumber} onChange={handleInputChange} style={styles.input} required />
+                </div>
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>WhatsApp Number</label>
+                  <input type="text" name="whatsappNumber" placeholder="9876543210" value={formData.whatsappNumber} onChange={handleInputChange} style={styles.input} />
+                </div>
+              </div>
+
+              <div style={styles.sectionTitle}>Address & GPS Location</div>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Address Line 1 *</label>
+                <input type="text" name="line1" placeholder="Street address or building name" value={formData.line1} onChange={handleInputChange} style={styles.input} required />
+              </div>
               
               <div style={styles.row}>
-                <input type="text" name="businessName" placeholder="Business Name *" value={formData.businessName} onChange={handleInputChange} style={styles.input} required />
-                <input type="text" name="ownerName" placeholder="Owner Name *" value={formData.ownerName} onChange={handleInputChange} style={styles.input} required />
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>Address Line 2</label>
+                  <input type="text" name="line2" placeholder="Suite, floor, etc. (optional)" value={formData.line2} onChange={handleInputChange} style={styles.input} />
+                </div>
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>Area</label>
+                  <input type="text" name="area" placeholder="Locality or neighborhood" value={formData.area} onChange={handleInputChange} style={styles.input} />
+                </div>
               </div>
 
               <div style={styles.row}>
-                <input type="email" name="email" placeholder="Email Address *" value={formData.email} onChange={handleInputChange} style={styles.input} required />
-                <input type="password" name="password" placeholder="Password (min 8 chars) *" value={formData.password} onChange={handleInputChange} style={styles.input} required />
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>Zip Code *</label>
+                  <input type="text" name="zipCode" placeholder="6-digit postal code" value={formData.zipCode} onChange={handleInputChange} style={styles.input} required />
+                </div>
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>State *</label>
+                  <input type="text" name="state" placeholder="State/Province" value={formData.state} onChange={handleInputChange} style={styles.input} required />
+                </div>
               </div>
 
               <div style={styles.row}>
-                <input type="text" name="phoneNumber" placeholder="Phone Number (10 digits) *" value={formData.phoneNumber} onChange={handleInputChange} style={styles.input} required />
-                <input type="text" name="whatsappNumber" placeholder="WhatsApp Number" value={formData.whatsappNumber} onChange={handleInputChange} style={styles.input} />
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>Latitude *</label>
+                  <input type="number" step="any" name="latitude" placeholder="e.g. 28.6139" value={formData.latitude} onChange={handleInputChange} style={styles.input} required />
+                </div>
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>Longitude *</label>
+                  <input type="number" step="any" name="longitude" placeholder="e.g. 77.2090" value={formData.longitude} onChange={handleInputChange} style={styles.input} required />
+                </div>
               </div>
 
-              <h3 style={{margin: '10px 0 5px 0', fontSize: '16px', color: '#38bdf8'}}>Address & Location</h3>
-              <input type="text" name="line1" placeholder="Address Line 1 *" value={formData.line1} onChange={handleInputChange} style={styles.input} required />
-              
-              <div style={styles.row}>
-                <input type="text" name="line2" placeholder="Address Line 2" value={formData.line2} onChange={handleInputChange} style={styles.input} />
-                <input type="text" name="area" placeholder="Area" value={formData.area} onChange={handleInputChange} style={styles.input} />
-              </div>
-
-              <div style={styles.row}>
-                <input type="text" name="zipCode" placeholder="Zip Code (6 digits) *" value={formData.zipCode} onChange={handleInputChange} style={styles.input} required />
-                <input type="text" name="state" placeholder="State *" value={formData.state} onChange={handleInputChange} style={styles.input} required />
-              </div>
-
-              <div style={styles.row}>
-                <input type="number" step="any" name="latitude" placeholder="Latitude (-90 to 90) *" value={formData.latitude} onChange={handleInputChange} style={styles.input} required />
-                <input type="number" step="any" name="longitude" placeholder="Longitude (-180 to 180) *" value={formData.longitude} onChange={handleInputChange} style={styles.input} required />
-              </div>
-
-              <button type="submit" style={styles.primaryButton} disabled={loading}>
+              <button type="submit" style={{ ...styles.primaryButton, marginTop: '14px' }} disabled={loading}>
                 {loading ? 'Submitting...' : 'Complete Registration'}
               </button>
             </form>
@@ -321,7 +421,7 @@ function App() {
       )}
 
       <div style={styles.footerText}>
-        By continuing you agree to our Terms and Privacy Notice. Data is processed in line with GDPR, UK GDPR, and the DPDP Act.
+        Secure Restaurant Onboarding Portal &copy; 2026. Data processed in compliance with regulatory standards.
       </div>
     </div>
   );
@@ -334,126 +434,216 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     minHeight: '100vh',
-    backgroundColor: '#070d1b',
+    backgroundColor: '#030712',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    color: '#ffffff',
-    padding: '20px',
+    color: '#f8fafc',
+    padding: '30px 20px',
     boxSizing: 'border-box',
+  },
+  brandContainer: {
+    textAlign: 'center',
+    marginBottom: '28px',
   },
   brandTitle: {
-    fontSize: '22px',
-    fontWeight: '700',
-    letterSpacing: '0.5px',
-    color: '#38bdf8',
-    marginBottom: '20px',
+    fontSize: '32px',
+    fontWeight: '800',
+    letterSpacing: '-0.5px',
+    color: '#ffffff',
+  },
+  brandSubtitle: {
+    fontSize: '13px',
+    color: '#64748b',
+    marginTop: '6px',
+    fontWeight: '500',
   },
   card: {
-    backgroundColor: '#0e1626',
+    backgroundColor: '#0b132b',
     border: '1px solid #1e293b',
-    borderRadius: '16px',
-    padding: '28px',
+    borderRadius: '24px',
     width: '100%',
-    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
     boxSizing: 'border-box',
+    transition: 'all 0.3s ease',
+  },
+  headerTextGroup: {
+    marginBottom: '18px',
+    textAlign: 'left',
+  },
+  cardHeaderTitle: {
+    fontSize: '20px',
+    fontWeight: '700',
+    color: '#ffffff',
+    margin: '0 0 4px 0',
+  },
+  cardHeaderSubtitle: {
+    fontSize: '13px',
+    color: '#94a3b8',
+    margin: 0,
+    lineHeight: '1.4',
+  },
+  sectionTitle: {
+    fontSize: '12px',
+    fontWeight: '700',
+    color: '#3b82f6',
+    marginTop: '16px',
+    marginBottom: '8px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.8px',
+    textAlign: 'left',
   },
   tokenBox: {
-    backgroundColor: '#121a2b',
-    border: '1px solid #23304a',
-    borderRadius: '8px',
-    padding: '12px',
+    backgroundColor: '#070d1a',
+    border: '1px solid #1e293b',
+    borderRadius: '12px',
+    padding: '16px',
     textAlign: 'left',
     marginTop: '15px',
   },
   tabContainer: {
     display: 'flex',
-    backgroundColor: '#131d31',
-    borderRadius: '10px',
-    padding: '4px',
-    marginBottom: '20px',
+    backgroundColor: '#070d1a',
+    borderRadius: '12px',
+    padding: '5px',
+    marginBottom: '24px',
+    border: '1px solid #162032',
   },
   tabButton: {
     flex: 1,
-    padding: '10px',
-    borderRadius: '8px',
+    padding: '12px',
+    borderRadius: '9px',
     border: 'none',
     fontSize: '14px',
-    fontWeight: '500',
+    fontWeight: '600',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '14px',
+    gap: '16px',
+    textAlign: 'left',
   },
   row: {
     display: 'flex',
-    gap: '10px',
+    gap: '16px',
   },
   inputGroup: {
     display: 'flex',
     flexDirection: 'column',
     gap: '6px',
+    flex: 1,
+    textAlign: 'left',
   },
   labelRow: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    width: '100%',
   },
   label: {
     fontSize: '13px',
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#cbd5e1',
+    letterSpacing: '0.2px',
+    textAlign: 'left',
   },
   forgotLink: {
     fontSize: '12px',
-    color: '#38bdf8',
+    color: '#3b82f6',
     textDecoration: 'none',
+    fontWeight: '500',
+  },
+  passwordWrapper: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%',
   },
   input: {
     width: '100%',
-    padding: '10px 12px',
-    backgroundColor: '#121a2b',
-    border: '1px solid #23304a',
-    borderRadius: '8px',
+    padding: '13px 16px',
+    backgroundColor: '#070d1a',
+    border: '1px solid #1e293b',
+    borderRadius: '12px',
     color: '#ffffff',
-    fontSize: '13px',
+    fontSize: '14px',
     outline: 'none',
     boxSizing: 'border-box',
+    textAlign: 'left',
+    transition: 'border-color 0.2s',
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: '14px',
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: '#64748b',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    padding: '4px',
+    transition: 'color 0.2s',
   },
   primaryButton: {
-    backgroundColor: '#0066ff',
+    backgroundColor: '#2563eb',
     color: '#ffffff',
     border: 'none',
-    padding: '12px',
-    borderRadius: '8px',
-    fontSize: '14px',
+    padding: '14px',
+    borderRadius: '12px',
+    fontSize: '15px',
     fontWeight: '600',
     cursor: 'pointer',
-    marginTop: '6px',
+    marginTop: '8px',
+    transition: 'background-color 0.2s',
   },
   secondaryButton: {
     backgroundColor: 'transparent',
     color: '#94a3b8',
-    border: '1px solid #23304a',
-    padding: '10px',
-    borderRadius: '8px',
+    border: '1px solid #1e293b',
+    padding: '12px',
+    borderRadius: '12px',
     fontSize: '13px',
     cursor: 'pointer',
+    fontWeight: '500',
+  },
+  logoutButton: {
+    backgroundColor: '#dc2626',
+    color: '#ffffff',
+    border: 'none',
+    padding: '12px 24px',
+    borderRadius: '10px',
+    fontSize: '13px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    marginTop: '20px',
+  },
+  successBadge: {
+    display: 'inline-block',
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    color: '#4ade80',
+    padding: '4px 12px',
+    borderRadius: '20px',
+    fontSize: '11px',
+    fontWeight: '600',
+    marginBottom: '10px',
+    border: '1px solid rgba(34, 197, 94, 0.2)',
   },
   messageBox: {
     fontSize: '13px',
     textAlign: 'center',
     fontWeight: '500',
-    marginTop: '10px',
+    marginTop: '12px',
+    padding: '10px',
+    borderRadius: '8px',
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
   footerText: {
-    marginTop: '24px',
+    marginTop: '32px',
     fontSize: '11px',
     color: '#475569',
     textAlign: 'center',
-    maxWidth: '400px',
-    lineHeight: '1.4',
+    maxWidth: '450px',
+    lineHeight: '1.5',
   }
 };
 
