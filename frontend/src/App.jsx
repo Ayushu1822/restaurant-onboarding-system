@@ -1,5 +1,8 @@
 import { useState } from 'react';
 
+// Automatically uses your Vercel environment variable, or falls back to your live Render backend
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://restaurant-backend-fphb.onrender.com';
+
 function App() {
   const [currentView, setCurrentView] = useState('signin'); // 'signin', 'signup', 'forgot', 'dashboard'
   
@@ -45,7 +48,7 @@ function App() {
     setMessage('Signing in...');
 
     try {
-      const response = await fetch('http://localhost:8080/api/v1/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: loginEmail, password: loginPassword }),
@@ -74,7 +77,7 @@ function App() {
     setMessage('Processing reset request...');
 
     try {
-      const response = await fetch('http://localhost:8080/api/v1/auth/forgot-password', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail }),
@@ -107,7 +110,7 @@ function App() {
     }
 
     try {
-      const response = await fetch('http://localhost:8080/api/v1/auth/register', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
