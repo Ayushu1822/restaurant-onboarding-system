@@ -1,50 +1,35 @@
 import React, { useState, useEffect } from 'react';
 
-const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
-
 export default function Dashboard({ onLogout }) {
   const [activeTab, setActiveTab] = useState('Online Orders');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   
-  // Real Profile State from Database / Token
+  // Robust Profile State from LocalStorage / Auth
   const [profileData, setProfileData] = useState({
-    businessName: 'Loading...',
-    ownerName: 'Loading...',
-    email: 'Loading...',
-    phone: '',
-    address: ''
+    businessName: 'FOODOS Restaurant',
+    ownerName: 'Admin User',
+    email: 'owner@restaurant.com',
+    phone: '9876543210',
+    address: '44, Residency Road, Bengaluru'
   });
 
-  // Fetch logged-in user profile on load
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      fetch(`${API_BASE_URL}/api/v1/auth/profile`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.businessName) {
-          setProfileData({
-            businessName: data.businessName,
-            ownerName: data.ownerName,
-            email: data.email,
-            phone: data.phoneNumber || data.phone || 'N/A',
-            address: data.address ? `${data.address.line1}, ${data.address.area}` : 'N/A'
-          });
-        }
-      })
-      .catch(() => {
-        // Fallback default if offline/mock
+    // Check if user info was saved during login/registration
+    const savedUser = localStorage.getItem('user_profile');
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
         setProfileData({
-          businessName: 'FOODOS Restaurant',
-          ownerName: 'krishna 6',
-          email: 'owner@restaurant.com',
-          phone: '9876543210',
-          address: '44, Residency Road, Bengaluru'
+          businessName: parsed.businessName || 'FOODOS Restaurant',
+          ownerName: parsed.ownerName || 'Admin User',
+          email: parsed.email || 'owner@restaurant.com',
+          phone: parsed.phoneNumber || parsed.phone || '9876543210',
+          address: parsed.address ? `${parsed.address.line1 || ''}, ${parsed.address.area || ''}` : '44, Residency Road, Bengaluru'
         });
-      });
+      } catch (e) {
+        // use defaults
+      }
     }
   }, []);
 
@@ -152,6 +137,15 @@ export default function Dashboard({ onLogout }) {
     }
   ]);
 
+  // Accept order -> moves to Accepted and immediately opens receipt drawer
+  const handleAcceptAndOpenReceipt = (orderId, e) => {
+    e.stopPropagation();
+    const updatedOrders = orders.map(o => o.id === orderId ? { ...o, status: 'Accepted' } : o);
+    setOrders(updatedOrders);
+    const acceptedOrder = updatedOrders.find(o => o.id === orderId);
+    setSelectedOrder(acceptedOrder);
+  };
+
   const updateOrderStatus = (orderId, newStatus) => {
     setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
     setSelectedOrder(null);
@@ -159,12 +153,6 @@ export default function Dashboard({ onLogout }) {
 
   const handlePrintReceipt = () => {
     window.print();
-  };
-
-  const handleProfileSave = (e) => {
-    e.preventDefault();
-    setShowProfileModal(false);
-    alert('Profile changes updated successfully!');
   };
 
   return (
@@ -202,7 +190,7 @@ export default function Dashboard({ onLogout }) {
           <div style={styles.userAvatar}>{profileData.ownerName.substring(0,2).toUpperCase()}</div>
           <div style={{flex: 1, overflow: 'hidden'}}>
             <div style={{fontSize: '13px', fontWeight: 'bold', color: '#fff'}}>{profileData.ownerName}</div>
-            <div style={{fontSize: '11px', color: '#6ee7b7'}}>View Profile & Settings</div>
+            <div style={{fontSize: '11px', color: '#6ee7b7'}}>View Profile</div>
           </div>
         </div>
       </div>
@@ -234,7 +222,7 @@ export default function Dashboard({ onLogout }) {
               </span>
             </div>
 
-            {/* KANBAN BOARD COLUMNS (EQUAL SIZING) */}
+            {/* KANBAN BOARD COLUMNS (UNIFORM EQUAL SIZING) */}
             <div style={styles.kanbanBoard}>
               
               {/* 1. NEW */}
@@ -268,7 +256,7 @@ export default function Dashboard({ onLogout }) {
                       </div>
                       <div style={styles.cardActions} onClick={(e) => e.stopPropagation()}>
                         <button onClick={() => updateOrderStatus(order.id, 'Rejected')} style={styles.rejectBtn}>Reject</button>
-                        <button onClick={() => updateOrderStatus(order.id, 'Accepted')} style={styles.acceptBtn}>Accept</button>
+                        <button onClick={(e) => handleAcceptAndOpenReceipt(order.id, e)} style={styles.acceptBtn}>Accept</button>
                       </div>
                     </div>
                   ))}
@@ -513,7 +501,7 @@ export default function Dashboard({ onLogout }) {
         </div>
       )}
 
-      {/* POLISHED PROFILE MODAL SHOWING REGISTERED CREDENTIALS */}
+      {/* POLISHED PROFILE MODAL SHOWING LOGGED-IN CREDENTIALS */}
       {showProfileModal && (
         <div style={styles.drawerOverlay} onClick={() => setShowProfileModal(false)}>
           <div style={styles.profileModal} onClick={(e) => e.stopPropagation()}>
@@ -556,8 +544,8 @@ export default function Dashboard({ onLogout }) {
 }
 
 const styles = {
-  container: { display: 'flex', width: '100vw', height: '100vh', backgroundColor: '#f8fafc', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', overflow: 'hidden', margin: 0, padding: 0, boxSizing: 'border-box' },
-  sidebar: { width: '260px', backgroundColor: '#022c22', display: 'flex', flexDirection: 'column', color: '#ffffff', flexShrink: 0 },
+  container: { display: 'flex', width: '100%', minHeight: '100vh', backgroundColor: '#f8fafc', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', overflow: 'hidden', margin: 0, padding: 0, boxSizing: 'border-box' },
+  sidebar: { width: '260px', backgroundColor: '#022c22', display: 'flex', flexDirection: 'column', color: '#ffffff', flexShrink: 0, height: '100vh' },
   brandBox: { display: 'flex', alignItems: 'center', gap: '12px', padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)' },
   logoIcon: { fontSize: '24px' },
   brandName: { fontSize: '18px', fontWeight: '800', letterSpacing: '0.5px' },
@@ -577,7 +565,7 @@ const styles = {
   subHeader: { padding: '15px 25px', backgroundColor: '#ffffff', borderBottom: '1px solid #f1f5f9', fontSize: '14px' },
   tabContentPlaceholder: { padding: '40px', flex: 1, backgroundColor: '#f8fafc' },
   kanbanBoard: { display: 'flex', gap: '16px', padding: '20px', overflowX: 'auto', flex: 1, backgroundColor: '#f8fafc', alignItems: 'flex-start' },
-  column: { backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '12px', flex: 1, minWidth: '240px', display: 'flex', flexDirection: 'column', maxHeight: '100%' },
+  column: { backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '12px', width: '280px', minWidth: '280px', flexShrink: 0, display: 'flex', flexDirection: 'column', maxHeight: '100%' },
   columnHeader: { padding: '14px 16px', fontWeight: '700', fontSize: '14px', color: '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0' },
   colBadge: { backgroundColor: '#cbd5e1', color: '#334155', fontSize: '11px', padding: '2px 8px', borderRadius: '10px' },
   cardList: { overflowY: 'auto', padding: '10px', flex: 1 },
