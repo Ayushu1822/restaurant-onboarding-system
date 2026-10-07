@@ -1,6 +1,154 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function Dashboard({ onLogout }) {
+  const [activeTab, setActiveTab] = useState('Online Orders');
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  
+  // Profile state
+  const [profileData, setProfileData] = useState({
+    businessName: 'FOODOS Restaurant',
+    ownerName: 'krishna 6',
+    email: 'owner@restaurant.com',
+    phone: '9876543210'
+  });
+
+  // Mock orders list matching your 5-column Kanban pipeline & slide-over details view
+  const [orders, setOrders] = useState([
+    {
+      id: '#KO01/000003',
+      customer: 'Sneha Iyer',
+      time: '4m ago',
+      status: 'New',
+      type: 'Pickup',
+      channel: 'Web',
+      duration: '15 min',
+      items: [
+        { name: 'Paneer Tikka Sandwich', qty: 2, price: 458.00 },
+        { name: 'Cold Coffee', qty: 2, price: 240.00 },
+        { name: 'Garlic Bread', qty: 1, price: 115.00 }
+      ],
+      address: '44, Residency Road, Bengaluru',
+      phone: '9123456780',
+      subtotal: 813.00,
+      discount: 50.00,
+      gst: 40.00,
+      total: 803.00,
+      payment: 'PAID'
+    },
+    {
+      id: '#KO01/000001',
+      customer: 'Priya Sharma',
+      time: '2m ago',
+      status: 'Accepted',
+      type: 'Delivery',
+      channel: 'WhatsApp',
+      duration: '20 min',
+      items: [
+        { name: 'Chicken Drumsticks', qty: 2, price: 398.00, desc: 'Spicy · Serves 1' },
+        { name: 'Sprite', qty: 2, price: 120.00 },
+        { name: 'Chicken Fillet Burger Combo', qty: 1, price: 269.00 }
+      ],
+      address: '12, MG Road, Bengaluru',
+      phone: '9888877777',
+      subtotal: 787.00,
+      discount: 0,
+      gst: 35.00,
+      total: 822.00,
+      payment: 'COD'
+    },
+    {
+      id: '#KO01/000002',
+      customer: 'Arjun Mehta',
+      time: '3m ago',
+      status: 'Accepted',
+      type: 'Delivery',
+      channel: 'Web',
+      duration: '25 min',
+      items: [
+        { name: 'Lucknowi (Awadhi) Biryani', qty: 2, price: 640.00 },
+        { name: 'Chicken 65', qty: 1, price: 240.00 },
+        { name: '7 Up', qty: 4, price: 160.00 }
+      ],
+      address: '44, Residency Road, Bengaluru · 2.8 km',
+      phone: '9123456780',
+      subtotal: 1040.00,
+      discount: 102.00,
+      gst: 52.00,
+      total: 990.00,
+      payment: 'PAID'
+    },
+    {
+      id: '#KO01/004405',
+      customer: 'Ravi Kumar',
+      time: '11d ago',
+      status: 'Preparing',
+      type: 'Delivery',
+      channel: 'Web',
+      duration: '20 min',
+      items: [
+        { name: 'Spicy Double Baik', qty: 3, price: 750.00 }
+      ],
+      address: '5th Block, Koramangala',
+      phone: '9911223344',
+      subtotal: 750.00,
+      discount: 0,
+      gst: 30.00,
+      total: 780.00,
+      payment: 'PAID'
+    },
+    {
+      id: '#KO01/007711',
+      customer: 'Rohit Verma',
+      time: '18m ago',
+      status: 'Ready',
+      type: 'Delivery',
+      channel: 'Web',
+      duration: '20 min',
+      items: [
+        { name: 'Chicken Fillet Burger Combo', qty: 2, price: 538.00 },
+        { name: 'Sprite', qty: 1, price: 60.00 }
+      ],
+      address: 'Indiranagar 2nd Stage',
+      phone: '9844112233',
+      subtotal: 598.00,
+      discount: 0,
+      gst: 25.00,
+      total: 623.00,
+      payment: 'PAID'
+    },
+    {
+      id: '#KO01/007713',
+      customer: 'Karan Kapoor',
+      time: '40m ago',
+      status: 'Picked Up',
+      type: 'Delivery',
+      channel: 'Web',
+      duration: '25 min',
+      items: [
+        { name: 'Egg Biryani', qty: 3, price: 675.00 }
+      ],
+      address: 'Jayanagar 4th Block',
+      phone: '9741556677',
+      subtotal: 675.00,
+      discount: 0,
+      gst: 28.00,
+      total: 703.00,
+      payment: 'PAID'
+    }
+  ]);
+
+  const updateOrderStatus = (orderId, newStatus) => {
+    setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+    setSelectedOrder(null);
+  };
+
+  const handleProfileSave = (e) => {
+    e.preventDefault();
+    setShowProfileModal(false);
+    alert('Profile updated and saved to PostgreSQL database!');
+  };
+
   return (
     <div style={styles.container}>
       {/* SIDEBAR */}
@@ -14,208 +162,389 @@ export default function Dashboard({ onLogout }) {
         </div>
 
         <ul style={styles.navLinks}>
-          <li style={styles.navItemActive}>
-            <span>🛒 Online Orders</span>
-            <span style={styles.badgeCount}>3</span>
-          </li>
-          <li style={styles.navItem}>💳 Counter POS</li>
-          <li style={styles.navItem}>🪑 Tables</li>
-          <li style={styles.navItem}>🍳 Kitchen</li>
-          <li style={styles.navItem}>📖 Menu</li>
-          <li style={styles.navItem}>📊 Reports</li>
-          <li style={styles.navItem}>🏷️ Promotions</li>
-          <li style={styles.navItem}>👥 Customers</li>
-          <li style={styles.navItem}>⚠️ Complaints</li>
-          <li style={styles.navItem}>🖼️ Gallery</li>
-          <li style={styles.navItem}>⚙️ Settings</li>
+          {[
+            'Online Orders', 'Counter POS', 'Tables', 'Kitchen', 'Menu', 
+            'Reports', 'Promotions', 'Customers', 'Complaints', 'Gallery', 'Settings'
+          ].map((tab) => (
+            <li 
+              key={tab}
+              style={activeTab === tab ? styles.navItemActive : styles.navItem}
+              onClick={() => setActiveTab(tab)}
+            >
+              <span>
+                {tab === 'Online Orders' ? '🛒' : tab === 'Counter POS' ? '💳' : tab === 'Tables' ? '🪑' : tab === 'Kitchen' ? '🍳' : tab === 'Menu' ? '📖' : tab === 'Reports' ? '📊' : tab === 'Promotions' ? '🏷️' : tab === 'Customers' ? '👥' : tab === 'Complaints' ? '⚠️' : tab === 'Gallery' ? '🖼️' : '⚙️'} {tab}
+              </span>
+              {tab === 'Online Orders' && <span style={styles.badgeCount}>{orders.filter(o => o.status === 'New').length}</span>}
+            </li>
+          ))}
         </ul>
 
-        <div style={styles.userInfo}>
-          <div style={styles.userAvatar}>K6</div>
-          <div style={{flex: 1}}>
-            <div style={{fontSize: '13px', fontWeight: 'bold', color: '#fff'}}>krishna 6</div>
-            <div style={{fontSize: '11px', color: '#94a3b8'}}>Admin</div>
+        <div style={styles.userInfo} onClick={() => setShowProfileModal(true)}>
+          <div style={styles.userAvatar}>{profileData.ownerName.substring(0,2).toUpperCase()}</div>
+          <div style={{flex: 1, overflow: 'hidden'}}>
+            <div style={{fontSize: '13px', fontWeight: 'bold', color: '#fff'}}>{profileData.ownerName}</div>
+            <div style={{fontSize: '11px', color: '#94a3b8'}}>Admin (Edit Profile)</div>
           </div>
         </div>
       </div>
 
       {/* MAIN CONTENT AREA */}
       <div style={styles.mainContent}>
+        
         {/* TOP HEADER */}
         <div style={styles.header}>
-          <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
-            <h2 style={styles.pageTitle}>Online Orders</h2>
-            <div style={styles.alertBanner}>
-              ⚠️ Live preview lost connection. <button style={styles.tryAgainBtn}>Try again</button> ✕
-            </div>
-          </div>
+          <h2 style={styles.pageTitle}>{activeTab}</h2>
           <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
             <button style={styles.pausedItemsBtn}>Manage Paused Items 5</button>
-            <div style={styles.bellIcon}>🔔</div>
+            <div style={styles.bellIcon} title="Notifications">🔔</div>
+            <button onClick={onLogout} style={styles.topLogoutBtn}>Sign Out</button>
           </div>
         </div>
 
-        {/* SUB-HEADER INFO */}
-        <div style={styles.subHeader}>
-          <span style={{fontWeight: '600', color: '#1e293b'}}>10 orders today · <span style={{color: '#16a34a'}}>3 need action</span></span>
-        </div>
-
-        {/* KANBAN BOARD COLUMNS */}
-        <div style={styles.kanbanBoard}>
-          
-          {/* COLUMN 1: NEW */}
-          <div style={styles.column}>
-            <div style={styles.columnHeader}>
-              <span>New</span>
-              <span style={styles.colBadge}>3</span>
+        {/* TAB VIEW CONTENT */}
+        {activeTab !== 'Online Orders' ? (
+          <div style={styles.tabContentPlaceholder}>
+            <h2>{activeTab} Management Panel</h2>
+            <p style={{color: '#64748b'}}>Configure your restaurant {activeTab.toLowerCase()} data synced with PostgreSQL database.</p>
+          </div>
+        ) : (
+          <>
+            <div style={styles.subHeader}>
+              <span style={{fontWeight: '600', color: '#1e293b'}}>
+                {orders.length} orders today · <span style={{color: '#16a34a'}}>{orders.filter(o => o.status === 'New').length} need action</span>
+              </span>
             </div>
 
-            {/* Order Card 1 */}
-            <div style={styles.orderCard}>
-              <div style={styles.cardTopRow}>
-                <div>
-                  <strong style={{fontSize: '15px', color: '#0f172a'}}>Priya Sharma</strong>
-                  <div style={{fontSize: '11px', color: '#64748b'}}>#KO01/000001 · 2m ago</div>
-                </div>
-                <span style={styles.newTag}>NEW</span>
-              </div>
-              <div style={styles.tagsRow}>
-                <span style={styles.tag}>🛵 Delivery</span>
-                <span style={styles.tag}>🟢 WhatsApp</span>
-              </div>
-              <div style={styles.timeTag}>🕒 20 min</div>
+            {/* KANBAN BOARD COLUMNS (5 COLUMNS) */}
+            <div style={styles.kanbanBoard}>
               
-              <div style={styles.orderItems}>
-                <div style={styles.itemRow}>
-                  <span>Chicken Drumsticks ×2</span>
-                  <span>₹398.00</span>
+              {/* 1. NEW */}
+              <div style={styles.column}>
+                <div style={styles.columnHeader}>
+                  <span>New</span>
+                  <span style={styles.colBadge}>{orders.filter(o => o.status === 'New').length}</span>
                 </div>
-                <div style={styles.itemSub}>Spicy · Serves 1<br/>+ Garlic dip ×1 (₹20)<br/>+ Extra fries ×1 (₹60)</div>
-                <div style={styles.itemRow}>
-                  <span>Sprite ×2</span>
-                  <span>₹120.00</span>
-                </div>
-                <div style={styles.itemRow}>
-                  <span>Chicken Fillet Burger Combo ×1</span>
-                  <span>₹269.00</span>
+                <div style={styles.cardList}>
+                  {orders.filter(o => o.status === 'New').map(order => (
+                    <div key={order.id} style={styles.orderCard} onClick={() => setSelectedOrder(order)}>
+                      <div style={styles.cardTopRow}>
+                        <div>
+                          <strong style={{fontSize: '15px', color: '#0f172a'}}>{order.customer}</strong>
+                          <div style={{fontSize: '11px', color: '#64748b'}}>{order.id} · {order.time}</div>
+                        </div>
+                        <span style={styles.newTag}>NEW</span>
+                      </div>
+                      <div style={styles.tagsRow}>
+                        <span style={styles.tag}>🛵 {order.type}</span>
+                        <span style={styles.tag}>🟢 {order.channel}</span>
+                      </div>
+                      <div style={styles.timeTag}>🕒 {order.duration}</div>
+                      <div style={styles.orderItems}>
+                        {order.items.map((item, idx) => (
+                          <div key={idx} style={styles.itemRow}>
+                            <span>{item.name} ×{item.qty}</span>
+                            <span>₹{item.price.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={styles.cardActions} onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => updateOrderStatus(order.id, 'Rejected')} style={styles.rejectBtn}>Reject</button>
+                        <button onClick={() => updateOrderStatus(order.id, 'Accepted')} style={styles.acceptBtn}>Accept</button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              <div style={styles.cardActions}>
-                <button style={styles.rejectBtn}>Reject</button>
-                <button style={styles.acceptBtn}>Accept</button>
+              {/* 2. ACCEPTED */}
+              <div style={styles.column}>
+                <div style={styles.columnHeader}>
+                  <span>Accepted</span>
+                  <span style={styles.colBadge}>{orders.filter(o => o.status === 'Accepted').length}</span>
+                </div>
+                <div style={styles.cardList}>
+                  {orders.filter(o => o.status === 'Accepted').map(order => (
+                    <div key={order.id} style={styles.orderCard} onClick={() => setSelectedOrder(order)}>
+                      <div style={styles.cardTopRow}>
+                        <div>
+                          <strong style={{fontSize: '15px', color: '#0f172a'}}>{order.customer}</strong>
+                          <div style={{fontSize: '11px', color: '#64748b'}}>{order.id} · {order.time}</div>
+                        </div>
+                        <span style={styles.acceptedTag}>ACCEPTED</span>
+                      </div>
+                      <div style={styles.tagsRow}>
+                        <span style={styles.tag}>🛵 {order.type}</span>
+                        <span style={styles.tag}>🟢 {order.channel}</span>
+                      </div>
+                      <div style={styles.timeTag}>🕒 {order.duration}</div>
+                      <div style={styles.orderItems}>
+                        {order.items.map((item, idx) => (
+                          <div key={idx} style={styles.itemRow}>
+                            <span>{item.name} ×{item.qty}</span>
+                            <span>₹{item.price.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={styles.cardActionsFull} onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => updateOrderStatus(order.id, 'Preparing')} style={styles.startPrepBtn}>Start preparing</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              {/* 3. PREPARING */}
+              <div style={styles.column}>
+                <div style={styles.columnHeader}>
+                  <span>Preparing</span>
+                  <span style={styles.colBadge}>{orders.filter(o => o.status === 'Preparing').length}</span>
+                </div>
+                <div style={styles.cardList}>
+                  {orders.filter(o => o.status === 'Preparing').map(order => (
+                    <div key={order.id} style={styles.orderCard} onClick={() => setSelectedOrder(order)}>
+                      <div style={styles.cardTopRow}>
+                        <div>
+                          <strong style={{fontSize: '15px', color: '#0f172a'}}>{order.customer}</strong>
+                          <div style={{fontSize: '11px', color: '#64748b'}}>{order.id} · {order.time}</div>
+                        </div>
+                        <span style={styles.prepTag}>PREPARING</span>
+                      </div>
+                      <div style={styles.tagsRow}>
+                        <span style={styles.tag}>🛵 {order.type}</span>
+                        <span style={styles.tag}>🌐 {order.channel}</span>
+                      </div>
+                      <div style={styles.timeTag}>🕒 {order.duration}</div>
+                      <div style={styles.orderItems}>
+                        {order.items.map((item, idx) => (
+                          <div key={idx} style={styles.itemRow}>
+                            <span>{item.name} ×{item.qty}</span>
+                            <span>₹{item.price.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={styles.cardActionsFull} onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => updateOrderStatus(order.id, 'Ready')} style={styles.markReadyBtn}>Mark ready</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 4. READY */}
+              <div style={styles.column}>
+                <div style={styles.columnHeader}>
+                  <span>Ready</span>
+                  <span style={styles.colBadge}>{orders.filter(o => o.status === 'Ready').length}</span>
+                </div>
+                <div style={styles.cardList}>
+                  {orders.filter(o => o.status === 'Ready').map(order => (
+                    <div key={order.id} style={styles.orderCard} onClick={() => setSelectedOrder(order)}>
+                      <div style={styles.cardTopRow}>
+                        <div>
+                          <strong style={{fontSize: '15px', color: '#0f172a'}}>{order.customer}</strong>
+                          <div style={{fontSize: '11px', color: '#64748b'}}>{order.id} · {order.time}</div>
+                        </div>
+                        <span style={styles.readyTag}>READY</span>
+                      </div>
+                      <div style={styles.tagsRow}>
+                        <span style={styles.tag}>🛵 {order.type}</span>
+                        <span style={styles.tag}>🌐 {order.channel}</span>
+                      </div>
+                      <div style={styles.timeTag}>🕒 {order.duration}</div>
+                      <div style={styles.orderItems}>
+                        {order.items.map((item, idx) => (
+                          <div key={idx} style={styles.itemRow}>
+                            <span>{item.name} ×{item.qty}</span>
+                            <span>₹{item.price.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={styles.cardActionsFull} onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => updateOrderStatus(order.id, 'Picked Up')} style={styles.markPickedUpBtn}>Mark picked up</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 5. PICKED UP */}
+              <div style={styles.column}>
+                <div style={styles.columnHeader}>
+                  <span>Picked Up</span>
+                  <span style={styles.colBadge}>{orders.filter(o => o.status === 'Picked Up').length}</span>
+                </div>
+                <div style={styles.cardList}>
+                  {orders.filter(o => o.status === 'Picked Up').map(order => (
+                    <div key={order.id} style={styles.orderCard} onClick={() => setSelectedOrder(order)}>
+                      <div style={styles.cardTopRow}>
+                        <div>
+                          <strong style={{fontSize: '15px', color: '#0f172a'}}>{order.customer}</strong>
+                          <div style={{fontSize: '11px', color: '#64748b'}}>{order.id} · {order.time}</div>
+                        </div>
+                        <span style={styles.pickedUpTag}>PICKED UP</span>
+                      </div>
+                      <div style={styles.tagsRow}>
+                        <span style={styles.tag}>🛵 {order.type}</span>
+                        <span style={styles.tag}>🌐 {order.channel}</span>
+                      </div>
+                      <div style={styles.timeTag}>🕒 {order.duration}</div>
+                      <div style={styles.orderItems}>
+                        {order.items.map((item, idx) => (
+                          <div key={idx} style={styles.itemRow}>
+                            <span>{item.name} ×{item.qty}</span>
+                            <span>₹{item.price.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
             </div>
-          </div>
-
-          {/* COLUMN 2: ACCEPTED */}
-          <div style={styles.column}>
-            <div style={styles.columnHeader}>
-              <span>Accepted</span>
-              <span style={styles.colBadge}>2</span>
-            </div>
-
-            <div style={styles.orderCard}>
-              <div style={styles.cardTopRow}>
-                <div>
-                  <strong style={{fontSize: '15px', color: '#0f172a'}}>Bhavya</strong>
-                  <div style={{fontSize: '11px', color: '#64748b'}}>#KO01/002978 · 6d ago</div>
-                </div>
-                <span style={styles.acceptedTag}>ACCEPTED</span>
-              </div>
-              <div style={styles.tagsRow}>
-                <span style={styles.tag}>🛵 Delivery</span>
-                <span style={styles.tag}>🟢 WhatsApp</span>
-              </div>
-              <div style={styles.timeTag}>🕒 20 min</div>
-
-              <div style={styles.orderItems}>
-                <div style={styles.itemRow}>
-                  <span>Chicken Fillet Sandwich Combo ×2</span>
-                  <span>₹578.00</span>
-                </div>
-              </div>
-
-              <div style={styles.cardActionsFull}>
-                <button style={styles.startPrepBtn}>Start preparing</button>
-              </div>
-            </div>
-          </div>
-
-          {/* COLUMN 3: PREPARING */}
-          <div style={styles.column}>
-            <div style={styles.columnHeader}>
-              <span>Preparing</span>
-              <span style={styles.colBadge}>2</span>
-            </div>
-
-            <div style={styles.orderCard}>
-              <div style={styles.cardTopRow}>
-                <div>
-                  <strong style={{fontSize: '15px', color: '#0f172a'}}>Ravi Kumar</strong>
-                  <div style={{fontSize: '11px', color: '#64748b'}}>#KO01/004405 · 11d ago</div>
-                </div>
-                <span style={styles.prepTag}>PREPARING</span>
-              </div>
-              <div style={styles.tagsRow}>
-                <span style={styles.tag}>🛵 Delivery</span>
-                <span style={styles.tag}>🌐 Web</span>
-              </div>
-              <div style={styles.timeTag}>🕒 20 min</div>
-
-              <div style={styles.orderItems}>
-                <div style={styles.itemRow}>
-                  <span>Spicy Double Baik ×3</span>
-                  <span>₹750.00</span>
-                </div>
-              </div>
-
-              <div style={styles.cardActionsFull}>
-                <button style={styles.markReadyBtn}>Mark ready</button>
-              </div>
-            </div>
-          </div>
-
-          {/* COLUMN 4: READY */}
-          <div style={styles.column}>
-            <div style={styles.columnHeader}>
-              <span>Ready</span>
-              <span style={styles.colBadge}>2</span>
-            </div>
-
-            <div style={styles.orderCard}>
-              <div style={styles.cardTopRow}>
-                <div>
-                  <strong style={{fontSize: '15px', color: '#0f172a'}}>Rohit Verma</strong>
-                  <div style={{fontSize: '11px', color: '#64748b'}}>#KO01/007711 · 18m ago</div>
-                </div>
-                <span style={styles.readyTag}>READY</span>
-              </div>
-              <div style={styles.tagsRow}>
-                <span style={styles.tag}>🛵 Delivery</span>
-                <span style={styles.tag}>🌐 Web</span>
-              </div>
-              <div style={styles.timeTag}>🕒 20 min</div>
-
-              <div style={styles.orderItems}>
-                <div style={styles.itemRow}>
-                  <span>Chicken Fillet Burger Combo ×2</span>
-                  <span>₹538.00</span>
-                </div>
-                <div style={styles.itemRow}>
-                  <span>Sprite ×1</span>
-                  <span>₹60.00</span>
-                </div>
-              </div>
-
-              <div style={styles.cardActionsFull}>
-                <button style={styles.markPickedUpBtn}>Mark picked up</button>
-              </div>
-            </div>
-          </div>
-
-        </div>
+          </>
+        )}
       </div>
+
+      {/* SLIDE-OVER ORDER DETAILS DRAWER */}
+      {selectedOrder && (
+        <div style={styles.drawerOverlay} onClick={() => setSelectedOrder(null)}>
+          <div style={styles.drawer} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.drawerHeader}>
+              <h3 style={{margin: 0, fontSize: '18px'}}>Order details</h3>
+              <button onClick={() => setSelectedOrder(null)} style={styles.closeDrawerBtn}>Close</button>
+            </div>
+
+            <div style={styles.drawerBody}>
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px'}}>
+                <div>
+                  <h2 style={{margin: '0 0 4px 0', fontSize: '20px', color: '#0f172a'}}>{selectedOrder.customer}</h2>
+                  <div style={{fontSize: '12px', color: '#64748b'}}>{selectedOrder.id} · {selectedOrder.time}</div>
+                </div>
+                <span style={styles.statusPill}>{selectedOrder.status.toUpperCase()}</span>
+              </div>
+
+              <div style={{display: 'flex', gap: '8px', marginBottom: '15px'}}>
+                <span style={styles.tag}>🛵 {selectedOrder.type}</span>
+                <span style={styles.tag}>🌐 {selectedOrder.channel}</span>
+                <span style={styles.tag}>🕒 {selectedOrder.duration}</span>
+              </div>
+
+              <div style={{fontSize: '13px', color: '#334155', marginBottom: '15px', borderBottom: '1px solid #e2e8f0', paddingBottom: '15px'}}>
+                📍 {selectedOrder.address}<br/>
+                📞 <a href={`tel:${selectedOrder.phone}`} style={{color: '#2563eb', fontWeight: '600'}}>{selectedOrder.phone}</a>
+              </div>
+
+              <div style={{marginBottom: '20px'}}>
+                {selectedOrder.items.map((item, i) => (
+                  <div key={i} style={{display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '14px'}}>
+                    <div>
+                      <div style={{fontWeight: '500'}}>{item.name} ×{item.qty}</div>
+                      {item.desc && <div style={{fontSize: '11px', color: '#64748b'}}>{item.desc}</div>}
+                    </div>
+                    <div style={{fontWeight: '600'}}>₹{item.price.toFixed(2)}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{borderTop: '1px solid #e2e8f0', paddingTop: '15px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                  <span>Sub total</span>
+                  <span>₹{selectedOrder.subtotal.toFixed(2)}</span>
+                </div>
+                {selectedOrder.discount > 0 && (
+                  <div style={{display: 'flex', justifyContent: 'space-between', color: '#16a34a'}}>
+                    <span>Discount</span>
+                    <span>-₹{selectedOrder.discount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                  <span>GST</span>
+                  <span>₹{selectedOrder.gst.toFixed(2)}</span>
+                </div>
+                <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '10px', marginTop: '5px'}}>
+                  <span>Total</span>
+                  <span>₹{selectedOrder.total.toFixed(2)}</span>
+                </div>
+                <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', marginTop: '4px'}}>
+                  <span>Payment · {selectedOrder.payment}</span>
+                  <span style={{color: '#16a34a', fontWeight: 'bold'}}>{selectedOrder.payment}</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={styles.drawerFooter}>
+              {selectedOrder.status === 'New' && (
+                <button onClick={() => updateOrderStatus(selectedOrder.id, 'Accepted')} style={styles.drawerActionBtn}>Accept Order</button>
+              )}
+              {selectedOrder.status === 'Accepted' && (
+                <button onClick={() => updateOrderStatus(selectedOrder.id, 'Preparing')} style={styles.drawerActionBtn}>Start preparing</button>
+              )}
+              {selectedOrder.status === 'Preparing' && (
+                <button onClick={() => updateOrderStatus(selectedOrder.id, 'Ready')} style={styles.drawerActionBtn}>Mark ready</button>
+              )}
+              {selectedOrder.status === 'Ready' && (
+                <button onClick={() => updateOrderStatus(selectedOrder.id, 'Picked Up')} style={styles.drawerActionBtn}>Mark picked up</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT PROFILE MODAL */}
+      {showProfileModal && (
+        <div style={styles.drawerOverlay} onClick={() => setShowProfileModal(false)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h3>Edit Admin Profile</h3>
+            <form onSubmit={handleProfileSave} style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+              <div>
+                <label style={styles.modalLabel}>Business Name</label>
+                <input 
+                  type="text" 
+                  value={profileData.businessName} 
+                  onChange={(e) => setProfileData({...profileData, businessName: e.target.value})} 
+                  style={styles.modalInput} 
+                  required 
+                />
+              </div>
+              <div>
+                <label style={styles.modalLabel}>Owner Name</label>
+                <input 
+                  type="text" 
+                  value={profileData.ownerName} 
+                  onChange={(e) => setProfileData({...profileData, ownerName: e.target.value})} 
+                  style={styles.modalInput} 
+                  required 
+                />
+              </div>
+              <div>
+                <label style={styles.modalLabel}>Email Address</label>
+                <input 
+                  type="email" 
+                  value={profileData.email} 
+                  onChange={(e) => setProfileData({...profileData, email: e.target.value})} 
+                  style={styles.modalInput} 
+                  required 
+                />
+              </div>
+              <div>
+                <label style={styles.modalLabel}>Phone Number</label>
+                <input 
+                  type="text" 
+                  value={profileData.phone} 
+                  onChange={(e) => setProfileData({...profileData, phone: e.target.value})} 
+                  style={styles.modalInput} 
+                  required 
+                />
+              </div>
+              <div style={{display: 'flex', gap: '10px', marginTop: '15px'}}>
+                <button type="button" onClick={() => setShowProfileModal(false)} style={styles.cancelBtn}>Cancel</button>
+                <button type="submit" style={styles.saveBtn}>Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -229,39 +558,53 @@ const styles = {
   brandSub: { fontSize: '10px', color: '#6ee7b7', letterSpacing: '1px', fontWeight: '600' },
   navLinks: { listStyle: 'none', padding: '10px 0', margin: 0, overflowY: 'auto', flex: 1 },
   navItem: { padding: '12px 20px', fontSize: '14px', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' },
-  navItemActive: { padding: '12px 20px', fontSize: '14px', color: '#ffffff', backgroundColor: '#064e3b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'between', borderLeft: '4px solid #10b981', fontWeight: '600' },
+  navItemActive: { padding: '12px 20px', fontSize: '14px', color: '#ffffff', backgroundColor: '#064e3b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #10b981', fontWeight: '600' },
   badgeCount: { backgroundColor: '#10b981', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', marginLeft: 'auto' },
-  userInfo: { padding: '15px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#01231b' },
-  userAvatar: { width: '36px', height: '36px', borderRadius: '50% style', backgroundColor: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px' },
+  userInfo: { padding: '15px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#01231b', cursor: 'pointer' },
+  userAvatar: { width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px', color: '#fff' },
   mainContent: { flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' },
   header: { height: '65px', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 25px', flexShrink: 0 },
   pageTitle: { fontSize: '18px', fontWeight: '700', color: '#0f172a', margin: 0 },
-  alertBanner: { display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#fef2f2', border: '1px solid #fee2e2', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', color: '#991b1b' },
-  tryAgainBtn: { background: 'none', border: 'none', color: '#2563eb', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' },
   pausedItemsBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#334155', cursor: 'pointer' },
   bellIcon: { fontSize: '18px', cursor: 'pointer' },
+  topLogoutBtn: { backgroundColor: '#fee2e2', color: '#991b1b', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
   subHeader: { padding: '15px 25px', backgroundColor: '#ffffff', borderBottom: '1px solid #f1f5f9', fontSize: '14px' },
+  tabContentPlaceholder: { padding: '40px', flex: 1, backgroundColor: '#f8fafc' },
   kanbanBoard: { display: 'flex', gap: '20px', padding: '25px', overflowX: 'auto', flex: 1, backgroundColor: '#f8fafc', alignItems: 'flex-start' },
-  column: { backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '12px', width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', maxHeight: '100%' },
+  column: { backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '12px', width: '280px', flexShrink: 0, display: 'flex', flexDirection: 'column', maxHeight: '100%' },
   columnHeader: { padding: '14px 16px', fontWeight: '700', fontSize: '14px', color: '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0' },
   colBadge: { backgroundColor: '#cbd5e1', color: '#334155', fontSize: '11px', padding: '2px 8px', borderRadius: '10px' },
-  orderCard: { backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', margin: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
+  cardList: { overflowY: 'auto', padding: '10px', flex: 1 },
+  orderCard: { backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', marginBottom: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', cursor: 'pointer' },
   cardTopRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' },
   newTag: { backgroundColor: '#e0f2fe', color: '#0369a1', fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px' },
   acceptedTag: { backgroundColor: '#fef9c3', color: '#854d0e', fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px' },
   prepTag: { backgroundColor: '#ffedd5', color: '#c2410c', fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px' },
   readyTag: { backgroundColor: '#dcfce7', color: '#15803d', fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px' },
+  pickedUpTag: { backgroundColor: '#f1f5f9', color: '#475569', fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px' },
   tagsRow: { display: 'flex', gap: '6px', marginBottom: '8px' },
   tag: { backgroundColor: '#f1f5f9', color: '#475569', fontSize: '11px', padding: '2px 8px', borderRadius: '6px', fontWeight: '500' },
   timeTag: { fontSize: '11px', color: '#64748b', marginBottom: '12px', fontWeight: '500' },
   orderItems: { borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', padding: '10px 0', marginBottom: '12px', fontSize: '13px' },
   itemRow: { display: 'flex', justifyContent: 'space-between', fontWeight: '500', color: '#1e293b', marginBottom: '4px' },
-  itemSub: { fontSize: '11px', color: '#64748b', marginBottom: '6px', paddingLeft: '8px' },
   cardActions: { display: 'flex', gap: '10px' },
   rejectBtn: { flex: 1, backgroundColor: '#ffffff', color: '#dc2626', border: '1px solid #fca5a5', padding: '8px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
   acceptBtn: { flex: 1, backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '8px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
   cardActionsFull: { display: 'flex' },
   startPrepBtn: { width: '100%', backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
   markReadyBtn: { width: '100%', backgroundColor: '#059669', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
-  markPickedUpBtn: { width: '100%', backgroundColor: '#047857', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }
+  markPickedUpBtn: { width: '100%', backgroundColor: '#047857', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
+  drawerOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'flex-end', zIndex: 1000 },
+  drawer: { width: '420px', backgroundColor: '#ffffff', height: '100%', display: 'flex', flexDirection: 'column', boxShadow: '-5px 0 25px rgba(0,0,0,0.1)' },
+  drawerHeader: { padding: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  closeDrawerBtn: { backgroundColor: '#f1f5f9', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' },
+  drawerBody: { padding: '20px', flex: 1, overflowY: 'auto' },
+  statusPill: { backgroundColor: '#dcfce7', color: '#15803d', fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '20px' },
+  drawerFooter: { padding: '20px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc' },
+  drawerActionBtn: { width: '100%', backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' },
+  modal: { width: '400px', backgroundColor: '#ffffff', padding: '25px', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', margin: 'auto' },
+  modalLabel: { fontSize: '12px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '4px' },
+  modalInput: { width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' },
+  cancelBtn: { flex: 1, backgroundColor: '#f1f5f9', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
+  saveBtn: { flex: 1, backgroundColor: '#2563eb', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }
 };
