@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 import LoginScreen from "./components/LoginScreen";
-import { PosLayout } from "./components/PosLayout";
+import Dashboard from "./components/Dashboard";
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Check login state when app starts
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
     if (token) {
@@ -13,11 +12,14 @@ export default function App() {
     }
   }, []);
 
-  // If logged in, show the complete FOODOS POS Dashboard layout
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    setIsAuthenticated(false);
+  };
+
   if (isAuthenticated) {
-    return <PosLayout />;
+    return <Dashboard onLogout={handleLogout} />;
   }
 
-  // Otherwise, show your exact sign-in / registration screen
   return <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />;
 }

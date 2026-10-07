@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 
+// Automatically uses your backend URL
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
 export default function LoginScreen({ onLoginSuccess }) {
@@ -55,7 +56,8 @@ export default function LoginScreen({ onLoginSuccess }) {
       
       if (response.ok) {
         localStorage.setItem('auth_token', data.token);
-        onLoginSuccess(); // Directly switches to the POS Dashboard!
+        onLoginSuccess(); // Directly unlocks your FOODOS Dashboard!
+        setMessage('');
       } else {
         setMessage(data.message || 'Invalid credentials or account locked.');
       }
@@ -170,6 +172,7 @@ export default function LoginScreen({ onLoginSuccess }) {
         maxWidth: currentView === 'signup' ? '720px' : '500px',
         padding: currentView === 'signup' ? '40px' : '44px'
       }}>
+        
         <div style={styles.tabContainer}>
           <button 
             type="button" 
@@ -177,6 +180,7 @@ export default function LoginScreen({ onLoginSuccess }) {
               ...styles.tabButton, 
               backgroundColor: currentView === 'signin' ? '#1e293b' : 'transparent',
               color: currentView === 'signin' ? '#ffffff' : '#94a3b8',
+              boxShadow: currentView === 'signin' ? '0 4px 12px rgba(0,0,0,0.3)' : 'none'
             }}
             onClick={() => { setCurrentView('signin'); setMessage(''); }}
           >
@@ -188,6 +192,7 @@ export default function LoginScreen({ onLoginSuccess }) {
               ...styles.tabButton, 
               backgroundColor: currentView === 'signup' ? '#1e293b' : 'transparent',
               color: currentView === 'signup' ? '#ffffff' : '#94a3b8',
+              boxShadow: currentView === 'signup' ? '0 4px 12px rgba(0,0,0,0.3)' : 'none'
             }}
             onClick={() => { setCurrentView('signup'); setMessage(''); }}
           >
@@ -195,6 +200,7 @@ export default function LoginScreen({ onLoginSuccess }) {
           </button>
         </div>
 
+        {/* SIGN IN VIEW */}
         {currentView === 'signin' && (
           <form onSubmit={handleLogin} style={styles.form}>
             <div style={styles.inputGroup}>
@@ -223,7 +229,12 @@ export default function LoginScreen({ onLoginSuccess }) {
                   style={{ ...styles.input, paddingRight: '45px' }}
                   required 
                 />
-                <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} style={styles.eyeButton}>
+                <button 
+                  type="button" 
+                  onClick={() => setShowLoginPassword(!showLoginPassword)} 
+                  style={styles.eyeButton}
+                  title={showLoginPassword ? "Hide password" : "Show password"}
+                >
                   {showLoginPassword ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
               </div>
@@ -235,6 +246,7 @@ export default function LoginScreen({ onLoginSuccess }) {
           </form>
         )}
 
+        {/* FORGOT PASSWORD VIEW */}
         {currentView === 'forgot' && (
           <form onSubmit={handleForgotPassword} style={styles.form}>
             <div style={styles.headerTextGroup}>
@@ -263,6 +275,7 @@ export default function LoginScreen({ onLoginSuccess }) {
           </form>
         )}
 
+        {/* SIGN UP VIEW */}
         {currentView === 'signup' && (
           <form onSubmit={handleRegister} style={styles.form}>
             <div style={styles.headerTextGroup}>
@@ -299,7 +312,12 @@ export default function LoginScreen({ onLoginSuccess }) {
                     style={{ ...styles.input, paddingRight: '45px' }}
                     required 
                   />
-                  <button type="button" onClick={() => setShowSignupPassword(!showSignupPassword)} style={styles.eyeButton}>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowSignupPassword(!showSignupPassword)} 
+                    style={styles.eyeButton}
+                    title={showSignupPassword ? "Hide password" : "Show password"}
+                  >
                     {showSignupPassword ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
                 </div>
@@ -308,7 +326,7 @@ export default function LoginScreen({ onLoginSuccess }) {
 
             <div style={styles.row}>
               <div style={styles.inputGroup}>
-                <label style={styles.label}>Phone Number *</label>
+                <label style={styles.label}>Phone Number (10 digits) *</label>
                 <input type="text" name="phoneNumber" placeholder="9876543210" value={formData.phoneNumber} onChange={handleInputChange} style={styles.input} required />
               </div>
               <div style={styles.inputGroup}>
@@ -320,17 +338,39 @@ export default function LoginScreen({ onLoginSuccess }) {
             <div style={styles.sectionTitle}>Address & GPS Location</div>
             <div style={styles.inputGroup}>
               <label style={styles.label}>Address Line 1 *</label>
-              <input type="text" name="line1" placeholder="Street address" value={formData.line1} onChange={handleInputChange} style={styles.input} required />
+              <input type="text" name="line1" placeholder="Street address or building name" value={formData.line1} onChange={handleInputChange} style={styles.input} required />
+            </div>
+            
+            <div style={styles.row}>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Address Line 2</label>
+                <input type="text" name="line2" placeholder="Suite, floor, etc. (optional)" value={formData.line2} onChange={handleInputChange} style={styles.input} />
+              </div>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Area</label>
+                <input type="text" name="area" placeholder="Locality or neighborhood" value={formData.area} onChange={handleInputChange} style={styles.input} />
+              </div>
             </div>
 
             <div style={styles.row}>
               <div style={styles.inputGroup}>
                 <label style={styles.label}>Zip Code *</label>
-                <input type="text" name="zipCode" placeholder="Postal code" value={formData.zipCode} onChange={handleInputChange} style={styles.input} required />
+                <input type="text" name="zipCode" placeholder="6-digit postal code" value={formData.zipCode} onChange={handleInputChange} style={styles.input} required />
               </div>
               <div style={styles.inputGroup}>
                 <label style={styles.label}>State *</label>
-                <input type="text" name="state" placeholder="State" value={formData.state} onChange={handleInputChange} style={styles.input} required />
+                <input type="text" name="state" placeholder="State/Province" value={formData.state} onChange={handleInputChange} style={styles.input} required />
+              </div>
+            </div>
+
+            <div style={styles.row}>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Latitude *</label>
+                <input type="number" step="any" name="latitude" placeholder="e.g. 28.6139" value={formData.latitude} onChange={handleInputChange} style={styles.input} required />
+              </div>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Longitude *</label>
+                <input type="number" step="any" name="longitude" placeholder="e.g. 77.2090" value={formData.longitude} onChange={handleInputChange} style={styles.input} required />
               </div>
             </div>
 
@@ -341,37 +381,45 @@ export default function LoginScreen({ onLoginSuccess }) {
         )}
 
         {message && (
-          <div style={{ ...styles.messageBox, color: message.includes('success') ? '#4ade80' : '#f87171' }}>
+          <div style={{
+            ...styles.messageBox, 
+            color: message.includes('Success') || message.includes('successful') ? '#4ade80' : '#f87171'
+          }}>
             {message}
           </div>
         )}
+      </div>
+
+      <div style={styles.footerText}>
+        Secure Restaurant Onboarding Portal &copy; 2026. Data processed in compliance with regulatory standards.
       </div>
     </div>
   );
 }
 
 const styles = {
-  pageContainer: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#030712', fontFamily: 'sans-serif', color: '#f8fafc', padding: '30px 20px', boxSizing: 'border-box' },
+  pageContainer: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#030712', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', color: '#f8fafc', padding: '30px 20px', boxSizing: 'border-box' },
   brandContainer: { textAlign: 'center', marginBottom: '28px' },
-  brandTitle: { fontSize: '32px', fontWeight: '800', color: '#ffffff' },
-  brandSubtitle: { fontSize: '13px', color: '#64748b', marginTop: '6px' },
-  card: { backgroundColor: '#0b132b', border: '1px solid #1e293b', borderRadius: '24px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', boxSizing: 'border-box' },
+  brandTitle: { fontSize: '32px', fontWeight: '800', letterSpacing: '-0.5px', color: '#ffffff' },
+  brandSubtitle: { fontSize: '13px', color: '#64748b', marginTop: '6px', fontWeight: '500' },
+  card: { backgroundColor: '#0b132b', border: '1px solid #1e293b', borderRadius: '24px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', boxSizing: 'border-box', transition: 'all 0.3s ease' },
   headerTextGroup: { marginBottom: '18px', textAlign: 'left' },
   cardHeaderTitle: { fontSize: '20px', fontWeight: '700', color: '#ffffff', margin: '0 0 4px 0' },
-  cardHeaderSubtitle: { fontSize: '13px', color: '#94a3b8', margin: 0 },
-  sectionTitle: { fontSize: '12px', fontWeight: '700', color: '#3b82f6', marginTop: '16px', marginBottom: '8px', textTransform: 'uppercase', textAlign: 'left' },
+  cardHeaderSubtitle: { fontSize: '13px', color: '#94a3b8', margin: 0, lineHeight: '1.4' },
+  sectionTitle: { fontSize: '12px', fontWeight: '700', color: '#3b82f6', marginTop: '16px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.8px', textAlign: 'left' },
   tabContainer: { display: 'flex', backgroundColor: '#070d1a', borderRadius: '12px', padding: '5px', marginBottom: '24px', border: '1px solid #162032' },
-  tabButton: { flex: 1, padding: '12px', borderRadius: '9px', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
+  tabButton: { flex: 1, padding: '12px', borderRadius: '9px', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' },
   form: { display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left' },
   row: { display: 'flex', gap: '16px' },
-  inputGroup: { display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 },
-  labelRow: { display: 'flex', justifyContent: 'space-between', width: '100%' },
-  label: { fontSize: '13px', fontWeight: '600', color: '#cbd5e1' },
-  forgotLink: { fontSize: '12px', color: '#3b82f6', textDecoration: 'none' },
+  inputGroup: { display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, textAlign: 'left' },
+  labelRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' },
+  label: { fontSize: '13px', fontWeight: '600', color: '#cbd5e1', letterSpacing: '0.2px', textAlign: 'left' },
+  forgotLink: { fontSize: '12px', color: '#3b82f6', textDecoration: 'none', fontWeight: '500' },
   passwordWrapper: { position: 'relative', display: 'flex', alignItems: 'center', width: '100%' },
-  input: { width: '100%', padding: '13px 16px', backgroundColor: '#070d1a', border: '1px solid #1e293b', borderRadius: '12px', color: '#ffffff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' },
-  eyeButton: { position: 'absolute', right: '14px', backgroundColor: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center' },
-  primaryButton: { backgroundColor: '#2563eb', color: '#ffffff', border: 'none', padding: '14px', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', marginTop: '8px' },
-  secondaryButton: { backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #1e293b', padding: '12px', borderRadius: '12px', fontSize: '13px', cursor: 'pointer' },
-  messageBox: { fontSize: '13px', textAlign: 'center', fontWeight: '500', marginTop: '12px', padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.03)' }
+  input: { width: '100%', padding: '13px 16px', backgroundColor: '#070d1a', border: '1px solid #1e293b', borderRadius: '12px', color: '#ffffff', fontSize: '14px', outline: 'none', boxSizing: 'border-box', textAlign: 'left', transition: 'border-color 0.2s' },
+  eyeButton: { position: 'absolute', right: '14px', backgroundColor: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px', transition: 'color 0.2s' },
+  primaryButton: { backgroundColor: '#2563eb', color: '#ffffff', border: 'none', padding: '14px', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', marginTop: '8px', transition: 'background-color 0.2s' },
+  secondaryButton: { backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #1e293b', padding: '12px', borderRadius: '12px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' },
+  messageBox: { fontSize: '13px', textAlign: 'center', fontWeight: '500', marginTop: '12px', padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.03)' },
+  footerText: { marginTop: '32px', fontSize: '11px', color: '#475569', textAlign: 'center', maxWidth: '450px', lineHeight: '1.5' }
 };
