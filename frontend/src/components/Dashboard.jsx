@@ -16,21 +16,31 @@ export default function Dashboard({ onLogout }) {
     address: '44, Residency Road, Bengaluru'
   });
 
-  // Fetch Profile Live from Database on Mount
+  // Fetch Profile Live from PostgreSQL Database on Mount
   useEffect(() => {
     const userEmail = localStorage.getItem('user_email');
-    if (!userEmail) return;
+    console.log("Fetching live profile for email:", userEmail);
 
-    fetch(`${API_BASE_URL}/api/v1/auth/me?email=${encodeURIComponent(userEmail)}`)
+    if (!userEmail) {
+      console.warn("No user_email found in localStorage! Please log in again.");
+      return;
+    }
+
+    fetch(`${API_BASE_URL}/api/v1/auth/me?email=${encodeURIComponent(userEmail)}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
       .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch profile');
+        if (!res.ok) throw new Error('Failed to fetch profile from database');
         return res.json();
       })
       .then(data => {
         if (data) {
           setProfileData({
             businessName: data.businessName || 'FOODOS Restaurant',
-            ownerName: data.ownerName || 'Admin',
+            ownerName: data.ownerName || data.name || 'Admin',
             email: data.email || userEmail,
             phone: data.phoneNumber || data.phone || 'N/A',
             address: data.address ? `${data.address.line1 || ''}, ${data.address.area || ''}` : '44, Residency Road, Bengaluru'
@@ -40,7 +50,7 @@ export default function Dashboard({ onLogout }) {
       .catch(err => console.error("Error loading profile from DB:", err));
   }, []);
 
-  // Save Profile Updates to Database
+  // Save Profile Updates Directly to PostgreSQL Database
   const handleProfileSaveSubmit = (e) => {
     e.preventDefault();
     const userEmail = localStorage.getItem('user_email');
@@ -55,14 +65,17 @@ export default function Dashboard({ onLogout }) {
       })
     })
     .then(res => {
-      if (!res.ok) throw new Error('Failed to update');
+      if (!res.ok) throw new Error('Failed to update profile');
       return res.json();
     })
     .then(() => {
       alert('Profile updated and saved to PostgreSQL database successfully!');
       setShowProfileModal(false);
     })
-    .catch(() => alert('Failed to update profile in database.'));
+    .catch(err => {
+      console.error(err);
+      alert('Failed to update profile in database.');
+    });
   };
 
   const [orders, setOrders] = useState([
@@ -216,10 +229,10 @@ export default function Dashboard({ onLogout }) {
         </ul>
 
         <div style={styles.userInfo} onClick={() => setShowProfileModal(true)}>
-          <div style={styles.userAvatar}>{profileData.ownerName.substring(0,2).toUpperCase()}</div>
+          <div style={styles.userAvatar}>{profileData.ownerName ? profileData.ownerName.substring(0,2).toUpperCase() : 'AD'}</div>
           <div style={{flex: 1, overflow: 'hidden'}}>
             <div style={{fontSize: '13px', fontWeight: 'bold', color: '#fff'}}>{profileData.ownerName}</div>
-            <div style={{fontSize: '11px', color: '#6ee7b7'}}>Database Profile</div>
+            <div style={{fontSize: '11px', color: '#6ee7b7'}}>PostgreSQL Profile</div>
           </div>
         </div>
       </div>
@@ -250,7 +263,7 @@ export default function Dashboard({ onLogout }) {
               </span>
             </div>
 
-            {/* KANBAN BOARD COLUMNS (FULL SCREEN & UNIFORM SIZING) */}
+            {/* KANBAN BOARD COLUMNS */}
             <div style={styles.kanbanBoard}>
               
               {/* 1. NEW */}
@@ -534,7 +547,7 @@ export default function Dashboard({ onLogout }) {
         <div style={styles.drawerOverlay} onClick={() => setShowProfileModal(false)}>
           <div style={styles.profileModal} onClick={(e) => e.stopPropagation()}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px'}}>
-              <h3 style={{margin: 0, fontSize: '18px', color: '#0f172a'}}>Database Admin Profile</h3>
+              <h3 style={{margin: 0, fontSize: '18px', color: '#0f172a'}}>PostgreSQL Admin Profile</h3>
               <button onClick={() => setShowProfileModal(false)} style={styles.closeDrawerBtn}>✕</button>
             </div>
 
