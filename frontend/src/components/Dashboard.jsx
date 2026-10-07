@@ -15,7 +15,6 @@ export default function Dashboard({ onLogout }) {
   });
 
   useEffect(() => {
-    // Check if user info was saved during login/registration
     const savedUser = localStorage.getItem('user_profile');
     if (savedUser) {
       try {
@@ -28,12 +27,11 @@ export default function Dashboard({ onLogout }) {
           address: parsed.address ? `${parsed.address.line1 || ''}, ${parsed.address.area || ''}` : '44, Residency Road, Bengaluru'
         });
       } catch (e) {
-        // use defaults
+        // fallback
       }
     }
   }, []);
 
-  // Orders pipeline state
   const [orders, setOrders] = useState([
     {
       id: '#KO01/000003',
@@ -137,7 +135,6 @@ export default function Dashboard({ onLogout }) {
     }
   ]);
 
-  // Accept order -> moves to Accepted and immediately opens receipt drawer
   const handleAcceptAndOpenReceipt = (orderId, e) => {
     e.stopPropagation();
     const updatedOrders = orders.map(o => o.id === orderId ? { ...o, status: 'Accepted' } : o);
@@ -185,7 +182,6 @@ export default function Dashboard({ onLogout }) {
           ))}
         </ul>
 
-        {/* LOGGED-IN USER PROFILE TRIGGER */}
         <div style={styles.userInfo} onClick={() => setShowProfileModal(true)}>
           <div style={styles.userAvatar}>{profileData.ownerName.substring(0,2).toUpperCase()}</div>
           <div style={{flex: 1, overflow: 'hidden'}}>
@@ -208,7 +204,6 @@ export default function Dashboard({ onLogout }) {
           </div>
         </div>
 
-        {/* TAB VIEW CONTENT */}
         {activeTab !== 'Online Orders' ? (
           <div style={styles.tabContentPlaceholder}>
             <h2>{activeTab} Management Panel</h2>
@@ -222,7 +217,7 @@ export default function Dashboard({ onLogout }) {
               </span>
             </div>
 
-            {/* KANBAN BOARD COLUMNS (UNIFORM EQUAL SIZING) */}
+            {/* KANBAN BOARD COLUMNS (FULL WIDTH & UNIFORM SIZING) */}
             <div style={styles.kanbanBoard}>
               
               {/* 1. NEW */}
@@ -413,7 +408,7 @@ export default function Dashboard({ onLogout }) {
         )}
       </div>
 
-      {/* SLIDE-OVER ORDER DETAILS & PRINTABLE RECEIPT DRAWER */}
+      {/* SLIDE-OVER ORDER DETAILS & RECEIPT DRAWER */}
       {selectedOrder && (
         <div style={styles.drawerOverlay} onClick={() => setSelectedOrder(null)}>
           <div style={styles.drawer} onClick={(e) => e.stopPropagation()}>
@@ -501,7 +496,7 @@ export default function Dashboard({ onLogout }) {
         </div>
       )}
 
-      {/* POLISHED PROFILE MODAL SHOWING LOGGED-IN CREDENTIALS */}
+      {/* PROFILE MODAL */}
       {showProfileModal && (
         <div style={styles.drawerOverlay} onClick={() => setShowProfileModal(false)}>
           <div style={styles.profileModal} onClick={(e) => e.stopPropagation()}>
@@ -544,7 +539,7 @@ export default function Dashboard({ onLogout }) {
 }
 
 const styles = {
-  container: { display: 'flex', width: '100%', minHeight: '100vh', backgroundColor: '#f8fafc', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', overflow: 'hidden', margin: 0, padding: 0, boxSizing: 'border-box' },
+  container: { display: 'flex', width: '100vw', height: '100vh', backgroundColor: '#f8fafc', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', overflow: 'hidden', margin: 0, padding: 0, boxSizing: 'border-box' },
   sidebar: { width: '260px', backgroundColor: '#022c22', display: 'flex', flexDirection: 'column', color: '#ffffff', flexShrink: 0, height: '100vh' },
   brandBox: { display: 'flex', alignItems: 'center', gap: '12px', padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)' },
   logoIcon: { fontSize: '24px' },
@@ -556,7 +551,7 @@ const styles = {
   badgeCount: { backgroundColor: '#10b981', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', marginLeft: 'auto' },
   userInfo: { padding: '15px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#01231b', cursor: 'pointer' },
   userAvatar: { width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px', color: '#fff' },
-  mainContent: { flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' },
+  mainContent: { flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', width: 'calc(100vw - 260px)' },
   header: { height: '65px', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 25px', flexShrink: 0 },
   pageTitle: { fontSize: '18px', fontWeight: '700', color: '#0f172a', margin: 0 },
   pausedItemsBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#334155', cursor: 'pointer' },
@@ -564,8 +559,8 @@ const styles = {
   topLogoutBtn: { backgroundColor: '#fee2e2', color: '#991b1b', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
   subHeader: { padding: '15px 25px', backgroundColor: '#ffffff', borderBottom: '1px solid #f1f5f9', fontSize: '14px' },
   tabContentPlaceholder: { padding: '40px', flex: 1, backgroundColor: '#f8fafc' },
-  kanbanBoard: { display: 'flex', gap: '16px', padding: '20px', overflowX: 'auto', flex: 1, backgroundColor: '#f8fafc', alignItems: 'flex-start' },
-  column: { backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '12px', width: '280px', minWidth: '280px', flexShrink: 0, display: 'flex', flexDirection: 'column', maxHeight: '100%' },
+  kanbanBoard: { display: 'flex', gap: '16px', padding: '20px', overflowX: 'auto', flex: 1, backgroundColor: '#f8fafc', alignItems: 'flex-start', width: '100%', boxSizing: 'border-box' },
+  column: { backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '12px', width: '300px', minWidth: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', maxHeight: '100%' },
   columnHeader: { padding: '14px 16px', fontWeight: '700', fontSize: '14px', color: '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0' },
   colBadge: { backgroundColor: '#cbd5e1', color: '#334155', fontSize: '11px', padding: '2px 8px', borderRadius: '10px' },
   cardList: { overflowY: 'auto', padding: '10px', flex: 1 },
