@@ -1,36 +1,69 @@
 import React, { useState, useEffect } from 'react';
 
+const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
+
 export default function Dashboard({ onLogout }) {
   const [activeTab, setActiveTab] = useState('Online Orders');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   
-  // Robust Profile State from LocalStorage / Auth
+  // Real Database Profile State
   const [profileData, setProfileData] = useState({
-    businessName: 'FOODOS Restaurant',
-    ownerName: 'Admin User',
-    email: 'owner@restaurant.com',
-    phone: '9876543210',
+    businessName: 'Loading...',
+    ownerName: 'Loading...',
+    email: '',
+    phone: '',
     address: '44, Residency Road, Bengaluru'
   });
 
+  // Fetch Profile Live from Database on Mount
   useEffect(() => {
-    const savedUser = localStorage.getItem('user_profile');
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        setProfileData({
-          businessName: parsed.businessName || 'FOODOS Restaurant',
-          ownerName: parsed.ownerName || 'Admin User',
-          email: parsed.email || 'owner@restaurant.com',
-          phone: parsed.phoneNumber || parsed.phone || '9876543210',
-          address: parsed.address ? `${parsed.address.line1 || ''}, ${parsed.address.area || ''}` : '44, Residency Road, Bengaluru'
-        });
-      } catch (e) {
-        // fallback
-      }
-    }
+    const userEmail = localStorage.getItem('user_email');
+    if (!userEmail) return;
+
+    fetch(`${API_BASE_URL}/api/v1/auth/me?email=${encodeURIComponent(userEmail)}`)
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch profile');
+        return res.json();
+      })
+      .then(data => {
+        if (data) {
+          setProfileData({
+            businessName: data.businessName || 'FOODOS Restaurant',
+            ownerName: data.ownerName || 'Admin',
+            email: data.email || userEmail,
+            phone: data.phoneNumber || data.phone || 'N/A',
+            address: data.address ? `${data.address.line1 || ''}, ${data.address.area || ''}` : '44, Residency Road, Bengaluru'
+          });
+        }
+      })
+      .catch(err => console.error("Error loading profile from DB:", err));
   }, []);
+
+  // Save Profile Updates to Database
+  const handleProfileSaveSubmit = (e) => {
+    e.preventDefault();
+    const userEmail = localStorage.getItem('user_email');
+
+    fetch(`${API_BASE_URL}/api/v1/auth/profile?email=${encodeURIComponent(userEmail)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        businessName: profileData.businessName,
+        ownerName: profileData.ownerName,
+        phoneNumber: profileData.phone
+      })
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to update');
+      return res.json();
+    })
+    .then(() => {
+      alert('Profile updated and saved to PostgreSQL database successfully!');
+      setShowProfileModal(false);
+    })
+    .catch(() => alert('Failed to update profile in database.'));
+  };
 
   const [orders, setOrders] = useState([
     {
@@ -186,7 +219,7 @@ export default function Dashboard({ onLogout }) {
           <div style={styles.userAvatar}>{profileData.ownerName.substring(0,2).toUpperCase()}</div>
           <div style={{flex: 1, overflow: 'hidden'}}>
             <div style={{fontSize: '13px', fontWeight: 'bold', color: '#fff'}}>{profileData.ownerName}</div>
-            <div style={{fontSize: '11px', color: '#6ee7b7'}}>View Profile</div>
+            <div style={{fontSize: '11px', color: '#6ee7b7'}}>Database Profile</div>
           </div>
         </div>
       </div>
@@ -217,7 +250,7 @@ export default function Dashboard({ onLogout }) {
               </span>
             </div>
 
-            {/* KANBAN BOARD COLUMNS (FULL WIDTH & UNIFORM SIZING) */}
+            {/* KANBAN BOARD COLUMNS (FULL SCREEN & UNIFORM SIZING) */}
             <div style={styles.kanbanBoard}>
               
               {/* 1. NEW */}
@@ -496,41 +529,60 @@ export default function Dashboard({ onLogout }) {
         </div>
       )}
 
-      {/* PROFILE MODAL */}
+      {/* PROFILE MODAL (EDITABLE & LINKED TO DATABASE) */}
       {showProfileModal && (
         <div style={styles.drawerOverlay} onClick={() => setShowProfileModal(false)}>
           <div style={styles.profileModal} onClick={(e) => e.stopPropagation()}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px'}}>
-              <h3 style={{margin: 0, fontSize: '18px', color: '#0f172a'}}>Restaurant Admin Profile</h3>
+              <h3 style={{margin: 0, fontSize: '18px', color: '#0f172a'}}>Database Admin Profile</h3>
               <button onClick={() => setShowProfileModal(false)} style={styles.closeDrawerBtn}>✕</button>
             </div>
 
-            <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-              <div style={styles.profileCard}>
-                <div style={styles.profileLabel}>Business Name</div>
-                <div style={styles.profileValue}>{profileData.businessName}</div>
+            <form onSubmit={handleProfileSaveSubmit} style={{display: 'flex', flexDirection: 'column', gap: '14px'}}>
+              <div>
+                <label style={styles.profileLabel}>Business Name</label>
+                <input 
+                  type="text" 
+                  value={profileData.businessName} 
+                  onChange={(e) => setProfileData({...profileData, businessName: e.target.value})} 
+                  style={styles.inputField} 
+                  required 
+                />
               </div>
-              <div style={styles.profileCard}>
-                <div style={styles.profileLabel}>Owner Name</div>
-                <div style={styles.profileValue}>{profileData.ownerName}</div>
+              <div>
+                <label style={styles.profileLabel}>Owner Name</label>
+                <input 
+                  type="text" 
+                  value={profileData.ownerName} 
+                  onChange={(e) => setProfileData({...profileData, ownerName: e.target.value})} 
+                  style={styles.inputField} 
+                  required 
+                />
               </div>
-              <div style={styles.profileCard}>
-                <div style={styles.profileLabel}>Email Address</div>
-                <div style={styles.profileValue}>{profileData.email}</div>
+              <div>
+                <label style={styles.profileLabel}>Email (Read-only)</label>
+                <input 
+                  type="email" 
+                  value={profileData.email} 
+                  disabled 
+                  style={{...styles.inputField, backgroundColor: '#f1f5f9', color: '#64748b'}} 
+                />
               </div>
-              <div style={styles.profileCard}>
-                <div style={styles.profileLabel}>Phone Number</div>
-                <div style={styles.profileValue}>{profileData.phone}</div>
+              <div>
+                <label style={styles.profileLabel}>Phone Number</label>
+                <input 
+                  type="text" 
+                  value={profileData.phone} 
+                  onChange={(e) => setProfileData({...profileData, phone: e.target.value})} 
+                  style={styles.inputField} 
+                />
               </div>
-              <div style={styles.profileCard}>
-                <div style={styles.profileLabel}>Registered Address</div>
-                <div style={styles.profileValue}>{profileData.address}</div>
-              </div>
-            </div>
 
-            <button onClick={() => setShowProfileModal(false)} style={{...styles.drawerActionBtn, marginTop: '24px'}}>
-              Close Profile
-            </button>
+              <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
+                <button type="button" onClick={() => setShowProfileModal(false)} style={styles.cancelBtn}>Cancel</button>
+                <button type="submit" style={styles.saveBtn}>Save to Database</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -593,7 +645,8 @@ const styles = {
   drawerFooter: { padding: '20px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc' },
   drawerActionBtn: { width: '100%', backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' },
   profileModal: { width: '420px', backgroundColor: '#ffffff', padding: '25px', borderRadius: '14px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', margin: 'auto' },
-  profileCard: { backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', padding: '12px 16px', borderRadius: '8px' },
-  profileLabel: { fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '2px' },
-  profileValue: { fontSize: '14px', fontWeight: '600', color: '#0f172a' }
+  profileLabel: { fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', display: 'block' },
+  inputField: { width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' },
+  cancelBtn: { flex: 1, backgroundColor: '#f1f5f9', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
+  saveBtn: { flex: 1, backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }
 };

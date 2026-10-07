@@ -2,6 +2,7 @@ package com.restaurant.auth_service.controller;
 
 import com.restaurant.auth_service.dto.LoginRequest;
 import com.restaurant.auth_service.dto.RegisterRequest;
+import com.restaurant.auth_service.model.User;
 import com.restaurant.auth_service.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -61,8 +62,36 @@ public class AuthController {
             Map<String, String> response = new HashMap<>();
             response.put("status", "success");
             response.put("message", "Password reset token generated successfully.");
-            response.put("reset_token", token); // Useful for development/testing testing
+            response.put("reset_token", token);
             return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    // Get Logged-in User Profile from Database
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUserProfile(@RequestParam String email) {
+        try {
+            User user = authService.getUserByTokenOrEmail(email);
+            return ResponseEntity.ok(user);
+        } catch (RuntimeException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    // Update Profile in Database
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(@RequestParam String email, @RequestBody User updatedData) {
+        try {
+            User updatedUser = authService.updateUserData(email, updatedData);
+            return ResponseEntity.ok(updatedUser);
         } catch (RuntimeException e) {
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("status", "error");
