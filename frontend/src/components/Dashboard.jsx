@@ -1,19 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
+const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
 export default function Dashboard({ onLogout }) {
   const [activeTab, setActiveTab] = useState('Online Orders');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   
-  // Profile state
+  // Real Profile State from Database / Token
   const [profileData, setProfileData] = useState({
-    businessName: 'FOODOS Restaurant',
-    ownerName: 'krishna 6',
-    email: 'owner@restaurant.com',
-    phone: '9876543210'
+    businessName: 'Loading...',
+    ownerName: 'Loading...',
+    email: 'Loading...',
+    phone: '',
+    address: ''
   });
 
-  // Mock orders list matching your 5-column Kanban pipeline & slide-over details view
+  // Fetch logged-in user profile on load
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      fetch(`${API_BASE_URL}/api/v1/auth/profile`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.businessName) {
+          setProfileData({
+            businessName: data.businessName,
+            ownerName: data.ownerName,
+            email: data.email,
+            phone: data.phoneNumber || data.phone || 'N/A',
+            address: data.address ? `${data.address.line1}, ${data.address.area}` : 'N/A'
+          });
+        }
+      })
+      .catch(() => {
+        // Fallback default if offline/mock
+        setProfileData({
+          businessName: 'FOODOS Restaurant',
+          ownerName: 'krishna 6',
+          email: 'owner@restaurant.com',
+          phone: '9876543210',
+          address: '44, Residency Road, Bengaluru'
+        });
+      });
+    }
+  }, []);
+
+  // Orders pipeline state
   const [orders, setOrders] = useState([
     {
       id: '#KO01/000003',
@@ -56,27 +91,6 @@ export default function Dashboard({ onLogout }) {
       gst: 35.00,
       total: 822.00,
       payment: 'COD'
-    },
-    {
-      id: '#KO01/000002',
-      customer: 'Arjun Mehta',
-      time: '3m ago',
-      status: 'Accepted',
-      type: 'Delivery',
-      channel: 'Web',
-      duration: '25 min',
-      items: [
-        { name: 'Lucknowi (Awadhi) Biryani', qty: 2, price: 640.00 },
-        { name: 'Chicken 65', qty: 1, price: 240.00 },
-        { name: '7 Up', qty: 4, price: 160.00 }
-      ],
-      address: '44, Residency Road, Bengaluru · 2.8 km',
-      phone: '9123456780',
-      subtotal: 1040.00,
-      discount: 102.00,
-      gst: 52.00,
-      total: 990.00,
-      payment: 'PAID'
     },
     {
       id: '#KO01/004405',
@@ -143,10 +157,14 @@ export default function Dashboard({ onLogout }) {
     setSelectedOrder(null);
   };
 
+  const handlePrintReceipt = () => {
+    window.print();
+  };
+
   const handleProfileSave = (e) => {
     e.preventDefault();
     setShowProfileModal(false);
-    alert('Profile updated and saved to PostgreSQL database!');
+    alert('Profile changes updated successfully!');
   };
 
   return (
@@ -179,11 +197,12 @@ export default function Dashboard({ onLogout }) {
           ))}
         </ul>
 
+        {/* LOGGED-IN USER PROFILE TRIGGER */}
         <div style={styles.userInfo} onClick={() => setShowProfileModal(true)}>
           <div style={styles.userAvatar}>{profileData.ownerName.substring(0,2).toUpperCase()}</div>
           <div style={{flex: 1, overflow: 'hidden'}}>
             <div style={{fontSize: '13px', fontWeight: 'bold', color: '#fff'}}>{profileData.ownerName}</div>
-            <div style={{fontSize: '11px', color: '#94a3b8'}}>Admin (Edit Profile)</div>
+            <div style={{fontSize: '11px', color: '#6ee7b7'}}>View Profile & Settings</div>
           </div>
         </div>
       </div>
@@ -215,7 +234,7 @@ export default function Dashboard({ onLogout }) {
               </span>
             </div>
 
-            {/* KANBAN BOARD COLUMNS (5 COLUMNS) */}
+            {/* KANBAN BOARD COLUMNS (EQUAL SIZING) */}
             <div style={styles.kanbanBoard}>
               
               {/* 1. NEW */}
@@ -406,13 +425,16 @@ export default function Dashboard({ onLogout }) {
         )}
       </div>
 
-      {/* SLIDE-OVER ORDER DETAILS DRAWER */}
+      {/* SLIDE-OVER ORDER DETAILS & PRINTABLE RECEIPT DRAWER */}
       {selectedOrder && (
         <div style={styles.drawerOverlay} onClick={() => setSelectedOrder(null)}>
           <div style={styles.drawer} onClick={(e) => e.stopPropagation()}>
             <div style={styles.drawerHeader}>
-              <h3 style={{margin: 0, fontSize: '18px'}}>Order details</h3>
-              <button onClick={() => setSelectedOrder(null)} style={styles.closeDrawerBtn}>Close</button>
+              <h3 style={{margin: 0, fontSize: '18px'}}>Order details & Receipt</h3>
+              <div style={{display: 'flex', gap: '8px'}}>
+                <button onClick={handlePrintReceipt} style={styles.printBtn} title="Print Receipt">🖨️ Print</button>
+                <button onClick={() => setSelectedOrder(null)} style={styles.closeDrawerBtn}>Close</button>
+              </div>
             </div>
 
             <div style={styles.drawerBody}>
@@ -491,57 +513,41 @@ export default function Dashboard({ onLogout }) {
         </div>
       )}
 
-      {/* EDIT PROFILE MODAL */}
+      {/* POLISHED PROFILE MODAL SHOWING REGISTERED CREDENTIALS */}
       {showProfileModal && (
         <div style={styles.drawerOverlay} onClick={() => setShowProfileModal(false)}>
-          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h3>Edit Admin Profile</h3>
-            <form onSubmit={handleProfileSave} style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-              <div>
-                <label style={styles.modalLabel}>Business Name</label>
-                <input 
-                  type="text" 
-                  value={profileData.businessName} 
-                  onChange={(e) => setProfileData({...profileData, businessName: e.target.value})} 
-                  style={styles.modalInput} 
-                  required 
-                />
+          <div style={styles.profileModal} onClick={(e) => e.stopPropagation()}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px'}}>
+              <h3 style={{margin: 0, fontSize: '18px', color: '#0f172a'}}>Restaurant Admin Profile</h3>
+              <button onClick={() => setShowProfileModal(false)} style={styles.closeDrawerBtn}>✕</button>
+            </div>
+
+            <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+              <div style={styles.profileCard}>
+                <div style={styles.profileLabel}>Business Name</div>
+                <div style={styles.profileValue}>{profileData.businessName}</div>
               </div>
-              <div>
-                <label style={styles.modalLabel}>Owner Name</label>
-                <input 
-                  type="text" 
-                  value={profileData.ownerName} 
-                  onChange={(e) => setProfileData({...profileData, ownerName: e.target.value})} 
-                  style={styles.modalInput} 
-                  required 
-                />
+              <div style={styles.profileCard}>
+                <div style={styles.profileLabel}>Owner Name</div>
+                <div style={styles.profileValue}>{profileData.ownerName}</div>
               </div>
-              <div>
-                <label style={styles.modalLabel}>Email Address</label>
-                <input 
-                  type="email" 
-                  value={profileData.email} 
-                  onChange={(e) => setProfileData({...profileData, email: e.target.value})} 
-                  style={styles.modalInput} 
-                  required 
-                />
+              <div style={styles.profileCard}>
+                <div style={styles.profileLabel}>Email Address</div>
+                <div style={styles.profileValue}>{profileData.email}</div>
               </div>
-              <div>
-                <label style={styles.modalLabel}>Phone Number</label>
-                <input 
-                  type="text" 
-                  value={profileData.phone} 
-                  onChange={(e) => setProfileData({...profileData, phone: e.target.value})} 
-                  style={styles.modalInput} 
-                  required 
-                />
+              <div style={styles.profileCard}>
+                <div style={styles.profileLabel}>Phone Number</div>
+                <div style={styles.profileValue}>{profileData.phone}</div>
               </div>
-              <div style={{display: 'flex', gap: '10px', marginTop: '15px'}}>
-                <button type="button" onClick={() => setShowProfileModal(false)} style={styles.cancelBtn}>Cancel</button>
-                <button type="submit" style={styles.saveBtn}>Save Changes</button>
+              <div style={styles.profileCard}>
+                <div style={styles.profileLabel}>Registered Address</div>
+                <div style={styles.profileValue}>{profileData.address}</div>
               </div>
-            </form>
+            </div>
+
+            <button onClick={() => setShowProfileModal(false)} style={{...styles.drawerActionBtn, marginTop: '24px'}}>
+              Close Profile
+            </button>
           </div>
         </div>
       )}
@@ -570,8 +576,8 @@ const styles = {
   topLogoutBtn: { backgroundColor: '#fee2e2', color: '#991b1b', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
   subHeader: { padding: '15px 25px', backgroundColor: '#ffffff', borderBottom: '1px solid #f1f5f9', fontSize: '14px' },
   tabContentPlaceholder: { padding: '40px', flex: 1, backgroundColor: '#f8fafc' },
-  kanbanBoard: { display: 'flex', gap: '20px', padding: '25px', overflowX: 'auto', flex: 1, backgroundColor: '#f8fafc', alignItems: 'flex-start' },
-  column: { backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '12px', width: '280px', flexShrink: 0, display: 'flex', flexDirection: 'column', maxHeight: '100%' },
+  kanbanBoard: { display: 'flex', gap: '16px', padding: '20px', overflowX: 'auto', flex: 1, backgroundColor: '#f8fafc', alignItems: 'flex-start' },
+  column: { backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '12px', flex: 1, minWidth: '240px', display: 'flex', flexDirection: 'column', maxHeight: '100%' },
   columnHeader: { padding: '14px 16px', fontWeight: '700', fontSize: '14px', color: '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0' },
   colBadge: { backgroundColor: '#cbd5e1', color: '#334155', fontSize: '11px', padding: '2px 8px', borderRadius: '10px' },
   cardList: { overflowY: 'auto', padding: '10px', flex: 1 },
@@ -597,14 +603,14 @@ const styles = {
   drawerOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'flex-end', zIndex: 1000 },
   drawer: { width: '420px', backgroundColor: '#ffffff', height: '100%', display: 'flex', flexDirection: 'column', boxShadow: '-5px 0 25px rgba(0,0,0,0.1)' },
   drawerHeader: { padding: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  printBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' },
   closeDrawerBtn: { backgroundColor: '#f1f5f9', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' },
   drawerBody: { padding: '20px', flex: 1, overflowY: 'auto' },
   statusPill: { backgroundColor: '#dcfce7', color: '#15803d', fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '20px' },
   drawerFooter: { padding: '20px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc' },
   drawerActionBtn: { width: '100%', backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' },
-  modal: { width: '400px', backgroundColor: '#ffffff', padding: '25px', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', margin: 'auto' },
-  modalLabel: { fontSize: '12px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '4px' },
-  modalInput: { width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' },
-  cancelBtn: { flex: 1, backgroundColor: '#f1f5f9', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
-  saveBtn: { flex: 1, backgroundColor: '#2563eb', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }
+  profileModal: { width: '420px', backgroundColor: '#ffffff', padding: '25px', borderRadius: '14px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', margin: 'auto' },
+  profileCard: { backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', padding: '12px 16px', borderRadius: '8px' },
+  profileLabel: { fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '2px' },
+  profileValue: { fontSize: '14px', fontWeight: '600', color: '#0f172a' }
 };
