@@ -57,7 +57,7 @@ export default function LoginScreen({ onLoginSuccess }) {
       if (response.ok) {
         localStorage.setItem('auth_token', data.token);
         localStorage.setItem('user_email', loginEmail); // Saved so dashboard fetches profile successfully
-        onLoginSuccess(); // Unlocks your FOODOS Dashboard!
+        onLoginSuccess(); // Directly unlocks your FOODOS Dashboard!
         setMessage('');
       } else {
         setMessage(data.message || 'Invalid credentials or account locked.');
@@ -399,26 +399,8 @@ export default function LoginScreen({ onLoginSuccess }) {
 }
 
 const styles = {
-  pageContainer: { 
-    display: 'flex', 
-    flexDirection: 'column', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    width: '100vw', 
-    height: '100vh', 
-    minHeight: '100vh', 
-    backgroundColor: '#030712', 
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', 
-    color: '#f8fafc', 
-    padding: '20px', 
-    margin: 0, 
-    boxSizing: 'border-box', 
-    overflowY: 'auto',
-    position: 'fixed',
-    top: 0,
-    left: 0
-  },
-  brandContainer: { textAlign: 'center', marginBottom: '24px' },
+  pageContainer: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#030712', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', color: '#f8fafc', padding: '30px 20px', boxSizing: 'border-box' },
+  brandContainer: { textAlign: 'center', marginBottom: '28px' },
   brandTitle: { fontSize: '32px', fontWeight: '800', letterSpacing: '-0.5px', color: '#ffffff' },
   brandSubtitle: { fontSize: '13px', color: '#64748b', marginTop: '6px', fontWeight: '500' },
   card: { backgroundColor: '#0b132b', border: '1px solid #1e293b', borderRadius: '24px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', boxSizing: 'border-box', transition: 'all 0.3s ease' },
@@ -440,5 +422,5 @@ const styles = {
   primaryButton: { backgroundColor: '#2563eb', color: '#ffffff', border: 'none', padding: '14px', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', marginTop: '8px', transition: 'background-color 0.2s' },
   secondaryButton: { backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #1e293b', padding: '12px', borderRadius: '12px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' },
   messageBox: { fontSize: '13px', textAlign: 'center', fontWeight: '500', marginTop: '12px', padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.03)' },
-  footerText: { marginTop: '24px', fontSize: '11px', color: '#475569', textAlign: 'center', maxWidth: '450px', lineHeight: '1.5' }
+  footerText: { marginTop: '32px', fontSize: '11px', color: '#475569', textAlign: 'center', maxWidth: '450px', lineHeight: '1.5' }
 };

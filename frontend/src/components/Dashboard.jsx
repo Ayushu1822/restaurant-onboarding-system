@@ -220,7 +220,7 @@ export default function Dashboard({ onLogout }) {
               style={activeTab === tab ? styles.navItemActive : styles.navItem}
               onClick={() => setActiveTab(tab)}
             >
-              <span>
+              <span style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
                 {tab === 'Online Orders' ? '🛒' : tab === 'Counter POS' ? '💳' : tab === 'Tables' ? '🪑' : tab === 'Kitchen' ? '🍳' : tab === 'Menu' ? '📖' : tab === 'Reports' ? '📊' : tab === 'Promotions' ? '🏷️' : tab === 'Customers' ? '👥' : tab === 'Complaints' ? '⚠️' : tab === 'Gallery' ? '🖼️' : '⚙️'} {tab}
               </span>
               {tab === 'Online Orders' && <span style={styles.badgeCount}>{orders.filter(o => o.status === 'New').length}</span>}
@@ -244,7 +244,12 @@ export default function Dashboard({ onLogout }) {
         <div style={styles.header}>
           <h2 style={styles.pageTitle}>{activeTab}</h2>
           <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
-            <button style={styles.pausedItemsBtn}>Manage Paused Items 5</button>
+            <button 
+              onClick={() => setActiveTab('Menu')} 
+              style={styles.pausedItemsBtn}
+            >
+              Manage Paused Items <span style={styles.pausedCountBadge}>5</span>
+            </button>
             <div style={styles.bellIcon} title="Notifications">🔔</div>
             <button onClick={onLogout} style={styles.topLogoutBtn}>Sign Out</button>
           </div>
@@ -252,8 +257,10 @@ export default function Dashboard({ onLogout }) {
 
         {activeTab !== 'Online Orders' ? (
           <div style={styles.tabContentPlaceholder}>
-            <h2>{activeTab} Management Panel</h2>
-            <p style={{color: '#64748b'}}>Configure your restaurant {activeTab.toLowerCase()} data synced with PostgreSQL database.</p>
+            <div style={styles.placeholderCard}>
+              <h2 style={{color: '#0f172a', margin: '0 0 8px 0'}}>{activeTab} Management Panel</h2>
+              <p style={{color: '#64748b', margin: 0}}>Configure your restaurant {activeTab.toLowerCase()} data synced live with your PostgreSQL database.</p>
+            </div>
           </div>
         ) : (
           <>
@@ -604,32 +611,47 @@ export default function Dashboard({ onLogout }) {
 }
 
 const styles = {
-  container: { display: 'flex', width: '100vw', height: '100vh', backgroundColor: '#f8fafc', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', overflow: 'hidden', margin: 0, padding: 0, boxSizing: 'border-box' },
+  container: { 
+    display: 'flex', 
+    width: '100vw', 
+    height: '100vh', 
+    backgroundColor: '#f8fafc', 
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', 
+    overflow: 'hidden', 
+    margin: 0, 
+    padding: 0, 
+    boxSizing: 'border-box',
+    position: 'fixed',
+    top: 0,
+    left: 0
+  },
   sidebar: { width: '260px', backgroundColor: '#022c22', display: 'flex', flexDirection: 'column', color: '#ffffff', flexShrink: 0, height: '100vh' },
   brandBox: { display: 'flex', alignItems: 'center', gap: '12px', padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)' },
   logoIcon: { fontSize: '24px' },
   brandName: { fontSize: '18px', fontWeight: '800', letterSpacing: '0.5px' },
   brandSub: { fontSize: '10px', color: '#6ee7b7', letterSpacing: '1px', fontWeight: '600' },
   navLinks: { listStyle: 'none', padding: '10px 0', margin: 0, overflowY: 'auto', flex: 1 },
-  navItem: { padding: '12px 20px', fontSize: '14px', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' },
-  navItemActive: { padding: '12px 20px', fontSize: '14px', color: '#ffffff', backgroundColor: '#064e3b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #10b981', fontWeight: '600' },
+  navItem: { padding: '12px 20px', fontSize: '14px', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.2s ease' },
+  navItemActive: { padding: '12px 20px', fontSize: '14px', color: '#ffffff', backgroundColor: '#064e3b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #10b981', fontWeight: '600', transition: 'all 0.2s ease' },
   badgeCount: { backgroundColor: '#10b981', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', marginLeft: 'auto' },
-  userInfo: { padding: '15px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#01231b', cursor: 'pointer' },
+  userInfo: { padding: '15px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#01231b', cursor: 'pointer', transition: 'background-color 0.2s ease' },
   userAvatar: { width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px', color: '#fff' },
   mainContent: { flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', width: 'calc(100vw - 260px)' },
   header: { height: '65px', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 25px', flexShrink: 0 },
   pageTitle: { fontSize: '18px', fontWeight: '700', color: '#0f172a', margin: 0 },
-  pausedItemsBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#334155', cursor: 'pointer' },
-  bellIcon: { fontSize: '18px', cursor: 'pointer' },
-  topLogoutBtn: { backgroundColor: '#fee2e2', color: '#991b1b', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
+  pausedItemsBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#334155', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' },
+  pausedCountBadge: { backgroundColor: '#e11d48', color: '#fff', fontSize: '10px', fontWeight: '700', padding: '1px 6px', borderRadius: '10px' },
+  bellIcon: { fontSize: '18px', cursor: 'pointer', padding: '6px', borderRadius: '6px', transition: 'background-color 0.2s' },
+  topLogoutBtn: { backgroundColor: '#fee2e2', color: '#991b1b', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' },
   subHeader: { padding: '15px 25px', backgroundColor: '#ffffff', borderBottom: '1px solid #f1f5f9', fontSize: '14px' },
-  tabContentPlaceholder: { padding: '40px', flex: 1, backgroundColor: '#f8fafc' },
+  tabContentPlaceholder: { padding: '40px', flex: 1, backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' },
+  placeholderCard: { backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '30px', width: '100%', maxWidth: '600px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' },
   kanbanBoard: { display: 'flex', gap: '16px', padding: '20px', overflowX: 'auto', flex: 1, backgroundColor: '#f8fafc', alignItems: 'flex-start', width: '100%', boxSizing: 'border-box' },
   column: { backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '12px', width: '300px', minWidth: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', maxHeight: '100%' },
   columnHeader: { padding: '14px 16px', fontWeight: '700', fontSize: '14px', color: '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0' },
   colBadge: { backgroundColor: '#cbd5e1', color: '#334155', fontSize: '11px', padding: '2px 8px', borderRadius: '10px' },
   cardList: { overflowY: 'auto', padding: '10px', flex: 1 },
-  orderCard: { backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', marginBottom: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', cursor: 'pointer' },
+  orderCard: { backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', marginBottom: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.15s ease, box-shadow 0.15s ease' },
   cardTopRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' },
   newTag: { backgroundColor: '#e0f2fe', color: '#0369a1', fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px' },
   acceptedTag: { backgroundColor: '#fef9c3', color: '#854d0e', fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px' },
@@ -642,21 +664,21 @@ const styles = {
   orderItems: { borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', padding: '10px 0', marginBottom: '12px', fontSize: '13px' },
   itemRow: { display: 'flex', justifyContent: 'space-between', fontWeight: '500', color: '#1e293b', marginBottom: '4px' },
   cardActions: { display: 'flex', gap: '10px' },
-  rejectBtn: { flex: 1, backgroundColor: '#ffffff', color: '#dc2626', border: '1px solid #fca5a5', padding: '8px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
-  acceptBtn: { flex: 1, backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '8px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
+  rejectBtn: { flex: 1, backgroundColor: '#ffffff', color: '#dc2626', border: '1px solid #fca5a5', padding: '8px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' },
+  acceptBtn: { flex: 1, backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '8px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' },
   cardActionsFull: { display: 'flex' },
-  startPrepBtn: { width: '100%', backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
-  markReadyBtn: { width: '100%', backgroundColor: '#059669', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
-  markPickedUpBtn: { width: '100%', backgroundColor: '#047857', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
+  startPrepBtn: { width: '100%', backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' },
+  markReadyBtn: { width: '100%', backgroundColor: '#059669', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' },
+  markPickedUpBtn: { width: '100%', backgroundColor: '#047857', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' },
   drawerOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'flex-end', zIndex: 1000 },
   drawer: { width: '420px', backgroundColor: '#ffffff', height: '100%', display: 'flex', flexDirection: 'column', boxShadow: '-5px 0 25px rgba(0,0,0,0.1)' },
   drawerHeader: { padding: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  printBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' },
-  closeDrawerBtn: { backgroundColor: '#f1f5f9', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' },
+  printBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' },
+  closeDrawerBtn: { backgroundColor: '#f1f5f9', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' },
   drawerBody: { padding: '20px', flex: 1, overflowY: 'auto' },
   statusPill: { backgroundColor: '#dcfce7', color: '#15803d', fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '20px' },
   drawerFooter: { padding: '20px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc' },
-  drawerActionBtn: { width: '100%', backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' },
+  drawerActionBtn: { width: '100%', backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' },
   profileModal: { width: '420px', backgroundColor: '#ffffff', padding: '25px', borderRadius: '14px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', margin: 'auto' },
   profileLabel: { fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', display: 'block' },
   inputField: { width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' },
