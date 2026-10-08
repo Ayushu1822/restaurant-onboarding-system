@@ -225,10 +225,10 @@ export default function Dashboard({ onLogout }) {
               </span>
             </div>
 
-            {/* SPLIT MASTER-DETAIL LAYOUT */}
+            {/* SPLIT MASTER-DETAIL LAYOUT (Bigger Left, Smaller Right) */}
             <div style={styles.splitViewWrapper}>
               
-              {/* LEFT COLUMN: ALL ORDERS LIST */}
+              {/* LEFT COLUMN: BIGGER ALL ORDERS LIST */}
               <div style={styles.masterListColumn}>
                 <div style={styles.listHeaderTopRow}>
                   <span style={styles.listHeaderTitle}>All orders ({orders.length})</span>
@@ -248,27 +248,27 @@ export default function Dashboard({ onLogout }) {
                         }}
                         onClick={() => setSelectedOrder(order)}
                       >
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px'}}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px'}}>
                           <div>
-                            <strong style={{fontSize: '15px', color: '#0f172a'}}>{order.customer}</strong>
-                            <div style={{fontSize: '11px', color: '#64748b'}}>{order.id}</div>
+                            <strong style={{fontSize: '16px', color: '#0f172a'}}>{order.customer}</strong>
+                            <div style={{fontSize: '12px', color: '#64748b'}}>{order.id}</div>
                           </div>
                           <span style={styles.statusBadgeSmall(order.status)}>{order.status}</span>
                         </div>
 
-                        <div style={{fontSize: '11px', color: '#64748b', marginBottom: '10px'}}>
+                        <div style={{fontSize: '12px', color: '#64748b', marginBottom: '12px'}}>
                           🛵 {order.type} · 🟢 {order.channel} · 🕒 {order.time}
                         </div>
 
-                        <div style={{fontSize: '13px', color: '#334155', borderTop: '1px solid #f1f5f9', paddingTop: '8px', marginBottom: '8px'}}>
+                        <div style={{fontSize: '14px', color: '#334155', borderTop: '1px solid #f1f5f9', paddingTop: '10px', marginBottom: '10px'}}>
                           {order.items.map((it, idx) => (
-                            <div key={idx} style={{marginBottom: '2px', fontWeight: '500'}}>
+                            <div key={idx} style={{marginBottom: '4px', fontWeight: '500'}}>
                               {it.qty} × {it.name}
                             </div>
                           ))}
                         </div>
 
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '700', fontSize: '15px', color: '#0f172a', borderTop: '1px solid #f1f5f9', paddingTop: '8px'}}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '700', fontSize: '16px', color: '#0f172a', borderTop: '1px solid #f1f5f9', paddingTop: '10px'}}>
                           <span>₹{order.total.toFixed(2)}</span>
                           <span style={{color: '#10b981', fontSize: '18px'}}>›</span>
                         </div>
@@ -278,7 +278,7 @@ export default function Dashboard({ onLogout }) {
                 </div>
               </div>
 
-              {/* RIGHT COLUMN: DETAILED VIEW */}
+              {/* RIGHT COLUMN: SLIGHTLY SMALLER/COMPACT ORDER DETAILS */}
               <div style={styles.detailPanelColumn}>
                 <div style={styles.listHeaderTitle}>Order details</div>
 
@@ -286,31 +286,31 @@ export default function Dashboard({ onLogout }) {
                   <div style={styles.detailCard}>
                     
                     {/* Header */}
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #e2e8f0', paddingBottom: '15px', marginBottom: '15px'}}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', marginBottom: '12px'}}>
                       <div>
-                        <h3 style={{margin: '0 0 4px 0', fontSize: '18px', color: '#0f172a'}}>{selectedOrder.customer}</h3>
-                        <div style={{fontSize: '12px', color: '#64748b'}}>{selectedOrder.id} · {selectedOrder.time}</div>
+                        <h3 style={{margin: '0 0 2px 0', fontSize: '17px', color: '#0f172a'}}>{selectedOrder.customer}</h3>
+                        <div style={{fontSize: '11px', color: '#64748b'}}>{selectedOrder.id} · {selectedOrder.time}</div>
                       </div>
                       <span style={styles.statusBadgeSmall(selectedOrder.status)}>{selectedOrder.status}</span>
                     </div>
 
-                    <div style={{display: 'flex', gap: '8px', marginBottom: '20px'}}>
+                    <div style={{display: 'flex', gap: '6px', marginBottom: '15px'}}>
                       <span style={styles.tag}>🛵 {selectedOrder.type}</span>
                       <span style={styles.tag}>🟢 {selectedOrder.channel}</span>
                       <span style={styles.tag}>🕒 {selectedOrder.duration}</span>
                     </div>
 
                     {/* Items & Modifiers */}
-                    <div style={{marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '15px'}}>
+                    <div style={{marginBottom: '15px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px'}}>
                       {selectedOrder.items.map((item, i) => (
-                        <div key={i} style={{marginBottom: '14px', fontSize: '14px'}}>
+                        <div key={i} style={{marginBottom: '10px', fontSize: '13px'}}>
                           <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: '700', color: '#0f172a'}}>
                             <span>{item.name} ×{item.qty}</span>
                             <span>₹{item.price.toFixed(2)}</span>
                           </div>
-                          {item.desc && <div style={{fontSize: '12px', color: '#64748b'}}>{item.desc}</div>}
+                          {item.desc && <div style={{fontSize: '11px', color: '#64748b'}}>{item.desc}</div>}
                           {item.modifiers && item.modifiers.map((mod, mIdx) => (
-                            <div key={mIdx} style={{fontSize: '12px', color: '#64748b', paddingLeft: '8px', marginTop: '2px'}}>
+                            <div key={mIdx} style={{fontSize: '11px', color: '#64748b', paddingLeft: '8px', marginTop: '2px'}}>
                               + {mod.name} ×{mod.qty} ₹{mod.price.toFixed(2)}
                             </div>
                           ))}
@@ -319,21 +319,21 @@ export default function Dashboard({ onLogout }) {
                     </div>
 
                     {/* Address & Phone */}
-                    <div style={{fontSize: '13px', color: '#334155', marginBottom: '15px', borderBottom: '1px solid #e2e8f0', paddingBottom: '15px'}}>
+                    <div style={{fontSize: '12px', color: '#334155', marginBottom: '12px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px'}}>
                       📍 {selectedOrder.address}<br/>
                       📞 <span style={{color: '#16a34a', fontWeight: '700'}}>{selectedOrder.phone}</span>
                     </div>
 
-                    {/* Customer Request Box (Allergy Notice) */}
+                    {/* Customer Request Box (Yellow Allergy Notice) */}
                     {selectedOrder.customerRequest && (
                       <div style={styles.customerRequestBox}>
-                        <strong style={{fontSize: '11px', letterSpacing: '0.5px'}}>CUSTOMER REQUEST</strong>
-                        <div style={{marginTop: '4px'}}>{selectedOrder.customerRequest}</div>
+                        <strong style={{fontSize: '10px', letterSpacing: '0.5px'}}>CUSTOMER REQUEST</strong>
+                        <div style={{marginTop: '2px'}}>{selectedOrder.customerRequest}</div>
                       </div>
                     )}
 
                     {/* Financial Calculations */}
-                    <div style={{fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px', color: '#334155'}}>
+                    <div style={{fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '6px', color: '#334155'}}>
                       <div style={{display: 'flex', justifyContent: 'space-between'}}>
                         <span>Sub total</span>
                         <span>₹{selectedOrder.subtotal.toFixed(2)}</span>
@@ -352,20 +352,20 @@ export default function Dashboard({ onLogout }) {
                         <span>Delivery charge</span>
                         <span>₹{selectedOrder.deliveryCharge.toFixed(2)}</span>
                       </div>
-                      <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '12px', marginTop: '4px', color: '#0f172a'}}>
+                      <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '15px', borderTop: '1px solid #e2e8f0', paddingTop: '10px', marginTop: '2px', color: '#0f172a'}}>
                         <span>Total</span>
                         <span>₹{selectedOrder.total.toFixed(2)}</span>
                       </div>
-                      <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', marginTop: '4px'}}>
+                      <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', marginTop: '2px'}}>
                         <span>Payment · {selectedOrder.paymentMethod}</span>
                         <span style={{color: selectedOrder.paymentStatus === 'PAID' ? '#16a34a' : '#dc2626', fontWeight: 'bold'}}>{selectedOrder.paymentStatus}</span>
                       </div>
                     </div>
 
                     {/* Bottom Actions */}
-                    <div style={{marginTop: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '15px'}}>
+                    <div style={{marginTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '12px'}}>
                       <button onClick={handlePrintReceipt} style={styles.printIconBtn}>🖨️</button>
-                      <div style={{display: 'flex', gap: '10px'}}>
+                      <div style={{display: 'flex', gap: '8px'}}>
                         {selectedOrder.status === 'New' && (
                           <button onClick={() => updateOrderStatus(selectedOrder.id, 'Accepted')} style={styles.actionBtn}>Accept Order</button>
                         )}
@@ -451,15 +451,15 @@ const styles = {
   bellIcon: { fontSize: '18px', cursor: 'pointer' },
   onlineOrdersContainer: { display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#f8fafc', overflow: 'hidden' },
   subHeader: { padding: '12px 25px', backgroundColor: '#ffffff', borderBottom: '1px solid #f1f5f9', fontSize: '14px', flexShrink: 0 },
-  splitViewWrapper: { display: 'flex', flex: 1, overflow: 'hidden', padding: '20px', gap: '20px' },
-  masterListColumn: { width: '440px', display: 'flex', flexDirection: 'column', flexShrink: 0 },
-  detailPanelColumn: { flex: 1, display: 'flex', flexDirection: 'column' },
+  splitViewWrapper: { display: 'flex', flex: 1, overflow: 'hidden', padding: '20px', gap: '24px' },
+  masterListColumn: { width: '540px', display: 'flex', flexDirection: 'column', flexShrink: 0 }, // Wider left column for bigger orders
+  detailPanelColumn: { flex: 1, display: 'flex', flexDirection: 'column', maxWidth: '580px' }, // Compact right column for smaller order details
   listHeaderTopRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' },
   listHeaderTitle: { fontSize: '14px', fontWeight: '700', color: '#334155' },
   sortText: { fontSize: '12px', color: '#64748b' },
-  scrollableCards: { overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '4px' },
-  orderSummaryCard: { border: '1px solid #cbd5e1', borderRadius: '12px', padding: '16px', cursor: 'pointer', transition: 'all 0.15s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' },
-  detailCard: { backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '24px', flex: 1, overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.03)' },
+  scrollableCards: { overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '14px', paddingRight: '4px' },
+  orderSummaryCard: { border: '1px solid #cbd5e1', borderRadius: '12px', padding: '20px', cursor: 'pointer', transition: 'all 0.15s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' },
+  detailCard: { backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '20px', flex: 1, overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.03)' },
   emptyDetailPrompt: { backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '40px', textAlign: 'center', color: '#64748b', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   statusBadgeSmall: (status) => ({
     backgroundColor: status === 'New' ? '#e0f2fe' : status === 'Accepted' ? '#fef9c3' : status === 'Preparing' ? '#ffedd5' : status === 'Ready' ? '#dcfce7' : '#f1f5f9',
@@ -467,9 +467,9 @@ const styles = {
     fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '6px', textTransform: 'uppercase'
   }),
   tag: { backgroundColor: '#f1f5f9', color: '#475569', fontSize: '11px', padding: '3px 8px', borderRadius: '6px', fontWeight: '500' },
-  customerRequestBox: { backgroundColor: '#fef3c7', border: '1px solid #fde68a', padding: '12px', borderRadius: '8px', fontSize: '13px', color: '#92400e', marginBottom: '15px' },
-  printIconBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
-  actionBtn: { backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
+  customerRequestBox: { backgroundColor: '#fef3c7', border: '1px solid #fde68a', padding: '10px 12px', borderRadius: '8px', fontSize: '12px', color: '#92400e', marginBottom: '12px' },
+  printIconBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 14px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
+  actionBtn: { backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '13px' },
   tabContentPlaceholder: { padding: '40px', flex: 1, backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' },
   placeholderCard: { backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '30px', width: '100%', maxWidth: '600px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' },
   drawerOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
