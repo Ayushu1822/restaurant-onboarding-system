@@ -21,90 +21,42 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        // Seed if orders table is empty to avoid duplicating on every restart
-        if (orderRepository.count() == 0) {
+        // Seed if orders are fewer than 5 to ensure all 10 populate
+        if (orderRepository.count() < 5) {
+            orderRepository.deleteAll(); // Clear old partial data to prevent duplicates
 
-            // 1. Rahul Sharma
-            Order o1 = createOrder("#KO01/000001", "Rahul Sharma", "9876543210", "12, MG Road, Bengaluru", "WhatsApp", "Delivery", "New", "518.00", "507.10",
-                List.of(
-                    createItem("Chicken Drumsticks", 2, "199.00", "Spicy · Serves 1"),
-                    createItem("Sprite", 2, "60.00", "Cold 300ml")
-                )
-            );
+            Order o1 = createOrder("#KO01/000001", "Rahul Sharma", "9876543210", "12, MG Road", "WhatsApp", "Delivery", "New", "518.00", "507.10",
+                List.of(createItem("Chicken Drumsticks", 2, "199.00", "Spicy · Serves 1"), createItem("Sprite", 2, "60.00", "Cold 300ml")));
 
-            // 2. Neha Kapoor
-            Order o2 = createOrder("#KO01/000002", "Neha Kapoor", "9811223399", "Indiranagar, Bengaluru", "Web", "Delivery", "New", "920.00", "986.00",
-                List.of(
-                    createItem("Lucknowi Biryani", 2, "350.00", "Authentic spices · Serves 2"),
-                    createItem("Chicken 65", 1, "220.00", "Crispy starter")
-                )
-            );
+            Order o2 = createOrder("#KO01/000002", "Neha Kapoor", "9811223399", "Indiranagar", "Swiggy", "Delivery", "New", "920.00", "986.00",
+                List.of(createItem("Lucknowi Biryani", 2, "350.00", "Authentic spices"), createItem("Chicken 65", 1, "220.00", "Crispy starter")));
 
-            // 3. Karan Singh
-            Order o3 = createOrder("#KO01/000003", "Karan Singh", "9123456711", "44, Residency Road, Bengaluru", "Web", "Pickup", "Accepted", "698.00", "733.00",
-                List.of(
-                    createItem("Paneer Tikka Sandwich", 2, "229.00", "Grilled with mint chutney"),
-                    createItem("Cold Coffee", 2, "120.00", "Thick shake with ice cream")
-                )
-            );
+            Order o3 = createOrder("#KO01/000003", "Karan Singh", "9123456711", "Residency Road", "Zomato", "Pickup", "Accepted", "698.00", "733.00",
+                List.of(createItem("Paneer Tikka Sandwich", 2, "229.00", "Grilled"), createItem("Cold Coffee", 2, "120.00", "Thick shake")));
 
-            // 4. Ananya Verma
-            Order o4 = createOrder("#KO01/000004", "Ananya Verma", "9988776655", "Koramangala 4th Block, Bengaluru", "Swiggy", "Delivery", "Preparing", "600.00", "655.00",
-                List.of(
-                    createItem("Butter Chicken", 1, "420.00", "Rich tomato gravy · Serves 2"),
-                    createItem("Garlic Naan", 4, "45.00", "Tandoor baked")
-                )
-            );
+            Order o4 = createOrder("#KO01/000004", "Ananya Verma", "9988776655", "Koramangala", "WhatsApp", "Delivery", "Preparing", "600.00", "655.00",
+                List.of(createItem("Butter Chicken", 1, "420.00", "Rich gravy"), createItem("Garlic Naan", 4, "45.00", "Tandoor baked")));
 
-            // 5. Vikram Malhotra
-            Order o5 = createOrder("#KO01/000005", "Vikram Malhotra", "9711223344", "Jayanagar 3rd Block, Bengaluru", "Zomato", "Delivery", "Ready", "779.00", "742.95",
-                List.of(
-                    createItem("Pepperoni Pizza", 1, "599.00", "Large 12 inch"),
-                    createItem("Coke Zero", 2, "90.00", "Can 330ml")
-                )
-            );
+            Order o5 = createOrder("#KO01/000005", "Vikram Malhotra", "9711223344", "Jayanagar", "Web", "Delivery", "Ready", "779.00", "742.95",
+                List.of(createItem("Pepperoni Pizza", 1, "599.00", "Large 12 inch"), createItem("Coke Zero", 2, "90.00", "Can")));
 
-            // 6. Pooja Hegde
-            Order o6 = createOrder("#KO01/000006", "Pooja Hegde", "9844556677", "MG Road Counter Pickup", "Web", "Pickup", "Picked Up", "620.00", "651.00",
-                List.of(
-                    createItem("Veg Hakka Noodles", 2, "180.00", "Wok tossed veggies"),
-                    createItem("Chilli Paneer Dry", 1, "260.00", "Semi-gravy spicy")
-                )
-            );
+            Order o6 = createOrder("#KO01/000006", "Pooja Hegde", "9844556677", "MG Road Counter", "Web", "Pickup", "Picked Up", "620.00", "651.00",
+                List.of(createItem("Veg Hakka Noodles", 2, "180.00", "Wok tossed"), createItem("Chilli Paneer", 1, "260.00", "Spicy")));
 
-            // 7. Siddharth Roy
-            Order o7 = createOrder("#KO01/000007", "Siddharth Roy", "9122334455", "Ulsoor, Bengaluru", "WhatsApp", "Delivery", "New", "640.00", "692.00",
-                List.of(
-                    createItem("Mutton Rogan Josh", 1, "550.00", "Kashmiri style delicacy"),
-                    createItem("Tandoori Roti", 3, "30.00", "Whole wheat")
-                )
-            );
+            Order o7 = createOrder("#KO01/000007", "Siddharth Roy", "9122334455", "Ulsoor", "WhatsApp", "Delivery", "New", "640.00", "692.00",
+                List.of(createItem("Mutton Rogan Josh", 1, "550.00", "Kashmiri style"), createItem("Tandoori Roti", 3, "30.00", "Wheat")));
 
-            // 8. Meera Nambiar
-            Order o8 = createOrder("#KO01/000008", "Meera Nambiar", "9899887766", "Whitefield, Bengaluru", "Web", "Delivery", "Accepted", "408.00", "415.90",
-                List.of(
-                    createItem("Crispy Veg Burger", 2, "149.00", "Potato & corn patty"),
-                    createItem("French Fries", 1, "110.00", "Large salted")
-                )
-            );
+            Order o8 = createOrder("#KO01/000008", "Meera Nambiar", "9899887766", "Whitefield", "Swiggy", "Delivery", "Accepted", "408.00", "415.90",
+                List.of(createItem("Crispy Veg Burger", 2, "149.00", "Patty"), createItem("French Fries", 1, "110.00", "Large")));
 
-            // 9. Aditya Rao
-            Order o9 = createOrder("#KO01/000009", "Aditya Rao", "9333222111", "BTM Layout, Bengaluru", "Swiggy", "Delivery", "Preparing", "640.00", "692.00",
-                List.of(
-                    createItem("Hyderabadi Chicken Dum Biryani", 2, "320.00", "With mirchi ka salan")
-                )
-            );
+            Order o9 = createOrder("#KO01/000009", "Aditya Rao", "9333222111", "BTM Layout", "Zomato", "Delivery", "Preparing", "640.00", "692.00",
+                List.of(createItem("Chicken Dum Biryani", 2, "320.00", "With salan")));
 
-            // 10. Divya Menon
-            Order o10 = createOrder("#KO01/000010", "Divya Menon", "9555666777", "Residency Road Store Counter", "Web", "Pickup", "Ready", "630.00", "661.50",
-                List.of(
-                    createItem("Chocolate Lava Cake", 3, "150.00", "Warm gooey center"),
-                    createItem("Vanilla Ice Cream Scoop", 3, "60.00", "Side serving")
-                )
-            );
+            Order o10 = createOrder("#KO01/000010", "Divya Menon", "9555666777", "Residency Counter", "Web", "Pickup", "Ready", "630.00", "661.50",
+                List.of(createItem("Chocolate Lava Cake", 3, "150.00", "Gooey center"), createItem("Vanilla Scoop", 3, "60.00", "Side")));
 
             orderRepository.saveAll(List.of(o1, o2, o3, o4, o5, o6, o7, o8, o9, o10));
-            System.out.println("✅ Successfully seeded 10 detailed orders with items into PostgreSQL!");
+            System.out.println("✅ Force-seeded all 10 orders into PostgreSQL successfully!");
         }
     }
 

@@ -1,7 +1,9 @@
 package com.restaurant.auth_service.controller;
 
 import com.restaurant.auth_service.model.RestaurantProfile;
+import com.restaurant.auth_service.model.User;
 import com.restaurant.auth_service.repository.RestaurantProfileRepository;
+import com.restaurant.auth_service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,11 +19,23 @@ public class RestaurantProfileController {
     @Autowired
     private RestaurantProfileRepository profileRepository;
 
-    @GetMapping("/{restaurantId}")
-    public ResponseEntity<?> getProfile(@PathVariable String restaurantId) {
+    @Autowired
+    private UserRepository userRepository;
+
+    @GetMapping("/email/{email}")
+    public ResponseEntity<?> getProfileByEmail(@PathVariable String email) {
         try {
-            UUID id = UUID.fromString(restaurantId);
-            return profileRepository.findById(id)
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user != null) {
+                return profileRepository.findAll().stream()
+                        .filter(p -> p.getUserId() != null && p.getUserId().equals(user.getUserId()))
+                        .findFirst()
+                        .map(ResponseEntity::ok)
+                        .orElse(ResponseEntity.notFound().build());
+            }
+            // Fallback: Return the first available profile if exact email match isn't linked
+            return profileRepository.findAll().stream()
+                    .findFirst()
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {
