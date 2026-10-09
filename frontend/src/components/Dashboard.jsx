@@ -62,44 +62,56 @@ export default function Dashboard({ onLogout }) {
     .catch(() => alert('Failed to update profile in database.'));
   };
 
-  // Live Orders State fetched from PostgreSQL Backend
+  // Live Orders State fetched from PostgreSQL Backend with Debug Logs
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
   useEffect(() => {
+    console.log("🔥 FETCHING ORDERS FROM BACKEND NOW...");
+    
     fetch(`${API_BASE_URL}/api/v1/orders`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     })
-      .then(res => res.json())
+      .then(res => {
+        console.log("📥 RESPONSE STATUS:", res.status);
+        return res.json();
+      })
       .then(data => {
-        const formattedOrders = data.map(o => ({
-          id: o.displayId || '#KO01/000001',
-          orderId: o.orderId,
-          customer: o.customerName || 'Guest',
+        console.log("📦 ORDERS RECEIVED FROM DB:", data);
+        
+        const orderList = Array.isArray(data) ? data : [];
+        const formattedOrders = orderList.map(o => ({
+          id: o.displayId || o.display_id || '#KO01/000001',
+          orderId: o.orderId || o.order_id,
+          customer: o.customerName || o.customer_name || 'Guest',
           time: '2m ago',
           status: o.status || 'New',
-          type: o.orderType || 'Delivery',
+          type: o.orderType || o.order_type || 'Delivery',
           channel: o.channel || 'Web',
           duration: '15 min',
           items: o.items ? o.items.map(i => ({
-            name: i.itemName,
+            name: i.itemName || i.item_name,
             qty: i.quantity,
-            price: i.unitPrice * i.quantity,
-            desc: i.itemDescription,
-            modifiers: i.modifiers ? i.modifiers.map(m => ({ name: m.modifierName, qty: m.quantity, price: m.modifierPrice })) : []
+            price: (i.unitPrice || i.unit_price || 0) * i.quantity,
+            desc: i.itemDescription || i.item_description,
+            modifiers: i.modifiers ? i.modifiers.map(m => ({ 
+              name: m.modifierName || m.modifier_name, 
+              qty: m.quantity, 
+              price: m.modifierPrice || m.modifier_price || 0 
+            })) : []
           })) : [],
-          address: o.deliveryAddress || 'MG Road, Bengaluru',
-          phone: o.customerPhone || '9876543210',
-          customerRequest: o.customerRequest || '',
+          address: o.deliveryAddress || o.delivery_address || 'MG Road, Bengaluru',
+          phone: o.customerPhone || o.customer_phone || '9876543210',
+          customerRequest: o.customerRequest || o.customer_request || '',
           subtotal: o.subtotal || 0,
-          promoCode: o.promoCode || '',
-          discount: o.discountAmount || 0,
-          gst: o.gstAmount || 0,
-          deliveryCharge: o.deliveryCharge || 0,
-          total: o.totalAmount || 0,
-          paymentMethod: o.paymentMethod || 'UPI',
-          paymentStatus: o.paymentStatus || 'PENDING'
+          promoCode: o.promoCode || o.promo_code || '',
+          discount: o.discountAmount || o.discount_amount || 0,
+          gst: o.gstAmount || o.gst_amount || 0,
+          deliveryCharge: o.deliveryCharge || o.delivery_charge || 0,
+          total: o.totalAmount || o.total_amount || 0,
+          paymentMethod: o.paymentMethod || o.payment_method || 'UPI',
+          paymentStatus: o.paymentStatus || o.payment_status || 'PENDING'
         }));
 
         setOrders(formattedOrders);
@@ -109,7 +121,7 @@ export default function Dashboard({ onLogout }) {
         setLoadingOrders(false);
       })
       .catch(err => {
-        console.error("Error fetching orders from PostgreSQL backend:", err);
+        console.error("❌ ERROR FETCHING ORDERS:", err);
         setLoadingOrders(false);
       });
   }, []);
@@ -129,10 +141,7 @@ export default function Dashboard({ onLogout }) {
           setSelectedOrder(prev => ({ ...prev, status: newStatus }));
         }
       })
-      .catch(err => {
-        console.error(err);
-        setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
-      });
+      .catch(err => console.error(err));
   };
 
   const handlePrintReceipt = () => window.print();
@@ -196,7 +205,7 @@ export default function Dashboard({ onLogout }) {
       {/* MAIN CONTENT AREA */}
       <div style={styles.mainContent}>
         
-        {/* TOP HEADER WITH RESTORED SIGN OUT BUTTON */}
+        {/* TOP HEADER */}
         <div style={styles.header}>
           <h2 style={styles.pageTitle}>{activeTab}</h2>
           <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
@@ -218,14 +227,12 @@ export default function Dashboard({ onLogout }) {
         ) : (
           <div style={styles.onlineOrdersContainer}>
             
-            {/* SUBHEADER COUNTERS */}
             <div style={styles.subHeader}>
               <span style={{fontWeight: '600', color: '#0f172a'}}>
                 {orders.length} orders today · <span style={{color: '#16a34a'}}>{orders.filter(o => o.status === 'New').length} need action</span>
               </span>
             </div>
 
-            {/* EQUALLY BALANCED SPLIT MASTER-DETAIL LAYOUT */}
             <div style={styles.splitViewWrapper}>
               
               {/* LEFT COLUMN: ALL ORDERS LIST */}
@@ -284,14 +291,13 @@ export default function Dashboard({ onLogout }) {
                 </div>
               </div>
 
-              {/* RIGHT COLUMN: ORDER DETAILS & RECEIPT BOX */}
+              {/* RIGHT COLUMN: ORDER DETAILS */}
               <div style={styles.detailPanelColumn}>
                 <div style={styles.listHeaderTitle}>Order details</div>
 
                 {selectedOrder ? (
                   <div style={styles.detailCard}>
                     
-                    {/* Header */}
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', marginBottom: '14px', textAlign: 'left'}}>
                       <div>
                         <h3 style={{margin: '0 0 2px 0', fontSize: '18px', color: '#0f172a', fontWeight: '700'}}>{selectedOrder.customer}</h3>
@@ -306,7 +312,6 @@ export default function Dashboard({ onLogout }) {
                       <span style={styles.tag}>🕒 {selectedOrder.duration}</span>
                     </div>
 
-                    {/* Items & Modifiers (Fully Left-Aligned) */}
                     <div style={{marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', textAlign: 'left'}}>
                       {selectedOrder.items.map((item, i) => (
                         <div key={i} style={{marginBottom: '12px', fontSize: '14px', textAlign: 'left'}}>
@@ -324,13 +329,11 @@ export default function Dashboard({ onLogout }) {
                       ))}
                     </div>
 
-                    {/* Address & Phone */}
                     <div style={{fontSize: '13px', color: '#334155', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', textAlign: 'left', lineHeight: '1.5'}}>
                       📍 {selectedOrder.address}<br/>
                       📞 <span style={{color: '#16a34a', fontWeight: '700'}}>{selectedOrder.phone}</span>
                     </div>
 
-                    {/* Customer Request Box (Allergy Notice) */}
                     {selectedOrder.customerRequest && (
                       <div style={styles.customerRequestBox}>
                         <strong style={{fontSize: '11px', letterSpacing: '0.5px', display: 'block', marginBottom: '4px'}}>CUSTOMER REQUEST</strong>
@@ -338,7 +341,6 @@ export default function Dashboard({ onLogout }) {
                       </div>
                     )}
 
-                    {/* Financial Calculations (Fully Left-Aligned & High Visibility) */}
                     <div style={{fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px', color: '#334155', textAlign: 'left'}}>
                       <div style={{display: 'flex', justifyContent: 'space-between'}}>
                         <span>Sub total</span>
@@ -368,7 +370,6 @@ export default function Dashboard({ onLogout }) {
                       </div>
                     </div>
 
-                    {/* Bottom Actions */}
                     <div style={{marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '14px'}}>
                       <button onClick={handlePrintReceipt} style={styles.printIconBtn}>🖨️</button>
                       <div style={{display: 'flex', gap: '10px'}}>
