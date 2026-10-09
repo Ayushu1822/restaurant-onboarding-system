@@ -33,36 +33,36 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     @Transactional
-    public void run(String... args) throws Exception {
-        System.out.println("🚀 DataSeeder execution started...");
+    public void run(String... args) {
+        try {
+            System.out.println("🚀 DataSeeder execution started...");
 
-        // 1. Ensure User exists
-        User user = userRepository.findByEmail(ADMIN_EMAIL).orElseGet(() -> {
-            User newUser = new User();
-            newUser.setUserId(UUID.randomUUID().toString());
-            newUser.setEmail(ADMIN_EMAIL);
-            newUser.setPasswordHash("password123"); // Fixed: setPasswordHash matches model
-            return userRepository.save(newUser);
-        });
+            // 1. Ensure User exists
+            User user = userRepository.findByEmail(ADMIN_EMAIL).orElseGet(() -> {
+                User newUser = new User();
+                newUser.setUserId(UUID.randomUUID().toString());
+                newUser.setEmail(ADMIN_EMAIL);
+                newUser.setPasswordHash("password123");
+                return userRepository.save(newUser);
+            });
 
-        // 2. Ensure Restaurant Profile exists
-        profileRepository.findById(FIXED_RESTAURANT_ID).orElseGet(() -> {
-            RestaurantProfile newProfile = new RestaurantProfile();
-            newProfile.setRestaurantId(FIXED_RESTAURANT_ID.toString());
-            newProfile.setUserId(user.getUserId());
-            newProfile.setBusinessName("NewWorld Restaurant");
-            newProfile.setOwnerName("Ayush");
-            newProfile.setPhoneNumber("8218579235");
-            newProfile.setWhatsappNumber("8218579235");
-            return profileRepository.save(newProfile);
-        });
+            // 2. Ensure Restaurant Profile exists
+            profileRepository.findById(FIXED_RESTAURANT_ID).orElseGet(() -> {
+                RestaurantProfile newProfile = new RestaurantProfile();
+                newProfile.setRestaurantId(FIXED_RESTAURANT_ID.toString());
+                newProfile.setUserId(user.getUserId());
+                newProfile.setBusinessName("NewWorld Restaurant");
+                newProfile.setOwnerName("Ayush");
+                newProfile.setPhoneNumber("8218579235");
+                newProfile.setWhatsappNumber("8218579235");
+                return profileRepository.save(newProfile);
+            });
 
-        long existingCount = orderRepository.count();
-        System.out.println("📊 Existing orders in database before seeding: " + existingCount);
+            long existingCount = orderRepository.count();
+            System.out.println("📊 Existing orders in database before seeding: " + existingCount);
 
-        // 3. Seed 10 Distinct Orders if table is empty
-        if (existingCount == 0) {
-            try {
+            // 3. Seed 10 Distinct Orders if table is empty
+            if (existingCount == 0) {
                 List<Order> ordersToSeed = List.of(
                     createOrder("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "#KO01/000001", "Rahul Sharma", "9876543210", "12, MG Road", "WhatsApp", "Delivery", "New", "518.00", "507.10",
                         List.of(createItem("Chicken Drumsticks", 2, "199.00", "Spicy · Serves 1"), createItem("Sprite", 2, "60.00", "Cold 300ml"))),
@@ -97,12 +97,9 @@ public class DataSeeder implements CommandLineRunner {
 
                 orderRepository.saveAll(ordersToSeed);
                 System.out.println("✅ Successfully saved all 10 orders using saveAll!");
-            } catch (Exception e) {
-                System.err.println("❌ Seeder insertion failed: " + e.getMessage());
-                e.printStackTrace();
             }
-        } else {
-            System.out.println("ℹ️ Orders already exist in database. Skipping seeder.");
+        } catch (Exception e) {
+            System.err.println("⚠️ Seeder caught exception but allowed app to start: " + e.getMessage());
         }
     }
 
