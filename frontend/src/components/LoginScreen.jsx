@@ -56,8 +56,8 @@ export default function LoginScreen({ onLoginSuccess }) {
       
       if (response.ok) {
         localStorage.setItem('auth_token', data.token);
-        localStorage.setItem('user_email', loginEmail); // Saved so dashboard fetches profile successfully
-        onLoginSuccess(); // Directly unlocks your FOODOS Dashboard!
+        localStorage.setItem('user_email', loginEmail);
+        onLoginSuccess();
         setMessage('');
       } else {
         setMessage(data.message || 'Invalid credentials or account locked.');
@@ -84,7 +84,7 @@ export default function LoginScreen({ onLoginSuccess }) {
       const data = await response.json();
       
       if (response.ok) {
-        setMessage('Success! Reset token generated (Check console/response).');
+        setMessage('Success! Reset token generated.');
         console.log("Reset Token:", data.reset_token);
       } else {
         setMessage(data.message || 'Email not found.');
@@ -402,7 +402,7 @@ const styles = {
   pageContainer: { 
     display: 'flex', 
     flexDirection: 'column', 
-    justifyContent: 'center', 
+    justifyContent: 'flex-start', 
     alignItems: 'center', 
     width: '100vw', 
     minHeight: '100vh', 
@@ -412,15 +412,12 @@ const styles = {
     padding: '40px 20px', 
     margin: 0, 
     boxSizing: 'border-box', 
-    overflowY: 'auto',
-    position: 'fixed',
-    top: 0,
-    left: 0
+    overflowY: 'auto'
   },
-  brandContainer: { textAlign: 'center', marginBottom: '30px' },
+  brandContainer: { textAlign: 'center', marginBottom: '30px', marginTop: '20px' },
   brandTitle: { fontSize: '38px', fontWeight: '800', letterSpacing: '-0.5px', color: '#ffffff' },
   brandSubtitle: { fontSize: '15px', color: '#64748b', marginTop: '6px', fontWeight: '500' },
-  card: { backgroundColor: '#0b132b', border: '1px solid #1e293b', borderRadius: '24px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', boxSizing: 'border-box', transition: 'all 0.3s ease' },
+  card: { backgroundColor: '#0b132b', border: '1px solid #1e293b', borderRadius: '24px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', boxSizing: 'border-box', transition: 'all 0.3s ease', marginBottom: '40px' },
   headerTextGroup: { marginBottom: '20px', textAlign: 'left' },
   cardHeaderTitle: { fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 6px 0' },
   cardHeaderSubtitle: { fontSize: '14px', color: '#94a3b8', margin: 0, lineHeight: '1.4' },
@@ -439,5 +436,5 @@ const styles = {
   primaryButton: { backgroundColor: '#2563eb', color: '#ffffff', border: 'none', padding: '16px', borderRadius: '12px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', marginTop: '10px', transition: 'background-color 0.2s' },
   secondaryButton: { backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #1e293b', padding: '14px', borderRadius: '12px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
   messageBox: { fontSize: '14px', textAlign: 'center', fontWeight: '500', marginTop: '14px', padding: '12px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.03)' },
-  footerText: { marginTop: '30px', fontSize: '12px', color: '#475569', textAlign: 'center', maxWidth: '500px', lineHeight: '1.5' }
+  footerText: { marginTop: '10px', marginBottom: '30px', fontSize: '12px', color: '#475569', textAlign: 'center', maxWidth: '500px', lineHeight: '1.5' }
 };
