@@ -6,15 +6,18 @@ export default function Dashboard({ onLogout }) {
   const [activeTab, setActiveTab] = useState('Online Orders');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [hoveredTab, setHoveredTab] = useState(null);
   
+  // Real Database Profile State
   const [profileData, setProfileData] = useState({
-    businessName: 'FOODOS Restaurant',
-    ownerName: 'Krishna',
+    businessName: 'Loading...',
+    ownerName: 'Loading...',
     email: '',
     phone: '',
     address: '44, Residency Road, Bengaluru'
   });
 
+  // Fetch Profile Live from PostgreSQL Database on Mount
   useEffect(() => {
     const userEmail = localStorage.getItem('user_email');
     if (!userEmail) return;
@@ -28,14 +31,14 @@ export default function Dashboard({ onLogout }) {
         if (data) {
           setProfileData({
             businessName: data.businessName || 'FOODOS Restaurant',
-            ownerName: data.ownerName || 'Krishna',
+            ownerName: data.ownerName || data.businessName || 'Admin',
             email: data.email || userEmail,
             phone: data.phoneNumber || '9876543210',
             address: data.address ? `${data.address.line1 || ''}, ${data.address.area || ''}` : '44, Residency Road, Bengaluru'
           });
         }
       })
-      .catch(err => console.error("Error loading profile:", err));
+      .catch(err => console.error("Error loading profile from DB:", err));
   }, []);
 
   const handleProfileSaveSubmit = (e) => {
@@ -171,25 +174,42 @@ export default function Dashboard({ onLogout }) {
           {[
             'Online Orders', 'Counter POS', 'Tables', 'Kitchen', 'Menu', 
             'Reports', 'Promotions', 'Customers', 'Complaints', 'Gallery', 'Settings'
-          ].map((tab) => (
-            <li 
-              key={tab}
-              style={activeTab === tab ? styles.navItemActive : styles.navItem}
-              onClick={() => setActiveTab(tab)}
-            >
-              <span style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                {tab === 'Online Orders' ? '🛒' : tab === 'Counter POS' ? '💳' : tab === 'Tables' ? '🪑' : tab === 'Kitchen' ? '🍳' : tab === 'Menu' ? '📖' : tab === 'Reports' ? '📊' : tab === 'Promotions' ? '🏷️' : tab === 'Customers' ? '👥' : tab === 'Complaints' ? '⚠️' : tab === 'Gallery' ? '🖼️' : '⚙️'} {tab}
-              </span>
-              {tab === 'Online Orders' && <span style={styles.badgeCount}>{orders.filter(o => o.status === 'New').length}</span>}
-            </li>
-          ))}
+          ].map((tab) => {
+            const isActive = activeTab === tab;
+            const isHovered = hoveredTab === tab;
+            return (
+              <li 
+                key={tab}
+                style={{
+                  ...styles.navItem,
+                  ...(isActive ? styles.navItemActive : {}),
+                  ...(isHovered && !isActive ? styles.navItemHover : {})
+                }}
+                onClick={() => setActiveTab(tab)}
+                onMouseEnter={() => setHoveredTab(tab)}
+                onMouseLeave={() => setHoveredTab(null)}
+              >
+                <span style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                  {tab === 'Online Orders' ? '🛒' : tab === 'Counter POS' ? '💳' : tab === 'Tables' ? '🪑' : tab === 'Kitchen' ? '🍳' : tab === 'Menu' ? '📖' : tab === 'Reports' ? '📊' : tab === 'Promotions' ? '🏷️' : tab === 'Customers' ? '👥' : tab === 'Complaints' ? '⚠️' : tab === 'Gallery' ? '🖼️' : '⚙️'} {tab}
+                </span>
+                {tab === 'Online Orders' && <span style={styles.badgeCount}>{orders.filter(o => o.status === 'New').length}</span>}
+              </li>
+            );
+          })}
         </ul>
 
-        <div style={styles.userInfo} onClick={() => setShowProfileModal(true)}>
-          <div style={styles.userAvatar}>K6</div>
+        {/* LIVE DATABASE PROFILE IN SIDEBAR */}
+        <div style={styles.userInfo} onClick={() => setShowProfileModal(true)} title="Click to edit profile">
+          <div style={styles.userAvatar}>
+            {profileData.ownerName ? profileData.ownerName.substring(0, 2).toUpperCase() : 'AD'}
+          </div>
           <div style={{flex: 1, overflow: 'hidden', textAlign: 'left'}}>
-            <div style={{fontSize: '13px', fontWeight: 'bold', color: '#fff'}}>krishna6</div>
-            <div style={{fontSize: '11px', color: '#94a3b8'}}>Admin</div>
+            <div style={{fontSize: '13px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+              {profileData.ownerName}
+            </div>
+            <div style={{fontSize: '11px', color: '#6ee7b7', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+              {profileData.businessName}
+            </div>
           </div>
         </div>
       </div>
@@ -197,7 +217,7 @@ export default function Dashboard({ onLogout }) {
       {/* MAIN CONTENT AREA */}
       <div style={styles.mainContent}>
         
-        {/* TOP HEADER */}
+        {/* TOP HEADER WITH RESTORED SIGN OUT BUTTON */}
         <div style={styles.header}>
           <h2 style={styles.pageTitle}>{activeTab}</h2>
           <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
@@ -205,6 +225,7 @@ export default function Dashboard({ onLogout }) {
               Manage Paused Items <span style={styles.pausedCountBadge}>5</span>
             </button>
             <div style={styles.bellIcon} title="Notifications">🔔</div>
+            <button onClick={onLogout} style={styles.topLogoutBtn}>Sign Out</button>
           </div>
         </div>
 
@@ -225,7 +246,7 @@ export default function Dashboard({ onLogout }) {
               </span>
             </div>
 
-            {/* SPLIT MASTER-DETAIL LAYOUT */}
+            {/* EQUALLY BALANCED SPLIT MASTER-DETAIL LAYOUT */}
             <div style={styles.splitViewWrapper}>
               
               {/* LEFT COLUMN: ALL ORDERS LIST */}
@@ -278,7 +299,7 @@ export default function Dashboard({ onLogout }) {
                 </div>
               </div>
 
-              {/* RIGHT COLUMN: BIGGER & CLEARER ORDER DETAILS / RECEIPT BOX */}
+              {/* RIGHT COLUMN: ORDER DETAILS & RECEIPT BOX */}
               <div style={styles.detailPanelColumn}>
                 <div style={styles.listHeaderTitle}>Order details</div>
 
@@ -439,21 +460,23 @@ const styles = {
   brandSub: { fontSize: '10px', color: '#6ee7b7', letterSpacing: '1px', fontWeight: '600' },
   navLinks: { listStyle: 'none', padding: '10px 0', margin: 0, overflowY: 'auto', flex: 1 },
   navItem: { padding: '12px 20px', fontSize: '14px', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.2s ease', textAlign: 'left' },
-  navItemActive: { padding: '12px 20px', fontSize: '14px', color: '#ffffff', backgroundColor: '#064e3b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #10b981', fontWeight: '600', transition: 'all 0.2s ease', textAlign: 'left' },
+  navItemHover: { backgroundColor: '#033d30', color: '#ffffff' },
+  navItemActive: { padding: '12px 20px', fontSize: '14px', color: '#ffffff', backgroundColor: '#047857', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #10b981', fontWeight: '600', transition: 'all 0.2s ease', textAlign: 'left' },
   badgeCount: { backgroundColor: '#10b981', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', marginLeft: 'auto' },
-  userInfo: { padding: '15px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#01231b', cursor: 'pointer' },
-  userAvatar: { width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px', color: '#fff' },
+  userInfo: { padding: '15px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#01231b', cursor: 'pointer', transition: 'background-color 0.2s' },
+  userAvatar: { width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px', color: '#fff', flexShrink: 0 },
   mainContent: { flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', width: 'calc(100vw - 260px)' },
   header: { height: '65px', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 25px', flexShrink: 0 },
   pageTitle: { fontSize: '18px', fontWeight: '700', color: '#0f172a', margin: 0, textAlign: 'left' },
   pausedItemsBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#334155', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' },
   pausedCountBadge: { backgroundColor: '#e11d48', color: '#fff', fontSize: '10px', fontWeight: '700', padding: '1px 6px', borderRadius: '10px' },
   bellIcon: { fontSize: '18px', cursor: 'pointer' },
+  topLogoutBtn: { backgroundColor: '#fee2e2', color: '#991b1b', border: 'none', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' },
   onlineOrdersContainer: { display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#f8fafc', overflow: 'hidden' },
   subHeader: { padding: '12px 25px', backgroundColor: '#ffffff', borderBottom: '1px solid #f1f5f9', fontSize: '14px', flexShrink: 0, textAlign: 'left' },
-  splitViewWrapper: { display: 'flex', flex: 1, overflow: 'hidden', padding: '20px', gap: '24px' },
-  masterListColumn: { width: '520px', display: 'flex', flexDirection: 'column', flexShrink: 0 },
-  detailPanelColumn: { flex: 1, display: 'flex', flexDirection: 'column', maxWidth: '620px' },
+  splitViewWrapper: { display: 'flex', flex: 1, overflow: 'hidden', padding: '20px', gap: '24px', boxSizing: 'border-box' },
+  masterListColumn: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: '380px' },
+  detailPanelColumn: { flex: 1.2, display: 'flex', flexDirection: 'column', minWidth: '420px' },
   listHeaderTopRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', textAlign: 'left' },
   listHeaderTitle: { fontSize: '14px', fontWeight: '700', color: '#334155', textAlign: 'left' },
   sortText: { fontSize: '12px', color: '#64748b', textAlign: 'right' },
