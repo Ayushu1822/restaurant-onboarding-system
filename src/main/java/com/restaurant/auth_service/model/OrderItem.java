@@ -1,6 +1,5 @@
 package com.restaurant.auth_service.model;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -10,18 +9,17 @@ import java.util.UUID;
 public class OrderItem {
 
     @Id
-    @Column(name = "item_id")
+    @Column(name = "order_item_id")
     private UUID itemId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "order_id")
-    @JsonBackReference
     private Order order;
 
     @Column(name = "item_name")
     private String itemName;
 
-    private Integer quantity;
+    private int quantity;
 
     @Column(name = "unit_price")
     private BigDecimal unitPrice;
@@ -39,8 +37,8 @@ public class OrderItem {
     public String getItemName() { return itemName; }
     public void setItemName(String itemName) { this.itemName = itemName; }
 
-    public Integer getQuantity() { return quantity; }
-    public void setQuantity(Integer quantity) { this.quantity = quantity; }
+    public int getQuantity() { return quantity; }
+    public void setQuantity(int quantity) { this.quantity = quantity; }
 
     public BigDecimal getUnitPrice() { return unitPrice; }
     public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
