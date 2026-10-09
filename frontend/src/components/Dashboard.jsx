@@ -62,45 +62,43 @@ export default function Dashboard({ onLogout }) {
     .catch(() => alert('Failed to update profile in database.'));
   };
 
-  // Live Orders State fetched from PostgreSQL Backend with Debug Logs
+  // Live Orders State (Strictly Real Database Data Only)
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
   useEffect(() => {
-    console.log("🔥 FETCHING ORDERS FROM BACKEND NOW...");
+    console.log("🔥 FETCHING REAL ORDERS FROM BACKEND...");
     
     fetch(`${API_BASE_URL}/api/v1/orders`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     })
-      .then(res => {
-        console.log("📥 RESPONSE STATUS:", res.status);
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
-        console.log("📦 ORDERS RECEIVED FROM DB:", data);
+        console.log("📦 REAL ORDERS RECEIVED FROM DB:", data);
         
-        const orderList = Array.isArray(data) ? data : [];
-        const formattedOrders = orderList.map(o => ({
-          id: o.displayId || o.display_id || '#KO01/000001',
-          orderId: o.orderId || o.order_id,
+        const rawList = Array.isArray(data) ? data : [];
+        
+        const formattedOrders = rawList.map((o, index) => ({
+          id: o.displayId || o.display_id || o.id || `#KO01/00000${index + 1}`,
+          orderId: o.orderId || o.order_id || o.id,
           customer: o.customerName || o.customer_name || 'Guest',
           time: '2m ago',
           status: o.status || 'New',
           type: o.orderType || o.order_type || 'Delivery',
           channel: o.channel || 'Web',
           duration: '15 min',
-          items: o.items ? o.items.map(i => ({
-            name: i.itemName || i.item_name,
-            qty: i.quantity,
-            price: (i.unitPrice || i.unit_price || 0) * i.quantity,
-            desc: i.itemDescription || i.item_description,
-            modifiers: i.modifiers ? i.modifiers.map(m => ({ 
+          items: (o.items || o.orderItems || []).map(i => ({
+            name: i.itemName || i.item_name || 'Item',
+            qty: i.quantity || 1,
+            price: ((i.unitPrice || i.unit_price || 0) * (i.quantity || 1)),
+            desc: i.itemDescription || i.item_description || '',
+            modifiers: (i.modifiers || []).map(m => ({ 
               name: m.modifierName || m.modifier_name, 
-              qty: m.quantity, 
+              qty: m.quantity || 1, 
               price: m.modifierPrice || m.modifier_price || 0 
-            })) : []
-          })) : [],
+            }))
+          })),
           address: o.deliveryAddress || o.delivery_address || 'MG Road, Bengaluru',
           phone: o.customerPhone || o.customer_phone || '9876543210',
           customerRequest: o.customerRequest || o.customer_request || '',
@@ -122,6 +120,7 @@ export default function Dashboard({ onLogout }) {
       })
       .catch(err => {
         console.error("❌ ERROR FETCHING ORDERS:", err);
+        setOrders([]);
         setLoadingOrders(false);
       });
   }, []);
@@ -137,7 +136,7 @@ export default function Dashboard({ onLogout }) {
       })
       .then(() => {
         setOrders(orders.map(o => o.orderId === orderId ? { ...o, status: newStatus } : o));
-        if (selectedOrder && selectedOrder.orderId === orderId) {
+        if (selectedOrder && (selectedOrder.orderId === orderId || selectedOrder.id === orderId)) {
           setSelectedOrder(prev => ({ ...prev, status: newStatus }));
         }
       })
@@ -205,7 +204,6 @@ export default function Dashboard({ onLogout }) {
       {/* MAIN CONTENT AREA */}
       <div style={styles.mainContent}>
         
-        {/* TOP HEADER */}
         <div style={styles.header}>
           <h2 style={styles.pageTitle}>{activeTab}</h2>
           <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
@@ -244,9 +242,11 @@ export default function Dashboard({ onLogout }) {
                 
                 <div style={styles.scrollableCards}>
                   {loadingOrders ? (
-                    <div style={{padding: '20px', color: '#64748b', textAlign: 'center'}}>Loading orders from PostgreSQL...</div>
+                    <div style={{padding: '20px', color: '#64748b', textAlign: 'center'}}>Loading orders from database...</div>
                   ) : orders.length === 0 ? (
-                    <div style={{padding: '20px', color: '#64748b', textAlign: 'center'}}>No orders found in database.</div>
+                    <div style={{padding: '40px', color: '#64748b', textAlign: 'center', backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1'}}>
+                      No orders found in database.
+                    </div>
                   ) : (
                     orders.map(order => {
                       const isSelected = selectedOrder?.id === order.id;
