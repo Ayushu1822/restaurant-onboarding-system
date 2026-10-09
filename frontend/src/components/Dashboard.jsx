@@ -2,36 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
-const INITIAL_DUMMY_ORDERS = [
-  {
-    id: '#KO01/000001',
-    orderId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-    customer: 'Rahul Sharma',
-    time: '2m ago',
-    status: 'New',
-    type: 'Delivery',
-    channel: 'WhatsApp',
-    duration: '15 min',
-    items: [
-      { name: 'Chicken Drumsticks', qty: 2, price: 199.00, desc: 'Spicy · Serves 1', modifiers: [{ name: 'Garlic Dip', qty: 1, price: 20.00 }] },
-      { name: 'Sprite', qty: 2, price: 60.00, desc: 'Cold 300ml', modifiers: [] }
-    ],
-    address: '12, MG Road, Bengaluru · 1.2 km',
-    phone: '9876543210',
-    customerRequest: 'Make it extra spicy please.',
-    subtotal: 518.00,
-    promoCode: 'WELCOME10',
-    discount: 51.80,
-    gst: 25.90,
-    deliveryCharge: 15.00,
-    total: 507.10,
-    paymentMethod: 'UPI',
-    paymentStatus: 'PENDING'
-  }
-];
-
 export default function Dashboard({ user, onLogout }) {
-  // Extract logged-in email dynamically
   const loggedInEmail = user?.email || localStorage.getItem('userEmail') || 'novio@gmail.com';
 
   const [activeTab, setActiveTab] = useState('Online Orders');
@@ -41,18 +12,19 @@ export default function Dashboard({ user, onLogout }) {
   
   const [restaurantId, setRestaurantId] = useState('ae41c831-372b-4f56-8905-f67a93b8045b');
   const [profileData, setProfileData] = useState({
-    businessName: 'Loading...',
-    ownerName: 'Loading...',
+    businessName: 'NewWorld',
+    ownerName: 'Ayush',
     email: loggedInEmail,
-    phone: '',
-    whatsappNumber: ''
+    phone: '8218579235',
+    whatsappNumber: '8218579235'
   });
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState(profileData);
-  const [orders, setOrders] = useState(INITIAL_DUMMY_ORDERS);
+  const [orders, setOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
 
-  // Fetch profile specifically tied to the logged-in email
+  // Fetch profile specifically tied to logged-in email
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/restaurants/email/${loggedInEmail}`)
       .then(res => {
@@ -61,24 +33,22 @@ export default function Dashboard({ user, onLogout }) {
       })
       .then(data => {
         if (data && data.businessName) {
-          setRestaurantId(data.restaurantId);
+          if (data.restaurantId) setRestaurantId(data.restaurantId);
           const fetched = {
             businessName: data.businessName,
             ownerName: data.ownerName,
             email: loggedInEmail,
-            phone: data.phoneNumber || data.phone_number || '',
-            whatsappNumber: data.whatsappNumber || data.whatsapp_number || ''
+            phone: data.phoneNumber || data.phone_number || '8218579235',
+            whatsappNumber: data.whatsappNumber || data.whatsapp_number || '8218579235'
           };
           setProfileData(fetched);
           setEditForm(fetched);
         }
       })
-      .catch(err => {
-        console.log("Could not load profile by email, using fallback:", err);
-      });
+      .catch(err => console.log("Profile fetch warning:", err));
   }, [loggedInEmail]);
 
-  // Fetch orders from backend
+  // Fetch real database orders and items
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/orders`, {
       method: 'GET',
@@ -87,23 +57,15 @@ export default function Dashboard({ user, onLogout }) {
       .then(res => res.json())
       .then(data => {
         let orderList = Array.isArray(data) ? data : [];
-        if (orderList.length === 0) {
-          setOrders(INITIAL_DUMMY_ORDERS);
-          setSelectedOrder(INITIAL_DUMMY_ORDERS[0]);
-          return;
-        }
 
         const formattedOrders = orderList.map((o, index) => {
-          const rawItems = o.items || o.orderItems;
-          const mappedItems = (rawItems && rawItems.length > 0) 
-            ? rawItems.map(i => ({
-                name: i.itemName || i.item_name || 'Food Item',
-                qty: i.quantity || 1,
-                price: i.unitPrice || i.unit_price || 150.00,
-                desc: i.itemDescription || i.item_description || '',
-                modifiers: []
-              }))
-            : INITIAL_DUMMY_ORDERS[index % INITIAL_DUMMY_ORDERS.length].items;
+          const rawItems = o.items || o.orderItems || [];
+          const mappedItems = rawItems.map(i => ({
+            name: i.itemName || i.item_name || 'Food Item',
+            qty: i.quantity || 1,
+            price: i.unitPrice || i.unit_price || 150.00,
+            desc: i.itemDescription || i.item_description || ''
+          }));
 
           return {
             id: o.displayId || o.display_id || o.id || `#KO01/00000${index + 1}`,
@@ -119,10 +81,6 @@ export default function Dashboard({ user, onLogout }) {
             phone: o.customerPhone || o.customer_phone || '9876543210',
             customerRequest: o.customerRequest || o.customer_request || '',
             subtotal: o.subtotal || 500.00,
-            promoCode: o.promoCode || o.promo_code || '',
-            discount: o.discountAmount || o.discount_amount || 0.00,
-            gst: o.gstAmount || o.gst_amount || 25.00,
-            deliveryCharge: o.deliveryCharge || o.delivery_charge || 15.00,
             total: o.totalAmount || o.total_amount || 540.00,
             paymentMethod: o.paymentMethod || o.payment_method || 'UPI',
             paymentStatus: o.paymentStatus || o.payment_status || 'PENDING'
@@ -130,15 +88,17 @@ export default function Dashboard({ user, onLogout }) {
         });
 
         setOrders(formattedOrders);
-        setSelectedOrder(formattedOrders[0]);
+        if (formattedOrders.length > 0) {
+          setSelectedOrder(formattedOrders[0]);
+        }
+        setLoadingOrders(false);
       })
-      .catch(() => {
-        setOrders(INITIAL_DUMMY_ORDERS);
-        setSelectedOrder(INITIAL_DUMMY_ORDERS[0]);
+      .catch(err => {
+        console.error("Error fetching orders:", err);
+        setLoadingOrders(false);
       });
   }, []);
 
-  // Save edits persistently to database
   const handleSaveProfile = (e) => {
     e.preventDefault();
     fetch(`${API_BASE_URL}/api/v1/restaurants/${restaurantId}`, {
@@ -151,7 +111,10 @@ export default function Dashboard({ user, onLogout }) {
         whatsappNumber: editForm.whatsappNumber
       })
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to update profile');
+        return res.json();
+      })
       .then(updated => {
         const savedProfile = {
           ...profileData,
@@ -164,9 +127,7 @@ export default function Dashboard({ user, onLogout }) {
         setIsEditingProfile(false);
         alert('Profile permanently updated and saved to database!');
       })
-      .catch(() => {
-        alert('Failed to save profile changes.');
-      });
+      .catch(err => alert('Error updating profile: ' + err.message));
   };
 
   const updateOrderStatus = (orderId, currentStatus) => {
@@ -240,7 +201,7 @@ export default function Dashboard({ user, onLogout }) {
         </ul>
 
         <div style={styles.userInfo} onClick={() => { setShowProfileModal(true); setIsEditingProfile(false); }}>
-          <div style={styles.userAvatar}>{profileData.ownerName && profileData.ownerName !== 'Loading...' ? profileData.ownerName.substring(0, 2).toUpperCase() : 'US'}</div>
+          <div style={styles.userAvatar}>{profileData.ownerName && profileData.ownerName !== 'Loading...' ? profileData.ownerName.substring(0, 2).toUpperCase() : 'AY'}</div>
           <div style={{flex: 1, overflow: 'hidden', textAlign: 'left'}}>
             <div style={{fontSize: '13px', fontWeight: 'bold', color: '#fff'}}>{profileData.ownerName}</div>
             <div style={{fontSize: '11px', color: '#6ee7b7'}}>{profileData.businessName}</div>
@@ -284,44 +245,50 @@ export default function Dashboard({ user, onLogout }) {
                 </div>
                 
                 <div style={styles.scrollableCards}>
-                  {orders.map(order => {
-                    const isSelected = selectedOrder?.id === order.id;
-                    return (
-                      <div 
-                        key={order.id} 
-                        style={{
-                          ...styles.orderSummaryCard, 
-                          borderColor: isSelected ? '#10b981' : '#cbd5e1'
-                        }}
-                        onClick={() => setSelectedOrder(order)}
-                      >
-                        <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '8px'}}>
-                          <div>
-                            <strong style={{fontSize: '16px', color: '#0f172a'}}>{order.customer}</strong>
-                            <div style={{fontSize: '12px', color: '#64748b'}}>{order.id}</div>
-                          </div>
-                          <span style={styles.statusBadgeSmall(order.status)}>{order.status}</span>
-                        </div>
-
-                        <div style={{fontSize: '12px', color: '#64748b', marginBottom: '12px'}}>
-                          🛵 {order.type} · 🟢 {order.channel} · 🕒 {order.time}
-                        </div>
-
-                        <div style={{fontSize: '14px', color: '#334155', borderTop: '1px solid #f1f5f9', paddingTop: '10px', marginBottom: '10px'}}>
-                          {order.items.map((it, idx) => (
-                            <div key={idx} style={{marginBottom: '4px', fontWeight: '500'}}>
-                              {it.qty} × {it.name}
+                  {loadingOrders ? (
+                    <div style={{padding: '20px', textAlign: 'center'}}>Loading database orders...</div>
+                  ) : orders.length === 0 ? (
+                    <div style={{padding: '20px', textAlign: 'center', color: '#64748b'}}>No orders found in database.</div>
+                  ) : (
+                    orders.map(order => {
+                      const isSelected = selectedOrder?.id === order.id;
+                      return (
+                        <div 
+                          key={order.id} 
+                          style={{
+                            ...styles.orderSummaryCard, 
+                            borderColor: isSelected ? '#10b981' : '#cbd5e1'
+                          }}
+                          onClick={() => setSelectedOrder(order)}
+                        >
+                          <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '8px'}}>
+                            <div>
+                              <strong style={{fontSize: '16px', color: '#0f172a'}}>{order.customer}</strong>
+                              <div style={{fontSize: '12px', color: '#64748b'}}>{order.id}</div>
                             </div>
-                          ))}
-                        </div>
+                            <span style={styles.statusBadgeSmall(order.status)}>{order.status}</span>
+                          </div>
 
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '700', fontSize: '16px', borderTop: '1px solid #f1f5f9', paddingTop: '10px'}}>
-                          <span>₹{order.total.toFixed(2)}</span>
-                          <span style={{color: '#10b981', fontSize: '18px'}}>›</span>
+                          <div style={{fontSize: '12px', color: '#64748b', marginBottom: '12px'}}>
+                            🛵 {order.type} · 🟢 {order.channel} · 🕒 {order.time}
+                          </div>
+
+                          <div style={{fontSize: '14px', color: '#334155', borderTop: '1px solid #f1f5f9', paddingTop: '10px', marginBottom: '10px'}}>
+                            {order.items.map((it, idx) => (
+                              <div key={idx} style={{marginBottom: '4px', fontWeight: '500'}}>
+                                {it.qty} × {it.name}
+                              </div>
+                            ))}
+                          </div>
+
+                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '700', fontSize: '16px', borderTop: '1px solid #f1f5f9', paddingTop: '10px'}}>
+                            <span>₹{order.total.toFixed(2)}</span>
+                            <span style={{color: '#10b981', fontSize: '18px'}}>›</span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </div>
 

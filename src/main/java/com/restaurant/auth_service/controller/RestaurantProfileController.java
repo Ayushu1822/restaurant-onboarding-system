@@ -22,6 +22,7 @@ public class RestaurantProfileController {
     @Autowired
     private UserRepository userRepository;
 
+    // Fetch profile dynamically by logged-in user's email
     @GetMapping("/email/{email}")
     public ResponseEntity<?> getProfileByEmail(@PathVariable String email) {
         try {
@@ -33,7 +34,7 @@ public class RestaurantProfileController {
                         .map(ResponseEntity::ok)
                         .orElse(ResponseEntity.notFound().build());
             }
-            // Fallback: Return the first available profile if exact email match isn't linked
+            // Fallback to first record if email mapping doesn't match directly
             return profileRepository.findAll().stream()
                     .findFirst()
                     .map(ResponseEntity::ok)
@@ -43,15 +44,24 @@ public class RestaurantProfileController {
         }
     }
 
+    // Permanently save profile updates
     @PutMapping("/{restaurantId}")
     public ResponseEntity<?> updateProfile(@PathVariable String restaurantId, @RequestBody RestaurantProfile updatedData) {
         try {
             UUID id = UUID.fromString(restaurantId);
             return profileRepository.findById(id).map(profile -> {
-                profile.setBusinessName(updatedData.getBusinessName());
-                profile.setOwnerName(updatedData.getOwnerName());
-                profile.setPhoneNumber(updatedData.getPhoneNumber());
-                profile.setWhatsappNumber(updatedData.getWhatsappNumber());
+                if (updatedData.getBusinessName() != null) {
+                    profile.setBusinessName(updatedData.getBusinessName());
+                }
+                if (updatedData.getOwnerName() != null) {
+                    profile.setOwnerName(updatedData.getOwnerName());
+                }
+                if (updatedData.getPhoneNumber() != null) {
+                    profile.setPhoneNumber(updatedData.getPhoneNumber());
+                }
+                if (updatedData.getWhatsappNumber() != null) {
+                    profile.setWhatsappNumber(updatedData.getWhatsappNumber());
+                }
                 
                 RestaurantProfile saved = profileRepository.save(profile);
                 return ResponseEntity.ok(saved);
