@@ -22,7 +22,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // CRITICAL: Allow preflight OPTIONS requests
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Allow browser preflight checks
                 .requestMatchers("/api/v1/auth/**", "/api/v1/orders/**", "/api/v1/restaurants/**").permitAll()
                 .anyRequest().authenticated()
             );
