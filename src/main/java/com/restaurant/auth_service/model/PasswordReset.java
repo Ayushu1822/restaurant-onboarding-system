@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "password_resets")
+@Table(name = "pg_password_resets")
 public class PasswordReset {
 
     @Id

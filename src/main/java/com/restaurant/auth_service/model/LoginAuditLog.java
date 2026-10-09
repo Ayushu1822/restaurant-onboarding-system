@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "login_audit_logs")
+@Table(name = "pg_login_audit_logs")
 public class LoginAuditLog {
 
     @Id

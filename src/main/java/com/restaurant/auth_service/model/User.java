@@ -3,7 +3,7 @@ package com.restaurant.auth_service.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "users")
+@Table(name = "pg_users")
 public class User {
 
     @Id

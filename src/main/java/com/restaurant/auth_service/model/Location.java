@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "locations")
+@Table(name = "pg_locations")
 public class Location {
 
     @Id

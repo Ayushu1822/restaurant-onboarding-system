@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "order_items")
+@Table(name = "pg_order_items")
 public class OrderItem {
 
     @Id
