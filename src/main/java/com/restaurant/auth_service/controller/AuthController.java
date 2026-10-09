@@ -6,11 +6,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = {"https://restaurant-system-sand-gamma.vercel.app", "http://localhost:3000", "http://localhost:5173"}, allowCredentials = "true")
 public class AuthController {
 
     @Autowired
@@ -20,9 +21,16 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody Map<String, Object> request) {
         try {
             User newUser = authService.registerUser(request);
-            return ResponseEntity.ok(Map.of("message", "Registration successful! Please sign in.", "userId", newUser.getUserId()));
+            Map<String, Object> body = new HashMap<>();
+            body.put("message", "Registration successful! Please sign in.");
+            body.put("userId", newUser.getUserId());
+            return ResponseEntity.ok(body);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            e.printStackTrace();
+            String msg = e.getMessage() != null ? e.getMessage() : "Registration failed";
+            Map<String, Object> body = new HashMap<>();
+            body.put("message", msg);
+            return ResponseEntity.badRequest().body(body);
         }
     }
 
@@ -35,7 +43,10 @@ public class AuthController {
             Map<String, Object> response = authService.loginUser(email, password);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.status(401).body(Map.of("message", "Invalid email or password"));
+            e.printStackTrace();
+            Map<String, Object> body = new HashMap<>();
+            body.put("message", "Invalid email or password");
+            return ResponseEntity.status(401).body(body);
         }
     }
 }
