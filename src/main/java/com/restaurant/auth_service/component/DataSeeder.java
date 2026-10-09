@@ -46,7 +46,7 @@ public class DataSeeder implements CommandLineRunner {
                 return userRepository.save(newUser);
             });
 
-            // 2. Ensure Restaurant Profile exists
+            // 2. Ensure Restaurant Profile exists (using UUID lookup matching repository)
             profileRepository.findById(FIXED_RESTAURANT_ID).orElseGet(() -> {
                 RestaurantProfile newProfile = new RestaurantProfile();
                 newProfile.setRestaurantId(FIXED_RESTAURANT_ID.toString());
@@ -99,7 +99,7 @@ public class DataSeeder implements CommandLineRunner {
                 System.out.println("✅ Successfully saved all 10 orders using saveAll!");
             }
         } catch (Exception e) {
-            System.err.println("⚠️ Seeder caught exception but allowed app to start: " + e.getMessage());
+            System.err.println("⚠️ Seeder caught exception safely without crashing app: " + e.getMessage());
         }
     }
 
