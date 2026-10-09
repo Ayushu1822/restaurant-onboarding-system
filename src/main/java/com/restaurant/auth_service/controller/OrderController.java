@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -22,24 +21,12 @@ public class OrderController {
     public ResponseEntity<List<Order>> getAllOrders() {
         try {
             List<Order> orders = orderRepository.findAll();
+            System.out.println("ORDERS FOUND IN DB: " + (orders != null ? orders.size() : "null"));
             return ResponseEntity.ok(orders != null ? orders : Collections.emptyList());
         } catch (Exception e) {
             System.err.println("Error fetching orders: " + e.getMessage());
-            return ResponseEntity.ok(Collections.emptyList()); // Returns [] safely instead of 500 crash
-        }
-    }
-
-    @PutMapping("/{orderId}/status")
-    public ResponseEntity<?> updateOrderStatus(@PathVariable UUID orderId, @RequestParam String status) {
-        try {
-            return orderRepository.findById(orderId).map(order -> {
-                order.setStatus(status);
-                orderRepository.save(order);
-                return ResponseEntity.ok(order);
-            }).orElse(ResponseEntity.notFound().build());
-        } catch (Exception e) {
-            System.err.println("Error updating order status: " + e.getMessage());
-            return ResponseEntity.status(500).body("Error updating status: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.ok(Collections.emptyList());
         }
     }
 }

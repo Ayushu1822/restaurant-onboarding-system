@@ -11,50 +11,43 @@ import java.util.UUID;
 public class Order {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "order_id")
     private UUID orderId;
 
-    @Column(name = "restaurant_id")
-    private UUID restaurantId;
-
-    @Column(name = "display_id", nullable = false)
+    @Column(name = "display_id")
     private String displayId;
 
-    @Column(name = "customer_name", nullable = false)
+    @Column(name = "customer_name")
     private String customerName;
 
-    @Column(name = "customer_phone", nullable = false)
+    @Column(name = "customer_phone")
     private String customerPhone;
 
     @Column(name = "delivery_address")
     private String deliveryAddress;
 
-    @Column(nullable = false)
     private String channel;
 
-    @Column(name = "order_type", nullable = false)
+    @Column(name = "order_type")
     private String orderType;
 
-    @Column(nullable = false)
     private String status;
 
-    @Column(nullable = false)
     private BigDecimal subtotal;
 
     @Column(name = "discount_amount")
-    private BigDecimal discountAmount = BigDecimal.ZERO;
+    private BigDecimal discountAmount;
 
     @Column(name = "promo_code")
     private String promoCode;
 
     @Column(name = "gst_amount")
-    private BigDecimal gstAmount = BigDecimal.ZERO;
+    private BigDecimal gstAmount;
 
     @Column(name = "delivery_charge")
-    private BigDecimal deliveryCharge = BigDecimal.ZERO;
+    private BigDecimal deliveryCharge;
 
-    @Column(name = "total_amount", nullable = false)
+    @Column(name = "total_amount")
     private BigDecimal totalAmount;
 
     @Column(name = "payment_method")
@@ -66,17 +59,12 @@ public class Order {
     @Column(name = "customer_request")
     private String customerRequest;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt = LocalDateTime.now();
-
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<OrderItem> items;
 
     // Getters and Setters
     public UUID getOrderId() { return orderId; }
     public void setOrderId(UUID orderId) { this.orderId = orderId; }
-    public UUID getRestaurantId() { return restaurantId; }
-    public void setRestaurantId(UUID restaurantId) { this.restaurantId = restaurantId; }
     public String getDisplayId() { return displayId; }
     public void setDisplayId(String displayId) { this.displayId = displayId; }
     public String getCustomerName() { return customerName; }
@@ -100,7 +88,6 @@ public class Order {
     public BigDecimal getGstAmount() { return gstAmount; }
     public void setGstAmount(BigDecimal gstAmount) { this.gstAmount = gstAmount; }
     public BigDecimal getDeliveryCharge() { return deliveryCharge; }
-    public void setDeliveryCharge(String deliveryCharge) { this.deliveryCharge = deliveryCharge != null ? new BigDecimal(deliveryCharge) : BigDecimal.ZERO; }
     public void setDeliveryCharge(BigDecimal deliveryCharge) { this.deliveryCharge = deliveryCharge; }
     public BigDecimal getTotalAmount() { return totalAmount; }
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
@@ -110,8 +97,7 @@ public class Order {
     public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
     public String getCustomerRequest() { return customerRequest; }
     public void setCustomerRequest(String customerRequest) { this.customerRequest = customerRequest; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public List<OrderItem> getItemlist() { return items; }
     public List<OrderItem> getItems() { return items; }
     public void setItems(List<OrderItem> items) { this.items = items; }
 }
