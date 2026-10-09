@@ -2,19 +2,17 @@ package com.restaurant.auth_service.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "pg_addresses")
 public class Address {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "address_id")
-    private UUID addressId;
+    private String addressId;
 
     @Column(name = "restaurant_id", nullable = false)
-    private UUID restaurantId;
+    private String restaurantId;
 
     @Column(name = "address_line_1", nullable = false, columnDefinition = "TEXT")
     private String addressLine1;
@@ -30,15 +28,15 @@ public class Address {
     @Column(nullable = false)
     private String state;
 
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
     // Getters and Setters
-    public UUID getAddressId() { return addressId; }
-    public void setAddressId(UUID addressId) { this.addressId = addressId; }
+    public String getAddressId() { return addressId; }
+    public void setAddressId(String addressId) { this.addressId = addressId; }
 
-    public UUID getRestaurantId() { return restaurantId; }
-    public void setRestaurantId(UUID restaurantId) { this.restaurantId = restaurantId; }
+    public String getRestaurantId() { return restaurantId; }
+    public void setRestaurantId(String restaurantId) { this.restaurantId = restaurantId; }
 
     public String getAddressLine1() { return addressLine1; }
     public void setAddressLine1(String addressLine1) { this.addressLine1 = addressLine1; }
