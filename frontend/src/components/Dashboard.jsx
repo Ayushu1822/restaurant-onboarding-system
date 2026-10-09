@@ -3,13 +3,13 @@ import React, { useState, useEffect } from 'react';
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 const RESTAURANT_ID = 'ae41c831-372b-4f56-8905-f67a93b8045b';
 
-const FULL_DUMMY_ORDERS = [
+const FALLBACK_ORDERS = [
   {
     id: '#KO01/000001',
     orderId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-    customer: 'Priya Sharma',
+    customer: 'Rahul Sharma',
     time: '2m ago',
-    status: 'Picked Up',
+    status: 'New',
     type: 'Delivery',
     channel: 'WhatsApp',
     duration: '15 min',
@@ -17,17 +17,17 @@ const FULL_DUMMY_ORDERS = [
       { name: 'Chicken Drumsticks', qty: 2, price: 398.00, desc: 'Spicy · Serves 1', modifiers: [] },
       { name: 'Sprite', qty: 2, price: 120.00, desc: '', modifiers: [] }
     ],
-    address: '12, MG Road, Bengaluru · 1.2 km',
+    address: '12, MG Road · 1.2 km',
     phone: '9876543210',
-    customerRequest: 'Customer is allergic to peanuts.',
-    subtotal: 518.00,
-    promoCode: 'WELCOME10',
-    discount: 51.80,
-    gst: 25.90,
+    customerRequest: 'Make it spicy please.',
+    subtotal: 500.00,
+    promoCode: '',
+    discount: 0.00,
+    gst: 25.00,
     deliveryCharge: 15.00,
-    total: 507.10,
+    total: 540.00,
     paymentMethod: 'UPI',
-    paymentStatus: 'PAID'
+    paymentStatus: 'PENDING'
   }
 ];
 
@@ -38,17 +38,17 @@ export default function Dashboard({ onLogout }) {
   const [hoveredTab, setHoveredTab] = useState(null);
   
   const [profileData, setProfileData] = useState({
-    businessName: 'Loading...',
-    ownerName: 'Loading...',
+    businessName: 'NewWorld',
+    ownerName: 'Ayush',
     email: 'novio@gmail.com',
-    phone: '',
-    whatsappNumber: ''
+    phone: '8218579235',
+    whatsappNumber: '8218579235'
   });
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState(profileData);
 
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState(FALLBACK_ORDERS);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
   // Fetch real profile data from database
@@ -68,7 +68,7 @@ export default function Dashboard({ onLogout }) {
           setEditForm(fetched);
         }
       })
-      .catch(err => console.error("Error fetching profile:", err));
+      .catch(err => console.error("Error fetching profile, using default:", err));
   }, []);
 
   // Fetch orders and items from backend
@@ -81,7 +81,7 @@ export default function Dashboard({ onLogout }) {
       .then(data => {
         let orderList = Array.isArray(data) ? data : [];
         if (orderList.length === 0) {
-          orderList = FULL_DUMMY_ORDERS;
+          orderList = FALLBACK_ORDERS;
         }
 
         const formattedOrders = orderList.map((o, index) => ({
@@ -114,12 +114,12 @@ export default function Dashboard({ onLogout }) {
         }));
 
         setOrders(formattedOrders);
-        if (formattedOrders.length > 0) setSelectedOrder(formattedOrders[0]);
+        setSelectedOrder(formattedOrders[0]);
         setLoadingOrders(false);
       })
       .catch(() => {
-        setOrders(FULL_DUMMY_ORDERS);
-        setSelectedOrder(FULL_DUMMY_ORDERS[0]);
+        setOrders(FALLBACK_ORDERS);
+        setSelectedOrder(FALLBACK_ORDERS[0]);
         setLoadingOrders(false);
       });
   }, []);
@@ -201,7 +201,7 @@ export default function Dashboard({ onLogout }) {
         </ul>
 
         <div style={styles.userInfo} onClick={() => { setShowProfileModal(true); setIsEditingProfile(false); }}>
-          <div style={styles.userAvatar}>{profileData.ownerName ? profileData.ownerName.substring(0, 2).toUpperCase() : 'AD'}</div>
+          <div style={styles.userAvatar}>{profileData.ownerName ? profileData.ownerName.substring(0, 2).toUpperCase() : 'AY'}</div>
           <div style={{flex: 1, overflow: 'hidden', textAlign: 'left'}}>
             <div style={{fontSize: '13px', fontWeight: 'bold', color: '#fff'}}>{profileData.ownerName}</div>
             <div style={{fontSize: '11px', color: '#6ee7b7'}}>{profileData.businessName}</div>
@@ -245,48 +245,44 @@ export default function Dashboard({ onLogout }) {
                 </div>
                 
                 <div style={styles.scrollableCards}>
-                  {loadingOrders ? (
-                    <div style={{padding: '20px', textAlign: 'center'}}>Loading orders...</div>
-                  ) : (
-                    orders.map(order => {
-                      const isSelected = selectedOrder?.id === order.id;
-                      return (
-                        <div 
-                          key={order.id} 
-                          style={{
-                            ...styles.orderSummaryCard, 
-                            borderColor: isSelected ? '#10b981' : '#cbd5e1'
-                          }}
-                          onClick={() => setSelectedOrder(order)}
-                        >
-                          <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '8px'}}>
-                            <div>
-                              <strong style={{fontSize: '16px', color: '#0f172a'}}>{order.customer}</strong>
-                              <div style={{fontSize: '12px', color: '#64748b'}}>{order.id}</div>
-                            </div>
-                            <span style={styles.statusBadgeSmall(order.status)}>{order.status}</span>
+                  {orders.map(order => {
+                    const isSelected = selectedOrder?.id === order.id;
+                    return (
+                      <div 
+                        key={order.id} 
+                        style={{
+                          ...styles.orderSummaryCard, 
+                          borderColor: isSelected ? '#10b981' : '#cbd5e1'
+                        }}
+                        onClick={() => setSelectedOrder(order)}
+                      >
+                        <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '8px'}}>
+                          <div>
+                            <strong style={{fontSize: '16px', color: '#0f172a'}}>{order.customer}</strong>
+                            <div style={{fontSize: '12px', color: '#64748b'}}>{order.id}</div>
                           </div>
-
-                          <div style={{fontSize: '12px', color: '#64748b', marginBottom: '12px'}}>
-                            🛵 {order.type} · 🟢 {order.channel} · 🕒 {order.time}
-                          </div>
-
-                          <div style={{fontSize: '14px', color: '#334155', borderTop: '1px solid #f1f5f9', paddingTop: '10px', marginBottom: '10px'}}>
-                            {order.items.map((it, idx) => (
-                              <div key={idx} style={{marginBottom: '4px', fontWeight: '500'}}>
-                                {it.qty} × {it.name}
-                              </div>
-                            ))}
-                          </div>
-
-                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '700', fontSize: '16px', borderTop: '1px solid #f1f5f9', paddingTop: '10px'}}>
-                            <span>₹{order.total.toFixed(2)}</span>
-                            <span style={{color: '#10b981', fontSize: '18px'}}>›</span>
-                          </div>
+                          <span style={styles.statusBadgeSmall(order.status)}>{order.status}</span>
                         </div>
-                      );
-                    })
-                  )}
+
+                        <div style={{fontSize: '12px', color: '#64748b', marginBottom: '12px'}}>
+                          🛵 {order.type} · 🟢 {order.channel} · 🕒 {order.time}
+                        </div>
+
+                        <div style={{fontSize: '14px', color: '#334155', borderTop: '1px solid #f1f5f9', paddingTop: '10px', marginBottom: '10px'}}>
+                          {order.items.map((it, idx) => (
+                            <div key={idx} style={{marginBottom: '4px', fontWeight: '500'}}>
+                              {it.qty} × {it.name}
+                            </div>
+                          ))}
+                        </div>
+
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '700', fontSize: '16px', borderTop: '1px solid #f1f5f9', paddingTop: '10px'}}>
+                          <span>₹{order.total.toFixed(2)}</span>
+                          <span style={{color: '#10b981', fontSize: '18px'}}>›</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
