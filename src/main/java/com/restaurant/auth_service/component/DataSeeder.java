@@ -27,7 +27,8 @@ public class DataSeeder implements CommandLineRunner {
     @Autowired
     private UserRepository userRepository;
 
-    private final String FIXED_RESTAURANT_ID_STR = "ae41c831-372b-4f56-8905-f67a93b8045b";
+    // Defined strictly as String to match RestaurantProfile entity setters
+    private final String FIXED_RESTAURANT_ID = "ae41c831-372b-4f56-8905-f67a93b8045b";
     private final String ADMIN_EMAIL = "novio@gmail.com";
 
     @Override
@@ -44,18 +45,21 @@ public class DataSeeder implements CommandLineRunner {
                 return userRepository.save(newUser);
             });
 
-            // 2. Ensure Restaurant Profile exists (using String ID lookup safely)
-            boolean profileExists = profileRepository.existsById(FIXED_RESTAURANT_ID_STR);
-            if (!profileExists) {
-                RestaurantProfile newProfile = new RestaurantProfile();
-                newProfile.setRestaurantId(FIXED_RESTAURANT_ID_STR);
-                newProfile.setUserId(user.getUserId());
-                newProfile.setBusinessName("NewWorld Restaurant");
-                newProfile.setOwnerName("Ayush");
-                newProfile.setPhoneNumber("8218579235");
-                newProfile.setWhatsappNumber("8218579235");
-                profileRepository.save(newProfile);
-                System.out.println("✅ Restaurant profile created successfully.");
+            // 2. Ensure Restaurant Profile exists (Safely handled via count or find)
+            if (profileRepository.count() == 0 || profileRepository.findById(UUID.fromString(FIXED_RESTAURANT_ID)).isEmpty()) {
+                try {
+                    RestaurantProfile newProfile = new RestaurantProfile();
+                    newProfile.setRestaurantId(FIXED_RESTAURANT_ID); // String argument matches model
+                    newProfile.setUserId(user.getUserId());
+                    newProfile.setBusinessName("NewWorld Restaurant");
+                    newProfile.setOwnerName("Ayush");
+                    newProfile.setPhoneNumber("8218579235");
+                    newProfile.setWhatsappNumber("8218579235");
+                    profileRepository.save(newProfile);
+                    System.out.println("✅ Restaurant profile created successfully.");
+                } catch (Exception profileEx) {
+                    System.out.println("ℹ️ Restaurant profile already exists or skipped: " + profileEx.getMessage());
+                }
             }
 
             long existingCount = orderRepository.count();
@@ -107,7 +111,7 @@ public class DataSeeder implements CommandLineRunner {
                               String channel, String type, String status, String subtotal, String total, List<OrderItem> items) {
         Order order = new Order();
         order.setOrderId(UUID.fromString(uuidStr));
-        order.setRestaurantId(FIXED_RESTAURANT_ID_STR);
+        order.setRestaurantId(FIXED_RESTAURANT_ID);
         order.setDisplayId(displayId);
         order.setCustomerName(customerName);
         order.setCustomerPhone(phone);
