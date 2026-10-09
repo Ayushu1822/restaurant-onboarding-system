@@ -40,11 +40,11 @@ export default function LoginScreen({ onLoginSuccess }) {
     setFormData({ ...formData, [name]: value });
   };
 
-  // Login Handler
+  // Login Handler (Cleaned up so it doesn't duplicate loading text)
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setMessage('Signing in...');
+    setMessage('');
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
@@ -58,7 +58,6 @@ export default function LoginScreen({ onLoginSuccess }) {
         localStorage.setItem('auth_token', data.token);
         localStorage.setItem('user_email', loginEmail);
         onLoginSuccess();
-        setMessage('');
       } else {
         setMessage(data.message || 'Invalid credentials or account locked.');
       }
@@ -73,7 +72,7 @@ export default function LoginScreen({ onLoginSuccess }) {
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setMessage('Processing reset request...');
+    setMessage('');
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/auth/forgot-password`, {
@@ -100,7 +99,7 @@ export default function LoginScreen({ onLoginSuccess }) {
   const handleRegister = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setMessage('Registering restaurant...');
+    setMessage('');
 
     if (formData.password.length < 8) {
       setMessage('Password must be at least 8 characters long.');

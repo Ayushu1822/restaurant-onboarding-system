@@ -47,7 +47,6 @@ export default function Dashboard({ user, onLogout }) {
   const [orders, setOrders] = useState(HYBRID_DUMMY_ORDERS);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
-  // Fetch profile specifically tied to logged-in email and capture correct database ID
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/restaurants/email/${loggedInEmail}`)
       .then(res => {
@@ -78,7 +77,6 @@ export default function Dashboard({ user, onLogout }) {
       });
   }, [loggedInEmail]);
 
-  // Fetch database orders with hybrid fallback
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/orders`, {
       method: 'GET',
@@ -205,7 +203,6 @@ export default function Dashboard({ user, onLogout }) {
 
   return (
     <div style={styles.container}>
-      {/* SIDEBAR (Stays permanently locked on screen) */}
       <div style={styles.sidebar}>
         <div style={styles.brandBox}>
           <span style={styles.logoIcon}>🛡️</span>
@@ -258,7 +255,6 @@ export default function Dashboard({ user, onLogout }) {
         </div>
       </div>
 
-      {/* MAIN CONTENT VIEWPORT */}
       <div style={styles.mainContent}>
         <div style={styles.header}>
           <h2 style={styles.pageTitle}>{activeTab}</h2>
@@ -291,10 +287,7 @@ export default function Dashboard({ user, onLogout }) {
               </span>
             </div>
 
-            {/* INDEPENDENTLY SCROLLABLE SPLIT VIEW */}
             <div style={styles.splitViewWrapper}>
-              
-              {/* LEFT LIST */}
               <div style={styles.masterListColumn}>
                 <div style={styles.listHeaderTopRow}>
                   <span style={styles.listHeaderTitle}>All orders ({orders.length})</span>
@@ -348,7 +341,6 @@ export default function Dashboard({ user, onLogout }) {
                 </div>
               </div>
 
-              {/* RIGHT DETAILS */}
               <div style={styles.detailPanelColumn}>
                 <div style={styles.listHeaderTitle}>Order details</div>
 
@@ -416,13 +408,11 @@ export default function Dashboard({ user, onLogout }) {
                   <div style={styles.emptyDetailPrompt}>Select an order from the list.</div>
                 )}
               </div>
-
             </div>
           </div>
         )}
       </div>
 
-      {/* PROFILE MODAL */}
       {showProfileModal && (
         <div style={styles.drawerOverlay} onClick={() => setShowProfileModal(false)}>
           <div style={styles.profileModal} onClick={(e) => e.stopPropagation()}>
