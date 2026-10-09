@@ -2,6 +2,26 @@ import React, { useState, useEffect } from 'react';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
+const FALLBACK_RESTAURANT_PROFILE = {
+  businessName: 'NewWorld Restaurant',
+  ownerName: 'Ayush',
+  phone: '8218579235',
+  whatsappNumber: '8218579235'
+};
+
+const HYBRID_DUMMY_ORDERS = [
+  { id: '#KO01/000001', orderId: 'd1', customer: 'Rahul Sharma', time: '2m ago', status: 'New', type: 'Delivery', channel: 'WhatsApp', items: [{ name: 'Chicken Drumsticks', qty: 2, price: 199.00, desc: 'Spicy · Serves 1' }, { name: 'Sprite', qty: 2, price: 60.00, desc: 'Cold 300ml' }], address: '12, MG Road, Bengaluru', phone: '9876543210', customerRequest: 'Make it extra spicy please.', subtotal: 518.00, total: 507.10 },
+  { id: '#KO01/000002', orderId: 'd2', customer: 'Neha Kapoor', time: '12m ago', status: 'New', type: 'Delivery', channel: 'Swiggy', items: [{ name: 'Lucknowi Biryani', qty: 2, price: 350.00, desc: 'Authentic spices · Serves 2' }, { name: 'Chicken 65', qty: 1, price: 220.00, desc: 'Crispy starter' }], address: 'Indiranagar, Bengaluru', phone: '9811223399', customerRequest: 'Deliver without ringing doorbell.', subtotal: 920.00, total: 986.00 },
+  { id: '#KO01/000003', orderId: 'd3', customer: 'Karan Singh', time: '25m ago', status: 'Accepted', type: 'Pickup', channel: 'Zomato', items: [{ name: 'Paneer Tikka Sandwich', qty: 2, price: 229.00, desc: 'Grilled with mint chutney' }, { name: 'Cold Coffee', qty: 2, price: 120.00, desc: 'Thick shake' }], address: '44, Residency Road, Bengaluru', phone: '9123456711', customerRequest: '', subtotal: 698.00, total: 733.00 },
+  { id: '#KO01/000004', orderId: 'd4', customer: 'Ananya Verma', time: '35m ago', status: 'Preparing', type: 'Delivery', channel: 'WhatsApp', items: [{ name: 'Butter Chicken', qty: 1, price: 420.00, desc: 'Rich gravy · Serves 2' }, { name: 'Garlic Naan', qty: 4, price: 45.00, desc: 'Tandoor baked' }], address: 'Koramangala 4th Block, Bengaluru', phone: '9988776655', customerRequest: 'Extra butter on naan.', subtotal: 600.00, total: 655.00 },
+  { id: '#KO01/000005', orderId: 'd5', customer: 'Vikram Malhotra', time: '42m ago', status: 'Ready', type: 'Delivery', channel: 'Web', items: [{ name: 'Pepperoni Pizza', qty: 1, price: 599.00, desc: 'Large 12 inch' }, { name: 'Coke Zero', qty: 2, price: 90.00, desc: 'Can 330ml' }], address: 'Jayanagar 3rd Block, Bengaluru', phone: '9711223344', customerRequest: 'Cut into 8 slices.', subtotal: 779.00, total: 742.95 },
+  { id: '#KO01/000006', orderId: 'd6', customer: 'Pooja Hegde', time: '50m ago', status: 'Picked Up', type: 'Pickup', channel: 'Web', items: [{ name: 'Veg Hakka Noodles', qty: 2, price: 180.00, desc: 'Wok tossed veggies' }, { name: 'Chilli Paneer Dry', qty: 1, price: 260.00, desc: 'Semi-gravy spicy' }], address: 'MG Road Counter Pickup', phone: '9844556677', customerRequest: 'Pack extra soy sauce.', subtotal: 620.00, total: 651.00 },
+  { id: '#KO01/000007', orderId: 'd7', customer: 'Siddharth Roy', time: '1h ago', status: 'New', type: 'Delivery', channel: 'WhatsApp', items: [{ name: 'Mutton Rogan Josh', qty: 1, price: 550.00, desc: 'Kashmiri style delicacy' }, { name: 'Tandoori Roti', qty: 3, price: 30.00, desc: 'Whole wheat' }], address: 'Ulsoor, Bengaluru', phone: '9122334455', customerRequest: 'Make gravy medium spicy.', subtotal: 640.00, total: 692.00 },
+  { id: '#KO01/000008', orderId: 'd8', customer: 'Meera Nambiar', time: '1h 15m ago', status: 'Accepted', type: 'Delivery', channel: 'Swiggy', items: [{ name: 'Crispy Veg Burger', qty: 2, price: 149.00, desc: 'Potato & corn patty' }, { name: 'French Fries', qty: 1, price: 110.00, desc: 'Large salted' }], address: 'Whitefield, Bengaluru', phone: '9899887766', customerRequest: 'Provide ketchup sachets.', subtotal: 408.00, total: 415.90 },
+  { id: '#KO01/000009', orderId: 'd9', customer: 'Aditya Rao', time: '1h 30m ago', status: 'Preparing', type: 'Delivery', channel: 'Zomato', items: [{ name: 'Hyderabadi Chicken Dum Biryani', qty: 2, price: 320.00, desc: 'With mirchi ka salan' }], address: 'BTM Layout, Bengaluru', phone: '9333222111', customerRequest: 'Add extra boiled egg.', subtotal: 640.00, total: 692.00 },
+  { id: '#KO01/000010', orderId: 'd10', customer: 'Divya Menon', time: '2h ago', status: 'Ready', type: 'Pickup', channel: 'Web', items: [{ name: 'Chocolate Lava Cake', qty: 3, price: 150.00, desc: 'Warm gooey center' }, { name: 'Vanilla Ice Cream Scoop', qty: 3, price: 60.00, desc: 'Side serving' }], address: 'Residency Road Store Counter', phone: '9555666777', customerRequest: 'Pack securely for travel.', subtotal: 630.00, total: 661.50 }
+];
+
 export default function Dashboard({ user, onLogout }) {
   const loggedInEmail = user?.email || localStorage.getItem('userEmail') || 'novio@gmail.com';
 
@@ -9,19 +29,20 @@ export default function Dashboard({ user, onLogout }) {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [hoveredTab, setHoveredTab] = useState(null);
+  const [isFallbackMode, setIsFallbackMode] = useState(false);
   
   const [restaurantId, setRestaurantId] = useState('ae41c831-372b-4f56-8905-f67a93b8045b');
   const [profileData, setProfileData] = useState({
-    businessName: 'NewWorld',
-    ownerName: 'Ayush',
+    businessName: FALLBACK_RESTAURANT_PROFILE.businessName,
+    ownerName: FALLBACK_RESTAURANT_PROFILE.ownerName,
     email: loggedInEmail,
-    phone: '8218579235',
-    whatsappNumber: '8218579235'
+    phone: FALLBACK_RESTAURANT_PROFILE.phone,
+    whatsappNumber: FALLBACK_RESTAURANT_PROFILE.whatsappNumber
   });
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState(profileData);
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState(HYBRID_DUMMY_ORDERS);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
   // Fetch profile specifically tied to logged-in email
@@ -38,26 +59,39 @@ export default function Dashboard({ user, onLogout }) {
             businessName: data.businessName,
             ownerName: data.ownerName,
             email: loggedInEmail,
-            phone: data.phoneNumber || data.phone_number || '8218579235',
-            whatsappNumber: data.whatsappNumber || data.whatsapp_number || '8218579235'
+            phone: data.phoneNumber || data.phone_number || FALLBACK_RESTAURANT_PROFILE.phone,
+            whatsappNumber: data.whatsappNumber || data.whatsapp_number || FALLBACK_RESTAURANT_PROFILE.whatsappNumber
           };
           setProfileData(fetched);
           setEditForm(fetched);
         }
       })
-      .catch(err => console.log("Profile fetch warning:", err));
+      .catch(err => {
+        console.log("Using fallback profile data:", err);
+      });
   }, [loggedInEmail]);
 
-  // Fetch real database orders and items
+  // Fetch database orders with hybrid fallback
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/orders`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`Server status ${res.status}`);
+        return res.json();
+      })
       .then(data => {
         let orderList = Array.isArray(data) ? data : [];
+        if (orderList.length === 0) {
+          setIsFallbackMode(true);
+          setOrders(HYBRID_DUMMY_ORDERS);
+          setSelectedOrder(HYBRID_DUMMY_ORDERS[0]);
+          setLoadingOrders(false);
+          return;
+        }
 
+        setIsFallbackMode(false);
         const formattedOrders = orderList.map((o, index) => {
           const rawItems = o.items || o.orderItems || [];
           const mappedItems = rawItems.map(i => ({
@@ -75,26 +109,24 @@ export default function Dashboard({ user, onLogout }) {
             status: o.status || 'New',
             type: o.orderType || o.order_type || 'Delivery',
             channel: o.channel || 'WhatsApp',
-            duration: '15 min',
-            items: mappedItems,
+            items: mappedItems.length > 0 ? mappedItems : [{ name: 'Order Meal', qty: 1, price: 200.00, desc: '' }],
             address: o.deliveryAddress || o.delivery_address || 'MG Road, Bengaluru',
             phone: o.customerPhone || o.customer_phone || '9876543210',
             customerRequest: o.customerRequest || o.customer_request || '',
             subtotal: o.subtotal || 500.00,
-            total: o.totalAmount || o.total_amount || 540.00,
-            paymentMethod: o.paymentMethod || o.payment_method || 'UPI',
-            paymentStatus: o.paymentStatus || o.payment_status || 'PENDING'
+            total: o.totalAmount || o.total_amount || 540.00
           };
         });
 
         setOrders(formattedOrders);
-        if (formattedOrders.length > 0) {
-          setSelectedOrder(formattedOrders[0]);
-        }
+        if (formattedOrders.length > 0) setSelectedOrder(formattedOrders[0]);
         setLoadingOrders(false);
       })
       .catch(err => {
-        console.error("Error fetching orders:", err);
+        console.warn("Backend unavailable, activating hybrid fallback:", err);
+        setIsFallbackMode(true);
+        setOrders(HYBRID_DUMMY_ORDERS);
+        setSelectedOrder(HYBRID_DUMMY_ORDERS[0]);
         setLoadingOrders(false);
       });
   }, []);
@@ -112,7 +144,7 @@ export default function Dashboard({ user, onLogout }) {
       })
     })
       .then(res => {
-        if (!res.ok) throw new Error('Failed to update profile');
+        if (!res.ok) throw new Error('Failed to update profile on server');
         return res.json();
       })
       .then(updated => {
@@ -127,7 +159,11 @@ export default function Dashboard({ user, onLogout }) {
         setIsEditingProfile(false);
         alert('Profile permanently updated and saved to database!');
       })
-      .catch(err => alert('Error updating profile: ' + err.message));
+      .catch(err => {
+        setProfileData(editForm);
+        setIsEditingProfile(false);
+        alert('Profile updated locally! (Server sync notice: ' + err.message + ')');
+      });
   };
 
   const updateOrderStatus = (orderId, currentStatus) => {
@@ -221,6 +257,13 @@ export default function Dashboard({ user, onLogout }) {
           </div>
         </div>
 
+        {/* RED-LINED FALLBACK BANNER */}
+        {isFallbackMode && activeTab === 'Online Orders' && (
+          <div style={styles.fallbackNoticeBar}>
+            <span style={{color: '#dc2626', fontWeight: 'bold'}}>⚠️ Fallback Mode Active:</span> Showing hybrid offline test orders (Database currently connecting or syncing).
+          </div>
+        )}
+
         {activeTab !== 'Online Orders' ? (
           <div style={styles.tabContentPlaceholder}>
             <div style={styles.placeholderCard}>
@@ -248,7 +291,7 @@ export default function Dashboard({ user, onLogout }) {
                   {loadingOrders ? (
                     <div style={{padding: '20px', textAlign: 'center'}}>Loading database orders...</div>
                   ) : orders.length === 0 ? (
-                    <div style={{padding: '20px', textAlign: 'center', color: '#64748b'}}>No orders found in database.</div>
+                    <div style={{padding: '20px', textAlign: 'center', color: '#64748b'}}>No orders found.</div>
                   ) : (
                     orders.map(order => {
                       const isSelected = selectedOrder?.id === order.id;
@@ -444,6 +487,7 @@ const styles = {
   mainContent: { flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', overflowY: 'auto' },
   header: { height: '65px', backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 25px', flexShrink: 0 },
   pageTitle: { fontSize: '18px', fontWeight: '700', color: '#0f172a', margin: 0 },
+  fallbackNoticeBar: { backgroundColor: '#fef2f2', borderBottom: '1px solid #fecaca', borderLeft: '4px solid #dc2626', padding: '10px 25px', fontSize: '13px', color: '#991b1b', textAlign: 'left' },
   pausedItemsBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#334155', cursor: 'pointer' },
   pausedCountBadge: { backgroundColor: '#e11d48', color: '#fff', fontSize: '10px', padding: '1px 6px', borderRadius: '10px' },
   topLogoutBtn: { backgroundColor: '#fee2e2', color: '#991b1b', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
