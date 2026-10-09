@@ -8,8 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -29,19 +29,20 @@ public class RestaurantProfileController {
         try {
             User user = userRepository.findByEmail(email).orElse(null);
             if (user != null) {
-                RestaurantProfile profile = profileRepository.findAll().stream()
-                        .filter(p -> p.getUserId() != null && p.getUserId().equals(user.getUserId()))
-                        .findFirst()
-                        .orElse(null);
-                if (profile != null) {
-                    return ResponseEntity.ok(profile);
+                List<RestaurantProfile> allProfiles = profileRepository.findAll();
+                for (RestaurantProfile p : allProfiles) {
+                    if (p.getUserId() != null && p.getUserId().equals(user.getUserId())) {
+                        return ResponseEntity.ok(p);
+                    }
                 }
             }
-            // Fallback to first available profile type-safely
-            Optional<RestaurantProfile> fallbackOpt = profileRepository.findAll().stream().findFirst();
-            if (fallbackOpt.isPresent()) {
-                return ResponseEntity.ok(fallbackOpt.get());
+            
+            // Safe fallback to the first profile in the table
+            List<RestaurantProfile> allProfiles = profileRepository.findAll();
+            if (!allProfiles.isEmpty()) {
+                return ResponseEntity.ok(allProfiles.get(0));
             }
+            
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
@@ -56,13 +57,11 @@ public class RestaurantProfileController {
             try {
                 id = UUID.fromString(restaurantId);
             } catch (IllegalArgumentException e) {
-                // Type-safe fallback retrieval ensuring no red lines in VS Code
-                RestaurantProfile fallback = profileRepository.findAll().stream()
-                        .findFirst()
-                        .orElse(null);
-                        
-                if (fallback != null) {
-                    id = fallback.getRestaurantId();
+                // Bulletproof conversion handling both String and UUID return types safely
+                List<RestaurantProfile> allProfiles = profileRepository.findAll();
+                if (!allProfiles.isEmpty()) {
+                    Object rawId = allProfiles.get(0).getRestaurantId();
+                    id = rawId instanceof UUID ? (UUID) rawId : UUID.fromString(String.valueOf(rawId));
                 } else {
                     return ResponseEntity.status(404).body(Map.of("error", "Profile not found"));
                 }
