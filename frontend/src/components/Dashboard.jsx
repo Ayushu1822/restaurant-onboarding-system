@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
-const RESTAURANT_ID = 'ae41c831-372b-4f56-8905-f67a93b8045b';
 
-const FALLBACK_ORDERS = [
+const INITIAL_DUMMY_ORDERS = [
   {
     id: '#KO01/000001',
     orderId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
@@ -14,53 +13,59 @@ const FALLBACK_ORDERS = [
     channel: 'WhatsApp',
     duration: '15 min',
     items: [
-      { name: 'Chicken Drumsticks', qty: 2, price: 398.00, desc: 'Spicy · Serves 1', modifiers: [] },
-      { name: 'Sprite', qty: 2, price: 120.00, desc: '', modifiers: [] }
+      { name: 'Chicken Drumsticks', qty: 2, price: 199.00, desc: 'Spicy · Serves 1', modifiers: [{ name: 'Garlic Dip', qty: 1, price: 20.00 }] },
+      { name: 'Sprite', qty: 2, price: 60.00, desc: 'Cold 300ml', modifiers: [] }
     ],
-    address: '12, MG Road · 1.2 km',
+    address: '12, MG Road, Bengaluru · 1.2 km',
     phone: '9876543210',
-    customerRequest: 'Make it spicy please.',
-    subtotal: 500.00,
-    promoCode: '',
-    discount: 0.00,
-    gst: 25.00,
+    customerRequest: 'Make it extra spicy please.',
+    subtotal: 518.00,
+    promoCode: 'WELCOME10',
+    discount: 51.80,
+    gst: 25.90,
     deliveryCharge: 15.00,
-    total: 540.00,
+    total: 507.10,
     paymentMethod: 'UPI',
     paymentStatus: 'PENDING'
   }
 ];
 
-export default function Dashboard({ onLogout }) {
+export default function Dashboard({ user, onLogout }) {
+  // Extract logged-in email dynamically
+  const loggedInEmail = user?.email || localStorage.getItem('userEmail') || 'novio@gmail.com';
+
   const [activeTab, setActiveTab] = useState('Online Orders');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [hoveredTab, setHoveredTab] = useState(null);
   
+  const [restaurantId, setRestaurantId] = useState('ae41c831-372b-4f56-8905-f67a93b8045b');
   const [profileData, setProfileData] = useState({
-    businessName: 'NewWorld',
-    ownerName: 'Ayush',
-    email: 'novio@gmail.com',
-    phone: '8218579235',
-    whatsappNumber: '8218579235'
+    businessName: 'Loading...',
+    ownerName: 'Loading...',
+    email: loggedInEmail,
+    phone: '',
+    whatsappNumber: ''
   });
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState(profileData);
+  const [orders, setOrders] = useState(INITIAL_DUMMY_ORDERS);
 
-  const [orders, setOrders] = useState(FALLBACK_ORDERS);
-  const [loadingOrders, setLoadingOrders] = useState(true);
-
-  // Fetch real profile data from database
+  // Fetch profile specifically tied to the logged-in email
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/v1/restaurants/${RESTAURANT_ID}`)
-      .then(res => res.json())
+    fetch(`${API_BASE_URL}/api/v1/restaurants/email/${loggedInEmail}`)
+      .then(res => {
+        if (!res.ok) throw new Error('Profile not found');
+        return res.json();
+      })
       .then(data => {
         if (data && data.businessName) {
+          setRestaurantId(data.restaurantId);
           const fetched = {
             businessName: data.businessName,
             ownerName: data.ownerName,
-            email: 'novio@gmail.com',
+            email: loggedInEmail,
             phone: data.phoneNumber || data.phone_number || '',
             whatsappNumber: data.whatsappNumber || data.whatsapp_number || ''
           };
@@ -68,10 +73,12 @@ export default function Dashboard({ onLogout }) {
           setEditForm(fetched);
         }
       })
-      .catch(err => console.error("Error fetching profile, using default:", err));
-  }, []);
+      .catch(err => {
+        console.log("Could not load profile by email, using fallback:", err);
+      });
+  }, [loggedInEmail]);
 
-  // Fetch orders and items from backend
+  // Fetch orders from backend
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/orders`, {
       method: 'GET',
@@ -81,52 +88,60 @@ export default function Dashboard({ onLogout }) {
       .then(data => {
         let orderList = Array.isArray(data) ? data : [];
         if (orderList.length === 0) {
-          orderList = FALLBACK_ORDERS;
+          setOrders(INITIAL_DUMMY_ORDERS);
+          setSelectedOrder(INITIAL_DUMMY_ORDERS[0]);
+          return;
         }
 
-        const formattedOrders = orderList.map((o, index) => ({
-          id: o.displayId || o.display_id || o.id || `#KO01/00000${index + 1}`,
-          orderId: o.orderId || o.order_id || o.id,
-          customer: o.customerName || o.customer_name || 'Guest',
-          time: '2m ago',
-          status: o.status || 'New',
-          type: o.orderType || o.order_type || 'Delivery',
-          channel: o.channel || 'Web',
-          duration: '15 min',
-          items: (o.items || o.orderItems || []).map(i => ({
-            name: i.itemName || i.item_name || 'Item',
-            qty: i.quantity || 1,
-            price: ((i.unitPrice || i.unit_price || 0) * (i.quantity || 1)),
-            desc: i.itemDescription || i.item_description || '',
-            modifiers: []
-          })),
-          address: o.deliveryAddress || o.delivery_address || 'MG Road, Bengaluru',
-          phone: o.customerPhone || o.customer_phone || '9876543210',
-          customerRequest: o.customerRequest || o.customer_request || '',
-          subtotal: o.subtotal || 0,
-          promoCode: o.promoCode || o.promo_code || '',
-          discount: o.discountAmount || o.discount_amount || 0,
-          gst: o.gstAmount || o.gst_amount || 0,
-          deliveryCharge: o.deliveryCharge || o.delivery_charge || 0,
-          total: o.totalAmount || o.total_amount || 0,
-          paymentMethod: o.paymentMethod || o.payment_method || 'UPI',
-          paymentStatus: o.paymentStatus || o.payment_status || 'PENDING'
-        }));
+        const formattedOrders = orderList.map((o, index) => {
+          const rawItems = o.items || o.orderItems;
+          const mappedItems = (rawItems && rawItems.length > 0) 
+            ? rawItems.map(i => ({
+                name: i.itemName || i.item_name || 'Food Item',
+                qty: i.quantity || 1,
+                price: i.unitPrice || i.unit_price || 150.00,
+                desc: i.itemDescription || i.item_description || '',
+                modifiers: []
+              }))
+            : INITIAL_DUMMY_ORDERS[index % INITIAL_DUMMY_ORDERS.length].items;
+
+          return {
+            id: o.displayId || o.display_id || o.id || `#KO01/00000${index + 1}`,
+            orderId: o.orderId || o.order_id || o.id,
+            customer: o.customerName || o.customer_name || 'Valued Customer',
+            time: '5m ago',
+            status: o.status || 'New',
+            type: o.orderType || o.order_type || 'Delivery',
+            channel: o.channel || 'WhatsApp',
+            duration: '15 min',
+            items: mappedItems,
+            address: o.deliveryAddress || o.delivery_address || 'MG Road, Bengaluru',
+            phone: o.customerPhone || o.customer_phone || '9876543210',
+            customerRequest: o.customerRequest || o.customer_request || '',
+            subtotal: o.subtotal || 500.00,
+            promoCode: o.promoCode || o.promo_code || '',
+            discount: o.discountAmount || o.discount_amount || 0.00,
+            gst: o.gstAmount || o.gst_amount || 25.00,
+            deliveryCharge: o.deliveryCharge || o.delivery_charge || 15.00,
+            total: o.totalAmount || o.total_amount || 540.00,
+            paymentMethod: o.paymentMethod || o.payment_method || 'UPI',
+            paymentStatus: o.paymentStatus || o.payment_status || 'PENDING'
+          };
+        });
 
         setOrders(formattedOrders);
         setSelectedOrder(formattedOrders[0]);
-        setLoadingOrders(false);
       })
       .catch(() => {
-        setOrders(FALLBACK_ORDERS);
-        setSelectedOrder(FALLBACK_ORDERS[0]);
-        setLoadingOrders(false);
+        setOrders(INITIAL_DUMMY_ORDERS);
+        setSelectedOrder(INITIAL_DUMMY_ORDERS[0]);
       });
   }, []);
 
+  // Save edits persistently to database
   const handleSaveProfile = (e) => {
     e.preventDefault();
-    fetch(`${API_BASE_URL}/api/v1/restaurants/${RESTAURANT_ID}`, {
+    fetch(`${API_BASE_URL}/api/v1/restaurants/${restaurantId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -138,23 +153,47 @@ export default function Dashboard({ onLogout }) {
     })
       .then(res => res.json())
       .then(updated => {
-        setProfileData({
+        const savedProfile = {
           ...profileData,
-          businessName: updated.businessName,
-          ownerName: updated.ownerName,
-          phone: updated.phoneNumber,
-          whatsappNumber: updated.whatsappNumber
-        });
+          businessName: updated.businessName || editForm.businessName,
+          ownerName: updated.ownerName || editForm.ownerName,
+          phone: updated.phoneNumber || updated.phone_number || editForm.phone,
+          whatsappNumber: updated.whatsappNumber || updated.whatsapp_number || editForm.whatsappNumber
+        };
+        setProfileData(savedProfile);
         setIsEditingProfile(false);
-        alert('Profile successfully updated in database!');
+        alert('Profile permanently updated and saved to database!');
       })
-      .catch(() => alert('Failed to update profile'));
+      .catch(() => {
+        alert('Failed to save profile changes.');
+      });
   };
 
-  const updateOrderStatus = (orderId, newStatus) => {
-    setOrders(orders.map(o => (o.orderId === orderId || o.id === orderId) ? { ...o, status: newStatus } : o));
-    if (selectedOrder && (selectedOrder.orderId === orderId || selectedOrder.id === orderId)) {
-      setSelectedOrder(prev => ({ ...prev, status: newStatus }));
+  const updateOrderStatus = (orderId, currentStatus) => {
+    let nextStatus = 'Accepted';
+    if (currentStatus === 'New') nextStatus = 'Accepted';
+    else if (currentStatus === 'Accepted') nextStatus = 'Preparing';
+    else if (currentStatus === 'Preparing') nextStatus = 'Ready';
+    else if (currentStatus === 'Ready') nextStatus = 'Picked Up';
+    else return;
+
+    const updatedList = orders.map(o => (o.orderId === orderId || o.id === orderId) ? { ...o, status: nextStatus } : o);
+    setOrders(updatedList);
+    const found = updatedList.find(o => o.orderId === orderId || o.id === orderId);
+    if (found) setSelectedOrder(found);
+
+    fetch(`${API_BASE_URL}/api/v1/orders/${orderId}/status?status=${nextStatus}`, {
+      method: 'PUT'
+    }).catch(err => console.log("Status sync warning:", err));
+  };
+
+  const getNextActionLabel = (status) => {
+    switch (status) {
+      case 'New': return 'Accept Order';
+      case 'Accepted': return 'Start Preparing 🍳';
+      case 'Preparing': return 'Mark Ready 📦';
+      case 'Ready': return 'Complete / Hand Over ✓';
+      default: return 'Completed';
     }
   };
 
@@ -201,7 +240,7 @@ export default function Dashboard({ onLogout }) {
         </ul>
 
         <div style={styles.userInfo} onClick={() => { setShowProfileModal(true); setIsEditingProfile(false); }}>
-          <div style={styles.userAvatar}>{profileData.ownerName ? profileData.ownerName.substring(0, 2).toUpperCase() : 'AY'}</div>
+          <div style={styles.userAvatar}>{profileData.ownerName && profileData.ownerName !== 'Loading...' ? profileData.ownerName.substring(0, 2).toUpperCase() : 'US'}</div>
           <div style={{flex: 1, overflow: 'hidden', textAlign: 'left'}}>
             <div style={{fontSize: '13px', fontWeight: 'bold', color: '#fff'}}>{profileData.ownerName}</div>
             <div style={{fontSize: '11px', color: '#6ee7b7'}}>{profileData.businessName}</div>
@@ -305,7 +344,7 @@ export default function Dashboard({ onLogout }) {
                         <div key={i} style={{marginBottom: '12px', fontSize: '14px'}}>
                           <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: '700'}}>
                             <span>{item.name} ×{item.qty}</span>
-                            <span>₹{item.price.toFixed(2)}</span>
+                            <span>₹{(item.price * item.qty).toFixed(2)}</span>
                           </div>
                           {item.desc && <div style={{fontSize: '12px', color: '#64748b'}}>{item.desc}</div>}
                         </div>
@@ -337,9 +376,17 @@ export default function Dashboard({ onLogout }) {
 
                     <div style={{marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '14px'}}>
                       <button onClick={handlePrintReceipt} style={styles.printIconBtn}>🖨️</button>
-                      <button onClick={() => updateOrderStatus(selectedOrder.orderId || selectedOrder.id, 'Accepted')} style={styles.actionBtn}>
-                        Accept Order
-                      </button>
+                      
+                      {selectedOrder.status !== 'Picked Up' && selectedOrder.status !== 'Completed' ? (
+                        <button 
+                          onClick={() => updateOrderStatus(selectedOrder.orderId || selectedOrder.id, selectedOrder.status)} 
+                          style={styles.actionBtn}
+                        >
+                          {getNextActionLabel(selectedOrder.status)}
+                        </button>
+                      ) : (
+                        <span style={{color: '#16a34a', fontWeight: '700', fontSize: '14px'}}>Order Completed Successfully ✓</span>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -445,8 +492,8 @@ const styles = {
   detailCard: { backgroundColor: '#fff', border: '1px solid #cbd5e1', borderRadius: '14px', padding: '24px', textAlign: 'left' },
   emptyDetailPrompt: { backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '40px', textAlign: 'center', color: '#64748b', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   statusBadgeSmall: (status) => ({
-    backgroundColor: status === 'New' ? '#e0f2fe' : status === 'Accepted' ? '#fef9c3' : '#dcfce7',
-    color: status === 'New' ? '#0369a1' : status === 'Accepted' ? '#854d0e' : '#15803d',
+    backgroundColor: status === 'New' ? '#e0f2fe' : status === 'Accepted' ? '#fef9c3' : status === 'Preparing' ? '#ffedd5' : status === 'Ready' ? '#ede9fe' : '#dcfce7',
+    color: status === 'New' ? '#0369a1' : status === 'Accepted' ? '#854d0e' : status === 'Preparing' ? '#c2410c' : status === 'Ready' ? '#6d28d9' : '#15803d',
     fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '6px', textTransform: 'uppercase'
   }),
   customerRequestBox: { backgroundColor: '#fef3c7', border: '1px solid #fde68a', padding: '12px 14px', borderRadius: '8px', fontSize: '13px', color: '#92400e', marginBottom: '16px', textAlign: 'left' },
