@@ -27,7 +27,6 @@ public class DataSeeder implements CommandLineRunner {
     @Autowired
     private UserRepository userRepository;
 
-    // Defined strictly as String to match RestaurantProfile entity setters
     private final String FIXED_RESTAURANT_ID = "ae41c831-372b-4f56-8905-f67a93b8045b";
     private final String ADMIN_EMAIL = "novio@gmail.com";
 
@@ -45,11 +44,11 @@ public class DataSeeder implements CommandLineRunner {
                 return userRepository.save(newUser);
             });
 
-            // 2. Ensure Restaurant Profile exists (Safely handled via count or find)
-            if (profileRepository.count() == 0 || profileRepository.findById(UUID.fromString(FIXED_RESTAURANT_ID)).isEmpty()) {
-                try {
+            // 2. Ensure Restaurant Profile exists (Safely isolated with its own try-catch)
+            try {
+                if (profileRepository.count() == 0 || profileRepository.findById(UUID.fromString(FIXED_RESTAURANT_ID)).isEmpty()) {
                     RestaurantProfile newProfile = new RestaurantProfile();
-                    newProfile.setRestaurantId(FIXED_RESTAURANT_ID); // String argument matches model
+                    newProfile.setRestaurantId(FIXED_RESTAURANT_ID);
                     newProfile.setUserId(user.getUserId());
                     newProfile.setBusinessName("NewWorld Restaurant");
                     newProfile.setOwnerName("Ayush");
@@ -57,15 +56,15 @@ public class DataSeeder implements CommandLineRunner {
                     newProfile.setWhatsappNumber("8218579235");
                     profileRepository.save(newProfile);
                     System.out.println("✅ Restaurant profile created successfully.");
-                } catch (Exception profileEx) {
-                    System.out.println("ℹ️ Restaurant profile already exists or skipped: " + profileEx.getMessage());
                 }
+            } catch (Exception profileEx) {
+                System.err.println("⚠️ Restaurant profile save skipped/failed safely: " + profileEx.getMessage());
             }
 
+            // 3. Seed 10 Distinct Orders if table is empty
             long existingCount = orderRepository.count();
             System.out.println("📊 Existing orders in database before seeding: " + existingCount);
 
-            // 3. Seed 10 Distinct Orders if table is empty
             if (existingCount == 0) {
                 List<Order> ordersToSeed = List.of(
                     createOrder("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "#KO01/000001", "Rahul Sharma", "9876543210", "12, MG Road", "WhatsApp", "Delivery", "New", "518.00", "507.10",
