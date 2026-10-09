@@ -10,7 +10,6 @@ import com.restaurant.auth_service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -28,11 +27,10 @@ public class DataSeeder implements CommandLineRunner {
     @Autowired
     private UserRepository userRepository;
 
-    private final UUID FIXED_RESTAURANT_ID = UUID.fromString("ae41c831-372b-4f56-8905-f67a93b8045b");
+    private final String FIXED_RESTAURANT_ID_STR = "ae41c831-372b-4f56-8905-f67a93b8045b";
     private final String ADMIN_EMAIL = "novio@gmail.com";
 
     @Override
-    @Transactional
     public void run(String... args) {
         try {
             System.out.println("🚀 DataSeeder execution started...");
@@ -46,17 +44,19 @@ public class DataSeeder implements CommandLineRunner {
                 return userRepository.save(newUser);
             });
 
-            // 2. Ensure Restaurant Profile exists (using UUID lookup matching repository)
-            profileRepository.findById(FIXED_RESTAURANT_ID).orElseGet(() -> {
+            // 2. Ensure Restaurant Profile exists (using String ID lookup safely)
+            boolean profileExists = profileRepository.existsById(FIXED_RESTAURANT_ID_STR);
+            if (!profileExists) {
                 RestaurantProfile newProfile = new RestaurantProfile();
-                newProfile.setRestaurantId(FIXED_RESTAURANT_ID.toString());
+                newProfile.setRestaurantId(FIXED_RESTAURANT_ID_STR);
                 newProfile.setUserId(user.getUserId());
                 newProfile.setBusinessName("NewWorld Restaurant");
                 newProfile.setOwnerName("Ayush");
                 newProfile.setPhoneNumber("8218579235");
                 newProfile.setWhatsappNumber("8218579235");
-                return profileRepository.save(newProfile);
-            });
+                profileRepository.save(newProfile);
+                System.out.println("✅ Restaurant profile created successfully.");
+            }
 
             long existingCount = orderRepository.count();
             System.out.println("📊 Existing orders in database before seeding: " + existingCount);
@@ -99,7 +99,7 @@ public class DataSeeder implements CommandLineRunner {
                 System.out.println("✅ Successfully saved all 10 orders using saveAll!");
             }
         } catch (Exception e) {
-            System.err.println("⚠️ Seeder caught exception safely without crashing app: " + e.getMessage());
+            System.err.println("⚠️ Seeder non-fatal caught exception: " + e.getMessage());
         }
     }
 
@@ -107,7 +107,7 @@ public class DataSeeder implements CommandLineRunner {
                               String channel, String type, String status, String subtotal, String total, List<OrderItem> items) {
         Order order = new Order();
         order.setOrderId(UUID.fromString(uuidStr));
-        order.setRestaurantId(FIXED_RESTAURANT_ID.toString());
+        order.setRestaurantId(FIXED_RESTAURANT_ID_STR);
         order.setDisplayId(displayId);
         order.setCustomerName(customerName);
         order.setCustomerPhone(phone);
