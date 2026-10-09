@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -22,12 +23,32 @@ public class OrderController {
     public ResponseEntity<List<Order>> getAllOrders() {
         try {
             List<Order> orders = orderRepository.findAll();
-            System.out.println("ORDERS FOUND IN DB: " + (orders != null ? orders.size() : 0));
             return ResponseEntity.ok(orders != null ? orders : Collections.emptyList());
         } catch (Exception e) {
-            System.err.println("Error fetching orders: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.ok(Collections.emptyList());
+        }
+    }
+
+    @PostMapping
+    public ResponseEntity<?> createOrder(@RequestBody Order order) {
+        try {
+            if (order.getOrderId() == null) {
+                order.setOrderId(UUID.randomUUID());
+            }
+            if (order.getStatus() == null) {
+                order.setStatus("New");
+            }
+            // Automatically tie it to your restaurant ID if missing
+            if (order.getRestaurantId() == null) {
+                order.setRestaurantId("ae41c831-372b-4f56-8905-f67a93b8045b");
+            }
+
+            Order savedOrder = orderRepository.save(order);
+            return ResponseEntity.ok(savedOrder);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("message", "Failed to save order: " + e.getMessage()));
         }
     }
 
@@ -40,8 +61,8 @@ public class OrderController {
                 return ResponseEntity.ok(order);
             }).orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {
-            System.err.println("Error updating order status: " + e.getMessage());
-            return ResponseEntity.status(500).body("Error updating status: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("message", "Error updating status"));
         }
     }
 }
