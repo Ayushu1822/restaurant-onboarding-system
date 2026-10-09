@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -23,7 +24,6 @@ public class RestaurantProfileController {
     @Autowired
     private UserRepository userRepository;
 
-    // Fetch profile dynamically by logged-in user's email
     @GetMapping("/email/{email}")
     public ResponseEntity<?> getProfileByEmail(@PathVariable String email) {
         try {
@@ -37,7 +37,6 @@ public class RestaurantProfileController {
                 }
             }
             
-            // Safe fallback to the first profile in the table
             List<RestaurantProfile> allProfiles = profileRepository.findAll();
             if (!allProfiles.isEmpty()) {
                 return ResponseEntity.ok(allProfiles.get(0));
@@ -49,7 +48,6 @@ public class RestaurantProfileController {
         }
     }
 
-    // Permanently save profile updates
     @PutMapping("/{restaurantId}")
     public ResponseEntity<?> updateProfile(@PathVariable String restaurantId, @RequestBody RestaurantProfile updatedData) {
         try {
@@ -57,7 +55,6 @@ public class RestaurantProfileController {
             try {
                 id = UUID.fromString(restaurantId);
             } catch (IllegalArgumentException e) {
-                // Bulletproof conversion handling both String and UUID return types safely
                 List<RestaurantProfile> allProfiles = profileRepository.findAll();
                 if (!allProfiles.isEmpty()) {
                     Object rawId = allProfiles.get(0).getRestaurantId();
@@ -67,23 +64,26 @@ public class RestaurantProfileController {
                 }
             }
 
-            return profileRepository.findById(id).map(profile -> {
-                if (updatedData.getBusinessName() != null) {
-                    profile.setBusinessName(updatedData.getBusinessName());
+            Optional<RestaurantProfile> profileOpt = profileRepository.findById(id);
+            if (profileOpt.isEmpty()) {
+                List<RestaurantProfile> allProfiles = profileRepository.findAll();
+                if (!allProfiles.isEmpty()) {
+                    profileOpt = Optional.of(allProfiles.get(0));
                 }
-                if (updatedData.getOwnerName() != null) {
-                    profile.setOwnerName(updatedData.getOwnerName());
-                }
-                if (updatedData.getPhoneNumber() != null) {
-                    profile.setPhoneNumber(updatedData.getPhoneNumber());
-                }
-                if (updatedData.getWhatsappNumber() != null) {
-                    profile.setWhatsappNumber(updatedData.getWhatsappNumber());
-                }
+            }
+
+            if (profileOpt.isPresent()) {
+                RestaurantProfile profile = profileOpt.get();
+                if (updatedData.getBusinessName() != null) profile.setBusinessName(updatedData.getBusinessName());
+                if (updatedData.getOwnerName() != null) profile.setOwnerName(updatedData.getOwnerName());
+                if (updatedData.getPhoneNumber() != null) profile.setPhoneNumber(updatedData.getPhoneNumber());
+                if (updatedData.getWhatsappNumber() != null) profile.setWhatsappNumber(updatedData.getWhatsappNumber());
                 
                 RestaurantProfile saved = profileRepository.save(profile);
                 return ResponseEntity.ok(saved);
-            }).orElse(ResponseEntity.notFound().build());
+            }
+
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }

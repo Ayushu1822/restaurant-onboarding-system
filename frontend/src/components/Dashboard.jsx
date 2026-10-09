@@ -29,7 +29,9 @@ export default function Dashboard({ user, onLogout }) {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [hoveredTab, setHoveredTab] = useState(null);
-  const [isFallbackMode, setIsFallbackMode] = useState(false);
+  
+  const [isProfileFallback, setIsProfileFallback] = useState(false);
+  const [isOrdersFallback, setIsOrdersFallback] = useState(false);
   
   const [restaurantId, setRestaurantId] = useState('ae41c831-372b-4f56-8905-f67a93b8045b');
   const [profileData, setProfileData] = useState({
@@ -45,7 +47,7 @@ export default function Dashboard({ user, onLogout }) {
   const [orders, setOrders] = useState(HYBRID_DUMMY_ORDERS);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
-  // Fetch profile specifically tied to logged-in email
+  // Fetch profile specifically tied to logged-in email and capture correct database ID
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/restaurants/email/${loggedInEmail}`)
       .then(res => {
@@ -53,11 +55,15 @@ export default function Dashboard({ user, onLogout }) {
         return res.json();
       })
       .then(data => {
-        if (data && data.businessName) {
-          if (data.restaurantId) setRestaurantId(data.restaurantId);
+        if (data) {
+          setIsProfileFallback(false);
+          const fetchedId = data.restaurantId || data.restaurant_id || data.id;
+          if (fetchedId) {
+            setRestaurantId(fetchedId);
+          }
           const fetched = {
-            businessName: data.businessName,
-            ownerName: data.ownerName,
+            businessName: data.businessName || data.business_name || FALLBACK_RESTAURANT_PROFILE.businessName,
+            ownerName: data.ownerName || data.owner_name || FALLBACK_RESTAURANT_PROFILE.ownerName,
             email: loggedInEmail,
             phone: data.phoneNumber || data.phone_number || FALLBACK_RESTAURANT_PROFILE.phone,
             whatsappNumber: data.whatsappNumber || data.whatsapp_number || FALLBACK_RESTAURANT_PROFILE.whatsappNumber
@@ -67,7 +73,8 @@ export default function Dashboard({ user, onLogout }) {
         }
       })
       .catch(err => {
-        console.log("Using fallback profile data:", err);
+        console.log("Profile offline/fallback active:", err);
+        setIsProfileFallback(true);
       });
   }, [loggedInEmail]);
 
@@ -84,14 +91,14 @@ export default function Dashboard({ user, onLogout }) {
       .then(data => {
         let orderList = Array.isArray(data) ? data : [];
         if (orderList.length === 0) {
-          setIsFallbackMode(true);
+          setIsOrdersFallback(true);
           setOrders(HYBRID_DUMMY_ORDERS);
           setSelectedOrder(HYBRID_DUMMY_ORDERS[0]);
           setLoadingOrders(false);
           return;
         }
 
-        setIsFallbackMode(false);
+        setIsOrdersFallback(false);
         const formattedOrders = orderList.map((o, index) => {
           const rawItems = o.items || o.orderItems || [];
           const mappedItems = rawItems.map(i => ({
@@ -123,8 +130,8 @@ export default function Dashboard({ user, onLogout }) {
         setLoadingOrders(false);
       })
       .catch(err => {
-        console.warn("Backend unavailable, activating hybrid fallback:", err);
-        setIsFallbackMode(true);
+        console.warn("Orders offline, activating hybrid fallback:", err);
+        setIsOrdersFallback(true);
         setOrders(HYBRID_DUMMY_ORDERS);
         setSelectedOrder(HYBRID_DUMMY_ORDERS[0]);
         setLoadingOrders(false);
@@ -148,6 +155,7 @@ export default function Dashboard({ user, onLogout }) {
         return res.json();
       })
       .then(updated => {
+        setIsProfileFallback(false);
         const savedProfile = {
           ...profileData,
           businessName: updated.businessName || editForm.businessName,
@@ -156,13 +164,12 @@ export default function Dashboard({ user, onLogout }) {
           whatsappNumber: updated.whatsappNumber || updated.whatsapp_number || editForm.whatsappNumber
         };
         setProfileData(savedProfile);
+        setEditForm(savedProfile);
         setIsEditingProfile(false);
-        alert('Profile permanently updated and saved to database!');
+        alert('Profile globally updated and saved to PostgreSQL database!');
       })
       .catch(err => {
-        setProfileData(editForm);
-        setIsEditingProfile(false);
-        alert('Profile updated locally! (Server sync notice: ' + err.message + ')');
+        alert('Error saving profile globally: ' + err.message);
       });
   };
 
@@ -198,7 +205,7 @@ export default function Dashboard({ user, onLogout }) {
 
   return (
     <div style={styles.container}>
-      {/* SIDEBAR */}
+      {/* SIDEBAR (Stays permanently locked on screen) */}
       <div style={styles.sidebar}>
         <div style={styles.brandBox}>
           <span style={styles.logoIcon}>🛡️</span>
@@ -236,16 +243,22 @@ export default function Dashboard({ user, onLogout }) {
           })}
         </ul>
 
-        <div style={styles.userInfo} onClick={() => { setShowProfileModal(true); setIsEditingProfile(false); }}>
+        <div 
+          style={{
+            ...styles.userInfo,
+            ...(isProfileFallback ? styles.userInfoFallbackRedLine : {})
+          }} 
+          onClick={() => { setShowProfileModal(true); setIsEditingProfile(false); }}
+        >
           <div style={styles.userAvatar}>{profileData.ownerName && profileData.ownerName !== 'Loading...' ? profileData.ownerName.substring(0, 2).toUpperCase() : 'AY'}</div>
           <div style={{flex: 1, overflow: 'hidden', textAlign: 'left'}}>
-            <div style={{fontSize: '13px', fontWeight: 'bold', color: '#fff'}}>{profileData.ownerName}</div>
+            <div style={{fontSize: '13px', fontWeight: 'bold', color: '#fff'}}>{profileData.ownerName} {isProfileFallback && <span style={{color: '#f87171', fontSize: '10px'}}>⚠️ (Fallback)</span>}</div>
             <div style={{fontSize: '11px', color: '#6ee7b7'}}>{profileData.businessName}</div>
           </div>
         </div>
       </div>
 
-      {/* MAIN CONTENT */}
+      {/* MAIN CONTENT VIEWPORT */}
       <div style={styles.mainContent}>
         <div style={styles.header}>
           <h2 style={styles.pageTitle}>{activeTab}</h2>
@@ -257,10 +270,9 @@ export default function Dashboard({ user, onLogout }) {
           </div>
         </div>
 
-        {/* RED-LINED FALLBACK BANNER */}
-        {isFallbackMode && activeTab === 'Online Orders' && (
+        {isOrdersFallback && activeTab === 'Online Orders' && (
           <div style={styles.fallbackNoticeBar}>
-            <span style={{color: '#dc2626', fontWeight: 'bold'}}>⚠️ Fallback Mode Active:</span> Showing hybrid offline test orders (Database currently connecting or syncing).
+            <span style={{color: '#dc2626', fontWeight: 'bold'}}>⚠️ Fallback Mode Active:</span> Showing 10 hybrid test orders (Database currently connecting).
           </div>
         )}
 
@@ -279,6 +291,7 @@ export default function Dashboard({ user, onLogout }) {
               </span>
             </div>
 
+            {/* INDEPENDENTLY SCROLLABLE SPLIT VIEW */}
             <div style={styles.splitViewWrapper}>
               
               {/* LEFT LIST */}
@@ -413,10 +426,16 @@ export default function Dashboard({ user, onLogout }) {
       {showProfileModal && (
         <div style={styles.drawerOverlay} onClick={() => setShowProfileModal(false)}>
           <div style={styles.profileModal} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{margin: '0 0 15px 0', color: '#0f172a'}}>Admin Profile</h3>
+            <h3 style={{margin: '0 0 5px 0', color: '#0f172a'}}>Admin Profile</h3>
+            {isProfileFallback && (
+              <div style={{fontSize: '11px', color: '#dc2626', marginBottom: '12px', fontWeight: 'bold'}}>
+                ⚠️ Running on local profile fallback (Database sync pending)
+              </div>
+            )}
+            <div style={styles.modalRedAccentLine}></div>
             
             {!isEditingProfile ? (
-              <div>
+              <div style={{marginTop: '15px'}}>
                 <p style={{color: '#334155'}}><strong>Business:</strong> {profileData.businessName}</p>
                 <p style={{color: '#334155'}}><strong>Owner:</strong> {profileData.ownerName}</p>
                 <p style={{color: '#334155'}}><strong>Email:</strong> {profileData.email}</p>
@@ -428,7 +447,7 @@ export default function Dashboard({ user, onLogout }) {
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleSaveProfile} style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+              <form onSubmit={handleSaveProfile} style={{display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px'}}>
                 <label style={{fontSize: '12px', fontWeight: 'bold'}}>Business Name:</label>
                 <input 
                   style={{padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1'}}
@@ -471,8 +490,8 @@ export default function Dashboard({ user, onLogout }) {
 }
 
 const styles = {
-  container: { display: 'flex', minHeight: '100vh', width: '100vw', backgroundColor: '#f8fafc', overflowY: 'auto', fontFamily: 'sans-serif' },
-  sidebar: { width: '260px', backgroundColor: '#022c22', display: 'flex', flexDirection: 'column', color: '#fff', position: 'sticky', top: 0, height: '100vh', flexShrink: 0 },
+  container: { display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#f8fafc', overflow: 'hidden', fontFamily: 'sans-serif', boxSizing: 'border-box', margin: 0, padding: 0 },
+  sidebar: { width: '260px', backgroundColor: '#022c22', display: 'flex', flexDirection: 'column', color: '#fff', height: '100vh', flexShrink: 0 },
   brandBox: { display: 'flex', alignItems: 'center', gap: '12px', padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)' },
   logoIcon: { fontSize: '24px' },
   brandName: { fontSize: '18px', fontWeight: '800' },
@@ -483,23 +502,24 @@ const styles = {
   navItemActive: { padding: '12px 20px', fontSize: '14px', color: '#fff', backgroundColor: '#047857', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', borderLeft: '4px solid #10b981', fontWeight: '600', textAlign: 'left' },
   badgeCount: { backgroundColor: '#10b981', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '10px' },
   userInfo: { padding: '15px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#01231b', cursor: 'pointer' },
+  userInfoFallbackRedLine: { borderBottom: '3px solid #ef4444', backgroundColor: '#450a0a' },
   userAvatar: { width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff' },
-  mainContent: { flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', overflowY: 'auto' },
+  mainContent: { flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' },
   header: { height: '65px', backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 25px', flexShrink: 0 },
   pageTitle: { fontSize: '18px', fontWeight: '700', color: '#0f172a', margin: 0 },
-  fallbackNoticeBar: { backgroundColor: '#fef2f2', borderBottom: '1px solid #fecaca', borderLeft: '4px solid #dc2626', padding: '10px 25px', fontSize: '13px', color: '#991b1b', textAlign: 'left' },
+  fallbackNoticeBar: { backgroundColor: '#fef2f2', borderBottom: '1px solid #fecaca', borderLeft: '4px solid #dc2626', padding: '10px 25px', fontSize: '13px', color: '#991b1b', textAlign: 'left', flexShrink: 0 },
   pausedItemsBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#334155', cursor: 'pointer' },
   pausedCountBadge: { backgroundColor: '#e11d48', color: '#fff', fontSize: '10px', padding: '1px 6px', borderRadius: '10px' },
   topLogoutBtn: { backgroundColor: '#fee2e2', color: '#991b1b', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
-  onlineOrdersContainer: { display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#f8fafc' },
-  subHeader: { padding: '12px 25px', backgroundColor: '#fff', borderBottom: '1px solid #f1f5f9', fontSize: '14px', textAlign: 'left' },
-  splitViewWrapper: { display: 'flex', flex: 1, padding: '20px', gap: '24px' },
-  masterListColumn: { flex: 1, display: 'flex', flexDirection: 'column' },
-  detailPanelColumn: { flex: 1.2, display: 'flex', flexDirection: 'column' },
-  listHeaderTopRow: { display: 'flex', justifyContent: 'space-between', marginBottom: '12px' },
-  listHeaderTitle: { fontSize: '14px', fontWeight: '700', color: '#334155', textAlign: 'left' },
-  scrollableCards: { display: 'flex', flexDirection: 'column', gap: '14px' },
-  orderSummaryCard: { border: '1px solid #cbd5e1', borderRadius: '12px', padding: '20px', cursor: 'pointer', backgroundColor: '#fff', textAlign: 'left' },
+  onlineOrdersContainer: { display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', backgroundColor: '#f8fafc' },
+  subHeader: { padding: '12px 25px', backgroundColor: '#fff', borderBottom: '1px solid #f1f5f9', fontSize: '14px', textAlign: 'left', flexShrink: 0 },
+  splitViewWrapper: { display: 'flex', flex: 1, padding: '20px', gap: '24px', overflow: 'hidden', minHeight: 0 },
+  masterListColumn: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 },
+  detailPanelColumn: { flex: 1.2, display: 'flex', flexDirection: 'column', overflowY: 'auto', minHeight: 0, paddingRight: '5px' },
+  listHeaderTopRow: { display: 'flex', justifyContent: 'space-between', marginBottom: '12px', flexShrink: 0 },
+  listHeaderTitle: { fontSize: '14px', fontWeight: '700', color: '#334155', textAlign: 'left', flexShrink: 0, marginBottom: '10px' },
+  scrollableCards: { display: 'flex', flexDirection: 'column', gap: '14px', overflowY: 'auto', flex: 1, paddingRight: '5px' },
+  orderSummaryCard: { border: '1px solid #cbd5e1', borderRadius: '12px', padding: '20px', cursor: 'pointer', backgroundColor: '#fff', textAlign: 'left', flexShrink: 0 },
   detailCard: { backgroundColor: '#fff', border: '1px solid #cbd5e1', borderRadius: '14px', padding: '24px', textAlign: 'left' },
   emptyDetailPrompt: { backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '40px', textAlign: 'center', color: '#64748b', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   statusBadgeSmall: (status) => ({
@@ -513,5 +533,6 @@ const styles = {
   tabContentPlaceholder: { padding: '40px', flex: 1, display: 'flex', justifyContent: 'center' },
   placeholderCard: { backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '30px', width: '100%', maxWidth: '600px' },
   drawerOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-  profileModal: { width: '420px', backgroundColor: '#fff', padding: '25px', borderRadius: '14px', textAlign: 'left' }
+  profileModal: { width: '420px', backgroundColor: '#fff', padding: '25px', borderRadius: '14px', textAlign: 'left' },
+  modalRedAccentLine: { height: '3px', backgroundColor: '#ef4444', width: '100%', marginBottom: '10px', borderRadius: '2px' }
 };
