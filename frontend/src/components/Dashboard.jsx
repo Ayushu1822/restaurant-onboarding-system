@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
-// Full Rich Dummy Orders for Immediate UI Rendering
 const FULL_DUMMY_ORDERS = [
   {
     id: '#KO01/000001',
@@ -91,30 +90,23 @@ export default function Dashboard({ onLogout }) {
   const [profileData, setProfileData] = useState({
     businessName: 'FOODOS Restaurant',
     ownerName: 'Admin',
-    email: 'new@gmail.com',
-    phone: '9876543210',
+    email: 'novio@gmail.com',
+    phone: '8218579235',
     address: '44, Residency Road, Bengaluru'
   });
 
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
-  // Fetch Orders with Automatic Dummy Fallback
   useEffect(() => {
-    console.log("🔥 FETCHING ORDERS FROM BACKEND...");
-    
     fetch(`${API_BASE_URL}/api/v1/orders`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     })
       .then(res => res.json())
       .then(data => {
-        console.log("📦 ORDERS RECEIVED:", data);
         let orderList = Array.isArray(data) ? data : [];
-        
-        // If DB is empty, gracefully load full dummy orders
         if (orderList.length === 0) {
-          console.warn("⚠️ Database empty. Using full dummy orders for display.");
           orderList = FULL_DUMMY_ORDERS;
         }
 
@@ -155,8 +147,7 @@ export default function Dashboard({ onLogout }) {
         if (formattedOrders.length > 0) setSelectedOrder(formattedOrders[0]);
         setLoadingOrders(false);
       })
-      .catch(err => {
-        console.error("❌ ERROR FETCHING ORDERS, USING DUMMY FALLBACK:", err);
+      .catch(() => {
         setOrders(FULL_DUMMY_ORDERS);
         setSelectedOrder(FULL_DUMMY_ORDERS[0]);
         setLoadingOrders(false);
@@ -244,7 +235,7 @@ export default function Dashboard({ onLogout }) {
           <div style={styles.onlineOrdersContainer}>
             <div style={styles.subHeader}>
               <span style={{fontWeight: '600', color: '#0f172a'}}>
-                {orders.length} orders today · <span style={{color: '#16a34a'}}>{orders.filter(o => o.status === 'New').length} need action</span>
+                {orders.length} orders total · <span style={{color: '#16a34a'}}>{orders.filter(o => o.status === 'New').length} need action</span>
               </span>
             </div>
 
@@ -354,7 +345,7 @@ export default function Dashboard({ onLogout }) {
                     <div style={{marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '14px'}}>
                       <button onClick={handlePrintReceipt} style={styles.printIconBtn}>🖨️</button>
                       <button onClick={() => updateOrderStatus(selectedOrder.orderId || selectedOrder.id, 'Accepted')} style={styles.actionBtn}>
-                        Update Status / Accept
+                        Accept Order
                       </button>
                     </div>
                   </div>
@@ -372,9 +363,11 @@ export default function Dashboard({ onLogout }) {
       {showProfileModal && (
         <div style={styles.drawerOverlay} onClick={() => setShowProfileModal(false)}>
           <div style={styles.profileModal} onClick={(e) => e.stopPropagation()}>
-            <h3>Admin Profile</h3>
-            <p>Business: {profileData.businessName}</p>
-            <p>Email: {profileData.email}</p>
+            <h3 style={{margin: '0 0 15px 0', color: '#0f172a'}}>Admin Profile</h3>
+            <p style={{color: '#334155'}}><strong>Business:</strong> {profileData.businessName}</p>
+            <p style={{color: '#334155'}}><strong>Owner:</strong> {profileData.ownerName}</p>
+            <p style={{color: '#334155'}}><strong>Email:</strong> {profileData.email}</p>
+            <p style={{color: '#334155'}}><strong>Phone:</strong> {profileData.phone}</p>
             <button onClick={() => setShowProfileModal(false)} style={styles.actionBtn}>Close</button>
           </div>
         </div>
@@ -384,8 +377,8 @@ export default function Dashboard({ onLogout }) {
 }
 
 const styles = {
-  container: { display: 'flex', width: '100vw', height: '100vh', backgroundColor: '#f8fafc', fontFamily: 'sans-serif', position: 'fixed', top: 0, left: 0 },
-  sidebar: { width: '260px', backgroundColor: '#022c22', display: 'flex', flexDirection: 'column', color: '#fff' },
+  container: { display: 'flex', minHeight: '100vh', width: '100vw', backgroundColor: '#f8fafc', overflowY: 'auto', fontFamily: 'sans-serif' },
+  sidebar: { width: '260px', backgroundColor: '#022c22', display: 'flex', flexDirection: 'column', color: '#fff', position: 'sticky', top: 0, height: '100vh', flexShrink: 0 },
   brandBox: { display: 'flex', alignItems: 'center', gap: '12px', padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)' },
   logoIcon: { fontSize: '24px' },
   brandName: { fontSize: '18px', fontWeight: '800' },
@@ -397,22 +390,22 @@ const styles = {
   badgeCount: { backgroundColor: '#10b981', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '10px' },
   userInfo: { padding: '15px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#01231b', cursor: 'pointer' },
   userAvatar: { width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff' },
-  mainContent: { flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' },
-  header: { height: '65px', backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 25px' },
+  mainContent: { flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', overflowY: 'auto' },
+  header: { height: '65px', backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 25px', flexShrink: 0 },
   pageTitle: { fontSize: '18px', fontWeight: '700', color: '#0f172a', margin: 0 },
   pausedItemsBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#334155', cursor: 'pointer' },
   pausedCountBadge: { backgroundColor: '#e11d48', color: '#fff', fontSize: '10px', padding: '1px 6px', borderRadius: '10px' },
   topLogoutBtn: { backgroundColor: '#fee2e2', color: '#991b1b', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
   onlineOrdersContainer: { display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#f8fafc' },
   subHeader: { padding: '12px 25px', backgroundColor: '#fff', borderBottom: '1px solid #f1f5f9', fontSize: '14px', textAlign: 'left' },
-  splitViewWrapper: { display: 'flex', flex: 1, padding: '20px', gap: '24px', overflow: 'hidden' },
+  splitViewWrapper: { display: 'flex', flex: 1, padding: '20px', gap: '24px' },
   masterListColumn: { flex: 1, display: 'flex', flexDirection: 'column' },
   detailPanelColumn: { flex: 1.2, display: 'flex', flexDirection: 'column' },
   listHeaderTopRow: { display: 'flex', justifyContent: 'space-between', marginBottom: '12px' },
   listHeaderTitle: { fontSize: '14px', fontWeight: '700', color: '#334155', textAlign: 'left' },
-  scrollableCards: { overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '14px' },
+  scrollableCards: { display: 'flex', flexDirection: 'column', gap: '14px' },
   orderSummaryCard: { border: '1px solid #cbd5e1', borderRadius: '12px', padding: '20px', cursor: 'pointer', backgroundColor: '#fff', textAlign: 'left' },
-  detailCard: { backgroundColor: '#fff', border: '1px solid #cbd5e1', borderRadius: '14px', padding: '24px', flex: 1, overflowY: 'auto', textAlign: 'left' },
+  detailCard: { backgroundColor: '#fff', border: '1px solid #cbd5e1', borderRadius: '14px', padding: '24px', textAlign: 'left' },
   emptyDetailPrompt: { backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '40px', textAlign: 'center', color: '#64748b', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   statusBadgeSmall: (status) => ({
     backgroundColor: status === 'New' ? '#e0f2fe' : status === 'Accepted' ? '#fef9c3' : '#dcfce7',

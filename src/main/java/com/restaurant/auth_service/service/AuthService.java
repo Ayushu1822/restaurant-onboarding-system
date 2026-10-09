@@ -1,14 +1,16 @@
 package com.restaurant.auth_service.service;
 
-import com.restaurant.auth_service.dto.LoginRequest;
-import com.restaurant.auth_service.dto.RegisterRequest;
 import com.restaurant.auth_service.model.User;
+import com.restaurant.auth_service.model.RestaurantProfile;
 import com.restaurant.auth_service.repository.UserRepository;
+import com.restaurant.auth_service.repository.RestaurantProfileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -18,74 +20,54 @@ public class AuthService {
     private UserRepository userRepository;
 
     @Autowired
+    private RestaurantProfileRepository profileRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // Register User
-    public String registerUser(RegisterRequest request) {
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+    @Transactional
+    public User registerUser(String email, String password, String businessName, String ownerName, String phoneNumber) {
+        if (userRepository.findByEmail(email).isPresent()) {
             throw new RuntimeException("Email is already registered!");
         }
 
         User user = new User();
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setBusinessName(request.getBusinessName());
-        user.setOwnerName(request.getOwnerName());
-        user.setPhoneNumber(request.getPhoneNumber());
-        user.setWhatsappNumber(request.getWhatsappNumber());
+        user.setUserId(UUID.randomUUID().toString());
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setBusinessName(businessName);
+        user.setOwnerName(ownerName);
+        user.setPhoneNumber(phoneNumber);
         
-        // Save to PostgreSQL database
-        userRepository.save(user);
-        return "User registered successfully!";
+        User savedUser = userRepository.save(user);
+
+        RestaurantProfile profile = new RestaurantProfile();
+        profile.setRestaurantId(UUID.randomUUID().toString());
+        profile.setUserId(savedUser.getUserId());
+        profile.setBusinessName(businessName != null ? businessName : "My Restaurant");
+        profile.setOwnerName(ownerName != null ? ownerName : "Owner");
+        profile.setPhoneNumber(phoneNumber != null ? phoneNumber : "0000000000");
+        
+        profileRepository.save(profile);
+
+        return savedUser;
     }
 
-    // Login User (Generates a secure token/session identifier)
-    public String loginUser(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
-
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid email or password");
-        }
-
-        // Return email or session token so frontend can authenticate subsequent calls
-        return user.getEmail(); 
-    }
-
-    // Password Reset Token Generator
-    public String generatePasswordResetToken(String email) {
+    public Map<String, Object> loginUser(String email, String password) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Email not found in database"));
-        
-        // Generate a mock reset token
-        return UUID.randomUUID().toString();
-    }
-
-    // NEW: Fetch User Profile from Database using Token/Email
-    public User getUserByTokenOrEmail(String identifier) {
-        // Here 'identifier' can be the email passed from the login token
-        Optional<User> userOpt = userRepository.findByEmail(identifier);
-        if (userOpt.isPresent()) {
-            return userOpt.get();
-        }
-        throw new RuntimeException("User profile not found in database.");
-    }
-
-    // NEW: Update Profile directly in PostgreSQL Database
-    public User updateUserData(String identifier, User updatedData) {
-        User user = userRepository.findByEmail(identifier)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (updatedData.getBusinessName() != null) {
-            user.setBusinessName(updatedData.getBusinessName());
-        }
-        if (updatedData.getOwnerName() != null) {
-            user.setOwnerName(updatedData.getOwnerName());
-        }
-        if (updatedData.getPhoneNumber() != null) {
-            user.setPhoneNumber(updatedData.getPhoneNumber());
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new RuntimeException("Invalid password");
         }
 
-        return userRepository.save(user); // Commits updates to PostgreSQL
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Login successful");
+        response.put("userId", user.getUserId());
+        response.put("email", user.getEmail());
+        response.put("businessName", user.getBusinessName());
+        response.put("ownerName", user.getOwnerName());
+        
+        return response;
     }
 }
