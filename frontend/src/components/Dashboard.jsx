@@ -62,98 +62,78 @@ export default function Dashboard({ onLogout }) {
     .catch(() => alert('Failed to update profile in database.'));
   };
 
-  const [orders, setOrders] = useState([
-    {
-      id: '#KO01/000001',
-      customer: 'Priya Sharma',
-      time: '2m ago',
-      status: 'Picked Up',
-      type: 'Delivery',
-      channel: 'WhatsApp',
-      duration: '20 min',
-      items: [
-        { 
-          name: 'Chicken Drumsticks', qty: 2, price: 398.00, desc: 'Spicy · Serves 1', 
-          modifiers: [{ name: 'Garlic dip', qty: 1, price: 20.00 }, { name: 'Extra fries', qty: 1, price: 60.00 }] 
-        },
-        { name: 'Sprite', qty: 2, price: 120.00 },
-        { name: 'Chicken Fillet Burger Combo', qty: 1, price: 269.00, desc: 'Cheese loaded · Serves 1' }
-      ],
-      address: '12, MG Road, Bengaluru · 1.2 km',
-      phone: '9876543210',
-      customerRequest: 'Customer is allergic to peanuts.',
-      subtotal: 867.00,
-      promoCode: 'WELCOME10 (10%)',
-      discount: 86.70,
-      gst: 43.35,
-      deliveryCharge: 15.00,
-      total: 838.65,
-      paymentMethod: 'UPI',
-      paymentStatus: 'PENDING'
-    },
-    {
-      id: '#KO01/000002',
-      customer: 'Arjun Mehta',
-      time: '3m ago',
-      status: 'New',
-      type: 'Delivery',
-      channel: 'Web',
-      duration: '15 min',
-      items: [
-        { name: 'Lucknowi (Awadhi) Biryani', qty: 2, price: 700.00 },
-        { name: 'Chicken 65', qty: 1, price: 220.00 },
-        { name: '7 Up', qty: 4, price: 70.00 }
-      ],
-      address: 'Indiranagar, Bengaluru · 2.5 km',
-      phone: '9811223344',
-      customerRequest: 'Deliver without ringing the doorbell.',
-      subtotal: 990.00,
-      promoCode: '',
-      discount: 0.00,
-      gst: 45.00,
-      deliveryCharge: 20.00,
-      total: 1055.00,
-      paymentMethod: 'COD',
-      paymentStatus: 'PENDING'
-    },
-    {
-      id: '#KO01/000003',
-      customer: 'Sneha Iyer',
-      time: '4m ago',
-      status: 'New',
-      type: 'Pickup',
-      channel: 'Web',
-      duration: '15 min',
-      items: [
-        { name: 'Paneer Tikka Sandwich', qty: 2, price: 458.00 },
-        { name: 'Cold Coffee', qty: 2, price: 240.00 },
-        { name: 'Garlic Bread', qty: 1, price: 115.00 }
-      ],
-      address: '44, Residency Road, Bengaluru',
-      phone: '9123456780',
-      customerRequest: '',
-      subtotal: 813.00,
-      promoCode: '',
-      discount: 0.00,
-      gst: 40.00,
-      deliveryCharge: 0.00,
-      total: 853.00,
-      paymentMethod: 'UPI',
-      paymentStatus: 'PAID'
-    }
-  ]);
+  // Live Orders State fetched from PostgreSQL Backend
+  const [orders, setOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
 
   useEffect(() => {
-    if (orders.length > 0 && !selectedOrder) {
-      setSelectedOrder(orders[0]);
-    }
+    fetch(`${API_BASE_URL}/api/v1/orders`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    })
+      .then(res => res.json())
+      .then(data => {
+        const formattedOrders = data.map(o => ({
+          id: o.displayId || '#KO01/000001',
+          orderId: o.orderId,
+          customer: o.customerName || 'Guest',
+          time: '2m ago',
+          status: o.status || 'New',
+          type: o.orderType || 'Delivery',
+          channel: o.channel || 'Web',
+          duration: '15 min',
+          items: o.items ? o.items.map(i => ({
+            name: i.itemName,
+            qty: i.quantity,
+            price: i.unitPrice * i.quantity,
+            desc: i.itemDescription,
+            modifiers: i.modifiers ? i.modifiers.map(m => ({ name: m.modifierName, qty: m.quantity, price: m.modifierPrice })) : []
+          })) : [],
+          address: o.deliveryAddress || 'MG Road, Bengaluru',
+          phone: o.customerPhone || '9876543210',
+          customerRequest: o.customerRequest || '',
+          subtotal: o.subtotal || 0,
+          promoCode: o.promoCode || '',
+          discount: o.discountAmount || 0,
+          gst: o.gstAmount || 0,
+          deliveryCharge: o.deliveryCharge || 0,
+          total: o.totalAmount || 0,
+          paymentMethod: o.paymentMethod || 'UPI',
+          paymentStatus: o.paymentStatus || 'PENDING'
+        }));
+
+        setOrders(formattedOrders);
+        if (formattedOrders.length > 0) {
+          setSelectedOrder(formattedOrders[0]);
+        }
+        setLoadingOrders(false);
+      })
+      .catch(err => {
+        console.error("Error fetching orders from PostgreSQL backend:", err);
+        setLoadingOrders(false);
+      });
   }, []);
 
   const updateOrderStatus = (orderId, newStatus) => {
-    setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
-    if (selectedOrder && selectedOrder.id === orderId) {
-      setSelectedOrder(prev => ({ ...prev, status: newStatus }));
-    }
+    fetch(`${API_BASE_URL}/api/v1/orders/${orderId}/status?status=${newStatus}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to update status in DB');
+        return res.json();
+      })
+      .then(() => {
+        setOrders(orders.map(o => o.orderId === orderId ? { ...o, status: newStatus } : o));
+        if (selectedOrder && selectedOrder.orderId === orderId) {
+          setSelectedOrder(prev => ({ ...prev, status: newStatus }));
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        // Fallback UI update if backend call is mocked locally
+        setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+      });
   };
 
   const handlePrintReceipt = () => window.print();
@@ -242,7 +222,7 @@ export default function Dashboard({ onLogout }) {
             {/* SUBHEADER COUNTERS */}
             <div style={styles.subHeader}>
               <span style={{fontWeight: '600', color: '#0f172a'}}>
-                10 orders today · <span style={{color: '#16a34a'}}>{orders.filter(o => o.status === 'New').length} need action</span>
+                {orders.length} orders today · <span style={{color: '#16a34a'}}>{orders.filter(o => o.status === 'New').length} need action</span>
               </span>
             </div>
 
@@ -257,45 +237,51 @@ export default function Dashboard({ onLogout }) {
                 </div>
                 
                 <div style={styles.scrollableCards}>
-                  {orders.map(order => {
-                    const isSelected = selectedOrder?.id === order.id;
-                    return (
-                      <div 
-                        key={order.id} 
-                        style={{
-                          ...styles.orderSummaryCard, 
-                          borderColor: isSelected ? '#10b981' : '#cbd5e1',
-                          backgroundColor: '#ffffff'
-                        }}
-                        onClick={() => setSelectedOrder(order)}
-                      >
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', textAlign: 'left'}}>
-                          <div>
-                            <strong style={{fontSize: '16px', color: '#0f172a'}}>{order.customer}</strong>
-                            <div style={{fontSize: '12px', color: '#64748b'}}>{order.id}</div>
-                          </div>
-                          <span style={styles.statusBadgeSmall(order.status)}>{order.status}</span>
-                        </div>
-
-                        <div style={{fontSize: '12px', color: '#64748b', marginBottom: '12px', textAlign: 'left'}}>
-                          🛵 {order.type} · 🟢 {order.channel} · 🕒 {order.time}
-                        </div>
-
-                        <div style={{fontSize: '14px', color: '#334155', borderTop: '1px solid #f1f5f9', paddingTop: '10px', marginBottom: '10px', textAlign: 'left'}}>
-                          {order.items.map((it, idx) => (
-                            <div key={idx} style={{marginBottom: '4px', fontWeight: '500', textAlign: 'left'}}>
-                              {it.qty} × {it.name}
+                  {loadingOrders ? (
+                    <div style={{padding: '20px', color: '#64748b', textAlign: 'center'}}>Loading orders from PostgreSQL...</div>
+                  ) : orders.length === 0 ? (
+                    <div style={{padding: '20px', color: '#64748b', textAlign: 'center'}}>No orders found in database.</div>
+                  ) : (
+                    orders.map(order => {
+                      const isSelected = selectedOrder?.id === order.id;
+                      return (
+                        <div 
+                          key={order.id} 
+                          style={{
+                            ...styles.orderSummaryCard, 
+                            borderColor: isSelected ? '#10b981' : '#cbd5e1',
+                            backgroundColor: '#ffffff'
+                          }}
+                          onClick={() => setSelectedOrder(order)}
+                        >
+                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', textAlign: 'left'}}>
+                            <div>
+                              <strong style={{fontSize: '16px', color: '#0f172a'}}>{order.customer}</strong>
+                              <div style={{fontSize: '12px', color: '#64748b'}}>{order.id}</div>
                             </div>
-                          ))}
-                        </div>
+                            <span style={styles.statusBadgeSmall(order.status)}>{order.status}</span>
+                          </div>
 
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '700', fontSize: '16px', color: '#0f172a', borderTop: '1px solid #f1f5f9', paddingTop: '10px', textAlign: 'left'}}>
-                          <span>₹{order.total.toFixed(2)}</span>
-                          <span style={{color: '#10b981', fontSize: '18px'}}>›</span>
+                          <div style={{fontSize: '12px', color: '#64748b', marginBottom: '12px', textAlign: 'left'}}>
+                            🛵 {order.type} · 🟢 {order.channel} · 🕒 {order.time}
+                          </div>
+
+                          <div style={{fontSize: '14px', color: '#334155', borderTop: '1px solid #f1f5f9', paddingTop: '10px', marginBottom: '10px', textAlign: 'left'}}>
+                            {order.items.map((it, idx) => (
+                              <div key={idx} style={{marginBottom: '4px', fontWeight: '500', textAlign: 'left'}}>
+                                {it.qty} × {it.name}
+                              </div>
+                            ))}
+                          </div>
+
+                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '700', fontSize: '16px', color: '#0f172a', borderTop: '1px solid #f1f5f9', paddingTop: '10px', textAlign: 'left'}}>
+                            <span>₹{order.total.toFixed(2)}</span>
+                            <span style={{color: '#10b981', fontSize: '18px'}}>›</span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
@@ -388,16 +374,16 @@ export default function Dashboard({ onLogout }) {
                       <button onClick={handlePrintReceipt} style={styles.printIconBtn}>🖨️</button>
                       <div style={{display: 'flex', gap: '10px'}}>
                         {selectedOrder.status === 'New' && (
-                          <button onClick={() => updateOrderStatus(selectedOrder.id, 'Accepted')} style={styles.actionBtn}>Accept Order</button>
+                          <button onClick={() => updateOrderStatus(selectedOrder.orderId || selectedOrder.id, 'Accepted')} style={styles.actionBtn}>Accept Order</button>
                         )}
                         {selectedOrder.status === 'Accepted' && (
-                          <button onClick={() => updateOrderStatus(selectedOrder.id, 'Preparing')} style={styles.actionBtn}>Start Preparing</button>
+                          <button onClick={() => updateOrderStatus(selectedOrder.orderId || selectedOrder.id, 'Preparing')} style={styles.actionBtn}>Start Preparing</button>
                         )}
                         {selectedOrder.status === 'Preparing' && (
-                          <button onClick={() => updateOrderStatus(selectedOrder.id, 'Ready')} style={styles.actionBtn}>Mark Ready</button>
+                          <button onClick={() => updateOrderStatus(selectedOrder.orderId || selectedOrder.id, 'Ready')} style={styles.actionBtn}>Mark Ready</button>
                         )}
                         {selectedOrder.status === 'Ready' && (
-                          <button onClick={() => updateOrderStatus(selectedOrder.id, 'Picked Up')} style={styles.actionBtn}>Mark Picked Up</button>
+                          <button onClick={() => updateOrderStatus(selectedOrder.orderId || selectedOrder.id, 'Picked Up')} style={styles.actionBtn}>Mark Picked Up</button>
                         )}
                       </div>
                     </div>
