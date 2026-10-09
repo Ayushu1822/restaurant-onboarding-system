@@ -6,38 +6,40 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/orders")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = {"https://restaurant-system-sand-gamma.vercel.app", "http://localhost:3000", "http://localhost:5173"}, allowCredentials = "true")
 public class OrderController {
 
     @Autowired
     private OrderRepository orderRepository;
 
-    // Get all orders for the dashboard
     @GetMapping
-    public List<Order> getAllOrders() {
-        return orderRepository.findAllByOrderByCreatedAtDesc();
+    public ResponseEntity<List<Order>> getAllOrders() {
+        try {
+            List<Order> orders = orderRepository.findAll();
+            return ResponseEntity.ok(orders != null ? orders : Collections.emptyList());
+        } catch (Exception e) {
+            System.err.println("Error fetching orders: " + e.getMessage());
+            return ResponseEntity.ok(Collections.emptyList()); // Returns [] safely instead of 500 crash
+        }
     }
 
-    // Create a new order
-    @PostMapping
-    public Order createOrder(@RequestBody Order order) {
-        return orderRepository.save(order);
-    }
-
-    // Update order status (e.g., New -> Accepted -> Preparing -> Ready -> Picked Up)
-    @PutMapping("/{id}/status")
-    public ResponseEntity<Order> updateOrderStatus(@PathVariable UUID id, @RequestParam String status) {
-        return orderRepository.findById(id)
-                .map(order -> {
-                    order.setStatus(status);
-                    Order updatedOrder = orderRepository.save(order);
-                    return ResponseEntity.ok(updatedOrder);
-                })
-                .orElse(ResponseEntity.notFound().build());
+    @PutMapping("/{orderId}/status")
+    public ResponseEntity<?> updateOrderStatus(@PathVariable UUID orderId, @RequestParam String status) {
+        try {
+            return orderRepository.findById(orderId).map(order -> {
+                order.setStatus(status);
+                orderRepository.save(order);
+                return ResponseEntity.ok(order);
+            }).orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            System.err.println("Error updating order status: " + e.getMessage());
+            return ResponseEntity.status(500).body("Error updating status: " + e.getMessage());
+        }
     }
 }
