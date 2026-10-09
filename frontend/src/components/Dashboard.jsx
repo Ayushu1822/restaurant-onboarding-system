@@ -57,9 +57,7 @@ export default function Dashboard({ user, onLogout }) {
         if (data) {
           setIsProfileFallback(false);
           const fetchedId = data.restaurantId || data.restaurant_id || data.id;
-          if (fetchedId) {
-            setRestaurantId(fetchedId);
-          }
+          if (fetchedId) setRestaurantId(fetchedId);
           const fetched = {
             businessName: data.businessName || data.business_name || FALLBACK_RESTAURANT_PROFILE.businessName,
             ownerName: data.ownerName || data.owner_name || FALLBACK_RESTAURANT_PROFILE.ownerName,
@@ -480,7 +478,20 @@ export default function Dashboard({ user, onLogout }) {
 }
 
 const styles = {
-  container: { display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#f8fafc', overflow: 'hidden', fontFamily: 'sans-serif', boxSizing: 'border-box', margin: 0, padding: 0 },
+  container: { 
+    display: 'flex', 
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    height: '100vh', 
+    width: '100vw', 
+    backgroundColor: '#f8fafc', 
+    overflow: 'hidden', 
+    fontFamily: 'sans-serif', 
+    boxSizing: 'border-box', 
+    margin: 0, 
+    padding: 0 
+  },
   sidebar: { width: '260px', backgroundColor: '#022c22', display: 'flex', flexDirection: 'column', color: '#fff', height: '100vh', flexShrink: 0 },
   brandBox: { display: 'flex', alignItems: 'center', gap: '12px', padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)' },
   logoIcon: { fontSize: '24px' },
@@ -494,18 +505,18 @@ const styles = {
   userInfo: { padding: '15px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#01231b', cursor: 'pointer' },
   userInfoFallbackRedLine: { borderBottom: '3px solid #ef4444', backgroundColor: '#450a0a' },
   userAvatar: { width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff' },
-  mainContent: { flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' },
+  mainContent: { flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', minWidth: 0 },
   header: { height: '65px', backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 25px', flexShrink: 0 },
   pageTitle: { fontSize: '18px', fontWeight: '700', color: '#0f172a', margin: 0 },
   fallbackNoticeBar: { backgroundColor: '#fef2f2', borderBottom: '1px solid #fecaca', borderLeft: '4px solid #dc2626', padding: '10px 25px', fontSize: '13px', color: '#991b1b', textAlign: 'left', flexShrink: 0 },
   pausedItemsBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#334155', cursor: 'pointer' },
   pausedCountBadge: { backgroundColor: '#e11d48', color: '#fff', fontSize: '10px', padding: '1px 6px', borderRadius: '10px' },
   topLogoutBtn: { backgroundColor: '#fee2e2', color: '#991b1b', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
-  onlineOrdersContainer: { display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', backgroundColor: '#f8fafc' },
+  onlineOrdersContainer: { display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', backgroundColor: '#f8fafc', minWidth: 0 },
   subHeader: { padding: '12px 25px', backgroundColor: '#fff', borderBottom: '1px solid #f1f5f9', fontSize: '14px', textAlign: 'left', flexShrink: 0 },
-  splitViewWrapper: { display: 'flex', flex: 1, padding: '20px', gap: '24px', overflow: 'hidden', minHeight: 0 },
-  masterListColumn: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 },
-  detailPanelColumn: { flex: 1.2, display: 'flex', flexDirection: 'column', overflowY: 'auto', minHeight: 0, paddingRight: '5px' },
+  splitViewWrapper: { display: 'flex', flex: 1, padding: '20px', gap: '24px', overflow: 'hidden', minHeight: 0, minWidth: 0 },
+  masterListColumn: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, minWidth: 0 },
+  detailPanelColumn: { flex: 1.2, display: 'flex', flexDirection: 'column', overflowY: 'auto', minHeight: 0, minWidth: 0, paddingRight: '5px' },
   listHeaderTopRow: { display: 'flex', justifyContent: 'space-between', marginBottom: '12px', flexShrink: 0 },
   listHeaderTitle: { fontSize: '14px', fontWeight: '700', color: '#334155', textAlign: 'left', flexShrink: 0, marginBottom: '10px' },
   scrollableCards: { display: 'flex', flexDirection: 'column', gap: '14px', overflowY: 'auto', flex: 1, paddingRight: '5px' },
