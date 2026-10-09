@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
+const RESTAURANT_ID = 'ae41c831-372b-4f56-8905-f67a93b8045b';
 
 const FULL_DUMMY_ORDERS = [
   {
@@ -13,69 +14,18 @@ const FULL_DUMMY_ORDERS = [
     channel: 'WhatsApp',
     duration: '15 min',
     items: [
-      { name: 'Chicken Drumsticks', qty: 2, price: 398.00, desc: 'Spicy · Serves 1', modifiers: [{ name: 'Garlic dip', qty: 1, price: 20.00 }] },
-      { name: 'Sprite', qty: 2, price: 120.00, desc: null, modifiers: [] },
-      { name: 'Chicken Fillet Burger Combo', qty: 1, price: 269.00, desc: 'Cheese loaded · Serves 1', modifiers: [] }
+      { name: 'Chicken Drumsticks', qty: 2, price: 398.00, desc: 'Spicy · Serves 1', modifiers: [] },
+      { name: 'Sprite', qty: 2, price: 120.00, desc: '', modifiers: [] }
     ],
     address: '12, MG Road, Bengaluru · 1.2 km',
     phone: '9876543210',
     customerRequest: 'Customer is allergic to peanuts.',
-    subtotal: 787.00,
+    subtotal: 518.00,
     promoCode: 'WELCOME10',
-    discount: 78.70,
-    gst: 39.35,
+    discount: 51.80,
+    gst: 25.90,
     deliveryCharge: 15.00,
-    total: 762.65,
-    paymentMethod: 'UPI',
-    paymentStatus: 'PAID'
-  },
-  {
-    id: '#KO01/000002',
-    orderId: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22',
-    customer: 'Arjun Mehta',
-    time: '12m ago',
-    status: 'New',
-    type: 'Delivery',
-    channel: 'Web',
-    duration: '20 min',
-    items: [
-      { name: 'Lucknowi (Awadhi) Biryani', qty: 2, price: 700.00, desc: null, modifiers: [] },
-      { name: 'Chicken 65', qty: 1, price: 220.00, desc: null, modifiers: [] }
-    ],
-    address: 'Indiranagar, Bengaluru · 2.5 km',
-    phone: '9811223344',
-    customerRequest: 'Deliver without ringing the doorbell.',
-    subtotal: 920.00,
-    promoCode: '',
-    discount: 0.00,
-    gst: 46.00,
-    deliveryCharge: 20.00,
-    total: 986.00,
-    paymentMethod: 'COD',
-    paymentStatus: 'PENDING'
-  },
-  {
-    id: '#KO01/000003',
-    orderId: 'c2eebc99-9c0b-4ef8-bb6d-6bb9bd380c33',
-    customer: 'Sneha Iyer',
-    time: '25m ago',
-    status: 'New',
-    type: 'Pickup',
-    channel: 'Web',
-    duration: '10 min',
-    items: [
-      { name: 'Paneer Tikka Sandwich', qty: 2, price: 458.00, desc: null, modifiers: [] },
-      { name: 'Cold Coffee', qty: 2, price: 240.00, desc: null, modifiers: [] }
-    ],
-    address: '44, Residency Road, Bengaluru',
-    phone: '9123456780',
-    customerRequest: '',
-    subtotal: 698.00,
-    promoCode: '',
-    discount: 0.00,
-    gst: 35.00,
-    deliveryCharge: 0.00,
-    total: 733.00,
+    total: 507.10,
     paymentMethod: 'UPI',
     paymentStatus: 'PAID'
   }
@@ -88,16 +38,40 @@ export default function Dashboard({ onLogout }) {
   const [hoveredTab, setHoveredTab] = useState(null);
   
   const [profileData, setProfileData] = useState({
-    businessName: 'FOODOS Restaurant',
-    ownerName: 'Admin',
+    businessName: 'Loading...',
+    ownerName: 'Loading...',
     email: 'novio@gmail.com',
-    phone: '8218579235',
-    address: '44, Residency Road, Bengaluru'
+    phone: '',
+    whatsappNumber: ''
   });
+
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editForm, setEditForm] = useState(profileData);
 
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
+  // Fetch real profile data from database
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/v1/restaurants/${RESTAURANT_ID}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.businessName) {
+          const fetched = {
+            businessName: data.businessName,
+            ownerName: data.ownerName,
+            email: 'novio@gmail.com',
+            phone: data.phoneNumber || data.phone_number || '',
+            whatsappNumber: data.whatsappNumber || data.whatsapp_number || ''
+          };
+          setProfileData(fetched);
+          setEditForm(fetched);
+        }
+      })
+      .catch(err => console.error("Error fetching profile:", err));
+  }, []);
+
+  // Fetch orders and items from backend
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/orders`, {
       method: 'GET',
@@ -124,11 +98,7 @@ export default function Dashboard({ onLogout }) {
             qty: i.quantity || 1,
             price: ((i.unitPrice || i.unit_price || 0) * (i.quantity || 1)),
             desc: i.itemDescription || i.item_description || '',
-            modifiers: (i.modifiers || []).map(m => ({ 
-              name: m.modifierName || m.modifier_name, 
-              qty: m.quantity || 1, 
-              price: m.modifierPrice || m.modifier_price || 0 
-            }))
+            modifiers: []
           })),
           address: o.deliveryAddress || o.delivery_address || 'MG Road, Bengaluru',
           phone: o.customerPhone || o.customer_phone || '9876543210',
@@ -153,6 +123,33 @@ export default function Dashboard({ onLogout }) {
         setLoadingOrders(false);
       });
   }, []);
+
+  const handleSaveProfile = (e) => {
+    e.preventDefault();
+    fetch(`${API_BASE_URL}/api/v1/restaurants/${RESTAURANT_ID}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        businessName: editForm.businessName,
+        ownerName: editForm.ownerName,
+        phoneNumber: editForm.phone,
+        whatsappNumber: editForm.whatsappNumber
+      })
+    })
+      .then(res => res.json())
+      .then(updated => {
+        setProfileData({
+          ...profileData,
+          businessName: updated.businessName,
+          ownerName: updated.ownerName,
+          phone: updated.phoneNumber,
+          whatsappNumber: updated.whatsappNumber
+        });
+        setIsEditingProfile(false);
+        alert('Profile successfully updated in database!');
+      })
+      .catch(() => alert('Failed to update profile'));
+  };
 
   const updateOrderStatus = (orderId, newStatus) => {
     setOrders(orders.map(o => (o.orderId === orderId || o.id === orderId) ? { ...o, status: newStatus } : o));
@@ -203,8 +200,8 @@ export default function Dashboard({ onLogout }) {
           })}
         </ul>
 
-        <div style={styles.userInfo} onClick={() => setShowProfileModal(true)}>
-          <div style={styles.userAvatar}>AD</div>
+        <div style={styles.userInfo} onClick={() => { setShowProfileModal(true); setIsEditingProfile(false); }}>
+          <div style={styles.userAvatar}>{profileData.ownerName ? profileData.ownerName.substring(0, 2).toUpperCase() : 'AD'}</div>
           <div style={{flex: 1, overflow: 'hidden', textAlign: 'left'}}>
             <div style={{fontSize: '13px', fontWeight: 'bold', color: '#fff'}}>{profileData.ownerName}</div>
             <div style={{fontSize: '11px', color: '#6ee7b7'}}>{profileData.businessName}</div>
@@ -364,11 +361,55 @@ export default function Dashboard({ onLogout }) {
         <div style={styles.drawerOverlay} onClick={() => setShowProfileModal(false)}>
           <div style={styles.profileModal} onClick={(e) => e.stopPropagation()}>
             <h3 style={{margin: '0 0 15px 0', color: '#0f172a'}}>Admin Profile</h3>
-            <p style={{color: '#334155'}}><strong>Business:</strong> {profileData.businessName}</p>
-            <p style={{color: '#334155'}}><strong>Owner:</strong> {profileData.ownerName}</p>
-            <p style={{color: '#334155'}}><strong>Email:</strong> {profileData.email}</p>
-            <p style={{color: '#334155'}}><strong>Phone:</strong> {profileData.phone}</p>
-            <button onClick={() => setShowProfileModal(false)} style={styles.actionBtn}>Close</button>
+            
+            {!isEditingProfile ? (
+              <div>
+                <p style={{color: '#334155'}}><strong>Business:</strong> {profileData.businessName}</p>
+                <p style={{color: '#334155'}}><strong>Owner:</strong> {profileData.ownerName}</p>
+                <p style={{color: '#334155'}}><strong>Email:</strong> {profileData.email}</p>
+                <p style={{color: '#334155'}}><strong>Phone:</strong> {profileData.phone}</p>
+                <p style={{color: '#334155'}}><strong>WhatsApp:</strong> {profileData.whatsappNumber}</p>
+                <div style={{display: 'flex', gap: '10px', marginTop: '20px'}}>
+                  <button onClick={() => setIsEditingProfile(true)} style={styles.actionBtn}>Edit Profile</button>
+                  <button onClick={() => setShowProfileModal(false)} style={{...styles.actionBtn, backgroundColor: '#64748b'}}>Close</button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSaveProfile} style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                <label style={{fontSize: '12px', fontWeight: 'bold'}}>Business Name:</label>
+                <input 
+                  style={{padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1'}}
+                  value={editForm.businessName} 
+                  onChange={e => setEditForm({...editForm, businessName: e.target.value})} 
+                />
+                
+                <label style={{fontSize: '12px', fontWeight: 'bold'}}>Owner Name:</label>
+                <input 
+                  style={{padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1'}}
+                  value={editForm.ownerName} 
+                  onChange={e => setEditForm({...editForm, ownerName: e.target.value})} 
+                />
+
+                <label style={{fontSize: '12px', fontWeight: 'bold'}}>Phone Number:</label>
+                <input 
+                  style={{padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1'}}
+                  value={editForm.phone} 
+                  onChange={e => setEditForm({...editForm, phone: e.target.value})} 
+                />
+
+                <label style={{fontSize: '12px', fontWeight: 'bold'}}>WhatsApp Number:</label>
+                <input 
+                  style={{padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1'}}
+                  value={editForm.whatsappNumber} 
+                  onChange={e => setEditForm({...editForm, whatsappNumber: e.target.value})} 
+                />
+
+                <div style={{display: 'flex', gap: '10px', marginTop: '15px'}}>
+                  <button type="submit" style={styles.actionBtn}>Save Changes</button>
+                  <button type="button" onClick={() => setIsEditingProfile(false)} style={{...styles.actionBtn, backgroundColor: '#64748b'}}>Cancel</button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
