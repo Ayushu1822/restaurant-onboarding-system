@@ -131,7 +131,6 @@ export default function Dashboard({ onLogout }) {
       })
       .catch(err => {
         console.error(err);
-        // Fallback UI update if backend call is mocked locally
         setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
       });
   };
