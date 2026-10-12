@@ -10,8 +10,11 @@ import java.util.UUID;
 public class OrderItem {
 
     @Id
-    @Column(name = "item_id")
+    @Column(name = "order_item_id")
     private UUID itemId;
+
+    @Column(name = "item_id", nullable = false)
+    private UUID duplicateItemId;
 
     @JsonIgnore
     @ManyToOne
@@ -29,9 +32,27 @@ public class OrderItem {
     @Column(name = "item_description")
     private String itemDescription;
 
+    @PrePersist
+    @PreUpdate
+    public void syncItemIds() {
+        if (this.itemId != null && this.duplicateItemId == null) {
+            this.duplicateItemId = this.itemId;
+        } else if (this.duplicateItemId != null && this.itemId == null) {
+            this.itemId = this.duplicateItemId;
+        }
+    }
+
     // Getters and Setters
     public UUID getItemId() { return itemId; }
-    public void setItemId(UUID itemId) { this.itemId = itemId; }
+    public void setItemId(UUID itemId) { 
+        this.itemId = itemId; 
+        if (this.duplicateItemId == null) {
+            this.duplicateItemId = itemId;
+        }
+    }
+
+    public UUID getDuplicateItemId() { return duplicateItemId; }
+    public void setDuplicateItemId(UUID duplicateItemId) { this.duplicateItemId = duplicateItemId; }
 
     public Order getOrder() { return order; }
     public void setOrder(Order order) { this.order = order; }
