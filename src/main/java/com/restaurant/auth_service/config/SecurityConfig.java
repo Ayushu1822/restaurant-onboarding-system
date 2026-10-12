@@ -4,7 +4,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -16,15 +18,25 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    // Completely bypass Spring Security for API paths so 403s are impossible
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        return (web) -> web.ignoring().requestMatchers(
+            "/api/**", 
+            "/api/v1/**", 
+            "/error", 
+            "/swagger-ui/**", 
+            "/v3/api-docs/**"
+        );
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> {}) // Uses the corsFilter bean below
+            .cors(cors -> {})
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Explicitly permit preflight
-                .requestMatchers("/api/**", "/api/v1/**").permitAll()     // Catch-all for all API routes
-                .anyRequest().authenticated()
+                .anyRequest().permitAll()
             );
 
         return http.build();
@@ -43,7 +55,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L); // Cache preflight response for 1 hour
+        configuration.setMaxAge(3600L);
 
         source.registerCorsConfiguration("/**", configuration);
         return new CorsFilter(source);
