@@ -1,9 +1,15 @@
+package com.restaurant.auth_service.model;
+
+import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.util.UUID;
+
 @Entity
 @Table(name = "pg_order_items")
 public class OrderItem {
 
     @Id
-    @Column(name = "order_item_id") // Changed from "item_id" to match Postgres
+    @Column(name = "order_item_id")
     private UUID itemId;
 
     @ManyToOne
@@ -21,7 +27,7 @@ public class OrderItem {
     @Column(name = "item_description")
     private String itemDescription;
 
-    // Getters and Setters...
+    // Getters and Setters
     public UUID getItemId() { return itemId; }
     public void setItemId(UUID itemId) { this.itemId = itemId; }
 
