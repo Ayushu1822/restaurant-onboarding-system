@@ -6,11 +6,11 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
-@Table(name = "pg_order_items_new")
+@Table(name = "pg_order_items")
 public class OrderItem {
 
     @Id
-    @Column(name = "order_item_id")
+    @Column(name = "item_id")
     private UUID itemId;
 
     @JsonIgnore
