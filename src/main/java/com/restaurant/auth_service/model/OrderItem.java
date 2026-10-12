@@ -10,7 +10,7 @@ import java.util.UUID;
 public class OrderItem {
 
     @Id
-    @Column(name = "order_item_id")
+    @Column(name = "item_id")
     private UUID itemId;
 
     @JsonIgnore
