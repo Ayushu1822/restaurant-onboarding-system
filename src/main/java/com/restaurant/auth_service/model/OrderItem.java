@@ -1,5 +1,6 @@
 package com.restaurant.auth_service.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -12,6 +13,7 @@ public class OrderItem {
     @Column(name = "item_id")
     private UUID itemId;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "order_id")
     private Order order;
