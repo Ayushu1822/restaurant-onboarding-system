@@ -23,7 +23,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Explicitly permit preflight
-                .requestMatchers("/api/v1/auth/**", "/api/v1/orders/**", "/api/v1/restaurants/**").permitAll()
+                .requestMatchers("/api/**", "/api/v1/**").permitAll()     // Catch-all for all API routes
                 .anyRequest().authenticated()
             );
 
