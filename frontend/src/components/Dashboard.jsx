@@ -9,19 +9,6 @@ const FALLBACK_RESTAURANT_PROFILE = {
   whatsappNumber: '8218579235'
 };
 
-const HYBRID_DUMMY_ORDERS = [
-  { id: '#KO01/000001', orderId: 'd1', customer: 'Rahul Sharma', time: '2m ago', status: 'New', type: 'Delivery', channel: 'WhatsApp', items: [{ name: 'Chicken Drumsticks', qty: 2, price: 199.00, desc: 'Spicy · Serves 1' }, { name: 'Sprite', qty: 2, price: 60.00, desc: 'Cold 300ml' }], address: '12, MG Road, Bengaluru', phone: '9876543210', customerRequest: 'Make it extra spicy please.', subtotal: 518.00, total: 507.10 },
-  { id: '#KO01/000002', orderId: 'd2', customer: 'Neha Kapoor', time: '12m ago', status: 'New', type: 'Delivery', channel: 'Swiggy', items: [{ name: 'Lucknowi Biryani', qty: 2, price: 350.00, desc: 'Authentic spices · Serves 2' }, { name: 'Chicken 65', qty: 1, price: 220.00, desc: 'Crispy starter' }], address: 'Indiranagar, Bengaluru', phone: '9811223399', customerRequest: 'Deliver without ringing doorbell.', subtotal: 920.00, total: 986.00 },
-  { id: '#KO01/000003', orderId: 'd3', customer: 'Karan Singh', time: '25m ago', status: 'Accepted', type: 'Pickup', channel: 'Zomato', items: [{ name: 'Paneer Tikka Sandwich', qty: 2, price: 229.00, desc: 'Grilled with mint chutney' }, { name: 'Cold Coffee', qty: 2, price: 120.00, desc: 'Thick shake' }], address: '44, Residency Road, Bengaluru', phone: '9123456711', customerRequest: '', subtotal: 698.00, total: 733.00 },
-  { id: '#KO01/000004', orderId: 'd4', customer: 'Ananya Verma', time: '35m ago', status: 'Preparing', type: 'Delivery', channel: 'WhatsApp', items: [{ name: 'Butter Chicken', qty: 1, price: 420.00, desc: 'Rich gravy · Serves 2' }, { name: 'Garlic Naan', qty: 4, price: 45.00, desc: 'Tandoor baked' }], address: 'Koramangala 4th Block, Bengaluru', phone: '9988776655', customerRequest: 'Extra butter on naan.', subtotal: 600.00, total: 655.00 },
-  { id: '#KO01/000005', orderId: 'd5', customer: 'Vikram Malhotra', time: '42m ago', status: 'Ready', type: 'Delivery', channel: 'Web', items: [{ name: 'Pepperoni Pizza', qty: 1, price: 599.00, desc: 'Large 12 inch' }, { name: 'Coke Zero', qty: 2, price: 90.00, desc: 'Can 330ml' }], address: 'Jayanagar 3rd Block, Bengaluru', phone: '9711223344', customerRequest: 'Cut into 8 slices.', subtotal: 779.00, total: 742.95 },
-  { id: '#KO01/000006', orderId: 'd6', customer: 'Pooja Hegde', time: '50m ago', status: 'Picked Up', type: 'Pickup', channel: 'Web', items: [{ name: 'Veg Hakka Noodles', qty: 2, price: 180.00, desc: 'Wok tossed veggies' }, { name: 'Chilli Paneer Dry', qty: 1, price: 260.00, desc: 'Semi-gravy spicy' }], address: 'MG Road Counter Pickup', phone: '9844556677', customerRequest: 'Pack extra soy sauce.', subtotal: 620.00, total: 651.00 },
-  { id: '#KO01/000007', orderId: 'd7', customer: 'Siddharth Roy', time: '1h ago', status: 'New', type: 'Delivery', channel: 'WhatsApp', items: [{ name: 'Mutton Rogan Josh', qty: 1, price: 550.00, desc: 'Kashmiri style delicacy' }, { name: 'Tandoori Roti', qty: 3, price: 30.00, desc: 'Whole wheat' }], address: 'Ulsoor, Bengaluru', phone: '9122334455', customerRequest: 'Make gravy medium spicy.', subtotal: 640.00, total: 692.00 },
-  { id: '#KO01/000008', orderId: 'd8', customer: 'Meera Nambiar', time: '1h 15m ago', status: 'Accepted', type: 'Delivery', channel: 'Swiggy', items: [{ name: 'Crispy Veg Burger', qty: 2, price: 149.00, desc: 'Potato & corn patty' }, { name: 'French Fries', qty: 1, price: 110.00, desc: 'Large salted' }], address: 'Whitefield, Bengaluru', phone: '9899887766', customerRequest: 'Provide ketchup sachets.', subtotal: 408.00, total: 415.90 },
-  { id: '#KO01/000009', orderId: 'd9', customer: 'Aditya Rao', time: '1h 30m ago', status: 'Preparing', type: 'Delivery', channel: 'Zomato', items: [{ name: 'Hyderabadi Chicken Dum Biryani', qty: 2, price: 320.00, desc: 'With mirchi ka salan' }], address: 'BTM Layout, Bengaluru', phone: '9333222111', customerRequest: 'Add extra boiled egg.', subtotal: 640.00, total: 692.00 },
-  { id: '#KO01/000010', orderId: 'd10', customer: 'Divya Menon', time: '2h ago', status: 'Ready', type: 'Pickup', channel: 'Web', items: [{ name: 'Chocolate Lava Cake', qty: 3, price: 150.00, desc: 'Warm gooey center' }, { name: 'Vanilla Ice Cream Scoop', qty: 3, price: 60.00, desc: 'Side serving' }], address: 'Residency Road Store Counter', phone: '9555666777', customerRequest: 'Pack securely for travel.', subtotal: 630.00, total: 661.50 }
-];
-
 export default function Dashboard({ user, onLogout }) {
   const loggedInEmail = user?.email || localStorage.getItem('userEmail') || 'novio@gmail.com';
 
@@ -44,7 +31,7 @@ export default function Dashboard({ user, onLogout }) {
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState(profileData);
-  const [orders, setOrders] = useState(HYBRID_DUMMY_ORDERS);
+  const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
   useEffect(() => {
@@ -86,15 +73,8 @@ export default function Dashboard({ user, onLogout }) {
       })
       .then(data => {
         let orderList = Array.isArray(data) ? data : [];
-        if (orderList.length === 0) {
-          setIsOrdersFallback(true);
-          setOrders(HYBRID_DUMMY_ORDERS);
-          setSelectedOrder(HYBRID_DUMMY_ORDERS[0]);
-          setLoadingOrders(false);
-          return;
-        }
-
         setIsOrdersFallback(false);
+        
         const formattedOrders = orderList.map((o, index) => {
           const rawItems = o.items || o.orderItems || [];
           const mappedItems = rawItems.map(i => ({
@@ -126,10 +106,8 @@ export default function Dashboard({ user, onLogout }) {
         setLoadingOrders(false);
       })
       .catch(err => {
-        console.warn("Orders offline, activating hybrid fallback:", err);
+        console.warn("Orders fetch failed:", err);
         setIsOrdersFallback(true);
-        setOrders(HYBRID_DUMMY_ORDERS);
-        setSelectedOrder(HYBRID_DUMMY_ORDERS[0]);
         setLoadingOrders(false);
       });
   }, []);
@@ -266,7 +244,7 @@ export default function Dashboard({ user, onLogout }) {
 
         {isOrdersFallback && activeTab === 'Online Orders' && (
           <div style={styles.fallbackNoticeBar}>
-            <span style={{color: '#dc2626', fontWeight: 'bold'}}>⚠️ Fallback Mode Active:</span> Showing 10 hybrid test orders (Database currently connecting).
+            <span style={{color: '#dc2626', fontWeight: 'bold'}}>⚠️ Connection Notice:</span> Unable to reach database orders endpoint.
           </div>
         )}
 
@@ -295,7 +273,7 @@ export default function Dashboard({ user, onLogout }) {
                   {loadingOrders ? (
                     <div style={{padding: '20px', textAlign: 'center'}}>Loading database orders...</div>
                   ) : orders.length === 0 ? (
-                    <div style={{padding: '20px', textAlign: 'center', color: '#64748b'}}>No orders found.</div>
+                    <div style={{padding: '20px', textAlign: 'center', color: '#64748b'}}>No orders found in database.</div>
                   ) : (
                     orders.map(order => {
                       const isSelected = selectedOrder?.id === order.id;
