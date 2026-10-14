@@ -108,7 +108,7 @@ export default function Dashboard({ user, onLogout }) {
             id: o.displayId || o.display_id || o.id || `#KO01/00000${index + 1}`,
             orderId: o.orderId || o.order_id || o.id,
             customer: o.customerName || o.customer_name || 'Valued Customer',
-            time: '5m ago',
+            time: 'Just now',
             status: o.status || 'New',
             type: o.orderType || o.order_type || 'Delivery',
             channel: o.channel || 'WhatsApp',
