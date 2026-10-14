@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping({"/api/orders", "/api/v1/orders"}) // Supports both paths seamlessly!
+@RequestMapping({"/api/orders", "/api/v1/orders"})
 @CrossOrigin(origins = "*") 
 public class OrderController {
 
@@ -19,7 +19,12 @@ public class OrderController {
 
     @GetMapping
     public List<Order> getAllOrders() {
-        return orderRepository.findAll();
+        List<Order> orders = orderRepository.findAll();
+        System.out.println("📦 FETCHED FROM DATABASE — Total Orders: " + orders.size());
+        for (Order o : orders) {
+            System.out.println(" -> Display ID: " + o.getDisplayId() + " | Customer: " + o.getCustomerName());
+        }
+        return orders;
     }
 
     @PostMapping
