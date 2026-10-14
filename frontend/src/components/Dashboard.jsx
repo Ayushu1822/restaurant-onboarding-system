@@ -63,6 +63,7 @@ export default function Dashboard({ user, onLogout }) {
   }, [loggedInEmail]);
 
   useEffect(() => {
+    console.log("Fetching live orders from backend...");
     fetch(`${API_BASE_URL}/api/v1/orders`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
@@ -72,6 +73,7 @@ export default function Dashboard({ user, onLogout }) {
         return res.json();
       })
       .then(data => {
+        console.log("SUCCESS! Orders received from backend:", data);
         let orderList = Array.isArray(data) ? data : [];
         setIsOrdersFallback(false);
         
@@ -106,8 +108,9 @@ export default function Dashboard({ user, onLogout }) {
         setLoadingOrders(false);
       })
       .catch(err => {
-        console.warn("Orders fetch failed:", err);
+        console.error("❌ FETCH FAILED:", err);
         setIsOrdersFallback(true);
+        setOrders([]);
         setLoadingOrders(false);
       });
   }, []);
