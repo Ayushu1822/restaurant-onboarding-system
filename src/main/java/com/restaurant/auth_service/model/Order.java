@@ -10,6 +10,7 @@ import java.util.UUID;
 public class Order {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.AUTO) // <--- Automatically generates UUID on persist
     @Column(name = "order_id")
     private UUID orderId;
 
