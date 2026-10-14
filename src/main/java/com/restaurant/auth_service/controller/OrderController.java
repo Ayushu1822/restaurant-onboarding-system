@@ -11,7 +11,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping({"/api/orders", "/api/v1/orders"})
-@CrossOrigin(origins = "*") 
 public class OrderController {
 
     @Autowired
@@ -38,7 +37,7 @@ public class OrderController {
         return orderRepository.save(newOrder);
     }
 
-    // 🧹 EMERGENCY WIPE ENDPOINT: Clears every single order from your active Render database
+    // 🧹 EMERGENCY WIPE ENDPOINT
     @DeleteMapping("/clear-all")
     public String clearAllOrders() {
         orderRepository.deleteAll();
