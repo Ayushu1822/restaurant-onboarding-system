@@ -86,9 +86,12 @@ export default function Dashboard({ user, onLogout }) {
             desc: i.itemDescription || i.item_description || ''
           }));
 
+          const resolvedOrderId = o.orderId || o.order_id || o.id;
+          const resolvedDisplayId = o.displayId || o.display_id || resolvedOrderId || `#KO01/00000${index + 1}`;
+
           return {
-            id: o.displayId || o.display_id || o.id || `#KO01/00000${index + 1}`,
-            orderId: o.orderId || o.order_id || o.id,
+            id: resolvedDisplayId,
+            orderId: resolvedOrderId,
             customer: o.customerName || o.customer_name || 'Valued Customer',
             time: 'Just now',
             status: o.status || 'New',
@@ -150,7 +153,7 @@ export default function Dashboard({ user, onLogout }) {
       });
   };
 
-  const updateOrderStatus = (orderId, currentStatus) => {
+  const updateOrderStatus = (targetId, currentStatus) => {
     let nextStatus = 'Accepted';
     if (currentStatus === 'New') nextStatus = 'Accepted';
     else if (currentStatus === 'Accepted') nextStatus = 'Preparing';
@@ -158,12 +161,12 @@ export default function Dashboard({ user, onLogout }) {
     else if (currentStatus === 'Ready') nextStatus = 'Picked Up';
     else return;
 
-    const updatedList = orders.map(o => (o.orderId === orderId || o.id === orderId) ? { ...o, status: nextStatus } : o);
+    const updatedList = orders.map(o => (o.orderId === targetId || o.id === targetId) ? { ...o, status: nextStatus } : o);
     setOrders(updatedList);
-    const found = updatedList.find(o => o.orderId === orderId || o.id === orderId);
+    const found = updatedList.find(o => o.orderId === targetId || o.id === targetId);
     if (found) setSelectedOrder(found);
 
-    fetch(`${API_BASE_URL}/api/v1/orders/${orderId}/status?status=${nextStatus}`, {
+    fetch(`${API_BASE_URL}/api/v1/orders/${targetId}/status?status=${nextStatus}`, {
       method: 'PUT'
     }).catch(err => console.log("Status sync warning:", err));
   };
@@ -279,10 +282,10 @@ export default function Dashboard({ user, onLogout }) {
                     <div style={{padding: '20px', textAlign: 'center', color: '#64748b'}}>No orders found in database.</div>
                   ) : (
                     orders.map(order => {
-                      const isSelected = selectedOrder?.id === order.id;
+                      const isSelected = selectedOrder?.orderId === order.orderId;
                       return (
                         <div 
-                          key={order.id} 
+                          key={order.orderId || order.id} 
                           style={{
                             ...styles.orderSummaryCard, 
                             borderColor: isSelected ? '#10b981' : '#cbd5e1'
@@ -373,7 +376,7 @@ export default function Dashboard({ user, onLogout }) {
                       
                       {selectedOrder.status !== 'Picked Up' && selectedOrder.status !== 'Completed' ? (
                         <button 
-                          onClick={() => updateOrderStatus(selectedOrder.orderId || selectedOrder.id, selectedOrder.status)} 
+                          onClick={() => updateOrderStatus(selectedOrder.orderId, selectedOrder.status)} 
                           style={styles.actionBtn}
                         >
                           {getNextActionLabel(selectedOrder.status)}
