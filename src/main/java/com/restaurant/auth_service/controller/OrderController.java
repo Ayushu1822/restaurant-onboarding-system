@@ -37,4 +37,12 @@ public class OrderController {
         }
         return orderRepository.save(newOrder);
     }
+
+    // 🧹 EMERGENCY WIPE ENDPOINT: Clears every single order from your active Render database
+    @DeleteMapping("/clear-all")
+    public String clearAllOrders() {
+        orderRepository.deleteAll();
+        System.out.println("⚠️ DATABASE WIPED: All orders have been deleted via API.");
+        return "SUCCESS: All orders deleted from the active database!";
+    }
 }
