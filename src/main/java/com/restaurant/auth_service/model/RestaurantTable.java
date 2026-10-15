@@ -1,21 +1,29 @@
 package com.restaurant.auth_service.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "pg_tables")
+@Table(name = "restaurant_tables")
 public class RestaurantTable {
 
     @Id
-    private String tableId; // e.g., 'T1', 'T2', 'B1'
+    @Column(name = "table_id")
+    private String tableId;
     
-    private String section; // 'MAIN', 'PATIO', 'BAR'
+    private String section;
     private int seats;
-    private String status;  // 'Available', 'Occupied', 'Ready to Pay', 'Billing', 'Reserved'
+    private String status;
+    
+    @Column(name = "customer_name")
     private String customerName;
+    
+    @Column(name = "visit_time")
     private String visitTime;
+    
+    @Column(name = "current_amount")
     private Double currentAmount;
 
     public RestaurantTable() {}
