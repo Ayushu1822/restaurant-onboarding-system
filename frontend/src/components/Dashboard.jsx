@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
 
+// Import all modular sub-components
+import KitchenModule from './KitchenModule';
+import MenuModule from './MenuModule';
+import ReportsModule from './ReportsModule';
+import CustomersModule from './CustomersModule';
+import ComplaintsModule from './ComplaintsModule';
+import TablesModule from './TablesModule';
+import CounterPOS from './CounterPOS';
+
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
 const FALLBACK_RESTAURANT_PROFILE = {
@@ -63,7 +72,6 @@ export default function Dashboard({ user, onLogout }) {
   }, [loggedInEmail]);
 
   useEffect(() => {
-    console.log("Fetching live orders from backend...");
     fetch(`${API_BASE_URL}/api/v1/orders`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
@@ -73,7 +81,6 @@ export default function Dashboard({ user, onLogout }) {
         return res.json();
       })
       .then(data => {
-        console.log("SUCCESS! Orders received from backend:", data);
         let orderList = Array.isArray(data) ? data : [];
         setIsOrdersFallback(false);
         
@@ -185,6 +192,7 @@ export default function Dashboard({ user, onLogout }) {
 
   return (
     <div style={styles.container}>
+      {/* Sidebar */}
       <div style={styles.sidebar}>
         <div style={styles.brandBox}>
           <span style={styles.logoIcon}>🛡️</span>
@@ -237,6 +245,7 @@ export default function Dashboard({ user, onLogout }) {
         </div>
       </div>
 
+      {/* Main Content Area */}
       <div style={styles.mainContent}>
         <div style={styles.header}>
           <h2 style={styles.pageTitle}>{activeTab}</h2>
@@ -248,20 +257,30 @@ export default function Dashboard({ user, onLogout }) {
           </div>
         </div>
 
+        {/* Tables Available Live Header Bar (Matches your screenshot) */}
+        <div style={styles.tablesStatusBar} onClick={() => setActiveTab('Tables')}>
+          <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600', color: '#334155'}}>
+            <span>🪑</span>
+            <span>Tables</span>
+            <span style={{color: '#cbd5e1'}}>·</span>
+            <span style={{color: '#16a34a'}}>5/10 open</span>
+            <span style={{color: '#cbd5e1'}}>·</span>
+            <span>3 occupied</span>
+            <span style={{backgroundColor: '#2563eb', color: '#fff', padding: '1px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: '700'}}>1 billing</span>
+            <span style={{color: '#cbd5e1'}}>·</span>
+            <span style={{color: '#64748b'}}>1 reserved</span>
+          </div>
+          <span style={{color: '#94a3b8', fontSize: '16px', fontWeight: 'bold'}}>›</span>
+        </div>
+
         {isOrdersFallback && activeTab === 'Online Orders' && (
           <div style={styles.fallbackNoticeBar}>
             <span style={{color: '#dc2626', fontWeight: 'bold'}}>⚠️ Connection Notice:</span> Unable to reach database orders endpoint.
           </div>
         )}
 
-        {activeTab !== 'Online Orders' ? (
-          <div style={styles.tabContentPlaceholder}>
-            <div style={styles.placeholderCard}>
-              <h2 style={{color: '#0f172a', margin: '0 0 8px 0', textAlign: 'left'}}>{activeTab} Management Panel</h2>
-              <p style={{color: '#64748b', margin: 0, textAlign: 'left'}}>Module for restaurant {activeTab.toLowerCase()}.</p>
-            </div>
-          </div>
-        ) : (
+        {/* Dynamic Module Router */}
+        {activeTab === 'Online Orders' && (
           <div style={styles.onlineOrdersContainer}>
             <div style={styles.subHeader}>
               <span style={{fontWeight: '600', color: '#0f172a'}}>
@@ -393,8 +412,20 @@ export default function Dashboard({ user, onLogout }) {
             </div>
           </div>
         )}
+
+        {activeTab === 'Counter POS' && <CounterPOS />}
+        {activeTab === 'Tables' && <TablesModule />}
+        {activeTab === 'Kitchen' && <KitchenModule />}
+        {activeTab === 'Menu' && <MenuModule />}
+        {activeTab === 'Reports' && <ReportsModule />}
+        {activeTab === 'Customers' && <CustomersModule />}
+        {activeTab === 'Complaints' && <ComplaintsModule />}
+        {activeTab === 'Promotions' && <div style={{padding: '30px'}}><h2>Promotions & Discounts</h2></div>}
+        {activeTab === 'Gallery' && <div style={{padding: '30px'}}><h2>Restaurant Gallery</h2></div>}
+        {activeTab === 'Settings' && <div style={{padding: '30px'}}><h2>System Settings</h2></div>}
       </div>
 
+      {/* Profile Modal */}
       {showProfileModal && (
         <div style={styles.drawerOverlay} onClick={() => setShowProfileModal(false)}>
           <div style={styles.profileModal} onClick={(e) => e.stopPropagation()}>
@@ -492,6 +523,17 @@ const styles = {
   mainContent: { flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', minWidth: 0 },
   header: { height: '65px', backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 25px', flexShrink: 0 },
   pageTitle: { fontSize: '18px', fontWeight: '700', color: '#0f172a', margin: 0 },
+  tablesStatusBar: {
+    backgroundColor: '#eff6ff',
+    borderBottom: '1px solid #dbeafe',
+    padding: '10px 25px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    cursor: 'pointer',
+    flexShrink: 0,
+    fontSize: '13px'
+  },
   fallbackNoticeBar: { backgroundColor: '#fef2f2', borderBottom: '1px solid #fecaca', borderLeft: '4px solid #dc2626', padding: '10px 25px', fontSize: '13px', color: '#991b1b', textAlign: 'left', flexShrink: 0 },
   pausedItemsBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#334155', cursor: 'pointer' },
   pausedCountBadge: { backgroundColor: '#e11d48', color: '#fff', fontSize: '10px', padding: '1px 6px', borderRadius: '10px' },
@@ -515,8 +557,6 @@ const styles = {
   customerRequestBox: { backgroundColor: '#fef3c7', border: '1px solid #fde68a', padding: '12px 14px', borderRadius: '8px', fontSize: '13px', color: '#92400e', marginBottom: '16px', textAlign: 'left' },
   printIconBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
   actionBtn: { backgroundColor: '#10b981', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' },
-  tabContentPlaceholder: { padding: '40px', flex: 1, display: 'flex', justifyContent: 'center' },
-  placeholderCard: { backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '30px', width: '100%', maxWidth: '600px' },
   drawerOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
   profileModal: { width: '420px', backgroundColor: '#fff', padding: '25px', borderRadius: '14px', textAlign: 'left' },
   modalRedAccentLine: { height: '3px', backgroundColor: '#ef4444', width: '100%', marginBottom: '10px', borderRadius: '2px' }
