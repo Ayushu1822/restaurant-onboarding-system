@@ -7,11 +7,9 @@ export default function TablesModule() {
   const [loading, setLoading] = useState(true);
   const [hoveredId, setHoveredId] = useState(null);
   
-  // Modal states for managing or adding tables
   const [selectedTable, setSelectedTable] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   
-  // New table form state
   const [newTableForm, setNewTableForm] = useState({
     tableId: '',
     section: 'MAIN',
@@ -19,7 +17,6 @@ export default function TablesModule() {
     status: 'Available'
   });
 
-  // Fetch tables from backend on load
   useEffect(() => {
     fetchTables();
   }, []);
@@ -28,32 +25,19 @@ export default function TablesModule() {
     fetch(`${API_BASE_URL}/api/v1/tables`)
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setTables(data);
-        } else {
-          // Fallback initial tables if DB is empty
-          setTables([
-            { tableId: 'T1', section: 'MAIN', seats: 2, status: 'Available', customerName: null, visitTime: null, currentAmount: null },
-            { tableId: 'T2', section: 'MAIN', seats: 4, status: 'Available', customerName: null, visitTime: null, currentAmount: null },
-            { tableId: 'T3', section: 'MAIN', seats: 4, status: 'Available', customerName: null, visitTime: null, currentAmount: null },
-            { tableId: 'T3B', section: 'MAIN', seats: 4, status: 'Ready to Pay', customerName: 'Krishna', visitTime: '28m ago', currentAmount: 694.58 },
-            { tableId: 'T4', section: 'MAIN', seats: 2, status: 'Billing', customerName: 'Asha', visitTime: '1h ago', currentAmount: 749.70 },
-            { tableId: 'T5', section: 'PATIO', seats: 6, status: 'Available', customerName: null, visitTime: null, currentAmount: null },
-            { tableId: 'T6', section: 'PATIO', seats: 4, status: 'Available', customerName: null, visitTime: null, currentAmount: null },
-            { tableId: 'T7', section: 'PATIO', seats: 2, status: 'Available', customerName: null, visitTime: null, currentAmount: null },
-            { tableId: 'B1', section: 'BAR', seats: 1, status: 'Occupied', customerName: 'Asha', visitTime: '20m ago', currentAmount: 66.15 },
-            { tableId: 'B2', section: 'BAR', seats: 1, status: 'Available', customerName: null, visitTime: null, currentAmount: null }
-          ]);
         }
         setLoading(false);
       })
       .catch(err => {
-        console.error("Error fetching tables:", err);
+        console.error("Error fetching tables from DB:", err);
         setLoading(false);
       });
   };
 
   const handleUpdateStatus = (tableId, newStatus) => {
+    // Optimistic UI update
     const updated = tables.map(t => {
       if (t.tableId === tableId) {
         return { 
@@ -68,10 +52,10 @@ export default function TablesModule() {
     setTables(updated);
     setSelectedTable(null);
 
-    // Sync with backend
+    // Persist status change to PostgreSQL backend
     fetch(`${API_BASE_URL}/api/v1/tables/${tableId}/status?status=${newStatus}`, {
       method: 'PUT'
-    }).catch(err => console.log("Status sync warning:", err));
+    }).catch(err => console.error("Failed to update status in DB:", err));
   };
 
   const handleAddTable = (e) => {
@@ -88,26 +72,37 @@ export default function TablesModule() {
       currentAmount: null
     };
 
-    setTables([...tables, newTableObj]);
-    setShowAddModal(false);
-    setNewTableForm({ tableId: '', section: 'MAIN', seats: 4, status: 'Available' });
-
-    // Optional backend save call if endpoint exists
+    // Save directly to PostgreSQL via backend POST endpoint
     fetch(`${API_BASE_URL}/api/v1/tables`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newTableObj)
-    }).catch(err => console.log("Backend table create note:", err));
+    })
+      .then(res => {
+        if (res.ok) {
+          setTables([...tables, newTableObj]);
+          setShowAddModal(false);
+          setNewTableForm({ tableId: '', section: 'MAIN', seats: 4, status: 'Available' });
+        } else {
+          alert('Failed to save table to database.');
+        }
+      })
+      .catch(err => {
+        console.error("Error creating table:", err);
+        alert('Error connecting to backend.');
+      });
   };
 
   const handleDeleteTable = (tableId) => {
     if (!window.confirm(`Are you sure you want to delete table ${tableId}?`)) return;
+    
     setTables(tables.filter(t => t.tableId !== tableId));
     setSelectedTable(null);
 
+    // Delete from PostgreSQL backend
     fetch(`${API_BASE_URL}/api/v1/tables/${tableId}`, {
       method: 'DELETE'
-    }).catch(err => console.log("Table delete note:", err));
+    }).catch(err => console.error("Failed to delete table from DB:", err));
   };
 
   const getStatusStyle = (status) => {
@@ -134,7 +129,7 @@ export default function TablesModule() {
         <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#0f172a', margin: 0 }}>Tables Management</h2>
         <button 
           onClick={() => setShowAddModal(true)}
-          style={{ background: '#10b981', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', boxShadow: '0 2px 5px rgba(16,185,129,0.3)' }}
+          style={{ background: '#047857', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', boxShadow: '0 2px 5px rgba(4,120,87,0.3)' }}
         >
           + Add New Table
         </button>
@@ -146,6 +141,11 @@ export default function TablesModule() {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>Loading tables from database...</div>
+      ) : tables.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '50px', background: '#fff', borderRadius: '12px', border: '1px dashed #cbd5e1', color: '#64748b' }}>
+          <p style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>No tables found in database.</p>
+          <p style={{ fontSize: '13px', marginBottom: '20px' }}>Click "+ Add New Table" above or run the SQL script to insert tables.</p>
+        </div>
       ) : (
         ['MAIN', 'PATIO', 'BAR'].map(section => {
           const sectionTables = tables.filter(t => t.section === section);
@@ -197,7 +197,17 @@ export default function TablesModule() {
                         )}
                       </div>
 
-                      <div style={{ width: '100%', textAlign: 'center', padding: '6px 0', background: isHovered ? '#047857' : '#f8fafc', color: isHovered ? '#fff' : '#334155', borderRadius: '6px', fontWeight: '600', fontSize: '12px', transition: 'all 0.2s' }}>
+                      <div style={{ 
+                        width: '100%', 
+                        textAlign: 'center', 
+                        padding: '7px 0', 
+                        background: isHovered ? '#047857' : '#f1f5f9', 
+                        color: isHovered ? '#fff' : '#0f172a', 
+                        borderRadius: '6px', 
+                        fontWeight: '600', 
+                        fontSize: '12px', 
+                        transition: 'all 0.2s ease' 
+                      }}>
                         {table.status === 'Available' ? 'Free table' : 'Manage Table ›'}
                       </div>
                     </div>
@@ -279,7 +289,7 @@ export default function TablesModule() {
             />
 
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button type="submit" style={{ flex: 1, background: '#10b981', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Create Table</button>
+              <button type="submit" style={{ flex: 1, background: '#047857', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Create Table</button>
               <button type="button" onClick={() => setShowAddModal(false)} style={{ flex: 1, background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>Cancel</button>
             </div>
           </form>

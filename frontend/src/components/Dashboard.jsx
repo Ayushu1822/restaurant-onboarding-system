@@ -8,6 +8,10 @@ import CustomersModule from './CustomersModule';
 import ComplaintsModule from './ComplaintsModule';
 import TablesModule from './TablesModule';
 import CounterPOS from './CounterPOS';
+import OnlineOrdersModule from './OnlineOrdersModule';
+import PromotionsModule from './PromotionsModule';
+import GalleryModule from './GalleryModule';
+import SettingsModule from './SettingsModule';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
@@ -29,6 +33,9 @@ export default function Dashboard({ user, onLogout }) {
   const [isProfileFallback, setIsProfileFallback] = useState(false);
   const [isOrdersFallback, setIsOrdersFallback] = useState(false);
   
+  // Live Table Stats State for Header Bar
+  const [tableStats, setTableStats] = useState({ open: 5, total: 10, occupied: 3, billing: 1, reserved: 1 });
+
   const [restaurantId, setRestaurantId] = useState('ae41c831-372b-4f56-8905-f67a93b8045b');
   const [profileData, setProfileData] = useState({
     businessName: FALLBACK_RESTAURANT_PROFILE.businessName,
@@ -42,6 +49,28 @@ export default function Dashboard({ user, onLogout }) {
   const [editForm, setEditForm] = useState(profileData);
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+
+  // Fetch live table stats from PostgreSQL
+  const fetchTableStats = () => {
+    fetch(`${API_BASE_URL}/api/v1/tables`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          const open = data.filter(t => t.status === 'Available').length;
+          const occupied = data.filter(t => t.status === 'Occupied').length;
+          const billing = data.filter(t => t.status === 'Billing' || t.status === 'Ready to Pay').length;
+          const reserved = data.filter(t => t.status === 'Reserved').length;
+          setTableStats({ open, total: data.length, occupied, billing, reserved });
+        }
+      })
+      .catch(err => console.log("Table stats sync note:", err));
+  };
+
+  useEffect(() => {
+    fetchTableStats();
+    const interval = setInterval(fetchTableStats, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/restaurants/email/${loggedInEmail}`)
@@ -257,18 +286,18 @@ export default function Dashboard({ user, onLogout }) {
           </div>
         </div>
 
-        {/* Tables Available Live Header Bar (Matches your screenshot) */}
+        {/* Live Database-Synced Tables Header Bar */}
         <div style={styles.tablesStatusBar} onClick={() => setActiveTab('Tables')}>
           <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600', color: '#334155'}}>
             <span>🪑</span>
             <span>Tables</span>
             <span style={{color: '#cbd5e1'}}>·</span>
-            <span style={{color: '#16a34a'}}>5/10 open</span>
+            <span style={{color: '#16a34a'}}>{tableStats.open}/{tableStats.total} open</span>
             <span style={{color: '#cbd5e1'}}>·</span>
-            <span>3 occupied</span>
-            <span style={{backgroundColor: '#2563eb', color: '#fff', padding: '1px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: '700'}}>1 billing</span>
+            <span>{tableStats.occupied} occupied</span>
+            <span style={{backgroundColor: '#2563eb', color: '#fff', padding: '1px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: '700'}}>{tableStats.billing} billing</span>
             <span style={{color: '#cbd5e1'}}>·</span>
-            <span style={{color: '#64748b'}}>1 reserved</span>
+            <span style={{color: '#64748b'}}>{tableStats.reserved} reserved</span>
           </div>
           <span style={{color: '#94a3b8', fontSize: '16px', fontWeight: 'bold'}}>›</span>
         </div>
@@ -420,9 +449,9 @@ export default function Dashboard({ user, onLogout }) {
         {activeTab === 'Reports' && <ReportsModule />}
         {activeTab === 'Customers' && <CustomersModule />}
         {activeTab === 'Complaints' && <ComplaintsModule />}
-        {activeTab === 'Promotions' && <div style={{padding: '30px'}}><h2>Promotions & Discounts</h2></div>}
-        {activeTab === 'Gallery' && <div style={{padding: '30px'}}><h2>Restaurant Gallery</h2></div>}
-        {activeTab === 'Settings' && <div style={{padding: '30px'}}><h2>System Settings</h2></div>}
+        {activeTab === 'Promotions' && <PromotionsModule />}
+        {activeTab === 'Gallery' && <GalleryModule />}
+        {activeTab === 'Settings' && <SettingsModule />}
       </div>
 
       {/* Profile Modal */}
