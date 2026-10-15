@@ -11,11 +11,11 @@ public class RestaurantTable {
 
     @Id
     @Column(name = "table_id")
-    private String tableId;
+    private String tableId; // e.g., 'T1', 'T2', 'B1'
     
-    private String section;
+    private String section; // 'MAIN', 'PATIO', 'BAR'
     private int seats;
-    private String status;
+    private String status;  // 'Available', 'Occupied', 'Ready to Pay', 'Billing', 'Reserved'
     
     @Column(name = "customer_name")
     private String customerName;
