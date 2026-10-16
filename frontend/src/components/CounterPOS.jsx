@@ -14,19 +14,22 @@ export default function CounterPOS() {
 
   const [hoveredCard, setHoveredCard] = useState(null);
   const [hoveredBtn, setHoveredBtn] = useState(null);
+  const [hoveredRow, setHoveredRow] = useState(null);
 
   const [menuItems, setMenuItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState([]);
   
-  // Customer state & age group support
+  // Identical Customer Form State matching CustomersModule
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [customerName, setCustomerName] = useState('');
+  const [gender, setGender] = useState('Male');
+  const [ageGroup, setAgeGroup] = useState('25-34');
+  const [preferredFood, setPreferredFood] = useState('Veg');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
-  const [customerAgeGroup, setCustomerAgeGroup] = useState('25-34');
-  const [customerGender, setCustomerGender] = useState('Male');
-  const [customerFood, setCustomerFood] = useState('Veg');
+  const [address, setAddress] = useState('');
 
   const [savedCustomers, setSavedCustomers] = useState([]);
   const [recentSearchQuery, setRecentSearchQuery] = useState('');
@@ -54,23 +57,27 @@ export default function CounterPOS() {
 
   const handlePhoneLookup = (phone) => {
     setCustomerPhone(phone);
+    setWhatsappNumber(phone);
     const found = savedCustomers.find(c => c.customerPhone === phone);
     if (found) {
-      setCustomerName(found.customerName);
+      setCustomerName(found.customerName || '');
+      setGender(found.gender || 'Male');
+      setAgeGroup(found.ageGroup || '25-34');
+      setPreferredFood(found.preferredFood || 'Veg');
       setCustomerEmail(found.customerEmail || '');
-      if (found.ageGroup) setCustomerAgeGroup(found.ageGroup);
-      if (found.gender) setCustomerGender(found.gender);
-      if (found.preferredFood) setCustomerFood(found.preferredFood);
+      setAddress(found.address || '');
     }
   };
 
   const handleSelectExistingCustomer = (c) => {
     setCustomerPhone(c.customerPhone);
-    setCustomerName(c.customerName);
+    setWhatsappNumber(c.whatsappNumber || c.customerPhone);
+    setCustomerName(c.customerName || '');
+    setGender(c.gender || 'Male');
+    setAgeGroup(c.ageGroup || '25-34');
+    setPreferredFood(c.preferredFood || 'Veg');
     setCustomerEmail(c.customerEmail || '');
-    if (c.ageGroup) setCustomerAgeGroup(c.ageGroup);
-    if (c.gender) setCustomerGender(c.gender);
-    if (c.preferredFood) setCustomerFood(c.preferredFood);
+    setAddress(c.address || '');
     setShowCustomerModal(false);
   };
 
@@ -81,15 +88,17 @@ export default function CounterPOS() {
 
   const handleSaveCustomerProfile = (e) => {
     e.preventDefault();
-    if (!customerPhone || !customerName) return alert('Please enter Name and Phone.');
+    if (!customerPhone || !customerName) return alert('Please enter Name and Phone number.');
 
     const custObj = { 
       customerName, 
+      gender,
+      ageGroup,
+      preferredFood,
       customerPhone, 
+      whatsappNumber: whatsappNumber || customerPhone,
       customerEmail, 
-      ageGroup: customerAgeGroup, 
-      gender: customerGender, 
-      preferredFood: customerFood 
+      address 
     };
 
     fetch(`${API_BASE_URL}/api/v1/customers`, {
@@ -143,8 +152,8 @@ export default function CounterPOS() {
       customerPhone,
       customerEmail,
       orderType: orderType,
-      channel: 'COUNTER', // Strict isolation: does not show in Online Orders
-      deliveryAddress: orderType === 'Dine-In' ? `Table: ${selectedTable}` : 'Takeaway Counter',
+      channel: 'COUNTER',
+      deliveryAddress: orderType === 'Dine-In' ? `Table: ${selectedTable}` : (address || 'Takeaway Counter'),
       paymentMethod,
       paymentStatus: 'PAID',
       status: 'Completed',
@@ -281,8 +290,8 @@ export default function CounterPOS() {
                 background: hoveredBtn === 'changeMode' ? '#047857' : '#f1f5f9',
                 color: hoveredBtn === 'changeMode' ? '#fff' : '#334155',
                 borderColor: hoveredBtn === 'changeMode' ? '#047857' : '#cbd5e1',
-                transform: hoveredBtn === 'changeMode' ? 'translateY(-2px)' : 'translateY(0)',
-                boxShadow: hoveredBtn === 'changeMode' ? '0 4px 10px rgba(4,120,87,0.2)' : 'none'
+                transform: hoveredBtn === 'changeMode' ? 'translateY(-2px) scale(1.02)' : 'translateY(0)',
+                boxShadow: hoveredBtn === 'changeMode' ? '0 4px 12px rgba(4,120,87,0.25)' : 'none'
               }}
             >
               Change Mode
@@ -301,6 +310,7 @@ export default function CounterPOS() {
               const itemName = item.name || item.itemName;
               const itemPrice = item.price || item.unitPrice;
               const itemDesc = item.desc || item.itemDescription || '';
+              const isCardHovered = hoveredCard === itemId;
 
               return (
                 <div 
@@ -310,9 +320,9 @@ export default function CounterPOS() {
                   onMouseLeave={() => setHoveredCard(null)}
                   style={{
                     ...styles.menuCard,
-                    borderColor: hoveredCard === itemId ? '#10b981' : '#e2e8f0',
-                    transform: hoveredCard === itemId ? 'translateY(-4px)' : 'translateY(0)',
-                    boxShadow: hoveredCard === itemId ? '0 10px 20px rgba(0,0,0,0.08)' : '0 1px 3px rgba(0,0,0,0.02)'
+                    borderColor: isCardHovered ? '#047857' : '#e2e8f0',
+                    transform: isCardHovered ? 'translateY(-5px) scale(1.01)' : 'translateY(0) scale(1)',
+                    boxShadow: isCardHovered ? '0 12px 25px rgba(4,120,87,0.12)' : '0 1px 3px rgba(0,0,0,0.02)'
                   }}
                 >
                   <div>
@@ -321,7 +331,14 @@ export default function CounterPOS() {
                   </div>
                   <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                     <span style={{fontSize: '15px', fontWeight: '800', color: '#047857'}}>₹{itemPrice}</span>
-                    <span style={{background: '#d1fae5', color: '#065f46', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700'}}>+ Add</span>
+                    <span style={{
+                      background: isCardHovered ? '#047857' : '#d1fae5', 
+                      color: isCardHovered ? '#fff' : '#065f46', 
+                      padding: '4px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
+                      transition: 'all 0.2s'
+                    }}>
+                      + Add
+                    </span>
                   </div>
                 </div>
               );
@@ -343,8 +360,8 @@ export default function CounterPOS() {
               background: hoveredBtn === 'addCustomer' ? '#047857' : '#ecfdf5',
               color: hoveredBtn === 'addCustomer' ? '#fff' : '#047857',
               borderColor: hoveredBtn === 'addCustomer' ? '#047857' : '#10b981',
-              transform: hoveredBtn === 'addCustomer' ? 'translateY(-2px) scale(1.02)' : 'translateY(0) scale(1)',
-              boxShadow: hoveredBtn === 'addCustomer' ? '0 4px 12px rgba(4,120,87,0.25)' : 'none'
+              transform: hoveredBtn === 'addCustomer' ? 'translateY(-2px) scale(1.03)' : 'translateY(0) scale(1)',
+              boxShadow: hoveredBtn === 'addCustomer' ? '0 4px 12px rgba(4,120,87,0.3)' : 'none'
             }}
           >
             {customerPhone ? '👤 ' + customerName : '+ Add Customer'}
@@ -413,8 +430,8 @@ export default function CounterPOS() {
             style={{
               ...styles.checkoutBtn,
               background: hoveredBtn === 'checkout' ? '#065f46' : '#047857',
-              transform: hoveredBtn === 'checkout' ? 'translateY(-2px)' : 'translateY(0)',
-              boxShadow: hoveredBtn === 'checkout' ? '0 6px 16px rgba(4,120,87,0.4)' : '0 4px 12px rgba(4,120,87,0.3)'
+              transform: hoveredBtn === 'checkout' ? 'translateY(-2px) scale(1.01)' : 'translateY(0) scale(1)',
+              boxShadow: hoveredBtn === 'checkout' ? '0 6px 18px rgba(4,120,87,0.4)' : '0 4px 12px rgba(4,120,87,0.3)'
             }}
           >
             {isSubmitting ? 'Processing...' : 'Complete Order & Print Bill'}
@@ -422,26 +439,17 @@ export default function CounterPOS() {
         </div>
       </div>
 
-      {/* Modern Customer Modal with Age Group Dropdown & Recent List */}
+      {/* Identical Customer Form Modal Matching CustomersModule */}
       {showCustomerModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.customerModalCard}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px'}}>
-              <h3 style={{margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a'}}>Customer Profile & Demographics</h3>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+              <h3 style={{margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a'}}>Add Customer Profile</h3>
               <button onClick={() => setShowCustomerModal(false)} style={styles.closeXBtn}>✕</button>
             </div>
 
-            <form onSubmit={handleSaveCustomerProfile}>
-              <label style={styles.modalLabel}>Phone Number (Auto-fills repeat guests):</label>
-              <input 
-                style={styles.inputField}
-                placeholder="Enter 10-digit phone"
-                value={customerPhone}
-                onChange={e => handlePhoneLookup(e.target.value)}
-                required
-              />
-
-              <label style={styles.modalLabel}>Customer Name:</label>
+            <form onSubmit={handleSaveCustomerProfile} style={{textAlign: 'left'}}>
+              <label style={styles.modalLabel}>Customer Name *</label>
               <input 
                 style={styles.inputField}
                 placeholder="Full Name"
@@ -452,21 +460,37 @@ export default function CounterPOS() {
 
               <div style={{display: 'flex', gap: '10px'}}>
                 <div style={{flex: 1}}>
-                  <label style={styles.modalLabel}>Age Group:</label>
+                  <label style={styles.modalLabel}>Gender</label>
                   <select 
                     style={styles.inputField}
-                    value={customerAgeGroup}
-                    onChange={e => setCustomerAgeGroup(e.target.value)}
+                    value={gender}
+                    onChange={e => setGender(e.target.value)}
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div style={{flex: 1}}>
+                  <label style={styles.modalLabel}>Age Group</label>
+                  <select 
+                    style={styles.inputField}
+                    value={ageGroup}
+                    onChange={e => setAgeGroup(e.target.value)}
                   >
                     {AGE_GROUPS.map(ag => <option key={ag} value={ag}>{ag} yrs</option>)}
                   </select>
                 </div>
+              </div>
+
+              <div style={{display: 'flex', gap: '10px'}}>
                 <div style={{flex: 1}}>
-                  <label style={styles.modalLabel}>Dietary Preference:</label>
+                  <label style={styles.modalLabel}>Preferred Food</label>
                   <select 
                     style={styles.inputField}
-                    value={customerFood}
-                    onChange={e => setCustomerFood(e.target.value)}
+                    value={preferredFood}
+                    onChange={e => setPreferredFood(e.target.value)}
                   >
                     <option value="Veg">Veg</option>
                     <option value="Non-Veg">Non-Veg</option>
@@ -474,21 +498,40 @@ export default function CounterPOS() {
                     <option value="Eggetarian">Eggetarian</option>
                   </select>
                 </div>
+
+                <div style={{flex: 1}}>
+                  <label style={styles.modalLabel}>Phone Number *</label>
+                  <input 
+                    style={styles.inputField}
+                    placeholder="10-digit mobile"
+                    value={customerPhone}
+                    onChange={e => handlePhoneLookup(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
 
-              <label style={styles.modalLabel}>Email Address:</label>
+              <label style={styles.modalLabel}>Email Address</label>
               <input 
-                style={{...styles.inputField, marginBottom: '16px'}}
+                style={styles.inputField}
                 placeholder="customer@email.com"
                 value={customerEmail}
                 onChange={e => setCustomerEmail(e.target.value)}
               />
 
-              <button type="submit" style={styles.saveCustomerBtn}>Save & Apply Customer</button>
+              <label style={styles.modalLabel}>Delivery Address</label>
+              <textarea 
+                style={{...styles.inputField, height: '60px', resize: 'none'}}
+                placeholder="Street, Area, City"
+                value={address}
+                onChange={e => setAddress(e.target.value)}
+              />
+
+              <button type="submit" style={styles.saveCustomerBtn}>Save & Apply Profile</button>
             </form>
 
             {savedCustomers.length > 0 && (
-              <div style={{marginTop: '18px', borderTop: '1px solid #e2e8f0', paddingTop: '12px', textAlign: 'left'}}>
+              <div style={{marginTop: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '12px', textAlign: 'left'}}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
                   <span style={{fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase'}}>Recent Customers</span>
                   <input 
@@ -499,29 +542,39 @@ export default function CounterPOS() {
                   />
                 </div>
 
-                <div style={{maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px'}}>
+                <div style={{maxHeight: '110px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px'}}>
                   {filteredRecentCustomers.length === 0 ? (
                     <div style={{fontSize: '12px', color: '#94a3b8', textAlign: 'center', padding: '10px 0'}}>No matching recent guests</div>
                   ) : (
-                    filteredRecentCustomers.map((c, idx) => (
-                      <div 
-                        key={idx} 
-                        onClick={() => handleSelectExistingCustomer(c)}
-                        style={styles.recentCustomerRow}
-                      >
-                        <div style={{flex: 1, overflow: 'hidden'}}>
-                          <div style={{fontWeight: '700', color: '#0f172a', fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{c.customerName}</div>
-                          <div style={{fontSize: '11px', color: '#64748b'}}>{c.customerPhone} {c.ageGroup ? `• ${c.ageGroup}` : ''}</div>
-                        </div>
-                        <button 
-                          onClick={(e) => handleDeleteCustomer(e, c.customerPhone)}
-                          title="Remove from recent list"
-                          style={styles.deleteCustomerBtn}
+                    filteredRecentCustomers.map((c, idx) => {
+                      const isRowHovered = hoveredRow === idx;
+                      return (
+                        <div 
+                          key={idx} 
+                          onClick={() => handleSelectExistingCustomer(c)}
+                          onMouseEnter={() => setHoveredRow(idx)}
+                          onMouseLeave={() => setHoveredRow(null)}
+                          style={{
+                            ...styles.recentCustomerRow,
+                            background: isRowHovered ? '#ecfdf5' : '#f8fafc',
+                            borderColor: isRowHovered ? '#10b981' : '#e2e8f0',
+                            transform: isRowHovered ? 'translateX(2px)' : 'translateX(0)'
+                          }}
                         >
-                          🗑️
-                        </button>
-                      </div>
-                    ))
+                          <div style={{flex: 1, overflow: 'hidden'}}>
+                            <div style={{fontWeight: '700', color: '#0f172a', fontSize: '13px'}}>{c.customerName}</div>
+                            <div style={{fontSize: '11px', color: '#64748b'}}>{c.customerPhone} {c.ageGroup ? `• ${c.ageGroup}` : ''}</div>
+                          </div>
+                          <button 
+                            onClick={(e) => handleDeleteCustomer(e, c.customerPhone)}
+                            title="Remove from recent list"
+                            style={styles.deleteCustomerBtn}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -583,26 +636,26 @@ const styles = {
   posContainer: { display: 'flex', height: '100vh', width: '100%', background: '#f8fafc', boxSizing: 'border-box', overflow: 'hidden' },
   menuSection: { flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', overflowY: 'hidden' },
   posHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '15px' },
-  searchBar: { width: '280px', padding: '10px 15px', borderRadius: '8px', border: '1.5px solid #cbd5e1', background: '#fff', fontSize: '13px', transition: 'all 0.2s' },
-  tableSelectDropdown: { padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #10b981', background: '#ecfdf5', fontWeight: '700', color: '#065f46', fontSize: '13px' },
+  searchBar: { width: '280px', padding: '10px 15px', borderRadius: '8px', border: '1.5px solid #cbd5e1', background: '#fff', fontSize: '13px', transition: 'all 0.2s', outline: 'none' },
+  tableSelectDropdown: { padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #10b981', background: '#ecfdf5', fontWeight: '700', color: '#065f46', fontSize: '13px', cursor: 'pointer' },
   switchModeBtn: { border: '1px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' },
   menuGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', overflowY: 'auto', flex: 1, paddingBottom: '20px' },
   menuCard: { background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '18px', cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
   cartSidebar: { width: '380px', background: '#fff', borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '24px', boxSizing: 'border-box', flexShrink: '0' },
   addCustomerBtn: { border: '1px solid #10b981', padding: '7px 14px', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' },
-  inputField: { width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box', marginBottom: '10px', background: '#fff' },
+  inputField: { width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box', marginBottom: '10px', background: '#fff', outline: 'none' },
   cartItemsList: { flex: 1, overflowY: 'auto', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', padding: '10px 0', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'left' },
   cartItemRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', padding: '8px 10px', borderRadius: '8px' },
   qtyBtn: { background: '#e2e8f0', border: 'none', width: '24px', height: '24px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.2s' },
   cartFooter: { paddingTop: '15px' },
   checkoutBtn: { width: '100%', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
-  customerModalCard: { width: '460px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' },
+  customerModalCard: { width: '480px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' },
   modalLabel: { fontSize: '11px', fontWeight: '700', display: 'block', marginBottom: '3px', textAlign: 'left', color: '#334155' },
   closeXBtn: { background: 'none', border: 'none', fontSize: '16px', fontWeight: 'bold', color: '#64748b', cursor: 'pointer' },
-  saveCustomerBtn: { width: '100%', background: '#047857', color: '#fff', border: 'none', padding: '11px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' },
-  recentSearchInput: { width: '110px', padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px' },
-  recentCustomerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: '#f8fafc', borderRadius: '6px', cursor: 'pointer', border: '1px solid #e2e8f0', transition: 'all 0.15s' },
+  saveCustomerBtn: { width: '100%', background: '#047857', color: '#fff', border: 'none', padding: '11px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s', marginTop: '5px' },
+  recentSearchInput: { width: '110px', padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none' },
+  recentCustomerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', border: '1px solid #e2e8f0', transition: 'all 0.15s' },
   deleteCustomerBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: '4px', borderRadius: '4px' },
   receiptCard: { width: '400px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'left', fontFamily: 'monospace', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' }
 };

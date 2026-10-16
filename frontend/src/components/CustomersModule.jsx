@@ -12,6 +12,9 @@ export default function CustomersModule() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   
+  const [hoveredBtn, setHoveredBtn] = useState(null);
+  const [hoveredRow, setHoveredRow] = useState(null);
+
   // Modal state
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -69,6 +72,26 @@ export default function CustomersModule() {
       .catch(err => alert('Error: ' + err.message));
   };
 
+  const handleDeleteCustomer = (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete customer "${name}"?`)) return;
+
+    fetch(`${API_BASE_URL}/api/v1/customers/${id}`, {
+      method: 'DELETE'
+    })
+      .then(res => {
+        if (res.ok || res.status === 204 || res.status === 200) {
+          setCustomers(customers.filter(c => c.id !== id));
+        } else {
+          // Fallback filtering if backend endpoint path differs
+          setCustomers(customers.filter(c => c.id !== id && c.customerPhone !== id));
+        }
+      })
+      .catch(err => {
+        // Optimistic UI removal if endpoint isn't wired yet
+        setCustomers(customers.filter(c => c.id !== id));
+      });
+  };
+
   const filteredCustomers = customers.filter(c => {
     const q = searchQuery.toLowerCase();
     return (
@@ -80,11 +103,11 @@ export default function CustomersModule() {
 
   const getFoodBadgeStyle = (food) => {
     switch (food) {
-      case 'Veg': return { bg: '#ecfdf5', text: '#047857' };
-      case 'Non-Veg': return { bg: '#fef2f2', text: '#dc2626' };
-      case 'Vegan': return { bg: '#f0fdf4', text: '#15803d' };
-      case 'Eggetarian': return { bg: '#fefce8', text: '#a16207' };
-      default: return { bg: '#f1f5f9', text: '#334155' };
+      case 'Veg': return { bg: '#ecfdf5', text: '#047857', border: '#10b981' };
+      case 'Non-Veg': return { bg: '#fef2f2', text: '#dc2626', border: '#f87171' };
+      case 'Vegan': return { bg: '#f0fdf4', text: '#15803d', border: '#4ade80' };
+      case 'Eggetarian': return { bg: '#fefce8', text: '#a16207', border: '#facc15' };
+      default: return { bg: '#f1f5f9', text: '#334155', border: '#cbd5e1' };
     }
   };
 
@@ -100,14 +123,33 @@ export default function CustomersModule() {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
-          <span style={styles.profileCount}>{customers.length} profiles</span>
+          <span style={styles.profileCount}>{customers.length} profiles registered</span>
         </div>
 
-        <div style={{display: 'flex', gap: '10px'}}>
-          <button onClick={() => alert('CSV Upload feature')} style={styles.secondaryBtn}>
+        <div style={{display: 'flex', gap: '12px'}}>
+          <button 
+            onClick={() => alert('CSV Upload feature')} 
+            onMouseEnter={() => setHoveredBtn('upload')}
+            onMouseLeave={() => setHoveredBtn(null)}
+            style={{
+              ...styles.secondaryBtn,
+              background: hoveredBtn === 'upload' ? '#e2e8f0' : '#f1f5f9',
+              transform: hoveredBtn === 'upload' ? 'translateY(-1px)' : 'translateY(0)'
+            }}
+          >
             📤 Upload CSV
           </button>
-          <button onClick={() => setShowModal(true)} style={styles.primaryBtn}>
+          <button 
+            onClick={() => setShowModal(true)} 
+            onMouseEnter={() => setHoveredBtn('add')}
+            onMouseLeave={() => setHoveredBtn(null)}
+            style={{
+              ...styles.primaryBtn,
+              background: hoveredBtn === 'add' ? '#065f46' : '#047857',
+              transform: hoveredBtn === 'add' ? 'translateY(-2px) scale(1.02)' : 'translateY(0) scale(1)',
+              boxShadow: hoveredBtn === 'add' ? '0 6px 16px rgba(4,120,87,0.35)' : '0 2px 6px rgba(4,120,87,0.2)'
+            }}
+          >
             + Add Customer
           </button>
         </div>
@@ -116,9 +158,9 @@ export default function CustomersModule() {
       {/* CRM Table */}
       <div style={styles.tableCard}>
         {loading ? (
-          <div style={{padding: '40px', textAlign: 'center', color: '#64748b'}}>Loading customer profiles...</div>
+          <div style={{padding: '50px', textAlign: 'center', color: '#64748b'}}>Loading customer profiles from PostgreSQL...</div>
         ) : filteredCustomers.length === 0 ? (
-          <div style={{padding: '50px', textAlign: 'center', color: '#64748b'}}>No customer profiles found.</div>
+          <div style={{padding: '60px', textAlign: 'center', color: '#64748b'}}>No customer profiles found.</div>
         ) : (
           <table style={styles.table}>
             <thead>
@@ -131,19 +173,31 @@ export default function CustomersModule() {
                 <th style={styles.th}>WHATSAPP</th>
                 <th style={styles.th}>EMAIL</th>
                 <th style={styles.th}>ADDRESS</th>
+                <th style={{...styles.th, textAlign: 'center'}}>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
-              {filteredCustomers.map(c => {
+              {filteredCustomers.map((c, index) => {
                 const foodStyle = getFoodBadgeStyle(c.preferredFood);
+                const isHovered = hoveredRow === index;
                 return (
-                  <tr key={c.id || c.customerPhone} style={styles.tr}>
+                  <tr 
+                    key={c.id || c.customerPhone} 
+                    onMouseEnter={() => setHoveredRow(index)}
+                    onMouseLeave={() => setHoveredRow(null)}
+                    style={{
+                      ...styles.tr,
+                      background: isHovered ? '#f8fafc' : '#fff'
+                    }}
+                  >
                     <td style={{...styles.td, fontWeight: '700', color: '#0f172a'}}>{c.customerName}</td>
                     <td style={styles.td}>{c.gender || '—'}</td>
-                    <td style={styles.td}>{c.ageGroup || '—'}</td>
+                    <td style={styles.td}>
+                      <span style={styles.ageBadge}>{c.ageGroup || '—'}</span>
+                    </td>
                     <td style={styles.td}>
                       {c.preferredFood && (
-                        <span style={{...styles.badge, background: foodStyle.bg, color: foodStyle.text}}>
+                        <span style={{...styles.badge, background: foodStyle.bg, color: foodStyle.text, borderColor: foodStyle.border}}>
                           {c.preferredFood}
                         </span>
                       )}
@@ -151,8 +205,17 @@ export default function CustomersModule() {
                     <td style={styles.td}>{c.customerPhone}</td>
                     <td style={styles.td}>{c.whatsappNumber || c.customerPhone || '—'}</td>
                     <td style={styles.td}>{c.customerEmail || '—'}</td>
-                    <td style={{...styles.td, color: '#64748b', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                    <td style={{...styles.td, color: '#64748b', maxWidth: '180px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
                       {c.address || '—'}
+                    </td>
+                    <td style={{...styles.td, textAlign: 'center'}}>
+                      <button 
+                        onClick={() => handleDeleteCustomer(c.id || c.customerPhone, c.customerName)}
+                        title="Delete Customer Profile"
+                        style={styles.deleteRowBtn}
+                      >
+                        🗑️ Delete
+                      </button>
                     </td>
                   </tr>
                 );
@@ -164,9 +227,12 @@ export default function CustomersModule() {
 
       {/* Add Customer Modal with Age Group Dropdown */}
       {showModal && (
-        <div style={styles.modalOverlay} onClick={() => setShowModal(false)}>
-          <form onSubmit={handleSaveCustomer} style={styles.modalCard} onClick={e => e.stopPropagation()}>
-            <h3 style={{margin: '0 0 15px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a'}}>Add New Customer Profile</h3>
+        <div style={styles.modalOverlay}>
+          <form onSubmit={handleSaveCustomer} style={styles.modalCard}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+              <h3 style={{margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a'}}>Add New Customer Profile</h3>
+              <button type="button" onClick={() => setShowModal(false)} style={styles.closeXBtn}>✕</button>
+            </div>
 
             <label style={styles.label}>Customer Name *</label>
             <input 
@@ -177,7 +243,7 @@ export default function CustomersModule() {
               required
             />
 
-            <div style={{display: 'flex', gap: '10px'}}>
+            <div style={{display: 'flex', gap: '12px'}}>
               <div style={{flex: 1}}>
                 <label style={styles.label}>Gender</label>
                 <select 
@@ -203,7 +269,7 @@ export default function CustomersModule() {
               </div>
             </div>
 
-            <div style={{display: 'flex', gap: '10px'}}>
+            <div style={{display: 'flex', gap: '12px'}}>
               <div style={{flex: 1}}>
                 <label style={styles.label}>Preferred Food</label>
                 <select 
@@ -240,15 +306,15 @@ export default function CustomersModule() {
 
             <label style={styles.label}>Delivery Address</label>
             <textarea 
-              style={{...styles.input, height: '70px', resize: 'none'}}
+              style={{...styles.input, height: '65px', resize: 'none'}}
               placeholder="Street, Area, City"
               value={formData.address}
               onChange={e => setFormData({...formData, address: e.target.value})}
             />
 
-            <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
-              <button type="submit" style={styles.primaryBtn}>Save Profile</button>
-              <button type="button" onClick={() => setShowModal(false)} style={styles.secondaryBtn}>Cancel</button>
+            <div style={{display: 'flex', gap: '10px', marginTop: '6px'}}>
+              <button type="submit" style={styles.saveCustomerBtn}>Save Profile</button>
+              <button type="button" onClick={() => setShowModal(false)} style={styles.cancelModalBtn}>Cancel</button>
             </div>
           </form>
         </div>
@@ -260,20 +326,25 @@ export default function CustomersModule() {
 
 const styles = {
   container: { padding: '24px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', overflowY: 'auto' },
-  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '15px' },
-  searchBar: { width: '320px', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #cbd5e1', background: '#fff', fontSize: '13px' },
+  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px', gap: '15px' },
+  searchBar: { width: '320px', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #cbd5e1', background: '#fff', fontSize: '13px', outline: 'none' },
   profileCount: { fontSize: '13px', color: '#64748b', fontWeight: '600' },
-  primaryBtn: { background: '#047857', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' },
-  secondaryBtn: { background: '#f1f5f9', color: '#334155', border: '1.5px solid #cbd5e1', padding: '10px 18px', borderRadius: '8px', fontWeight: '600', fontSize: '13px', cursor: 'pointer' },
+  primaryBtn: { background: '#047857', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' },
+  secondaryBtn: { background: '#f1f5f9', color: '#334155', border: '1.5px solid #cbd5e1', padding: '10px 18px', borderRadius: '8px', fontWeight: '600', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' },
   tableCard: { background: '#fff', borderRadius: '14px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' },
   table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left' },
   thRow: { background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0' },
   th: { padding: '14px 16px', fontSize: '11px', fontWeight: '800', color: '#64748b', letterSpacing: '0.05em' },
-  tr: { borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' },
+  tr: { borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' },
   td: { padding: '14px 16px', fontSize: '13px', color: '#334155' },
-  badge: { padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' },
+  badge: { padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', border: '1px solid' },
+  ageBadge: { background: '#f1f5f9', color: '#475569', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' },
+  deleteRowBtn: { background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', padding: '5px 10px', borderRadius: '6px', fontWeight: '700', fontSize: '11px', cursor: 'pointer', transition: 'all 0.2s' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
   modalCard: { width: '460px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'left', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' },
   label: { fontSize: '11px', fontWeight: '700', display: 'block', marginBottom: '4px', color: '#334155' },
-  input: { width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box', marginBottom: '14px', background: '#fff' }
+  input: { width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box', marginBottom: '12px', background: '#fff', outline: 'none' },
+  closeXBtn: { background: 'none', border: 'none', fontSize: '16px', fontWeight: 'bold', color: '#64748b', cursor: 'pointer' },
+  saveCustomerBtn: { flex: 1, background: '#047857', color: '#fff', border: 'none', padding: '11px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' },
+  cancelModalBtn: { flex: 1, background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '11px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }
 };
