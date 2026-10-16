@@ -1,55 +1,84 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
-
-const SAMPLE_MENU_ITEMS = [
-  { id: 1, name: 'Butter Chicken', price: 380, category: 'Main Course', desc: 'Rich tomato & butter gravy' },
-  { id: 2, name: 'Paneer Tikka Masala', price: 320, category: 'Main Course', desc: 'Spicy grilled cottage cheese' },
-  { id: 3, name: 'Veg Biryani', price: 250, category: 'Rice & Biryani', desc: 'Aromatic basmati rice with veggies' },
-  { id: 4, name: 'Garlic Naan', price: 60, category: 'Breads', desc: 'Tandoor baked flatbread with garlic' },
-  { id: 5, name: 'Masala Dosa', price: 140, category: 'South Indian', desc: 'Crispy crepe with potato masala' },
-  { id: 6, name: 'Cold Coffee', price: 120, category: 'Beverages', desc: 'Blended chilled milk coffee' }
-];
 
 export default function CounterPOS() {
   const [orderTypeModal, setOrderTypeModal] = useState(true);
   const [orderType, setOrderType] = useState('Dine-In'); // 'Dine-In' or 'Takeaway'
   const [selectedTable, setSelectedTable] = useState('T1');
   
-  // Hover states for reactive cards
   const [hoveredCard, setHoveredCard] = useState(null);
 
-  const [menuItems, setMenuItems] = useState(SAMPLE_MENU_ITEMS);
+  // Menu fetched from Menu Module DB
+  const [menuItems, setMenuItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState([]);
   
+  // Customer modal & auto-fill state
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
-  const [savedCustomers, setSavedCustomers] = useState([
-    { name: 'Asha Sharma', phone: '9876543210', email: 'asha@gmail.com' },
-    { name: 'Krishna Kumar', phone: '8218579235', email: 'krishna@gmail.com' }
-  ]);
+  const [savedCustomers, setSavedCustomers] = useState([]);
 
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastCompletedOrder, setLastCompletedOrder] = useState(null);
 
-  const handlePhoneChange = (val) => {
-    setCustomerPhone(val);
-    const found = savedCustomers.find(c => c.phone === val);
+  // Fetch Menu and Customers on load
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/v1/menu`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setMenuItems(data);
+      })
+      .catch(err => console.log("Menu fetch error, using fallback:", err));
+
+    fetch(`${API_BASE_URL}/api/v1/customers`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setSavedCustomers(data);
+      })
+      .catch(err => console.log("Customers fetch error:", err));
+  }, []);
+
+  const handlePhoneLookup = (phone) => {
+    setCustomerPhone(phone);
+    const found = savedCustomers.find(c => c.customerPhone === phone);
     if (found) {
-      setCustomerName(found.name);
-      setCustomerEmail(found.email || '');
+      setCustomerName(found.customerName);
+      setCustomerEmail(found.customerEmail || '');
     }
   };
 
+  const handleSaveCustomerProfile = (e) => {
+    e.preventDefault();
+    if (!customerPhone || !customerName) return alert('Please enter Name and Phone.');
+
+    const custObj = { customerName, customerPhone, customerEmail };
+
+    fetch(`${API_BASE_URL}/api/v1/customers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(custObj)
+    }).catch(err => console.log("Customer save error:", err));
+
+    if (!savedCustomers.some(c => c.customerPhone === customerPhone)) {
+      setSavedCustomers([...savedCustomers, custObj]);
+    }
+    setShowCustomerModal(false);
+  };
+
   const handleAddToCart = (item) => {
-    const existing = cart.find(i => i.id === item.id);
+    const itemId = item.id || item.menuId;
+    const itemName = item.name || item.itemName;
+    const itemPrice = item.price || item.unitPrice;
+
+    const existing = cart.find(i => i.id === itemId);
     if (existing) {
-      setCart(cart.map(i => i.id === item.id ? { ...i, qty: i.qty + 1 } : i));
+      setCart(cart.map(i => i.id === itemId ? { ...i, qty: i.qty + 1 } : i));
     } else {
-      setCart([...cart, { ...item, qty: 1 }]);
+      setCart([...cart, { id: itemId, name: itemName, price: itemPrice, qty: 1 }]);
     }
   };
 
@@ -69,7 +98,7 @@ export default function CounterPOS() {
 
   const handleCheckout = () => {
     if (cart.length === 0) return alert('Cart is empty!');
-    if (!customerPhone || !customerName) return alert('Please provide Customer Name and Phone Number.');
+    if (!customerPhone || !customerName) return alert('Please add Customer details using the "+ Add Customer" button.');
 
     setIsSubmitting(true);
 
@@ -79,7 +108,7 @@ export default function CounterPOS() {
       customerPhone,
       customerEmail,
       orderType: orderType,
-      channel: 'COUNTER', // Excluded from Online Orders (Zomato/Swiggy)
+      channel: 'COUNTER', // Strict isolation: will NOT show in Online Orders
       deliveryAddress: orderType === 'Dine-In' ? `Table: ${selectedTable}` : 'Takeaway Counter',
       paymentMethod,
       paymentStatus: 'PAID',
@@ -90,13 +119,9 @@ export default function CounterPOS() {
         itemName: item.name,
         quantity: item.qty,
         unitPrice: item.price,
-        itemDescription: item.desc || ''
+        itemDescription: ''
       }))
     };
-
-    if (!savedCustomers.some(c => c.phone === customerPhone)) {
-      setSavedCustomers([...savedCustomers, { name: customerName, phone: customerPhone, email: customerEmail }]);
-    }
 
     fetch(`${API_BASE_URL}/api/v1/orders`, {
       method: 'POST',
@@ -104,7 +129,7 @@ export default function CounterPOS() {
       body: JSON.stringify(orderPayload)
     })
       .then(res => {
-        if (!res.ok) throw new Error('Failed to save POS order');
+        if (!res.ok) throw new Error('Failed to save order');
         return res.json();
       })
       .then(data => {
@@ -112,21 +137,22 @@ export default function CounterPOS() {
         setLastCompletedOrder({ ...orderPayload, id: data.displayId || orderPayload.displayId });
       })
       .catch(err => {
-        console.error("POS order save error:", err);
+        console.error("Order save error:", err);
         setIsSubmitting(false);
         setLastCompletedOrder(orderPayload);
       });
   };
 
-  const filteredMenu = menuItems.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    item.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredMenu = menuItems.filter(item => {
+    const name = item.name || item.itemName || '';
+    const cat = item.category || '';
+    return name.toLowerCase().includes(searchQuery.toLowerCase()) || cat.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   return (
     <div style={styles.posContainer}>
       
-      {/* STUNNING REACTIVE START PROMPT MODAL */}
+      {/* STEP 1: Dine-In vs Takeaway Reactive Start Modal */}
       {orderTypeModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.promptCard}>
@@ -135,7 +161,6 @@ export default function CounterPOS() {
             <p style={{fontSize: '13px', color: '#64748b', marginBottom: '25px'}}>Select order mode to configure billing workspace</p>
             
             <div style={{display: 'flex', gap: '16px', marginBottom: '25px'}}>
-              {/* EAT IN CARD */}
               <div 
                 onClick={() => setOrderType('Dine-In')}
                 onMouseEnter={() => setHoveredCard('Dine-In')}
@@ -153,7 +178,6 @@ export default function CounterPOS() {
                 <div style={{fontSize: '11px', color: '#64748b', marginTop: '2px'}}>Dine-In at Table</div>
               </div>
 
-              {/* TAKEAWAY CARD */}
               <div 
                 onClick={() => setOrderType('Takeaway')}
                 onMouseEnter={() => setHoveredCard('Takeaway')}
@@ -189,10 +213,7 @@ export default function CounterPOS() {
               </div>
             )}
 
-            <button 
-              onClick={() => setOrderTypeModal(false)}
-              style={styles.startSessionBtn}
-            >
+            <button onClick={() => setOrderTypeModal(false)} style={styles.startSessionBtn}>
               Start Punching Items ›
             </button>
           </div>
@@ -204,12 +225,12 @@ export default function CounterPOS() {
         <div style={styles.posHeader}>
           <div>
             <h2 style={{margin: 0, fontSize: '20px', fontWeight: '800', color: '#0f172a'}}>Counter POS ({orderType} {orderType === 'Dine-In' ? `- ${selectedTable}` : ''})</h2>
-            <span style={{fontSize: '12px', color: '#64748b'}}>Select items from menu below</span>
+            <span style={{fontSize: '12px', color: '#64748b'}}>Loaded from Menu Database</span>
           </div>
           <div style={{display: 'flex', gap: '10px'}}>
             <input 
               style={styles.searchBar}
-              placeholder="🔍 Search dishes or categories..."
+              placeholder="🔍 Search menu dishes or categories..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
@@ -217,71 +238,61 @@ export default function CounterPOS() {
           </div>
         </div>
 
-        {/* Menu Grid with reactive hover */}
         <div style={styles.menuGrid}>
-          {filteredMenu.map(item => (
-            <div 
-              key={item.id} 
-              onClick={() => handleAddToCart(item)} 
-              onMouseEnter={() => setHoveredCard(item.id)}
-              onMouseLeave={() => setHoveredCard(null)}
-              style={{
-                ...styles.menuCard,
-                borderColor: hoveredCard === item.id ? '#10b981' : '#e2e8f0',
-                transform: hoveredCard === item.id ? 'translateY(-4px)' : 'translateY(0)',
-                boxShadow: hoveredCard === item.id ? '0 10px 20px rgba(0,0,0,0.08)' : '0 1px 3px rgba(0,0,0,0.02)'
-              }}
-            >
-              <div>
-                <div style={{fontSize: '15px', fontWeight: '700', color: '#0f172a', marginBottom: '4px'}}>{item.name}</div>
-                <div style={{fontSize: '12px', color: '#64748b', marginBottom: '12px'}}>{item.desc}</div>
-              </div>
-              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                <span style={{fontSize: '15px', fontWeight: '800', color: '#047857'}}>₹{item.price}</span>
-                <span style={{background: '#d1fae5', color: '#065f46', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700'}}>+ Add</span>
-              </div>
+          {filteredMenu.length === 0 ? (
+            <div style={{gridColumn: '1 / -1', textAlign: 'center', padding: '50px', color: '#64748b'}}>
+              No menu items found. Add dishes in the Menu Module!
             </div>
-          ))}
+          ) : (
+            filteredMenu.map(item => {
+              const itemId = item.id || item.menuId;
+              const itemName = item.name || item.itemName;
+              const itemPrice = item.price || item.unitPrice;
+              const itemDesc = item.desc || item.itemDescription || '';
+
+              return (
+                <div 
+                  key={itemId} 
+                  onClick={() => handleAddToCart(item)} 
+                  onMouseEnter={() => setHoveredCard(itemId)}
+                  onMouseLeave={() => setHoveredCard(null)}
+                  style={{
+                    ...styles.menuCard,
+                    borderColor: hoveredCard === itemId ? '#10b981' : '#e2e8f0',
+                    transform: hoveredCard === itemId ? 'translateY(-4px)' : 'translateY(0)',
+                    boxShadow: hoveredCard === itemId ? '0 10px 20px rgba(0,0,0,0.08)' : '0 1px 3px rgba(0,0,0,0.02)'
+                  }}
+                >
+                  <div>
+                    <div style={{fontSize: '15px', fontWeight: '700', color: '#0f172a', marginBottom: '4px'}}>{itemName}</div>
+                    <div style={{fontSize: '12px', color: '#64748b', marginBottom: '12px'}}>{itemDesc}</div>
+                  </div>
+                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                    <span style={{fontSize: '15px', fontWeight: '800', color: '#047857'}}>₹{itemPrice}</span>
+                    <span style={{background: '#d1fae5', color: '#065f46', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700'}}>+ Add</span>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
       {/* Right Billing & Cart Sidebar */}
       <div style={styles.cartSidebar}>
-        <h3 style={{margin: '0 0 15px 0', fontSize: '16px', fontWeight: '800', color: '#0f172a'}}>Current Bill</h3>
-
-        <div style={styles.customerBox}>
-          <label style={{fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#334155'}}>Customer Phone (Auto-fills repeat guests):</label>
-          <input 
-            style={styles.inputField}
-            placeholder="Enter 10-digit phone"
-            value={customerPhone}
-            onChange={e => handlePhoneChange(e.target.value)}
-            list="saved-phones"
-          />
-          <datalist id="saved-phones">
-            {savedCustomers.map((c, i) => <option key={i} value={c.phone}>{c.name}</option>)}
-          </datalist>
-
-          <label style={{fontSize: '11px', fontWeight: 'bold', display: 'block', margin: '8px 0 4px 0', color: '#334155'}}>Customer Name:</label>
-          <input 
-            style={styles.inputField}
-            placeholder="Full Name"
-            value={customerName}
-            onChange={e => setCustomerName(e.target.value)}
-          />
-
-          <label style={{fontSize: '11px', fontWeight: 'bold', display: 'block', margin: '8px 0 4px 0', color: '#334155'}}>Email Address:</label>
-          <input 
-            style={styles.inputField}
-            placeholder="customer@email.com"
-            value={customerEmail}
-            onChange={e => setCustomerEmail(e.target.value)}
-          />
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
+          <h3 style={{margin: 0, fontSize: '16px', fontWeight: '800', color: '#0f172a'}}>Current Bill</h3>
+          <button 
+            onClick={() => setShowCustomerModal(true)}
+            style={styles.addCustomerBtn}
+          >
+            {customerPhone ? '👤 ' + customerName : '+ Add Customer'}
+          </button>
         </div>
 
         <div style={styles.cartItemsList}>
           {cart.length === 0 ? (
-            <div style={{textAlign: 'center', color: '#94a3b8', padding: '40px 0', fontSize: '13px'}}>Cart is empty. Tap menu items to add.</div>
+            <div style={{textAlign: 'center', color: '#94a3b8', padding: '40px 0', fontSize: '13px'}}>Cart is empty. Tap menu items.</div>
           ) : (
             cart.map(item => (
               <div key={item.id} style={styles.cartItemRow}>
@@ -326,23 +337,63 @@ export default function CounterPOS() {
             ))}
           </div>
 
-          <button 
-            onClick={handleCheckout} 
-            disabled={isSubmitting}
-            style={styles.checkoutBtn}
-          >
-            {isSubmitting ? 'Processing...' : 'Complete Order & Print Receipt'}
+          <button onClick={handleCheckout} disabled={isSubmitting} style={styles.checkoutBtn}>
+            {isSubmitting ? 'Processing...' : 'Complete Order & Print Bill'}
           </button>
         </div>
       </div>
 
-      {/* Thermal Receipt Print Modal */}
+      {/* Customer Modal (+ Add Customer) */}
+      {showCustomerModal && (
+        <div style={styles.modalOverlay}>
+          <form onSubmit={handleSaveCustomerProfile} style={styles.promptCard}>
+            <h3 style={{margin: '0 0 15px 0', fontSize: '18px', color: '#0f172a'}}>Customer Information</h3>
+            
+            <label style={{fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px', textAlign: 'left'}}>Phone Number (Auto-fills existing):</label>
+            <input 
+              style={{...styles.inputField, marginBottom: '12px'}}
+              placeholder="Enter 10-digit phone"
+              value={customerPhone}
+              onChange={e => handlePhoneLookup(e.target.value)}
+              list="saved-phones"
+              required
+            />
+            <datalist id="saved-phones">
+              {savedCustomers.map((c, i) => <option key={i} value={c.customerPhone}>{c.customerName}</option>)}
+            </datalist>
+
+            <label style={{fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px', textAlign: 'left'}}>Customer Name:</label>
+            <input 
+              style={{...styles.inputField, marginBottom: '12px'}}
+              placeholder="Full Name"
+              value={customerName}
+              onChange={e => setCustomerName(e.target.value)}
+              required
+            />
+
+            <label style={{fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px', textAlign: 'left'}}>Email Address:</label>
+            <input 
+              style={{...styles.inputField, marginBottom: '20px'}}
+              placeholder="customer@email.com"
+              value={customerEmail}
+              onChange={e => setCustomerEmail(e.target.value)}
+            />
+
+            <div style={{display: 'flex', gap: '10px'}}>
+              <button type="submit" style={{flex: 1, background: '#047857', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer'}}>Save & Select</button>
+              <button type="button" onClick={() => setShowCustomerModal(false)} style={{flex: 1, background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '10px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer'}}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Thermal Bill Print Modal */}
       {lastCompletedOrder && (
         <div style={styles.modalOverlay}>
           <div style={styles.receiptCard}>
             <div style={{textAlign: 'center', marginBottom: '15px'}}>
               <h3 style={{margin: 0, fontSize: '18px', fontWeight: '800'}}>FOODOS RESTAURANT</h3>
-              <div style={{fontSize: '11px', color: '#64748b'}}>Counter POS Receipt</div>
+              <div style={{fontSize: '11px', color: '#64748b'}}>Counter POS Bill</div>
               <div style={{fontSize: '11px', borderBottom: '1px dashed #cbd5e1', paddingBottom: '8px', marginTop: '5px'}}>Order ID: {lastCompletedOrder.id}</div>
             </div>
 
@@ -362,21 +413,15 @@ export default function CounterPOS() {
             </div>
 
             <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '14px', marginBottom: '20px'}}>
-              <span>Total Paid:</span>
+              <span>Total Bill:</span>
               <span style={{color: '#047857'}}>₹{Number(lastCompletedOrder.totalAmount).toFixed(2)}</span>
             </div>
 
             <div style={{display: 'flex', gap: '10px'}}>
-              <button 
-                onClick={() => window.print()} 
-                style={{flex: 1, background: '#047857', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: '700', cursor: 'pointer'}}
-              >
-                🖨️ Print
+              <button onClick={() => window.print()} style={{flex: 1, background: '#047857', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: '700', cursor: 'pointer'}}>
+                🖨️ Print Bill
               </button>
-              <button 
-                onClick={() => { setLastCompletedOrder(null); setCart([]); }} 
-                style={{flex: 1, background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '10px', borderRadius: '6px', fontWeight: '700', cursor: 'pointer'}}
-              >
+              <button onClick={() => { setLastCompletedOrder(null); setCart([]); setCustomerPhone(''); setCustomerName(''); }} style={{flex: 1, background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '10px', borderRadius: '6px', fontWeight: '700', cursor: 'pointer'}}>
                 New Order
               </button>
             </div>
@@ -392,20 +437,20 @@ const styles = {
   posContainer: { display: 'flex', height: '100vh', width: '100%', background: '#f8fafc', boxSizing: 'border-box', overflow: 'hidden' },
   menuSection: { flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', overflowY: 'hidden' },
   posHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '15px' },
-  searchBar: { width: '300px', padding: '10px 15px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', fontSize: '13px' },
+  searchBar: { width: '320px', padding: '10px 15px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', fontSize: '13px' },
   switchModeBtn: { background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' },
   menuGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', overflowY: 'auto', flex: 1, paddingBottom: '20px' },
   menuCard: { background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '18px', cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
   cartSidebar: { width: '380px', background: '#fff', borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '24px', boxSizing: 'border-box', flexShrink: '0' },
-  customerBox: { background: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '15px', textAlign: 'left' },
-  inputField: { width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box' },
+  addCustomerBtn: { background: '#ecfdf5', color: '#047857', border: '1px solid #10b981', padding: '6px 12px', borderRadius: '6px', fontWeight: '700', fontSize: '12px', cursor: 'pointer' },
+  inputField: { width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' },
   cartItemsList: { flex: 1, overflowY: 'auto', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', padding: '10px 0', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'left' },
   cartItemRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', padding: '8px 10px', borderRadius: '8px' },
   qtyBtn: { background: '#e2e8f0', border: 'none', width: '24px', height: '24px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' },
   cartFooter: { paddingTop: '15px' },
   checkoutBtn: { width: '100%', background: '#047857', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(4,120,87,0.3)' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
-  promptCard: { width: '440px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' },
+  promptCard: { width: '420px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' },
   modalHeaderIcon: { width: '50px', height: '50px', background: '#ecfdf5', color: '#047857', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 15px auto' },
   modeSelectCard: { flex: 1, padding: '20px 15px', borderRadius: '14px', border: '2px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', textAlign: 'center' },
   startSessionBtn: { width: '100%', background: '#047857', color: '#fff', border: 'none', padding: '14px', borderRadius: '10px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(4,120,87,0.3)' },
