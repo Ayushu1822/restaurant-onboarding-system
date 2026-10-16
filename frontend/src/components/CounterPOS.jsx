@@ -14,12 +14,13 @@ export default function CounterPOS() {
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState([]);
   
-  // Customer state & recent customers list
+  // Customer state, recent customers, and search filtering inside modal
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [savedCustomers, setSavedCustomers] = useState([]);
+  const [recentSearchQuery, setRecentSearchQuery] = useState('');
 
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,6 +57,11 @@ export default function CounterPOS() {
     setCustomerName(c.customerName);
     setCustomerEmail(c.customerEmail || '');
     setShowCustomerModal(false);
+  };
+
+  const handleDeleteCustomer = (e, phoneToRemove) => {
+    e.stopPropagation();
+    setSavedCustomers(savedCustomers.filter(c => c.customerPhone !== phoneToRemove));
   };
 
   const handleSaveCustomerProfile = (e) => {
@@ -154,6 +160,11 @@ export default function CounterPOS() {
     const name = item.name || item.itemName || '';
     const cat = item.category || '';
     return name.toLowerCase().includes(searchQuery.toLowerCase()) || cat.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
+  const filteredRecentCustomers = savedCustomers.filter(c => {
+    const q = recentSearchQuery.toLowerCase();
+    return (c.customerName || '').toLowerCase().includes(q) || (c.customerPhone || '').toLowerCase().includes(q);
   });
 
   // FULL-SCREEN IMMERSIVE MODE SELECTOR
@@ -380,7 +391,7 @@ export default function CounterPOS() {
         </div>
       </div>
 
-      {/* Modern Customer Modal with Recent Customers List */}
+      {/* Modern Customer Modal with Search Filtering & Quick Deletion */}
       {showCustomerModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.customerModalCard}>
@@ -410,7 +421,7 @@ export default function CounterPOS() {
 
               <label style={styles.modalLabel}>Email Address:</label>
               <input 
-                style={{...styles.inputField, marginBottom: '20px'}}
+                style={{...styles.inputField, marginBottom: '16px'}}
                 placeholder="customer@email.com"
                 value={customerEmail}
                 onChange={e => setCustomerEmail(e.target.value)}
@@ -420,19 +431,41 @@ export default function CounterPOS() {
             </form>
 
             {savedCustomers.length > 0 && (
-              <div style={{marginTop: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '15px', textAlign: 'left'}}>
-                <div style={{fontSize: '11px', fontWeight: '700', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase'}}>Recent Customers (Click to select):</div>
-                <div style={{maxHeight: '140px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px'}}>
-                  {savedCustomers.slice(0, 5).map((c, idx) => (
-                    <div 
-                      key={idx} 
-                      onClick={() => handleSelectExistingCustomer(c)}
-                      style={styles.recentCustomerRow}
-                    >
-                      <span style={{fontWeight: '700', color: '#0f172a'}}>{c.customerName}</span>
-                      <span style={{fontSize: '11px', color: '#64748b'}}>{c.customerPhone}</span>
-                    </div>
-                  ))}
+              <div style={{marginTop: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '14px', textAlign: 'left'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                  <span style={{fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase'}}>Recent Customers</span>
+                  <input 
+                    style={styles.recentSearchInput}
+                    placeholder="Filter list..."
+                    value={recentSearchQuery}
+                    onChange={e => setRecentSearchQuery(e.target.value)}
+                  />
+                </div>
+
+                <div style={{maxHeight: '130px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px'}}>
+                  {filteredRecentCustomers.length === 0 ? (
+                    <div style={{fontSize: '12px', color: '#94a3b8', textAlign: 'center', padding: '10px 0'}}>No matching recent guests</div>
+                  ) : (
+                    filteredRecentCustomers.map((c, idx) => (
+                      <div 
+                        key={idx} 
+                        onClick={() => handleSelectExistingCustomer(c)}
+                        style={styles.recentCustomerRow}
+                      >
+                        <div style={{flex: 1, overflow: 'hidden'}}>
+                          <div style={{fontWeight: '700', color: '#0f172a', fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{c.customerName}</div>
+                          <div style={{fontSize: '11px', color: '#64748b'}}>{c.customerPhone}</div>
+                        </div>
+                        <button 
+                          onClick={(e) => handleDeleteCustomer(e, c.customerPhone)}
+                          title="Remove from recent list"
+                          style={styles.deleteCustomerBtn}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}
@@ -500,7 +533,7 @@ const styles = {
   menuCard: { background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '18px', cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
   cartSidebar: { width: '380px', background: '#fff', borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '24px', boxSizing: 'border-box', flexShrink: '0' },
   addCustomerBtn: { border: '1px solid #10b981', padding: '7px 14px', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' },
-  inputField: { width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box', marginBottom: '14px' },
+  inputField: { width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box', marginBottom: '12px' },
   cartItemsList: { flex: 1, overflowY: 'auto', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', padding: '10px 0', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'left' },
   cartItemRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', padding: '8px 10px', borderRadius: '8px' },
   qtyBtn: { background: '#e2e8f0', border: 'none', width: '24px', height: '24px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' },
@@ -508,10 +541,11 @@ const styles = {
   checkoutBtn: { width: '100%', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
   customerModalCard: { width: '440px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' },
-  modalHeaderIcon: { width: '64px', height: '64px', background: '#ecfdf5', color: '#047857', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '30px', margin: '0 auto 15px auto' },
-  modalLabel: { fontSize: '11px', fontWeight: '700', display: 'block', marginBottom: '5px', textAlign: 'left', color: '#334155' },
+  modalLabel: { fontSize: '11px', fontWeight: '700', display: 'block', marginBottom: '4px', textAlign: 'left', color: '#334155' },
   closeXBtn: { background: 'none', border: 'none', fontSize: '16px', fontWeight: 'bold', color: '#64748b', cursor: 'pointer' },
   saveCustomerBtn: { width: '100%', background: '#047857', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' },
-  recentCustomerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: '#f8fafc', borderRadius: '6px', cursor: 'pointer', border: '1px solid #e2e8f0' },
+  recentSearchInput: { width: '120px', padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px' },
+  recentCustomerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: '#f8fafc', borderRadius: '6px', cursor: 'pointer', border: '1px solid #e2e8f0', transition: 'all 0.15s' },
+  deleteCustomerBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: '4px', borderRadius: '4px' },
   receiptCard: { width: '400px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'left', fontFamily: 'monospace', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' }
 };
