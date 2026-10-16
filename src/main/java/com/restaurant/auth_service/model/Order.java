@@ -10,12 +10,9 @@ import java.util.UUID;
 public class Order {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO) // <--- Automatically generates UUID on persist
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "order_id")
     private UUID orderId;
-
-    @Column(name = "restaurant_id")
-    private String restaurantId;
 
     @Column(name = "display_id")
     private String displayId;
@@ -26,13 +23,16 @@ public class Order {
     @Column(name = "customer_phone")
     private String customerPhone;
 
+    @Column(name = "customer_email")
+    private String customerEmail;
+
     @Column(name = "delivery_address")
     private String deliveryAddress;
 
-    private String channel;
+    private String channel; // 'ZOMATO', 'SWIGGY', 'WHATSAPP', 'COUNTER'
 
     @Column(name = "order_type")
-    private String orderType;
+    private String orderType; // 'Dine-In', 'Takeaway', 'Delivery'
 
     private String status;
 
@@ -54,9 +54,6 @@ public class Order {
     public UUID getOrderId() { return orderId; }
     public void setOrderId(UUID orderId) { this.orderId = orderId; }
 
-    public String getRestaurantId() { return restaurantId; }
-    public void setRestaurantId(String restaurantId) { this.restaurantId = restaurantId; }
-
     public String getDisplayId() { return displayId; }
     public void setDisplayId(String displayId) { this.displayId = displayId; }
 
@@ -65,6 +62,9 @@ public class Order {
 
     public String getCustomerPhone() { return customerPhone; }
     public void setCustomerPhone(String customerPhone) { this.customerPhone = customerPhone; }
+
+    public String getCustomerEmail() { return customerEmail; }
+    public void setCustomerEmail(String customerEmail) { this.customerEmail = customerEmail; }
 
     public String getDeliveryAddress() { return deliveryAddress; }
     public void setDeliveryAddress(String deliveryAddress) { this.deliveryAddress = deliveryAddress; }

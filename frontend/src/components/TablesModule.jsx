@@ -37,7 +37,6 @@ export default function TablesModule() {
   };
 
   const handleUpdateStatus = (tableId, newStatus) => {
-    // Optimistic UI update
     const updated = tables.map(t => {
       if (t.tableId === tableId) {
         return { 
@@ -52,7 +51,6 @@ export default function TablesModule() {
     setTables(updated);
     setSelectedTable(null);
 
-    // Persist status change to PostgreSQL backend
     fetch(`${API_BASE_URL}/api/v1/tables/${tableId}/status?status=${newStatus}`, {
       method: 'PUT'
     }).catch(err => console.error("Failed to update status in DB:", err));
@@ -72,7 +70,6 @@ export default function TablesModule() {
       currentAmount: null
     };
 
-    // Save directly to PostgreSQL via backend POST endpoint
     fetch(`${API_BASE_URL}/api/v1/tables`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -99,7 +96,6 @@ export default function TablesModule() {
     setTables(tables.filter(t => t.tableId !== tableId));
     setSelectedTable(null);
 
-    // Delete from PostgreSQL backend
     fetch(`${API_BASE_URL}/api/v1/tables/${tableId}`, {
       method: 'DELETE'
     }).catch(err => console.error("Failed to delete table from DB:", err));
@@ -119,14 +115,13 @@ export default function TablesModule() {
   const openCount = tables.filter(t => t.status === 'Available').length;
   const occupiedCount = tables.filter(t => t.status === 'Occupied').length;
   const billingCount = tables.filter(t => t.status === 'Billing' || t.status === 'Ready to Pay').length;
-  const reservedCount = tables.filter(t => t.status === 'Reserved').length;
 
   return (
-    <div style={{ padding: '24px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'Inter, sans-serif', overflowY: 'auto', boxSizing: 'border-box' }}>
+    <div style={styles.moduleWrapper}>
       
       {/* Header & Add Button */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#0f172a', margin: 0 }}>Tables Management</h2>
+        <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#0f172a', margin: 0 }}>Tables Management</h2>
         <button 
           onClick={() => setShowAddModal(true)}
           style={{ background: '#047857', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', boxShadow: '0 2px 5px rgba(4,120,87,0.3)' }}
@@ -136,7 +131,7 @@ export default function TablesModule() {
       </div>
 
       <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '24px', fontWeight: '500' }}>
-        <strong style={{ color: '#0f172a' }}>{openCount}/{tables.length} open</strong> &bull; {occupiedCount} occupied &bull; {billingCount} billing &bull; {reservedCount} reserved
+        <strong style={{ color: '#0f172a' }}>{openCount}/{tables.length} open</strong> &bull; {occupiedCount} occupied &bull; {billingCount} billing
       </p>
 
       {loading ? (
@@ -144,7 +139,7 @@ export default function TablesModule() {
       ) : tables.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '50px', background: '#fff', borderRadius: '12px', border: '1px dashed #cbd5e1', color: '#64748b' }}>
           <p style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>No tables found in database.</p>
-          <p style={{ fontSize: '13px', marginBottom: '20px' }}>Click "+ Add New Table" above or run the SQL script to insert tables.</p>
+          <p style={{ fontSize: '13px', marginBottom: '20px' }}>Click "+ Add New Table" above to create one.</p>
         </div>
       ) : (
         ['MAIN', 'PATIO', 'BAR'].map(section => {
@@ -171,7 +166,7 @@ export default function TablesModule() {
                         padding: '18px', 
                         border: `1.5px solid ${isHovered ? st.border : '#cbd5e1'}`, 
                         boxShadow: isHovered ? '0 12px 28px rgba(0,0,0,0.1)' : '0 1px 3px rgba(0,0,0,0.04)',
-                        transform: isHovered ? 'translateY(-5px) scale(1.02)' : 'translateY(0) scale(1)',
+                        transform: isHovered ? 'translateY(-4px) scale(1.01)' : 'translateY(0) scale(1)',
                         transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                         cursor: 'pointer',
                         display: 'flex',
@@ -299,3 +294,17 @@ export default function TablesModule() {
     </div>
   );
 }
+
+const styles = {
+  moduleWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    height: '100%',
+    padding: '24px',
+    background: '#f8fafc',
+    overflowY: 'auto', // Enables smooth vertical scrolling
+    boxSizing: 'border-box',
+    paddingBottom: '80px' // Extra bottom breathing room so bottom tables never get cut off
+  }
+};

@@ -33,8 +33,8 @@ export default function Dashboard({ user, onLogout }) {
   const [isProfileFallback, setIsProfileFallback] = useState(false);
   const [isOrdersFallback, setIsOrdersFallback] = useState(false);
   
-  // Live Table Stats State for Header Bar
-  const [tableStats, setTableStats] = useState({ open: 5, total: 10, occupied: 3, billing: 1, reserved: 1 });
+  // Live Table Stats State for Header Bar (Open, Occupied, Billing — Reserved removed)
+  const [tableStats, setTableStats] = useState({ open: 5, total: 10, occupied: 3, billing: 1 });
 
   const [restaurantId, setRestaurantId] = useState('ae41c831-372b-4f56-8905-f67a93b8045b');
   const [profileData, setProfileData] = useState({
@@ -59,8 +59,7 @@ export default function Dashboard({ user, onLogout }) {
           const open = data.filter(t => t.status === 'Available').length;
           const occupied = data.filter(t => t.status === 'Occupied').length;
           const billing = data.filter(t => t.status === 'Billing' || t.status === 'Ready to Pay').length;
-          const reserved = data.filter(t => t.status === 'Reserved').length;
-          setTableStats({ open, total: data.length, occupied, billing, reserved });
+          setTableStats({ open, total: data.length, occupied, billing });
         }
       })
       .catch(err => console.log("Table stats sync note:", err));
@@ -113,7 +112,13 @@ export default function Dashboard({ user, onLogout }) {
         let orderList = Array.isArray(data) ? data : [];
         setIsOrdersFallback(false);
         
-        const formattedOrders = orderList.map((o, index) => {
+        // Filter out Counter orders so Online Orders strictly shows Zomato/Swiggy/WhatsApp aggregators
+        const onlineOnlyList = orderList.filter(o => {
+          const ch = (o.channel || '').toUpperCase();
+          return ch !== 'COUNTER' && ch !== 'POS' && ch !== 'WALK-IN';
+        });
+
+        const formattedOrders = onlineOnlyList.map((o, index) => {
           const rawItems = o.items || o.orderItems || [];
           const mappedItems = rawItems.map(i => ({
             name: i.itemName || i.item_name || 'Food Item',
@@ -286,7 +291,7 @@ export default function Dashboard({ user, onLogout }) {
           </div>
         </div>
 
-        {/* Live Database-Synced Tables Header Bar */}
+        {/* Live Tables Header Bar (Reserved removed as requested) */}
         <div style={styles.tablesStatusBar} onClick={() => setActiveTab('Tables')}>
           <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600', color: '#334155'}}>
             <span>🪑</span>
@@ -296,8 +301,6 @@ export default function Dashboard({ user, onLogout }) {
             <span style={{color: '#cbd5e1'}}>·</span>
             <span>{tableStats.occupied} occupied</span>
             <span style={{backgroundColor: '#2563eb', color: '#fff', padding: '1px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: '700'}}>{tableStats.billing} billing</span>
-            <span style={{color: '#cbd5e1'}}>·</span>
-            <span style={{color: '#64748b'}}>{tableStats.reserved} reserved</span>
           </div>
           <span style={{color: '#94a3b8', fontSize: '16px', fontWeight: 'bold'}}>›</span>
         </div>
@@ -313,7 +316,7 @@ export default function Dashboard({ user, onLogout }) {
           <div style={styles.onlineOrdersContainer}>
             <div style={styles.subHeader}>
               <span style={{fontWeight: '600', color: '#0f172a'}}>
-                {orders.length} orders total · <span style={{color: '#16a34a'}}>{orders.filter(o => o.status === 'New').length} need action</span>
+                {orders.length} online orders · <span style={{color: '#16a34a'}}>{orders.filter(o => o.status === 'New').length} need action</span>
               </span>
             </div>
 
@@ -327,7 +330,7 @@ export default function Dashboard({ user, onLogout }) {
                   {loadingOrders ? (
                     <div style={{padding: '20px', textAlign: 'center'}}>Loading database orders...</div>
                   ) : orders.length === 0 ? (
-                    <div style={{padding: '20px', textAlign: 'center', color: '#64748b'}}>No orders found in database.</div>
+                    <div style={{padding: '20px', textAlign: 'center', color: '#64748b'}}>No online orders found in database.</div>
                   ) : (
                     orders.map(order => {
                       const isSelected = selectedOrder?.orderId === order.orderId;
