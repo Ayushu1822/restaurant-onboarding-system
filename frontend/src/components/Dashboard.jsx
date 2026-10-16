@@ -8,7 +8,6 @@ import CustomersModule from './CustomersModule';
 import ComplaintsModule from './ComplaintsModule';
 import TablesModule from './TablesModule';
 import CounterPOS from './CounterPOS';
-import OnlineOrdersModule from './OnlineOrdersModule';
 import PromotionsModule from './PromotionsModule';
 import GalleryModule from './GalleryModule';
 import SettingsModule from './SettingsModule';
