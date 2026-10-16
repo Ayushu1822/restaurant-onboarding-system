@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
+const AGE_GROUPS = [
+  '0-6', '6-12', '12-18', '18-24', '25-34', 
+  '35-44', '45-54', '55-64', '65-74', '75-84', '85-100+'
+];
+
 export default function CounterPOS() {
   const [orderType, setOrderType] = useState(null); // 'Dine-In' or 'Takeaway'
   const [selectedTable, setSelectedTable] = useState('T1');
@@ -14,11 +19,15 @@ export default function CounterPOS() {
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState([]);
   
-  // Customer state, recent customers, and search filtering inside modal
+  // Customer state & age group support
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
+  const [customerAgeGroup, setCustomerAgeGroup] = useState('25-34');
+  const [customerGender, setCustomerGender] = useState('Male');
+  const [customerFood, setCustomerFood] = useState('Veg');
+
   const [savedCustomers, setSavedCustomers] = useState([]);
   const [recentSearchQuery, setRecentSearchQuery] = useState('');
 
@@ -49,6 +58,9 @@ export default function CounterPOS() {
     if (found) {
       setCustomerName(found.customerName);
       setCustomerEmail(found.customerEmail || '');
+      if (found.ageGroup) setCustomerAgeGroup(found.ageGroup);
+      if (found.gender) setCustomerGender(found.gender);
+      if (found.preferredFood) setCustomerFood(found.preferredFood);
     }
   };
 
@@ -56,6 +68,9 @@ export default function CounterPOS() {
     setCustomerPhone(c.customerPhone);
     setCustomerName(c.customerName);
     setCustomerEmail(c.customerEmail || '');
+    if (c.ageGroup) setCustomerAgeGroup(c.ageGroup);
+    if (c.gender) setCustomerGender(c.gender);
+    if (c.preferredFood) setCustomerFood(c.preferredFood);
     setShowCustomerModal(false);
   };
 
@@ -68,7 +83,14 @@ export default function CounterPOS() {
     e.preventDefault();
     if (!customerPhone || !customerName) return alert('Please enter Name and Phone.');
 
-    const custObj = { customerName, customerPhone, customerEmail };
+    const custObj = { 
+      customerName, 
+      customerPhone, 
+      customerEmail, 
+      ageGroup: customerAgeGroup, 
+      gender: customerGender, 
+      preferredFood: customerFood 
+    };
 
     fetch(`${API_BASE_URL}/api/v1/customers`, {
       method: 'POST',
@@ -259,7 +281,8 @@ export default function CounterPOS() {
                 background: hoveredBtn === 'changeMode' ? '#047857' : '#f1f5f9',
                 color: hoveredBtn === 'changeMode' ? '#fff' : '#334155',
                 borderColor: hoveredBtn === 'changeMode' ? '#047857' : '#cbd5e1',
-                transform: hoveredBtn === 'changeMode' ? 'translateY(-1px)' : 'translateY(0)'
+                transform: hoveredBtn === 'changeMode' ? 'translateY(-2px)' : 'translateY(0)',
+                boxShadow: hoveredBtn === 'changeMode' ? '0 4px 10px rgba(4,120,87,0.2)' : 'none'
               }}
             >
               Change Mode
@@ -320,7 +343,8 @@ export default function CounterPOS() {
               background: hoveredBtn === 'addCustomer' ? '#047857' : '#ecfdf5',
               color: hoveredBtn === 'addCustomer' ? '#fff' : '#047857',
               borderColor: hoveredBtn === 'addCustomer' ? '#047857' : '#10b981',
-              transform: hoveredBtn === 'addCustomer' ? 'translateY(-2px) scale(1.02)' : 'translateY(0) scale(1)'
+              transform: hoveredBtn === 'addCustomer' ? 'translateY(-2px) scale(1.02)' : 'translateY(0) scale(1)',
+              boxShadow: hoveredBtn === 'addCustomer' ? '0 4px 12px rgba(4,120,87,0.25)' : 'none'
             }}
           >
             {customerPhone ? '👤 ' + customerName : '+ Add Customer'}
@@ -367,7 +391,14 @@ export default function CounterPOS() {
               <button 
                 key={m} 
                 onClick={() => setPaymentMethod(m)} 
-                style={{flex: 1, padding: '8px', borderRadius: '6px', border: paymentMethod === m ? '2px solid #047857' : '1px solid #cbd5e1', background: paymentMethod === m ? '#ecfdf5' : '#fff', fontWeight: '700', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s'}}
+                style={{
+                  flex: 1, padding: '8px', borderRadius: '6px', 
+                  border: paymentMethod === m ? '2px solid #047857' : '1px solid #cbd5e1', 
+                  background: paymentMethod === m ? '#ecfdf5' : '#fff', 
+                  fontWeight: '700', fontSize: '12px', cursor: 'pointer', 
+                  transition: 'all 0.2s',
+                  transform: paymentMethod === m ? 'translateY(-1px)' : 'translateY(0)'
+                }}
               >
                 {m}
               </button>
@@ -391,12 +422,12 @@ export default function CounterPOS() {
         </div>
       </div>
 
-      {/* Modern Customer Modal with Search Filtering & Quick Deletion */}
+      {/* Modern Customer Modal with Age Group Dropdown & Recent List */}
       {showCustomerModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.customerModalCard}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
-              <h3 style={{margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a'}}>Customer Details</h3>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px'}}>
+              <h3 style={{margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a'}}>Customer Profile & Demographics</h3>
               <button onClick={() => setShowCustomerModal(false)} style={styles.closeXBtn}>✕</button>
             </div>
 
@@ -419,6 +450,32 @@ export default function CounterPOS() {
                 required
               />
 
+              <div style={{display: 'flex', gap: '10px'}}>
+                <div style={{flex: 1}}>
+                  <label style={styles.modalLabel}>Age Group:</label>
+                  <select 
+                    style={styles.inputField}
+                    value={customerAgeGroup}
+                    onChange={e => setCustomerAgeGroup(e.target.value)}
+                  >
+                    {AGE_GROUPS.map(ag => <option key={ag} value={ag}>{ag} yrs</option>)}
+                  </select>
+                </div>
+                <div style={{flex: 1}}>
+                  <label style={styles.modalLabel}>Dietary Preference:</label>
+                  <select 
+                    style={styles.inputField}
+                    value={customerFood}
+                    onChange={e => setCustomerFood(e.target.value)}
+                  >
+                    <option value="Veg">Veg</option>
+                    <option value="Non-Veg">Non-Veg</option>
+                    <option value="Vegan">Vegan</option>
+                    <option value="Eggetarian">Eggetarian</option>
+                  </select>
+                </div>
+              </div>
+
               <label style={styles.modalLabel}>Email Address:</label>
               <input 
                 style={{...styles.inputField, marginBottom: '16px'}}
@@ -431,7 +488,7 @@ export default function CounterPOS() {
             </form>
 
             {savedCustomers.length > 0 && (
-              <div style={{marginTop: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '14px', textAlign: 'left'}}>
+              <div style={{marginTop: '18px', borderTop: '1px solid #e2e8f0', paddingTop: '12px', textAlign: 'left'}}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
                   <span style={{fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase'}}>Recent Customers</span>
                   <input 
@@ -442,7 +499,7 @@ export default function CounterPOS() {
                   />
                 </div>
 
-                <div style={{maxHeight: '130px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px'}}>
+                <div style={{maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px'}}>
                   {filteredRecentCustomers.length === 0 ? (
                     <div style={{fontSize: '12px', color: '#94a3b8', textAlign: 'center', padding: '10px 0'}}>No matching recent guests</div>
                   ) : (
@@ -454,7 +511,7 @@ export default function CounterPOS() {
                       >
                         <div style={{flex: 1, overflow: 'hidden'}}>
                           <div style={{fontWeight: '700', color: '#0f172a', fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{c.customerName}</div>
-                          <div style={{fontSize: '11px', color: '#64748b'}}>{c.customerPhone}</div>
+                          <div style={{fontSize: '11px', color: '#64748b'}}>{c.customerPhone} {c.ageGroup ? `• ${c.ageGroup}` : ''}</div>
                         </div>
                         <button 
                           onClick={(e) => handleDeleteCustomer(e, c.customerPhone)}
@@ -526,25 +583,25 @@ const styles = {
   posContainer: { display: 'flex', height: '100vh', width: '100%', background: '#f8fafc', boxSizing: 'border-box', overflow: 'hidden' },
   menuSection: { flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', overflowY: 'hidden' },
   posHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '15px' },
-  searchBar: { width: '280px', padding: '10px 15px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', fontSize: '13px' },
+  searchBar: { width: '280px', padding: '10px 15px', borderRadius: '8px', border: '1.5px solid #cbd5e1', background: '#fff', fontSize: '13px', transition: 'all 0.2s' },
   tableSelectDropdown: { padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #10b981', background: '#ecfdf5', fontWeight: '700', color: '#065f46', fontSize: '13px' },
   switchModeBtn: { border: '1px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' },
   menuGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', overflowY: 'auto', flex: 1, paddingBottom: '20px' },
   menuCard: { background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '18px', cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
   cartSidebar: { width: '380px', background: '#fff', borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '24px', boxSizing: 'border-box', flexShrink: '0' },
   addCustomerBtn: { border: '1px solid #10b981', padding: '7px 14px', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' },
-  inputField: { width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box', marginBottom: '12px' },
+  inputField: { width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box', marginBottom: '10px', background: '#fff' },
   cartItemsList: { flex: 1, overflowY: 'auto', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', padding: '10px 0', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'left' },
   cartItemRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', padding: '8px 10px', borderRadius: '8px' },
-  qtyBtn: { background: '#e2e8f0', border: 'none', width: '24px', height: '24px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' },
+  qtyBtn: { background: '#e2e8f0', border: 'none', width: '24px', height: '24px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.2s' },
   cartFooter: { paddingTop: '15px' },
   checkoutBtn: { width: '100%', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
-  customerModalCard: { width: '440px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' },
-  modalLabel: { fontSize: '11px', fontWeight: '700', display: 'block', marginBottom: '4px', textAlign: 'left', color: '#334155' },
+  customerModalCard: { width: '460px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' },
+  modalLabel: { fontSize: '11px', fontWeight: '700', display: 'block', marginBottom: '3px', textAlign: 'left', color: '#334155' },
   closeXBtn: { background: 'none', border: 'none', fontSize: '16px', fontWeight: 'bold', color: '#64748b', cursor: 'pointer' },
-  saveCustomerBtn: { width: '100%', background: '#047857', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' },
-  recentSearchInput: { width: '120px', padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px' },
+  saveCustomerBtn: { width: '100%', background: '#047857', color: '#fff', border: 'none', padding: '11px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' },
+  recentSearchInput: { width: '110px', padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px' },
   recentCustomerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: '#f8fafc', borderRadius: '6px', cursor: 'pointer', border: '1px solid #e2e8f0', transition: 'all 0.15s' },
   deleteCustomerBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: '4px', borderRadius: '4px' },
   receiptCard: { width: '400px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'left', fontFamily: 'monospace', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' }
