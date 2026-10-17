@@ -16,7 +16,6 @@ export default function MenuModule() {
   const [itemName, setItemName] = useState('');
   const [category, setCategory] = useState('Combos');
   const [unitPrice, setUnitPrice] = useState('');
-  const [catalogName, setCatalogName] = useState('Default Online Menu');
 
   useEffect(() => {
     fetchMenuItems();
@@ -70,7 +69,7 @@ export default function MenuModule() {
       itemName,
       category,
       unitPrice: Number(unitPrice),
-      catalogName,
+      catalogName: activeCatalog, // Automatically assigns to whichever catalog is currently active
       status: 'LIVE'
     };
 
@@ -92,10 +91,12 @@ export default function MenuModule() {
       .catch(err => alert('Error: ' + err.message));
   };
 
-  const totalAvailable = menuItems.filter(i => i.status === 'LIVE').length;
-  const totalPaused = menuItems.filter(i => i.status === 'PAUSED').length;
+  // Filter items based on active catalog selection
+  const catalogFilteredItems = menuItems.filter(i => (i.catalogName || 'Default In-House Menu') === activeCatalog);
 
-  // Group items by category
+  const totalAvailable = catalogFilteredItems.filter(i => i.status === 'LIVE').length;
+  const totalPaused = catalogFilteredItems.filter(i => i.status === 'PAUSED').length;
+
   const categories = ['Combos', 'Starters', 'Biryanis', 'Sandwiches', 'Burgers', 'Main Course'];
 
   return (
@@ -118,7 +119,7 @@ export default function MenuModule() {
             boxShadow: hoveredBtn === 'newMenu' ? '0 6px 16px rgba(4,120,87,0.35)' : '0 2px 6px rgba(4,120,87,0.2)'
           }}
         >
-          + New Menu Item
+          + Add Dish to {activeCatalog}
         </button>
       </div>
 
@@ -127,68 +128,63 @@ export default function MenuModule() {
         
         {/* Default Online Menu Card */}
         <div 
+          onClick={() => setActiveCatalog('Default Online Menu')}
           onMouseEnter={() => setHoveredCard('online')}
           onMouseLeave={() => setHoveredCard(null)}
           style={{
             ...styles.catalogCard,
-            borderColor: hoveredCard === 'online' ? '#047857' : '#cbd5e1',
+            borderColor: activeCatalog === 'Default Online Menu' ? '#047857' : (hoveredCard === 'online' ? '#10b981' : '#cbd5e1'),
+            background: activeCatalog === 'Default Online Menu' ? '#f0fdf4' : '#fff',
             transform: hoveredCard === 'online' ? 'translateY(-3px)' : 'translateY(0)',
             boxShadow: hoveredCard === 'online' ? '0 12px 25px rgba(4,120,87,0.12)' : '0 1px 3px rgba(0,0,0,0.02)'
           }}
         >
           <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px'}}>
-            <span style={styles.liveOnlineBadge}>🟢 LIVE ONLINE</span>
-            <span style={{fontSize: '11px', color: '#64748b', fontWeight: '700'}}>Channel Active</span>
+            <span style={styles.liveOnlineBadge}>🟢 ONLINE CHANNEL</span>
+            <span style={{fontSize: '11px', color: '#047857', fontWeight: '800'}}>{activeCatalog === 'Default Online Menu' ? 'ACTIVE VIEW' : 'Click to View'}</span>
           </div>
           <h3 style={{margin: '0 0 4px 0', fontSize: '16px', fontWeight: '800', color: '#0f172a'}}>Default Online Menu</h3>
           <p style={{margin: '0 0 16px 0', fontSize: '12px', color: '#64748b'}}>Menu served on your website and WhatsApp ordering.</p>
-          <div style={{display: 'flex', gap: '10px'}}>
-            <button style={styles.catalogActionBtnSecondary}>Activate in-house</button>
-            <button onClick={() => setActiveCatalog('Default Online Menu')} style={styles.catalogActionBtnPrimary}>Manage items</button>
-          </div>
         </div>
 
         {/* Default In-House Menu Card */}
         <div 
+          onClick={() => setActiveCatalog('Default In-House Menu')}
           onMouseEnter={() => setHoveredCard('inhouse')}
           onMouseLeave={() => setHoveredCard(null)}
           style={{
             ...styles.catalogCard,
-            borderColor: hoveredCard === 'inhouse' ? '#047857' : '#cbd5e1',
+            borderColor: activeCatalog === 'Default In-House Menu' ? '#047857' : (hoveredCard === 'inhouse' ? '#10b981' : '#cbd5e1'),
+            background: activeCatalog === 'Default In-House Menu' ? '#f0fdf4' : '#fff',
             transform: hoveredCard === 'inhouse' ? 'translateY(-3px)' : 'translateY(0)',
             boxShadow: hoveredCard === 'inhouse' ? '0 12px 25px rgba(4,120,87,0.12)' : '0 1px 3px rgba(0,0,0,0.02)'
           }}
         >
           <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px'}}>
             <span style={styles.inhouseBadge}>🍴 IN-HOUSE DEFAULT</span>
-            <span style={{fontSize: '11px', color: '#64748b', fontWeight: '700'}}>POS & Tables</span>
+            <span style={{fontSize: '11px', color: '#047857', fontWeight: '800'}}>{activeCatalog === 'Default In-House Menu' ? 'ACTIVE VIEW' : 'Click to View'}</span>
           </div>
           <h3 style={{margin: '0 0 4px 0', fontSize: '16px', fontWeight: '800', color: '#0f172a'}}>Default In-House Menu</h3>
           <p style={{margin: '0 0 16px 0', fontSize: '12px', color: '#64748b'}}>Served at tables and takeaway counter.</p>
-          <div style={{display: 'flex', gap: '10px'}}>
-            <button style={styles.catalogActionBtnSecondary}>Set online</button>
-            <button onClick={() => setActiveCatalog('Default In-House Menu')} style={styles.catalogActionBtnPrimary}>Manage items</button>
-          </div>
         </div>
 
       </div>
 
       {/* Summary Status Strip */}
       <div style={styles.summaryStrip}>
-        <span>ITEMS • <strong>{totalAvailable} AVAILABLE</strong> • <strong style={{color: '#dc2626'}}>{totalPaused} PAUSED</strong></span>
-        <span style={{fontSize: '12px', color: '#047857', fontWeight: '750'}}>Active Catalog: {activeCatalog}</span>
+        <span>{activeCatalog.toUpperCase()} • <strong>{totalAvailable} AVAILABLE</strong> • <strong style={{color: '#dc2626'}}>{totalPaused} PAUSED</strong></span>
       </div>
 
       {/* Categorized Items List */}
       {loading ? (
         <div style={{textAlign: 'center', padding: '50px', color: '#64748b'}}>Loading menu catalog from PostgreSQL...</div>
-      ) : menuItems.length === 0 ? (
+      ) : catalogFilteredItems.length === 0 ? (
         <div style={{textAlign: 'center', padding: '60px', background: '#fff', borderRadius: '12px', border: '1.5px dashed #cbd5e1', color: '#64748b'}}>
-          No menu items found. Click "+ New Menu Item" above to add dishes!
+          No items found in {activeCatalog}. Click "+ Add Dish" above!
         </div>
       ) : (
         categories.map(cat => {
-          const catItems = menuItems.filter(item => item.category === cat);
+          const catItems = catalogFilteredItems.filter(item => item.category === cat);
           if (catItems.length === 0) return null;
 
           return (
@@ -252,7 +248,7 @@ export default function MenuModule() {
         <div style={styles.modalOverlay}>
           <form onSubmit={handleSaveItem} style={styles.modalCard}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
-              <h3 style={{margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a'}}>Add New Dish</h3>
+              <h3 style={{margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a'}}>Add Dish to {activeCatalog}</h3>
               <button type="button" onClick={() => setShowModal(false)} style={styles.closeXBtn}>✕</button>
             </div>
 
@@ -291,18 +287,8 @@ export default function MenuModule() {
               </div>
             </div>
 
-            <label style={styles.label}>Menu Catalog</label>
-            <select 
-              style={{...styles.input, marginBottom: '20px'}}
-              value={catalogName}
-              onChange={e => setCatalogName(e.target.value)}
-            >
-              <option value="Default Online Menu">Default Online Menu</option>
-              <option value="Default In-House Menu">Default In-House Menu</option>
-            </select>
-
-            <div style={{display: 'flex', gap: '10px'}}>
-              <button type="submit" style={styles.saveBtn}>Save & Add Dish</button>
+            <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
+              <button type="submit" style={styles.saveBtn}>Save Dish</button>
               <button type="button" onClick={() => setShowModal(false)} style={styles.cancelBtn}>Cancel</button>
             </div>
           </form>
@@ -321,8 +307,6 @@ const styles = {
   catalogCard: { background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '14px', padding: '20px', transition: 'all 0.25s ease', cursor: 'pointer' },
   liveOnlineBadge: { background: '#ecfdf5', color: '#047857', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800' },
   inhouseBadge: { background: '#f1f5f9', color: '#334155', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800' },
-  catalogActionBtnPrimary: { background: '#047857', color: '#fff', border: 'none', padding: '7px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' },
-  catalogActionBtnSecondary: { background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '7px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' },
   summaryStrip: { background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '24px' },
   categorySection: { marginBottom: '20px' },
   categoryHeader: { fontSize: '12px', fontWeight: '800', color: '#64748b', letterSpacing: '0.06em', marginBottom: '8px', textTransform: 'uppercase' },
