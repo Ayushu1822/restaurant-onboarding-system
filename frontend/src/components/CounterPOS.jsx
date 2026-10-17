@@ -187,7 +187,6 @@ export default function CounterPOS() {
       });
   };
 
-  // Fixed Filter: Loads all LIVE items regardless of catalog string or unassigned catalogs
   const filteredMenu = menuItems.filter(item => {
     const isLive = (item.status || 'LIVE') === 'LIVE';
     const name = item.itemName || item.name || '';
@@ -304,7 +303,7 @@ export default function CounterPOS() {
           </div>
         </div>
 
-        {/* Categorized Square Grid for Menu Items */}
+        {/* Categorized Rectangular Card Grid matching Screenshot */}
         <div style={styles.scrollableMenuArea}>
           {filteredMenu.length === 0 ? (
             <div style={{textAlign: 'center', padding: '60px', color: '#64748b'}}>
@@ -323,7 +322,9 @@ export default function CounterPOS() {
                       const itemId = item.id || item.menuId;
                       const itemName = item.itemName || item.name;
                       const itemPrice = item.unitPrice || item.price;
+                      const itemCat = item.category || 'Dishes';
                       const isCardHovered = hoveredCard === itemId;
+                      const isInCart = cart.some(i => i.id === itemId);
 
                       return (
                         <div 
@@ -334,23 +335,36 @@ export default function CounterPOS() {
                           style={{
                             ...styles.menuCard,
                             borderColor: isCardHovered ? '#047857' : '#e2e8f0',
-                            transform: isCardHovered ? 'translateY(-5px) scale(1.02)' : 'translateY(0) scale(1)',
-                            boxShadow: isCardHovered ? '0 12px 25px rgba(4,120,87,0.15)' : '0 1px 3px rgba(0,0,0,0.02)'
+                            transform: isCardHovered ? 'translateY(-3px) scale(1.01)' : 'translateY(0) scale(1)',
+                            boxShadow: isCardHovered ? '0 10px 20px rgba(4,120,87,0.12)' : '0 1px 3px rgba(0,0,0,0.02)'
                           }}
                         >
-                          <div>
-                            <div style={{fontSize: '14px', fontWeight: '800', color: '#0f172a', lineHeight: '1.3', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>{itemName}</div>
+                          <div style={{display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px'}}>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                              <div style={{
+                                width: '16px', height: '16px', borderRadius: '50%', 
+                                border: `2px solid ${isInCart ? '#047857' : '#cbd5e1'}`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: isInCart ? '#047857' : '#fff',
+                                transition: 'all 0.2s'
+                              }}>
+                                {isInCart && <span style={{color: '#fff', fontSize: '9px', fontWeight: 'bold'}}>✓</span>}
+                              </div>
+                              <span style={{fontSize: '14px', fontWeight: '800', color: '#0f172a'}}>{itemName}</span>
+                            </div>
                           </div>
-                          
-                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto'}}>
+
+                          <div style={{fontSize: '11px', color: '#64748b', marginLeft: '26px', marginBottom: '12px'}}>{itemCat}</div>
+
+                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginLeft: '26px'}}>
                             <span style={{fontSize: '14px', fontWeight: '800', color: '#047857'}}>₹{itemPrice}</span>
                             <span style={{
                               background: isCardHovered ? '#047857' : '#d1fae5', 
                               color: isCardHovered ? '#fff' : '#065f46', 
-                              padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
+                              padding: '3px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
                               transition: 'all 0.2s'
                             }}>
-                              + Add
+                              {isInCart ? 'Added (' + cart.find(i => i.id === itemId).qty + ')' : '+ Add'}
                             </span>
                           </div>
                         </div>
@@ -658,8 +672,9 @@ const styles = {
   switchModeBtn: { border: '1px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' },
   scrollableMenuArea: { flex: 1, overflowY: 'auto', paddingBottom: '20px' },
   categoryTitle: { fontSize: '12px', fontWeight: '800', color: '#64748b', letterSpacing: '0.06em', marginBottom: '10px', textTransform: 'uppercase' },
-  menuGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '16px' },
-  menuCard: { background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px', cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', aspectRatio: '1 / 1' },
+  // Wide Rectangular Grid Layout matching Screenshot
+  menuGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' },
+  menuCard: { background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px', cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
   cartSidebar: { width: '380px', background: '#fff', borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '24px', boxSizing: 'border-box', flexShrink: '0' },
   addCustomerBtn: { border: '1px solid #10b981', padding: '7px 14px', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' },
   inputField: { width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box', marginBottom: '10px', background: '#fff', outline: 'none' },
