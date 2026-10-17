@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
+const DEFAULT_CATEGORIES = ['Combos', 'Starters', 'Biryanis', 'Sandwiches', 'Burgers', 'Main Course'];
+
 export default function MenuModule() {
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +17,7 @@ export default function MenuModule() {
   const [showModal, setShowModal] = useState(false);
   const [itemName, setItemName] = useState('');
   const [category, setCategory] = useState('Combos');
+  const [customCategory, setCustomCategory] = useState('');
   const [unitPrice, setUnitPrice] = useState('');
 
   useEffect(() => {
@@ -63,13 +66,14 @@ export default function MenuModule() {
 
   const handleSaveItem = (e) => {
     e.preventDefault();
-    if (!itemName || !unitPrice) return alert('Enter Item Name and Price.');
+    const finalCategory = category === 'ADD_NEW' ? customCategory.trim() : category;
+    if (!itemName || !unitPrice || !finalCategory) return alert('Please enter Item Name, Price, and Category.');
 
     const newItem = {
       itemName,
-      category,
+      category: finalCategory,
       unitPrice: Number(unitPrice),
-      catalogName: activeCatalog, // Automatically assigns to whichever catalog is currently active
+      catalogName: activeCatalog,
       status: 'LIVE'
     };
 
@@ -83,6 +87,8 @@ export default function MenuModule() {
           setShowModal(false);
           setItemName('');
           setUnitPrice('');
+          setCustomCategory('');
+          setCategory('Combos');
           fetchMenuItems();
         } else {
           alert('Failed to save menu item.');
@@ -91,13 +97,13 @@ export default function MenuModule() {
       .catch(err => alert('Error: ' + err.message));
   };
 
-  // Filter items based on active catalog selection
   const catalogFilteredItems = menuItems.filter(i => (i.catalogName || 'Default In-House Menu') === activeCatalog);
 
   const totalAvailable = catalogFilteredItems.filter(i => i.status === 'LIVE').length;
   const totalPaused = catalogFilteredItems.filter(i => i.status === 'PAUSED').length;
 
-  const categories = ['Combos', 'Starters', 'Biryanis', 'Sandwiches', 'Burgers', 'Main Course'];
+  // Extract unique categories dynamically from existing items + defaults
+  const dynamicCategories = Array.from(new Set([...DEFAULT_CATEGORIES, ...menuItems.map(i => i.category).filter(Boolean)]));
 
   return (
     <div style={styles.container}>
@@ -183,7 +189,7 @@ export default function MenuModule() {
           No items found in {activeCatalog}. Click "+ Add Dish" above!
         </div>
       ) : (
-        categories.map(cat => {
+        dynamicCategories.map(cat => {
           const catItems = catalogFilteredItems.filter(item => item.category === cat);
           if (catItems.length === 0) return null;
 
@@ -243,7 +249,7 @@ export default function MenuModule() {
         })
       )}
 
-      {/* Add New Menu Item Modal */}
+      {/* Add New Menu Item Modal with Custom Category Input */}
       {showModal && (
         <div style={styles.modalOverlay}>
           <form onSubmit={handleSaveItem} style={styles.modalCard}>
@@ -269,7 +275,8 @@ export default function MenuModule() {
                   value={category}
                   onChange={e => setCategory(e.target.value)}
                 >
-                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  {dynamicCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="ADD_NEW">+ Create New Category...</option>
                 </select>
               </div>
 
@@ -286,6 +293,19 @@ export default function MenuModule() {
                 />
               </div>
             </div>
+
+            {category === 'ADD_NEW' && (
+              <>
+                <label style={styles.label}>New Category Name *</label>
+                <input 
+                  style={styles.input}
+                  placeholder="e.g. Desserts, Beverages"
+                  value={customCategory}
+                  onChange={e => setCustomCategory(e.target.value)}
+                  required
+                />
+              </>
+            )}
 
             <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
               <button type="submit" style={styles.saveBtn}>Save Dish</button>

@@ -187,14 +187,17 @@ export default function CounterPOS() {
       });
   };
 
-  // Only show LIVE items in POS
+  // Filter LIVE items for Counter POS matching active catalog (Default In-House Menu for Counter)
   const filteredMenu = menuItems.filter(item => {
     const isLive = (item.status || 'LIVE') === 'LIVE';
+    const catalogMatch = (item.catalogName || 'Default In-House Menu') === 'Default In-House Menu' || (item.catalogName || '') === '';
     const name = item.itemName || item.name || '';
     const cat = item.category || '';
     const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) || cat.toLowerCase().includes(searchQuery.toLowerCase());
-    return isLive && matchesSearch;
+    return isLive && catalogMatch && matchesSearch;
   });
+
+  const uniqueCategories = Array.from(new Set(filteredMenu.map(i => i.category).filter(Boolean)));
 
   const filteredRecentCustomers = savedCustomers.filter(c => {
     const q = recentSearchQuery.toLowerCase();
@@ -258,7 +261,7 @@ export default function CounterPOS() {
         <div style={styles.posHeader}>
           <div>
             <h2 style={{margin: 0, fontSize: '20px', fontWeight: '800', color: '#0f172a'}}>Counter POS ({orderType})</h2>
-            <span style={{fontSize: '12px', color: '#64748b'}}>Live Menu Synchronized</span>
+            <span style={{fontSize: '12px', color: '#64748b'}}>In-House Menu Synchronized</span>
           </div>
           <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
             {orderType === 'Dine-In' && (
@@ -302,48 +305,58 @@ export default function CounterPOS() {
           </div>
         </div>
 
-        {/* Square Grid for Menu Items */}
-        <div style={styles.menuGrid}>
+        {/* Categorized Square Grid for Menu Items */}
+        <div style={styles.scrollableMenuArea}>
           {filteredMenu.length === 0 ? (
-            <div style={{gridColumn: '1 / -1', textAlign: 'center', padding: '60px', color: '#64748b'}}>
-              No live menu items found. Add or set items to LIVE in the Menu Module!
+            <div style={{textAlign: 'center', padding: '60px', color: '#64748b'}}>
+              No live in-house menu items found. Add dishes in the Menu Module!
             </div>
           ) : (
-            filteredMenu.map(item => {
-              const itemId = item.id || item.menuId;
-              const itemName = item.itemName || item.name;
-              const itemPrice = item.unitPrice || item.price;
-              const itemCategory = item.category || 'Dishes';
-              const isCardHovered = hoveredCard === itemId;
+            uniqueCategories.map(cat => {
+              const catItems = filteredMenu.filter(item => item.category === cat);
+              if (catItems.length === 0) return null;
 
               return (
-                <div 
-                  key={itemId} 
-                  onClick={() => handleAddToCart(item)} 
-                  onMouseEnter={() => setHoveredCard(itemId)}
-                  onMouseLeave={() => setHoveredCard(null)}
-                  style={{
-                    ...styles.menuCard,
-                    borderColor: isCardHovered ? '#047857' : '#e2e8f0',
-                    transform: isCardHovered ? 'translateY(-5px) scale(1.02)' : 'translateY(0) scale(1)',
-                    boxShadow: isCardHovered ? '0 12px 25px rgba(4,120,87,0.15)' : '0 1px 3px rgba(0,0,0,0.02)'
-                  }}
-                >
-                  <div>
-                    <span style={styles.cardCategoryTag}>{itemCategory}</span>
-                    <div style={{fontSize: '14px', fontWeight: '800', color: '#0f172a', lineHeight: '1.3', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>{itemName}</div>
-                  </div>
-                  
-                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto'}}>
-                    <span style={{fontSize: '14px', fontWeight: '800', color: '#047857'}}>₹{itemPrice}</span>
-                    <span style={{
-                      background: isCardHovered ? '#047857' : '#d1fae5', 
-                      color: isCardHovered ? '#fff' : '#065f46', 
-                      padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
-                      transition: 'all 0.2s'
-                    }}>
-                      + Add
-                    </span>
+                <div key={cat} style={{marginBottom: '24px'}}>
+                  <div style={styles.categoryTitle}>{cat}</div>
+                  <div style={styles.menuGrid}>
+                    {catItems.map(item => {
+                      const itemId = item.id || item.menuId;
+                      const itemName = item.itemName || item.name;
+                      const itemPrice = item.unitPrice || item.price;
+                      const isCardHovered = hoveredCard === itemId;
+
+                      return (
+                        <div 
+                          key={itemId} 
+                          onClick={() => handleAddToCart(item)} 
+                          onMouseEnter={() => setHoveredCard(itemId)}
+                          onMouseLeave={() => setHoveredCard(null)}
+                          style={{
+                            ...styles.menuCard,
+                            borderColor: isCardHovered ? '#047857' : '#e2e8f0',
+                            transform: isCardHovered ? 'translateY(-5px) scale(1.02)' : 'translateY(0) scale(1)',
+                            boxShadow: isCardHovered ? '0 12px 25px rgba(4,120,87,0.15)' : '0 1px 3px rgba(0,0,0,0.02)'
+                          }}
+                        >
+                          <div>
+                            <div style={{fontSize: '14px', fontWeight: '800', color: '#0f172a', lineHeight: '1.3', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>{itemName}</div>
+                          </div>
+                          
+                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto'}}>
+                            <span style={{fontSize: '14px', fontWeight: '800', color: '#047857'}}>₹{itemPrice}</span>
+                            <span style={{
+                              background: isCardHovered ? '#047857' : '#d1fae5', 
+                              color: isCardHovered ? '#fff' : '#065f46', 
+                              padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
+                              transition: 'all 0.2s'
+                            }}>
+                              + Add
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -644,10 +657,10 @@ const styles = {
   searchBar: { width: '280px', padding: '10px 15px', borderRadius: '8px', border: '1.5px solid #cbd5e1', background: '#fff', fontSize: '13px', transition: 'all 0.2s', outline: 'none' },
   tableSelectDropdown: { padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #10b981', background: '#ecfdf5', fontWeight: '700', color: '#065f46', fontSize: '13px', cursor: 'pointer' },
   switchModeBtn: { border: '1px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' },
-  // Square Grid Layout for Menu Cards
-  menuGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '16px', overflowY: 'auto', flex: 1, paddingBottom: '20px' },
+  scrollableMenuArea: { flex: 1, overflowY: 'auto', paddingBottom: '20px' },
+  categoryTitle: { fontSize: '12px', fontWeight: '800', color: '#64748b', letterSpacing: '0.06em', marginBottom: '10px', textTransform: 'uppercase' },
+  menuGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '16px' },
   menuCard: { background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px', cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', aspectRatio: '1 / 1' },
-  cardCategoryTag: { fontSize: '10px', fontWeight: '800', color: '#047857', background: '#ecfdf5', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', marginBottom: '6px', textTransform: 'uppercase' },
   cartSidebar: { width: '380px', background: '#fff', borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '24px', boxSizing: 'border-box', flexShrink: '0' },
   addCustomerBtn: { border: '1px solid #10b981', padding: '7px 14px', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' },
   inputField: { width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box', marginBottom: '10px', background: '#fff', outline: 'none' },
