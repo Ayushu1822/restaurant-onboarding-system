@@ -1,60 +1,339 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
+const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
 export default function MenuModule() {
-  const [activeMenu, setActiveMenu] = useState('online');
-  const [menuItems, setMenuItems] = useState([
-    { id: 1, name: 'Chicken Fillet Sandwich Combo', category: 'Combos', price: 289.00, status: 'Live' },
-    { id: 2, name: 'Chicken Drumsticks', category: 'Starters', price: 199.00, status: 'Live' },
-    { id: 3, name: 'Paneer Tikka Sandwich', category: 'Sandwiches', price: 229.00, status: 'Paused' },
-    { id: 4, name: 'Butter Chicken', category: 'Main Course', price: 400.00, status: 'Live' }
-  ]);
+  const [menuItems, setMenuItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeCatalog, setActiveCatalog] = useState('Default Online Menu');
+  
+  const [hoveredCard, setHoveredCard] = useState(null);
+  const [hoveredRow, setHoveredRow] = useState(null);
+  const [hoveredBtn, setHoveredBtn] = useState(null);
 
-  const toggleStatus = (id) => {
-    setMenuItems(prev => prev.map(item => item.id === id ? { ...item, status: item.status === 'Live' ? 'Paused' : 'Live' } : item));
+  // Add Item Modal state
+  const [showModal, setShowModal] = useState(false);
+  const [itemName, setItemName] = useState('');
+  const [category, setCategory] = useState('Combos');
+  const [unitPrice, setUnitPrice] = useState('');
+  const [catalogName, setCatalogName] = useState('Default Online Menu');
+
+  useEffect(() => {
+    fetchMenuItems();
+  }, []);
+
+  const fetchMenuItems = () => {
+    fetch(`${API_BASE_URL}/api/v1/menu`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setMenuItems(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Menu fetch error:", err);
+        setLoading(false);
+      });
   };
 
-  const pausedCount = menuItems.filter(i => i.status === 'Paused').length;
-  const availableCount = menuItems.filter(i => i.status === 'Live').length;
+  const handleToggleStatus = (id, currentStatus) => {
+    const newStatus = currentStatus === 'LIVE' ? 'PAUSED' : 'LIVE';
+    fetch(`${API_BASE_URL}/api/v1/menu/${id}/status?status=${newStatus}`, {
+      method: 'PUT'
+    })
+      .then(res => {
+        if (res.ok) {
+          setMenuItems(menuItems.map(item => item.id === id ? { ...item, status: newStatus } : item));
+        }
+      })
+      .catch(err => console.error("Status update error:", err));
+  };
+
+  const handleDeleteItem = (id, name) => {
+    if (!window.confirm(`Delete "${name}" from menu?`)) return;
+
+    fetch(`${API_BASE_URL}/api/v1/menu/${id}`, {
+      method: 'DELETE'
+    })
+      .then(res => {
+        if (res.ok) {
+          setMenuItems(menuItems.filter(item => item.id !== id));
+        }
+      })
+      .catch(err => console.error("Delete error:", err));
+  };
+
+  const handleSaveItem = (e) => {
+    e.preventDefault();
+    if (!itemName || !unitPrice) return alert('Enter Item Name and Price.');
+
+    const newItem = {
+      itemName,
+      category,
+      unitPrice: Number(unitPrice),
+      catalogName,
+      status: 'LIVE'
+    };
+
+    fetch(`${API_BASE_URL}/api/v1/menu`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newItem)
+    })
+      .then(res => {
+        if (res.ok) {
+          setShowModal(false);
+          setItemName('');
+          setUnitPrice('');
+          fetchMenuItems();
+        } else {
+          alert('Failed to save menu item.');
+        }
+      })
+      .catch(err => alert('Error: ' + err.message));
+  };
+
+  const totalAvailable = menuItems.filter(i => i.status === 'LIVE').length;
+  const totalPaused = menuItems.filter(i => i.status === 'PAUSED').length;
+
+  // Group items by category
+  const categories = ['Combos', 'Starters', 'Biryanis', 'Sandwiches', 'Burgers', 'Main Course'];
 
   return (
-    <div style={{ padding: '24px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
-      <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>Menus</h2>
-      <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '24px' }}>Create menus, activate them per channel, and manage items.</p>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
-        <div style={{ background: '#fff', border: activeMenu === 'online' ? '2px solid #10b981' : '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', cursor: 'pointer' }} onClick={() => setActiveMenu('online')}>
-          <span style={{ background: '#d1fae5', color: '#065f46', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700' }}>LIVE ONLINE</span>
-          <h3 style={{ fontSize: '18px', fontWeight: '700', margin: '10px 0 4px' }}>Default Online Menu</h3>
-          <p style={{ color: '#64748b', fontSize: '13px' }}>Served on website and WhatsApp ordering.</p>
+    <div style={styles.container}>
+      
+      {/* Header Bar */}
+      <div style={styles.headerRow}>
+        <div>
+          <h2 style={{margin: 0, fontSize: '22px', fontWeight: '800', color: '#0f172a'}}>Menus</h2>
+          <p style={{margin: '4px 0 0 0', fontSize: '13px', color: '#64748b'}}>Create menus, activate them per channel, and manage items.</p>
         </div>
-
-        <div style={{ background: '#fff', border: activeMenu === 'in-house' ? '2px solid #10b981' : '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', cursor: 'pointer' }} onClick={() => setActiveMenu('in-house')}>
-          <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700' }}>IN-HOUSE DEFAULT</span>
-          <h3 style={{ fontSize: '18px', fontWeight: '700', margin: '10px 0 4px' }}>Default In-House Menu</h3>
-          <p style={{ color: '#64748b', fontSize: '13px' }}>Served at tables and takeaway counter.</p>
-        </div>
+        <button 
+          onClick={() => setShowModal(true)}
+          onMouseEnter={() => setHoveredBtn('newMenu')}
+          onMouseLeave={() => setHoveredBtn(null)}
+          style={{
+            ...styles.primaryBtn,
+            background: hoveredBtn === 'newMenu' ? '#065f46' : '#047857',
+            transform: hoveredBtn === 'newMenu' ? 'translateY(-2px) scale(1.02)' : 'translateY(0) scale(1)',
+            boxShadow: hoveredBtn === 'newMenu' ? '0 6px 16px rgba(4,120,87,0.35)' : '0 2px 6px rgba(4,120,87,0.2)'
+          }}
+        >
+          + New Menu Item
+        </button>
       </div>
 
-      <div style={{ background: '#fff', padding: '14px 20px', borderRadius: '8px', marginBottom: '16px', fontWeight: '600', fontSize: '14px', color: '#334155', border: '1px solid #e2e8f0' }}>
-        ITEMS &bull; {availableCount} AVAILABLE &bull; <span style={{ color: '#ef4444' }}>{pausedCount} PAUSED</span>
-      </div>
-
-      <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-        {menuItems.map(item => (
-          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #f1f5f9' }}>
-            <div>
-              <div style={{ fontWeight: '600', color: '#0f172a' }}>{item.name}</div>
-              <div style={{ fontSize: '12px', color: '#64748b' }}>{item.category}</div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-              <span style={{ fontWeight: '700', color: '#0f172a' }}>₹{item.price.toFixed(2)}</span>
-              <button onClick={() => toggleStatus(item.id)} style={{ padding: '6px 12px', borderRadius: '20px', border: 'none', background: item.status === 'Live' ? '#d1fae5' : '#fee2e2', color: item.status === 'Live' ? '#065f46' : '#991b1b', fontWeight: '600', fontSize: '12px', cursor: 'pointer' }}>
-                {item.status === 'Live' ? '🟢 Live' : '🔴 Paused'}
-              </button>
-            </div>
+      {/* Menu Catalog Cards */}
+      <div style={styles.catalogsGrid}>
+        
+        {/* Default Online Menu Card */}
+        <div 
+          onMouseEnter={() => setHoveredCard('online')}
+          onMouseLeave={() => setHoveredCard(null)}
+          style={{
+            ...styles.catalogCard,
+            borderColor: hoveredCard === 'online' ? '#047857' : '#cbd5e1',
+            transform: hoveredCard === 'online' ? 'translateY(-3px)' : 'translateY(0)',
+            boxShadow: hoveredCard === 'online' ? '0 12px 25px rgba(4,120,87,0.12)' : '0 1px 3px rgba(0,0,0,0.02)'
+          }}
+        >
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px'}}>
+            <span style={styles.liveOnlineBadge}>🟢 LIVE ONLINE</span>
+            <span style={{fontSize: '11px', color: '#64748b', fontWeight: '700'}}>Channel Active</span>
           </div>
-        ))}
+          <h3 style={{margin: '0 0 4px 0', fontSize: '16px', fontWeight: '800', color: '#0f172a'}}>Default Online Menu</h3>
+          <p style={{margin: '0 0 16px 0', fontSize: '12px', color: '#64748b'}}>Menu served on your website and WhatsApp ordering.</p>
+          <div style={{display: 'flex', gap: '10px'}}>
+            <button style={styles.catalogActionBtnSecondary}>Activate in-house</button>
+            <button onClick={() => setActiveCatalog('Default Online Menu')} style={styles.catalogActionBtnPrimary}>Manage items</button>
+          </div>
+        </div>
+
+        {/* Default In-House Menu Card */}
+        <div 
+          onMouseEnter={() => setHoveredCard('inhouse')}
+          onMouseLeave={() => setHoveredCard(null)}
+          style={{
+            ...styles.catalogCard,
+            borderColor: hoveredCard === 'inhouse' ? '#047857' : '#cbd5e1',
+            transform: hoveredCard === 'inhouse' ? 'translateY(-3px)' : 'translateY(0)',
+            boxShadow: hoveredCard === 'inhouse' ? '0 12px 25px rgba(4,120,87,0.12)' : '0 1px 3px rgba(0,0,0,0.02)'
+          }}
+        >
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px'}}>
+            <span style={styles.inhouseBadge}>🍴 IN-HOUSE DEFAULT</span>
+            <span style={{fontSize: '11px', color: '#64748b', fontWeight: '700'}}>POS & Tables</span>
+          </div>
+          <h3 style={{margin: '0 0 4px 0', fontSize: '16px', fontWeight: '800', color: '#0f172a'}}>Default In-House Menu</h3>
+          <p style={{margin: '0 0 16px 0', fontSize: '12px', color: '#64748b'}}>Served at tables and takeaway counter.</p>
+          <div style={{display: 'flex', gap: '10px'}}>
+            <button style={styles.catalogActionBtnSecondary}>Set online</button>
+            <button onClick={() => setActiveCatalog('Default In-House Menu')} style={styles.catalogActionBtnPrimary}>Manage items</button>
+          </div>
+        </div>
+
       </div>
+
+      {/* Summary Status Strip */}
+      <div style={styles.summaryStrip}>
+        <span>ITEMS • <strong>{totalAvailable} AVAILABLE</strong> • <strong style={{color: '#dc2626'}}>{totalPaused} PAUSED</strong></span>
+        <span style={{fontSize: '12px', color: '#047857', fontWeight: '750'}}>Active Catalog: {activeCatalog}</span>
+      </div>
+
+      {/* Categorized Items List */}
+      {loading ? (
+        <div style={{textAlign: 'center', padding: '50px', color: '#64748b'}}>Loading menu catalog from PostgreSQL...</div>
+      ) : menuItems.length === 0 ? (
+        <div style={{textAlign: 'center', padding: '60px', background: '#fff', borderRadius: '12px', border: '1.5px dashed #cbd5e1', color: '#64748b'}}>
+          No menu items found. Click "+ New Menu Item" above to add dishes!
+        </div>
+      ) : (
+        categories.map(cat => {
+          const catItems = menuItems.filter(item => item.category === cat);
+          if (catItems.length === 0) return null;
+
+          return (
+            <div key={cat} style={styles.categorySection}>
+              <div style={styles.categoryHeader}>{cat}</div>
+              <div style={styles.categoryCard}>
+                {catItems.map((item, idx) => {
+                  const isRowHovered = hoveredRow === item.id;
+                  const isLive = item.status === 'LIVE';
+
+                  return (
+                    <div 
+                      key={item.id}
+                      onMouseEnter={() => setHoveredRow(item.id)}
+                      onMouseLeave={() => setHoveredRow(null)}
+                      style={{
+                        ...styles.itemRow,
+                        background: isRowHovered ? '#f8fafc' : '#fff',
+                        borderBottom: idx === catItems.length - 1 ? 'none' : '1px solid #f1f5f9'
+                      }}
+                    >
+                      <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                        <span style={{width: '8px', height: '8px', borderRadius: '50%', background: isLive ? '#10b981' : '#ef4444'}}></span>
+                        <span style={{fontSize: '14px', fontWeight: '700', color: '#0f172a'}}>{item.itemName}</span>
+                      </div>
+
+                      <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+                        <span style={{fontSize: '14px', fontWeight: '800', color: '#0f172a'}}>₹{item.unitPrice.toFixed(2)}</span>
+                        
+                        <button 
+                          onClick={() => handleToggleStatus(item.id, item.status)}
+                          style={{
+                            background: isLive ? '#ecfdf5' : '#fef2f2',
+                            color: isLive ? '#047857' : '#dc2626',
+                            border: `1.5px solid ${isLive ? '#10b981' : '#fca5a5'}`,
+                            padding: '4px 12px', borderRadius: '6px', fontWeight: '700', fontSize: '11px', cursor: 'pointer', transition: 'all 0.2s'
+                          }}
+                        >
+                          {isLive ? '🟢 Live' : '🔴 Paused'}
+                        </button>
+
+                        <button 
+                          onClick={() => handleDeleteItem(item.id, item.itemName)}
+                          title="Delete Item"
+                          style={styles.deleteBtn}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })
+      )}
+
+      {/* Add New Menu Item Modal */}
+      {showModal && (
+        <div style={styles.modalOverlay}>
+          <form onSubmit={handleSaveItem} style={styles.modalCard}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+              <h3 style={{margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a'}}>Add New Dish</h3>
+              <button type="button" onClick={() => setShowModal(false)} style={styles.closeXBtn}>✕</button>
+            </div>
+
+            <label style={styles.label}>Dish Name *</label>
+            <input 
+              style={styles.input}
+              placeholder="e.g. Butter Chicken"
+              value={itemName}
+              onChange={e => setItemName(e.target.value)}
+              required
+            />
+
+            <div style={{display: 'flex', gap: '12px'}}>
+              <div style={{flex: 1}}>
+                <label style={styles.label}>Category</label>
+                <select 
+                  style={styles.input}
+                  value={category}
+                  onChange={e => setCategory(e.target.value)}
+                >
+                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
+              <div style={{flex: 1}}>
+                <label style={styles.label}>Price (₹) *</label>
+                <input 
+                  type="number"
+                  step="0.01"
+                  style={styles.input}
+                  placeholder="299"
+                  value={unitPrice}
+                  onChange={e => setUnitPrice(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <label style={styles.label}>Menu Catalog</label>
+            <select 
+              style={{...styles.input, marginBottom: '20px'}}
+              value={catalogName}
+              onChange={e => setCatalogName(e.target.value)}
+            >
+              <option value="Default Online Menu">Default Online Menu</option>
+              <option value="Default In-House Menu">Default In-House Menu</option>
+            </select>
+
+            <div style={{display: 'flex', gap: '10px'}}>
+              <button type="submit" style={styles.saveBtn}>Save & Add Dish</button>
+              <button type="button" onClick={() => setShowModal(false)} style={styles.cancelBtn}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      )}
+
     </div>
   );
 }
+
+const styles = {
+  container: { padding: '24px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', overflowY: 'auto', paddingBottom: '80px' },
+  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' },
+  primaryBtn: { background: '#047857', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' },
+  catalogsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '24px' },
+  catalogCard: { background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '14px', padding: '20px', transition: 'all 0.25s ease', cursor: 'pointer' },
+  liveOnlineBadge: { background: '#ecfdf5', color: '#047857', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800' },
+  inhouseBadge: { background: '#f1f5f9', color: '#334155', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800' },
+  catalogActionBtnPrimary: { background: '#047857', color: '#fff', border: 'none', padding: '7px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' },
+  catalogActionBtnSecondary: { background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '7px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' },
+  summaryStrip: { background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '24px' },
+  categorySection: { marginBottom: '20px' },
+  categoryHeader: { fontSize: '12px', fontWeight: '800', color: '#64748b', letterSpacing: '0.06em', marginBottom: '8px', textTransform: 'uppercase' },
+  categoryCard: { background: '#fff', borderRadius: '12px', border: '1.5px solid #e2e8f0', overflow: 'hidden' },
+  itemRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 18px', transition: 'background 0.15s ease' },
+  deleteBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: '4px' },
+  modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
+  modalCard: { width: '440px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'left', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' },
+  label: { fontSize: '11px', fontWeight: '700', display: 'block', marginBottom: '4px', color: '#334155' },
+  input: { width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box', marginBottom: '12px', background: '#fff', outline: 'none' },
+  closeXBtn: { background: 'none', border: 'none', fontSize: '16px', fontWeight: 'bold', color: '#64748b', cursor: 'pointer' },
+  saveBtn: { flex: 1, background: '#047857', color: '#fff', border: 'none', padding: '11px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' },
+  cancelBtn: { flex: 1, background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '11px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }
+};
