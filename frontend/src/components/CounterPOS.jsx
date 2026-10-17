@@ -187,17 +187,16 @@ export default function CounterPOS() {
       });
   };
 
-  // Filter LIVE items for Counter POS matching active catalog (Default In-House Menu for Counter)
+  // Fixed Filter: Loads all LIVE items regardless of catalog string or unassigned catalogs
   const filteredMenu = menuItems.filter(item => {
     const isLive = (item.status || 'LIVE') === 'LIVE';
-    const catalogMatch = (item.catalogName || 'Default In-House Menu') === 'Default In-House Menu' || (item.catalogName || '') === '';
     const name = item.itemName || item.name || '';
     const cat = item.category || '';
     const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) || cat.toLowerCase().includes(searchQuery.toLowerCase());
-    return isLive && catalogMatch && matchesSearch;
+    return isLive && matchesSearch;
   });
 
-  const uniqueCategories = Array.from(new Set(filteredMenu.map(i => i.category).filter(Boolean)));
+  const uniqueCategories = Array.from(new Set(filteredMenu.map(i => i.category || 'Dishes')));
 
   const filteredRecentCustomers = savedCustomers.filter(c => {
     const q = recentSearchQuery.toLowerCase();
@@ -261,7 +260,7 @@ export default function CounterPOS() {
         <div style={styles.posHeader}>
           <div>
             <h2 style={{margin: 0, fontSize: '20px', fontWeight: '800', color: '#0f172a'}}>Counter POS ({orderType})</h2>
-            <span style={{fontSize: '12px', color: '#64748b'}}>In-House Menu Synchronized</span>
+            <span style={{fontSize: '12px', color: '#64748b'}}>Live Menu Synchronized</span>
           </div>
           <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
             {orderType === 'Dine-In' && (
@@ -309,11 +308,11 @@ export default function CounterPOS() {
         <div style={styles.scrollableMenuArea}>
           {filteredMenu.length === 0 ? (
             <div style={{textAlign: 'center', padding: '60px', color: '#64748b'}}>
-              No live in-house menu items found. Add dishes in the Menu Module!
+              No live menu items found. Add dishes in the Menu Module!
             </div>
           ) : (
             uniqueCategories.map(cat => {
-              const catItems = filteredMenu.filter(item => item.category === cat);
+              const catItems = filteredMenu.filter(item => (item.category || 'Dishes') === cat);
               if (catItems.length === 0) return null;
 
               return (
