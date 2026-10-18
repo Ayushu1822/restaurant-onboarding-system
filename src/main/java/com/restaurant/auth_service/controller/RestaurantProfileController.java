@@ -1,91 +1,59 @@
 package com.restaurant.auth_service.controller;
 
 import com.restaurant.auth_service.model.RestaurantProfile;
-import com.restaurant.auth_service.model.User;
 import com.restaurant.auth_service.repository.RestaurantProfileRepository;
-import com.restaurant.auth_service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-
 @RestController
-@RequestMapping("/api/v1/restaurants")
-@CrossOrigin(origins = {"https://restaurant-system-sand-gamma.vercel.app", "http://localhost:3000", "http://localhost:5173"}, allowCredentials = "true")
+@RequestMapping({"/api/restaurants", "/api/v1/restaurants"})
+@CrossOrigin(origins = "*")
 public class RestaurantProfileController {
 
     @Autowired
-    private RestaurantProfileRepository profileRepository;
-
-    @Autowired
-    private UserRepository userRepository;
+    private RestaurantProfileRepository restaurantProfileRepository;
 
     @GetMapping("/email/{email}")
-    public ResponseEntity<?> getProfileByEmail(@PathVariable String email) {
-        try {
-            User user = userRepository.findByEmail(email).orElse(null);
-            if (user != null) {
-                List<RestaurantProfile> allProfiles = profileRepository.findAll();
-                for (RestaurantProfile p : allProfiles) {
-                    if (p.getUserId() != null && p.getUserId().equals(user.getUserId())) {
-                        return ResponseEntity.ok(p);
-                    }
-                }
-            }
-            
-            List<RestaurantProfile> allProfiles = profileRepository.findAll();
-            if (!allProfiles.isEmpty()) {
-                return ResponseEntity.ok(allProfiles.get(0));
-            }
-            
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<RestaurantProfile> getRestaurantByEmail(@PathVariable String email) {
+        return restaurantProfileRepository.findByEmail(email)
+                .map(profile -> {
+                    System.out.println("🏢 FETCHED PROFILE FOR EMAIL: " + email);
+                    return ResponseEntity.ok(profile);
+                })
+                .orElseGet(() -> {
+                    System.out.println("⚠️ PROFILE NOT FOUND FOR EMAIL: " + email);
+                    return ResponseEntity.notFound().build();
+                });
     }
 
-    @PutMapping("/{restaurantId}")
-    public ResponseEntity<?> updateProfile(@PathVariable String restaurantId, @RequestBody RestaurantProfile updatedData) {
-        try {
-            UUID id;
-            try {
-                id = UUID.fromString(restaurantId);
-            } catch (IllegalArgumentException e) {
-                List<RestaurantProfile> allProfiles = profileRepository.findAll();
-                if (!allProfiles.isEmpty()) {
-                    Object rawId = allProfiles.get(0).getRestaurantId();
-                    id = rawId instanceof UUID ? (UUID) rawId : UUID.fromString(String.valueOf(rawId));
-                } else {
-                    return ResponseEntity.status(404).body(Map.of("error", "Profile not found"));
-                }
+    @PutMapping("/{id}")
+    public ResponseEntity<RestaurantProfile> updateRestaurant(
+            @PathVariable String id, 
+            @RequestBody RestaurantProfile updatedDetails) {
+        
+        // Convert string ID to UUID if your repository expects UUID, 
+        // or keep as String if repository uses String. Here we use id directly as String:
+        return restaurantProfileRepository.findById(id).map(profile -> {
+            if (updatedDetails.getBusinessName() != null) {
+                profile.setBusinessName(updatedDetails.getBusinessName());
             }
-
-            Optional<RestaurantProfile> profileOpt = profileRepository.findById(id);
-            if (profileOpt.isEmpty()) {
-                List<RestaurantProfile> allProfiles = profileRepository.findAll();
-                if (!allProfiles.isEmpty()) {
-                    profileOpt = Optional.of(allProfiles.get(0));
-                }
+            if (updatedDetails.getOwnerName() != null) {
+                profile.setOwnerName(updatedDetails.getOwnerName());
             }
-
-            if (profileOpt.isPresent()) {
-                RestaurantProfile profile = profileOpt.get();
-                if (updatedData.getBusinessName() != null) profile.setBusinessName(updatedData.getBusinessName());
-                if (updatedData.getOwnerName() != null) profile.setOwnerName(updatedData.getOwnerName());
-                if (updatedData.getPhoneNumber() != null) profile.setPhoneNumber(updatedData.getPhoneNumber());
-                if (updatedData.getWhatsappNumber() != null) profile.setWhatsappNumber(updatedData.getWhatsappNumber());
-                
-                RestaurantProfile saved = profileRepository.save(profile);
-                return ResponseEntity.ok(saved);
+            if (updatedDetails.getPhoneNumber() != null) {
+                profile.setPhoneNumber(updatedDetails.getPhoneNumber());
             }
-
+            if (updatedDetails.getWhatsappNumber() != null) {
+                profile.setWhatsappNumber(updatedDetails.getWhatsappNumber());
+            }
+            
+            RestaurantProfile saved = restaurantProfileRepository.save(profile);
+            System.out.println("✅ RESTAURANT PROFILE UPDATED — ID: " + id);
+            return ResponseEntity.ok(saved);
+        }).orElseGet(() -> {
+            System.out.println("❌ UPDATE FAILED: RESTAURANT ID NOT FOUND — " + id);
             return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
-        }
+        });
     }
 }
