@@ -178,7 +178,7 @@ export default function Dashboard({ user, onLogout }) {
       body: JSON.stringify({
         businessName: editForm.businessName,
         ownerName: editForm.ownerName,
-        phoneNumber: editForm.phone,
+        phoneNumber: editForm.phone, // locked phone number
         whatsappNumber: editForm.whatsappNumber
       })
     })
@@ -523,12 +523,11 @@ export default function Dashboard({ user, onLogout }) {
                   required
                 />
 
-                <label style={{fontSize: '12px', fontWeight: 'bold'}}>Phone Number:</label>
+                <label style={{fontSize: '12px', fontWeight: 'bold'}}>Phone Number (Locked / Verified):</label>
                 <input 
-                  style={{padding: '10px', borderRadius: '8px', border: '1.5px solid #cbd5e1', outline: 'none'}}
+                  style={{padding: '10px', borderRadius: '8px', border: '1.5px solid #cbd5e1', backgroundColor: '#f1f5f9', color: '#64748b', outline: 'none', cursor: 'not-allowed'}}
                   value={editForm.phone} 
-                  onChange={e => setEditForm({...editForm, phone: e.target.value})} 
-                  required
+                  disabled
                 />
 
                 <label style={{fontSize: '12px', fontWeight: 'bold'}}>WhatsApp Number:</label>
