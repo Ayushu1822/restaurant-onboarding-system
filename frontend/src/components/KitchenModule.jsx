@@ -10,86 +10,50 @@ export default function KitchenModule() {
 
   useEffect(() => {
     fetchKitchenOrders();
-    // Poll every 10 seconds for live kitchen orders sync
-    const interval = setInterval(fetchKitchenOrders, 10000);
+    const interval = setInterval(fetchKitchenOrders, 5000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchKitchenOrders = () => {
-    fetch(`${API_BASE_URL}/api/v1/kitchen`)
+    fetch(`${API_BASE_URL}/api/v1/orders`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
-          // If backend is empty, seed initial sample tickets matching screenshot for pristine UX preview
-          if (data.length === 0) {
+          // Filter for active preparing/pending orders or show all recent orders
+          const activeOrders = data.filter(o => (o.status || 'Preparing') !== 'Ready' && (o.status || 'Preparing') !== 'Completed');
+          if (activeOrders.length === 0 && data.length === 0) {
+            // Fallback sample data if backend is completely empty
             setOrders([
               {
                 id: 1,
                 displayId: '#2-0042',
                 orderType: 'Dine-In',
-                tableInfo: 'Table T2',
+                deliveryAddress: 'Table T2',
                 orderNotes: 'Burger without mayo. Kid\'s portion — cut into halves.',
                 timeAgo: '35m ago',
                 status: 'Preparing',
                 items: [
-                  { itemName: 'Chicken Fillet Burger Combo', quantity: 2, itemNote: 'No mayo on side' },
-                  { itemName: 'Sprite', quantity: 2, itemNote: '' }
+                  { itemName: 'Chicken Fillet Burger Combo', quantity: 2, itemDescription: 'No mayo on side' },
+                  { itemName: 'Sprite', quantity: 2, itemDescription: '' }
                 ]
               },
               {
                 id: 2,
-                displayId: '#1-0044',
-                orderType: 'Dine-In',
-                tableInfo: 'Table B1',
-                orderNotes: '',
-                timeAgo: '20m ago',
-                status: 'Preparing',
-                items: [
-                  { itemName: '7 Up', quantity: 1, itemNote: '' }
-                ]
-              },
-              {
-                id: 3,
                 displayId: '#000001',
                 orderType: 'Delivery',
-                tableInfo: '',
+                deliveryAddress: 'Delivery Counter',
                 orderNotes: 'Customer is allergic to peanuts.',
                 timeAgo: '2m ago',
                 status: 'Preparing',
                 items: [
-                  { itemName: 'Chicken Drumsticks', quantity: 2, itemNote: 'Spicy · Serves 1' },
-                  { itemName: 'Sprite', quantity: 2, itemNote: '' },
-                  { itemName: 'Chicken Fillet Burger Combo', quantity: 1, itemNote: 'Cheese loaded · Serves 1' }
-                ]
-              },
-              {
-                id: 4,
-                displayId: '#004405',
-                orderType: 'Delivery',
-                tableInfo: '',
-                orderNotes: 'Extra spicy, no onions please. Pack sauces separately.',
-                timeAgo: '11d ago',
-                status: 'Preparing',
-                items: [
-                  { itemName: 'Spicy Double Baik', quantity: 3, itemNote: '' }
-                ]
-              },
-              {
-                id: 5,
-                displayId: '#005381',
-                orderType: 'Delivery',
-                tableInfo: '',
-                orderNotes: '',
-                timeAgo: '8m ago',
-                status: 'Preparing',
-                items: [
-                  { itemName: 'Lucknowi (Awadhi) Biryani', quantity: 1, itemNote: 'Biryanis · Full · Serves 2' },
-                  { itemName: 'Egg Biryani', quantity: 2, itemNote: 'Biryanis · Full · Serves 2' }
+                  { itemName: 'Chicken Drumsticks', quantity: 2, itemDescription: 'Spicy · Serves 1' },
+                  { itemName: 'Sprite', quantity: 2, itemDescription: '' },
+                  { itemName: 'Chicken Fillet Burger Combo', quantity: 1, itemDescription: 'Cheese loaded' }
                 ]
               }
             ]);
           } else {
-            setOrders(data);
+            setOrders(activeOrders.length > 0 ? activeOrders : data);
           }
         }
         setLoading(false);
@@ -101,27 +65,20 @@ export default function KitchenModule() {
   };
 
   const handleMarkReady = (id) => {
-    fetch(`${API_BASE_URL}/api/v1/kitchen/${id}/ready`, {
-      method: 'PUT'
+    fetch(`${API_BASE_URL}/api/v1/orders/${id}`, {
+      method: 'DELETE' // or update status endpoint if available
     })
-      .then(res => {
-        if (res.ok) {
-          setOrders(orders.filter(o => o.id !== id));
-        } else {
-          // Optimistic local update if backend endpoint fails
-          setOrders(orders.filter(o => o.id !== id));
-        }
+      .then(() => {
+        setOrders(orders.filter(o => o.id !== id && o.displayId !== id));
       })
       .catch(() => {
-        setOrders(orders.filter(o => o.id !== id));
+        setOrders(orders.filter(o => o.id !== id && o.displayId !== id));
       });
   };
 
-  const handlePrintKOT = (orderId) => {
+  const handlePrintKOT = () => {
     window.print();
   };
-
-  const activePreparingOrders = orders.filter(o => (o.status || 'Preparing') === 'Preparing');
 
   return (
     <div style={styles.container}>
@@ -133,27 +90,29 @@ export default function KitchenModule() {
 
       {/* Status Bar */}
       <div style={styles.statusBar}>
-        <span>{activePreparingOrders.length} preparing</span> <span style={{color: '#94a3b8'}}>·</span> <span>Orders currently being prepared · oldest first</span>
+        <span>{orders.length} preparing</span> <span style={{color: '#94a3b8'}}>·</span> <span>Orders currently being prepared · oldest first</span>
       </div>
 
       {/* Kitchen Ticket Cards Grid */}
       {loading ? (
-        <div style={{textAlign: 'center', padding: '60px', color: '#64748b'}}>Loading active kitchen orders...</div>
-      ) : activePreparingOrders.length === 0 ? (
+        <div style={{textAlign: 'center', padding: '60px', color: '#64748b'}}>Loading active kitchen orders from backend...</div>
+      ) : orders.length === 0 ? (
         <div style={styles.emptyState}>
           <span style={{fontSize: '40px', marginBottom: '10px'}}>🎉</span>
           <h3 style={{margin: '0 0 4px 0', fontSize: '16px', fontWeight: '800', color: '#0f172a'}}>Kitchen is all caught up!</h3>
-          <p style={{margin: 0, fontSize: '13px', color: '#64748b'}}>No active orders currently in preparation.</p>
+          <p style={{margin: 0, fontSize: '13px', color: '#64748b'}}>Place orders in Counter POS or Online Orders to see them appear here instantly.</p>
         </div>
       ) : (
         <div style={styles.ticketsGrid}>
-          {activePreparingOrders.map(order => {
-            const isCardHovered = hoveredCard === order.id;
+          {orders.map((order, idx) => {
+            const orderId = order.id || idx;
+            const displayId = order.displayId || `#POS-${orderId}`;
+            const isCardHovered = hoveredCard === orderId;
 
             return (
               <div 
-                key={order.id}
-                onMouseEnter={() => setHoveredCard(order.id)}
+                key={orderId}
+                onMouseEnter={() => setHoveredCard(orderId)}
                 onMouseLeave={() => setHoveredCard(null)}
                 style={{
                   ...styles.ticketCard,
@@ -164,14 +123,12 @@ export default function KitchenModule() {
                 {/* Ticket Header */}
                 <div style={styles.ticketHeader}>
                   <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                    <span style={{fontSize: '16px', fontWeight: '900', color: '#0f172a'}}>{order.displayId}</span>
-                    {order.tableInfo ? (
-                      <span style={styles.tableBadge}>🪑 {order.tableInfo}</span>
-                    ) : (
-                      <span style={styles.deliveryBadge}>🚴 {order.orderType || 'Delivery'}</span>
-                    )}
+                    <span style={{fontSize: '16px', fontWeight: '900', color: '#0f172a'}}>{displayId}</span>
+                    <span style={order.orderType === 'Dine-In' ? styles.tableBadge : styles.deliveryBadge}>
+                      {order.orderType === 'Dine-In' ? '🪑 ' : '🚴 '} {order.deliveryAddress || order.orderType || 'Counter'}
+                    </span>
                   </div>
-                  <span style={{fontSize: '12px', color: '#64748b', fontWeight: '700'}}>{order.timeAgo}</span>
+                  <span style={{fontSize: '12px', color: '#64748b', fontWeight: '700'}}>{order.timeAgo || 'Just now'}</span>
                 </div>
 
                 {/* Order Notes Banner */}
@@ -184,14 +141,14 @@ export default function KitchenModule() {
 
                 {/* Items List */}
                 <div style={styles.itemsList}>
-                  {order.items && order.items.map((it, idx) => (
-                    <div key={idx} style={{marginBottom: idx === order.items.length - 1 ? 0 : '10px'}}>
+                  {order.items && order.items.map((it, i) => (
+                    <div key={i} style={{marginBottom: i === order.items.length - 1 ? 0 : '10px'}}>
                       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: '14px', fontWeight: '800', color: '#0f172a'}}>
                         <span>{it.itemName}</span>
                         <span style={{color: '#047857'}}>×{it.quantity}</span>
                       </div>
-                      {it.itemNote && (
-                        <div style={{fontSize: '11px', color: '#64748b', marginTop: '1px'}}>{it.itemNote}</div>
+                      {it.itemDescription && (
+                        <div style={{fontSize: '11px', color: '#64748b', marginTop: '1px'}}>{it.itemDescription}</div>
                       )}
                     </div>
                   ))}
@@ -200,20 +157,20 @@ export default function KitchenModule() {
                 {/* Action Buttons */}
                 <div style={styles.ticketActions}>
                   <button 
-                    onClick={() => handlePrintKOT(order.id)}
+                    onClick={handlePrintKOT}
                     style={styles.printKotBtn}
                   >
                     🖨️ Print KOT
                   </button>
                   <button 
-                    onClick={() => handleMarkReady(order.id)}
-                    onMouseEnter={() => setHoveredBtn(order.id)}
+                    onClick={() => handleMarkReady(orderId)}
+                    onMouseEnter={() => setHoveredBtn(orderId)}
                     onMouseLeave={() => setHoveredBtn(null)}
                     style={{
                       ...styles.readyBtn,
-                      background: hoveredBtn === order.id ? '#065f46' : '#047857',
-                      transform: hoveredBtn === order.id ? 'translateY(-1px) scale(1.01)' : 'translateY(0) scale(1)',
-                      boxShadow: hoveredBtn === order.id ? '0 4px 12px rgba(4,120,87,0.3)' : 'none'
+                      background: hoveredBtn === orderId ? '#065f46' : '#047857',
+                      transform: hoveredBtn === orderId ? 'translateY(-1px) scale(1.01)' : 'translateY(0) scale(1)',
+                      boxShadow: hoveredBtn === orderId ? '0 4px 12px rgba(4,120,87,0.3)' : 'none'
                     }}
                   >
                     Mark whole order as ready
