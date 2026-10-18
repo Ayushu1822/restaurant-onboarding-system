@@ -3,23 +3,23 @@ import LoginScreen from "./components/LoginScreen";
 import Dashboard from "./components/Dashboard";
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      setIsAuthenticated(true);
-    }
-  }, []);
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      setIsAuthenticated(true);
+    }
+  }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('auth_token');
-    setIsAuthenticated(false);
-  };
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    setIsAuthenticated(false);
+  };
 
-  if (isAuthenticated) {
-    return <Dashboard onLogout={handleLogout} />;
-  }
+  if (isAuthenticated) {
+    return <Dashboard onLogout={handleLogout} />;
+  }
 
-  return <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />;
-}
+  return <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />;
+} in this?
