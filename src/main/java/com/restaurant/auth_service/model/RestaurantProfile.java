@@ -10,8 +10,10 @@ public class RestaurantProfile {
     @Column(name = "restaurant_id")
     private String restaurantId;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id")
     private String userId;
+
+    private String email; // Added to support lookup by email
 
     @Column(name = "business_name", nullable = false)
     private String businessName;
@@ -31,6 +33,9 @@ public class RestaurantProfile {
 
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 
     public String getBusinessName() { return businessName; }
     public void setBusinessName(String businessName) { this.businessName = businessName; }

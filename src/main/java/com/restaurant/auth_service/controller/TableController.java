@@ -1,69 +1,57 @@
 package com.restaurant.auth_service.controller;
 
-import com.restaurant.auth_service.model.RestaurantTable;
-import com.restaurant.auth_service.repository.TableRepository;
+import com.restaurant.auth_service.model.RestaurantProfile;
+import com.restaurant.auth_service.repository.RestaurantProfileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
-@RequestMapping({"/api/tables", "/api/v1/tables"})
+@RequestMapping({"/api/restaurants", "/api/v1/restaurants"})
 @CrossOrigin(origins = "*")
-public class TableController {
+public class RestaurantProfileController {
 
     @Autowired
-    private TableRepository tableRepository;
+    private RestaurantProfileRepository restaurantProfileRepository;
 
-    @GetMapping
-    public List<RestaurantTable> getAllTables() {
-        List<RestaurantTable> tables = tableRepository.findAll();
-        System.out.println("🪑 FETCHED TABLES FROM DB — Total: " + tables.size());
-        return tables;
-    }
-
-    @PostMapping
-    public ResponseEntity<RestaurantTable> createTable(@RequestBody RestaurantTable table) {
-        if (table.getStatus() == null) {
-            table.setStatus("Available");
-        }
-        RestaurantTable saved = tableRepository.save(table);
-        System.out.println("✅ TABLE CREATED/SAVED: " + saved.getTableId());
-        return ResponseEntity.ok(saved);
-    }
-
-    @PutMapping("/{tableId}/status")
-    public ResponseEntity<RestaurantTable> updateTableStatus(
-            @PathVariable String tableId, 
-            @RequestParam String status) {
-        
-        RestaurantTable table = tableRepository.findById(tableId)
+    @GetMapping("/email/{email}")
+    public ResponseEntity<RestaurantProfile> getRestaurantByEmail(@PathVariable String email) {
+        return restaurantProfileRepository.findByEmail(email)
+                .map(profile -> {
+                    System.out.println("🏢 FETCHED PROFILE FOR EMAIL: " + email);
+                    return ResponseEntity.ok(profile);
+                })
                 .orElseGet(() -> {
-                    // Safety net: auto-create table record if it doesn't exist in DB yet
-                    RestaurantTable t = new RestaurantTable();
-                    t.setTableId(tableId);
-                    t.setSection("MAIN");
-                    t.setSeats(4);
-                    return t;
+                    System.out.println("⚠️ PROFILE NOT FOUND FOR EMAIL: " + email);
+                    return ResponseEntity.notFound().build();
                 });
-        
-        table.setStatus(status);
-        if ("Available".equalsIgnoreCase(status)) {
-            table.setCustomerName(null);
-            table.setVisitTime(null);
-            table.setCurrentAmount(null);
-        }
-        
-        RestaurantTable updated = tableRepository.save(table);
-        System.out.println("🔄 TABLE STATUS UPDATED — ID: " + tableId + " | Status: " + status);
-        return ResponseEntity.ok(updated);
     }
 
-    @DeleteMapping("/{tableId}")
-    public ResponseEntity<String> deleteTable(@PathVariable String tableId) {
-        tableRepository.deleteById(tableId);
-        System.out.println("🗑️ TABLE DELETED FROM DB — ID: " + tableId);
-        return ResponseEntity.ok("Table deleted successfully");
+    @PutMapping("/{id}")
+    public ResponseEntity<RestaurantProfile> updateRestaurant(
+            @PathVariable String id, 
+            @RequestBody RestaurantProfile updatedDetails) {
+        
+        return restaurantProfileRepository.findById(id).map(profile -> {
+            if (updatedDetails.getBusinessName() != null) {
+                profile.setBusinessName(updatedDetails.getBusinessName());
+            }
+            if (updatedDetails.getOwnerName() != null) {
+                profile.setOwnerName(updatedDetails.getOwnerName());
+            }
+            if (updatedDetails.getPhoneNumber() != null) {
+                profile.setPhoneNumber(updatedDetails.getPhoneNumber());
+            }
+            if (updatedDetails.getWhatsappNumber() != null) {
+                profile.setWhatsappNumber(updatedDetails.getWhatsappNumber());
+            }
+            
+            RestaurantProfile saved = restaurantProfileRepository.save(profile);
+            System.out.println("✅ RESTAURANT PROFILE UPDATED — ID: " + id);
+            return ResponseEntity.ok(saved);
+        }).orElseGet(() -> {
+            System.out.println("❌ UPDATE FAILED: RESTAURANT ID NOT FOUND — " + id);
+            return ResponseEntity.notFound().build();
+        });
     }
 }
