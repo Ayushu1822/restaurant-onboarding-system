@@ -6,29 +6,14 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Check if user session email or token exists
-    const token = localStorage.getItem('auth_token') || localStorage.getItem('userEmail');
+    const token = localStorage.getItem('auth_token');
     if (token) {
       setIsAuthenticated(true);
     }
   }, []);
 
-  const handleLoginSuccess = (userData) => {
-    // Save user details securely in localStorage upon successful login
-    if (userData.email) {
-      localStorage.setItem('userEmail', userData.email);
-    }
-    if (userData.userId) {
-      localStorage.setItem('userId', userData.userId);
-    }
-    localStorage.setItem('auth_token', userData.token || 'active_session');
-    setIsAuthenticated(true);
-  };
-
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userId');
     setIsAuthenticated(false);
   };
 
@@ -36,5 +21,5 @@ export default function App() {
     return <Dashboard onLogout={handleLogout} />;
   }
 
-  return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  return <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />;
 }

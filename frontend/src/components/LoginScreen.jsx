@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
 
+// Automatically uses your backend URL
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
 export default function LoginScreen({ onLoginSuccess }) {
-  const [currentView, setCurrentView] = useState('signin'); 
+  const [currentView, setCurrentView] = useState('signin'); // 'signin', 'signup', 'forgot'
+  
+  // Login States
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState('');
   
+  // Forgot Password States
+  const [forgotEmail, setForgotEmail] = useState('');
+
+  // Signup States
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [formData, setFormData] = useState({
     businessName: '',
     ownerName: '',
@@ -33,6 +40,7 @@ export default function LoginScreen({ onLoginSuccess }) {
     setFormData({ ...formData, [name]: value });
   };
 
+  // Login Handler (Cleaned up so it doesn't duplicate loading text)
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -60,6 +68,7 @@ export default function LoginScreen({ onLoginSuccess }) {
     }
   };
 
+  // Forgot Password Handler
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -86,6 +95,7 @@ export default function LoginScreen({ onLoginSuccess }) {
     }
   };
 
+  // Registration Handler
   const handleRegister = async (e) => {
     e.preventDefault();
     setLoading(true);
