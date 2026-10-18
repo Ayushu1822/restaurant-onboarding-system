@@ -8,7 +8,7 @@ export default function MenuModule() {
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCatalog, setActiveCatalog] = useState('Default Online Menu');
-  const [showPausedOnly, setShowPausedOnly] = useState(false);
+  const [showPausedModal, setShowPausedModal] = useState(false);
   
   const [hoveredCard, setHoveredCard] = useState(null);
   const [hoveredRow, setHoveredRow] = useState(null);
@@ -23,6 +23,9 @@ export default function MenuModule() {
 
   useEffect(() => {
     fetchMenuItems();
+    // Expose a global listener or custom event if needed so top navbar button can trigger paused items modal
+    window.openPausedItemsModal = () => setShowPausedModal(true);
+    return () => { delete window.openPausedItemsModal; };
   }, []);
 
   const fetchMenuItems = () => {
@@ -98,40 +101,53 @@ export default function MenuModule() {
       .catch(err => alert('Error: ' + err.message));
   };
 
-  const catalogFilteredItems = menuItems.filter(i => {
-    const catalogMatch = (i.catalogName || 'Default In-House Menu') === activeCatalog;
-    const pausedMatch = showPausedOnly ? i.status === 'PAUSED' : true;
-    return catalogMatch && pausedMatch;
-  });
+  const catalogFilteredItems = menuItems.filter(i => (i.catalogName || 'Default In-House Menu') === activeCatalog);
 
-  const totalAvailable = menuItems.filter(i => (i.catalogName || 'Default In-House Menu') === activeCatalog && i.status === 'LIVE').length;
-  const totalPaused = menuItems.filter(i => (i.catalogName || 'Default In-House Menu') === activeCatalog && i.status === 'PAUSED').length;
+  const totalAvailable = catalogFilteredItems.filter(i => i.status === 'LIVE').length;
+  const totalPaused = catalogFilteredItems.filter(i => i.status === 'PAUSED').length;
+  const allPausedItems = menuItems.filter(i => i.status === 'PAUSED');
 
   const dynamicCategories = Array.from(new Set([...DEFAULT_CATEGORIES, ...menuItems.map(i => i.category).filter(Boolean)]));
 
   return (
     <div style={styles.container}>
       
-      {/* Header Bar with Clean + Add Dish Button */}
+      {/* Header Bar */}
       <div style={styles.headerRow}>
         <div>
-          <h2 style={{margin: 0, fontSize: '22px', fontWeight: '800', color: '#0f172a'}}>Menus</h2>
-          <p style={{margin: '4px 0 0 0', fontSize: '13px', color: '#64748b'}}>Create menus, activate them per channel, and manage items.</p>
+          <h2 style={{margin: 0, fontSize: '24px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.02em'}}>Menus</h2>
+          <p style={{margin: '4px 0 0 0', fontSize: '13px', color: '#64748b', fontWeight: '500'}}>Create menus, activate them per channel, and manage items.</p>
         </div>
 
-        <button 
-          onClick={() => setShowModal(true)}
-          onMouseEnter={() => setHoveredBtn('newMenu')}
-          onMouseLeave={() => setHoveredBtn(null)}
-          style={{
-            ...styles.primaryBtn,
-            background: hoveredBtn === 'newMenu' ? '#065f46' : '#047857',
-            transform: hoveredBtn === 'newMenu' ? 'translateY(-2px) scale(1.02)' : 'translateY(0) scale(1)',
-            boxShadow: hoveredBtn === 'newMenu' ? '0 6px 16px rgba(4,120,87,0.35)' : '0 2px 6px rgba(4,120,87,0.2)'
-          }}
-        >
-          + Add Dish
-        </button>
+        <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
+          <button 
+            onClick={() => setShowPausedModal(true)}
+            onMouseEnter={() => setHoveredBtn('paused')}
+            onMouseLeave={() => setHoveredBtn(null)}
+            style={{
+              ...styles.pausedHeaderBtn,
+              background: hoveredBtn === 'paused' ? '#fef2f2' : '#fff',
+              borderColor: totalPaused > 0 ? '#dc2626' : '#cbd5e1',
+              color: totalPaused > 0 ? '#dc2626' : '#334155'
+            }}
+          >
+            🔴 Manage Paused Items <span style={styles.pausedCountPill}>{totalPaused}</span>
+          </button>
+
+          <button 
+            onClick={() => setShowModal(true)}
+            onMouseEnter={() => setHoveredBtn('newMenu')}
+            onMouseLeave={() => setHoveredBtn(null)}
+            style={{
+              ...styles.primaryBtn,
+              background: hoveredBtn === 'newMenu' ? '#065f46' : '#047857',
+              transform: hoveredBtn === 'newMenu' ? 'translateY(-2px) scale(1.02)' : 'translateY(0) scale(1)',
+              boxShadow: hoveredBtn === 'newMenu' ? '0 6px 16px rgba(4,120,87,0.35)' : '0 2px 6px rgba(4,120,87,0.2)'
+            }}
+          >
+            + Add Dish
+          </button>
+        </div>
       </div>
 
       {/* Menu Catalog Cards */}
@@ -139,7 +155,7 @@ export default function MenuModule() {
         
         {/* Default Online Menu Card */}
         <div 
-          onClick={() => { setActiveCatalog('Default Online Menu'); setShowPausedOnly(false); }}
+          onClick={() => setActiveCatalog('Default Online Menu')}
           onMouseEnter={() => setHoveredCard('online')}
           onMouseLeave={() => setHoveredCard(null)}
           style={{
@@ -160,7 +176,7 @@ export default function MenuModule() {
 
         {/* Default In-House Menu Card */}
         <div 
-          onClick={() => { setActiveCatalog('Default In-House Menu'); setShowPausedOnly(false); }}
+          onClick={() => setActiveCatalog('Default In-House Menu')}
           onMouseEnter={() => setHoveredCard('inhouse')}
           onMouseLeave={() => setHoveredCard(null)}
           style={{
@@ -183,13 +199,10 @@ export default function MenuModule() {
 
       {/* Summary Status Strip */}
       <div style={styles.summaryStrip}>
-        <span>{showPausedOnly ? 'PAUSED ITEMS FILTER ACTIVE' : activeCatalog.toUpperCase()} • <strong>{totalAvailable} AVAILABLE</strong> • <strong style={{color: '#dc2626'}}>{totalPaused} PAUSED</strong></span>
+        <span>{activeCatalog.toUpperCase()} • <strong>{totalAvailable} AVAILABLE</strong> • <strong style={{color: '#dc2626'}}>{totalPaused} PAUSED</strong></span>
         {totalPaused > 0 && (
-          <button 
-            onClick={() => setShowPausedOnly(!showPausedOnly)} 
-            style={styles.filterPausedBtn}
-          >
-            {showPausedOnly ? 'Show All Items ✕' : `View Paused Items (${totalPaused})`}
+          <button onClick={() => setShowPausedModal(true)} style={styles.viewPausedLink}>
+            View Paused Items ({totalPaused}) →
           </button>
         )}
       </div>
@@ -199,7 +212,7 @@ export default function MenuModule() {
         <div style={{textAlign: 'center', padding: '50px', color: '#64748b'}}>Loading menu catalog from PostgreSQL...</div>
       ) : catalogFilteredItems.length === 0 ? (
         <div style={{textAlign: 'center', padding: '60px', background: '#fff', borderRadius: '12px', border: '1.5px dashed #cbd5e1', color: '#64748b'}}>
-          {showPausedOnly ? 'No paused items found in this catalog!' : `No items found in ${activeCatalog}.`}
+          No items found in {activeCatalog}. Click "+ Add Dish" above!
         </div>
       ) : (
         dynamicCategories.map(cat => {
@@ -263,6 +276,41 @@ export default function MenuModule() {
             </div>
           );
         })
+      )}
+
+      {/* Manage Paused Items Modal */}
+      {showPausedModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalCard}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+              <h3 style={{margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a'}}>🔴 Manage Paused Items ({allPausedItems.length})</h3>
+              <button onClick={() => setShowPausedModal(false)} style={styles.closeXBtn}>✕</button>
+            </div>
+
+            {allPausedItems.length === 0 ? (
+              <div style={{textAlign: 'center', padding: '30px', color: '#64748b', fontSize: '13px'}}>No paused items across your restaurant menus! All dishes are LIVE.</div>
+            ) : (
+              <div style={{maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px'}}>
+                {allPausedItems.map(item => (
+                  <div key={item.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
+                    <div>
+                      <div style={{fontSize: '13px', fontWeight: '700', color: '#0f172a'}}>{item.itemName}</div>
+                      <div style={{fontSize: '11px', color: '#64748b'}}>{item.category} • {item.catalogName || 'Default In-House Menu'}</div>
+                    </div>
+                    <button 
+                      onClick={() => handleToggleStatus(item.id, 'PAUSED')}
+                      style={{background: '#ecfdf5', color: '#047857', border: '1px solid #10b981', padding: '5px 12px', borderRadius: '6px', fontWeight: '700', fontSize: '11px', cursor: 'pointer'}}
+                    >
+                      Make Live 🟢
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button onClick={() => setShowPausedModal(false)} style={styles.saveBtn}>Close Modal</button>
+          </div>
+        </div>
       )}
 
       {/* Add New Menu Item Modal */}
@@ -336,25 +384,27 @@ export default function MenuModule() {
 }
 
 const styles = {
-  container: { padding: '24px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', overflowY: 'auto', paddingBottom: '80px' },
-  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' },
-  primaryBtn: { background: '#047857', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' },
-  filterPausedBtn: { background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', padding: '4px 10px', borderRadius: '6px', fontWeight: '700', fontSize: '11px', cursor: 'pointer' },
+  container: { padding: '28px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', overflowY: 'auto', paddingBottom: '80px' },
+  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' },
+  primaryBtn: { background: '#047857', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' },
+  pausedHeaderBtn: { border: '1.5px solid #cbd5e1', padding: '9px 16px', borderRadius: '10px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' },
+  pausedCountPill: { background: '#dc2626', color: '#fff', padding: '1px 6px', borderRadius: '10px', fontSize: '11px', fontWeight: '900' },
+  viewPausedLink: { background: 'none', border: 'none', color: '#dc2626', fontWeight: '800', fontSize: '12px', cursor: 'pointer' },
   catalogsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '24px' },
-  catalogCard: { background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '14px', padding: '20px', transition: 'all 0.25s ease', cursor: 'pointer' },
+  catalogCard: { background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '16px', padding: '22px', transition: 'all 0.25s ease', cursor: 'pointer' },
   liveOnlineBadge: { background: '#ecfdf5', color: '#047857', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800' },
   inhouseBadge: { background: '#f1f5f9', color: '#334155', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800' },
-  summaryStrip: { background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '24px' },
+  summaryStrip: { background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', fontWeight: '800', color: '#334155', marginBottom: '24px' },
   categorySection: { marginBottom: '20px' },
-  categoryHeader: { fontSize: '12px', fontWeight: '800', color: '#64748b', letterSpacing: '0.06em', marginBottom: '8px', textTransform: 'uppercase' },
-  categoryCard: { background: '#fff', borderRadius: '12px', border: '1.5px solid #e2e8f0', overflow: 'hidden' },
-  itemRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 18px', transition: 'background 0.15s ease' },
+  categoryHeader: { fontSize: '12px', fontWeight: '900', color: '#64748b', letterSpacing: '0.06em', marginBottom: '8px', textTransform: 'uppercase' },
+  categoryCard: { background: '#fff', borderRadius: '14px', border: '1.5px solid #e2e8f0', overflow: 'hidden' },
+  itemRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', transition: 'background 0.15s ease' },
   deleteBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: '4px' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
-  modalCard: { width: '440px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'left', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' },
-  label: { fontSize: '11px', fontWeight: '700', display: 'block', marginBottom: '4px', color: '#334155' },
-  input: { width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box', marginBottom: '12px', background: '#fff', outline: 'none' },
+  modalCard: { width: '460px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'left', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' },
+  label: { fontSize: '11px', fontWeight: '800', display: 'block', marginBottom: '4px', color: '#334155' },
+  input: { width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box', marginBottom: '12px', background: '#fff', outline: 'none' },
   closeXBtn: { background: 'none', border: 'none', fontSize: '16px', fontWeight: 'bold', color: '#64748b', cursor: 'pointer' },
-  saveBtn: { flex: 1, background: '#047857', color: '#fff', border: 'none', padding: '11px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' },
-  cancelBtn: { flex: 1, background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '11px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }
+  saveBtn: { width: '100%', background: '#047857', color: '#fff', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: '800', fontSize: '13px', cursor: 'pointer' },
+  cancelBtn: { flex: 1, background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '10px', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }
 };
