@@ -40,7 +40,7 @@ export default function LoginScreen({ onLoginSuccess }) {
     setFormData({ ...formData, [name]: value });
   };
 
-  // Login Handler (Cleaned up so it doesn't duplicate loading text)
+  // Login Handler (Saves both session keys to prevent email mismatches)
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -55,8 +55,12 @@ export default function LoginScreen({ onLoginSuccess }) {
       const data = await response.json();
       
       if (response.ok) {
-        localStorage.setItem('auth_token', data.token);
+        localStorage.setItem('auth_token', data.token || 'active_session');
         localStorage.setItem('user_email', loginEmail);
+        localStorage.setItem('userEmail', loginEmail); // Compatibility sync for profile fetch
+        if (data.userId) {
+          localStorage.setItem('userId', data.userId);
+        }
         onLoginSuccess();
       } else {
         setMessage(data.message || 'Invalid credentials or account locked.');
@@ -170,7 +174,7 @@ export default function LoginScreen({ onLoginSuccess }) {
       <div style={{ 
         ...styles.card, 
         maxWidth: currentView === 'signup' ? '820px' : '600px',
-        padding: currentView === 'signup' ? '45px' : '50px'
+        padding: currentView === 'signup' ? '40px' : '48px'
       }}>
         
         <div style={styles.tabContainer}>
@@ -401,39 +405,39 @@ const styles = {
   pageContainer: { 
     display: 'flex', 
     flexDirection: 'column', 
-    justifyContent: 'flex-start', 
+    justifyContent: 'center', 
     alignItems: 'center', 
-    width: '100vw', 
+    width: '100%', 
     minHeight: '100vh', 
     backgroundColor: '#030712', 
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', 
     color: '#f8fafc', 
-    padding: '40px 20px', 
+    padding: '30px 16px', 
     margin: 0, 
     boxSizing: 'border-box', 
-    overflowY: 'auto'
+    overflowX: 'hidden'
   },
-  brandContainer: { textAlign: 'center', marginBottom: '30px', marginTop: '20px' },
-  brandTitle: { fontSize: '38px', fontWeight: '800', letterSpacing: '-0.5px', color: '#ffffff' },
-  brandSubtitle: { fontSize: '15px', color: '#64748b', marginTop: '6px', fontWeight: '500' },
-  card: { backgroundColor: '#0b132b', border: '1px solid #1e293b', borderRadius: '24px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', boxSizing: 'border-box', transition: 'all 0.3s ease', marginBottom: '40px' },
+  brandContainer: { textAlign: 'center', marginBottom: '24px' },
+  brandTitle: { fontSize: '36px', fontWeight: '800', letterSpacing: '-0.5px', color: '#ffffff' },
+  brandSubtitle: { fontSize: '14px', color: '#64748b', marginTop: '4px', fontWeight: '500' },
+  card: { backgroundColor: '#0b132b', border: '1px solid #1e293b', borderRadius: '24px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', boxSizing: 'border-box', transition: 'all 0.3s ease' },
   headerTextGroup: { marginBottom: '20px', textAlign: 'left' },
   cardHeaderTitle: { fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 6px 0' },
   cardHeaderSubtitle: { fontSize: '14px', color: '#94a3b8', margin: 0, lineHeight: '1.4' },
   sectionTitle: { fontSize: '12px', fontWeight: '700', color: '#3b82f6', marginTop: '20px', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.8px', textAlign: 'left' },
-  tabContainer: { display: 'flex', backgroundColor: '#070d1a', borderRadius: '12px', padding: '6px', marginBottom: '28px', border: '1px solid #162032' },
-  tabButton: { flex: 1, padding: '15px', borderRadius: '9px', border: 'none', fontSize: '16px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' },
-  form: { display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' },
-  row: { display: 'flex', gap: '20px' },
-  inputGroup: { display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, textAlign: 'left' },
+  tabContainer: { display: 'flex', backgroundColor: '#070d1a', borderRadius: '12px', padding: '6px', marginBottom: '24px', border: '1px solid #162032' },
+  tabButton: { flex: 1, padding: '14px', borderRadius: '9px', border: 'none', fontSize: '15px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' },
+  form: { display: 'flex', flexDirection: 'column', gap: '18px', textAlign: 'left' },
+  row: { display: 'flex', gap: '16px' },
+  inputGroup: { display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, textAlign: 'left' },
   labelRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' },
-  label: { fontSize: '14px', fontWeight: '600', color: '#cbd5e1', letterSpacing: '0.2px', textAlign: 'left' },
+  label: { fontSize: '13px', fontWeight: '600', color: '#cbd5e1', letterSpacing: '0.2px', textAlign: 'left' },
   forgotLink: { fontSize: '13px', color: '#3b82f6', textDecoration: 'none', fontWeight: '500' },
   passwordWrapper: { position: 'relative', display: 'flex', alignItems: 'center', width: '100%' },
-  input: { width: '100%', padding: '16px 20px', backgroundColor: '#070d1a', border: '1px solid #1e293b', borderRadius: '12px', color: '#ffffff', fontSize: '16px', outline: 'none', boxSizing: 'border-box', textAlign: 'left', transition: 'border-color 0.2s' },
-  eyeButton: { position: 'absolute', right: '16px', backgroundColor: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px', transition: 'color 0.2s' },
-  primaryButton: { backgroundColor: '#2563eb', color: '#ffffff', border: 'none', padding: '16px', borderRadius: '12px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', marginTop: '10px', transition: 'background-color 0.2s' },
-  secondaryButton: { backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #1e293b', padding: '14px', borderRadius: '12px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
-  messageBox: { fontSize: '14px', textAlign: 'center', fontWeight: '500', marginTop: '14px', padding: '12px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.03)' },
-  footerText: { marginTop: '10px', marginBottom: '30px', fontSize: '12px', color: '#475569', textAlign: 'center', maxWidth: '500px', lineHeight: '1.5' }
+  input: { width: '100%', padding: '14px 18px', backgroundColor: '#070d1a', border: '1px solid #1e293b', borderRadius: '12px', color: '#ffffff', fontSize: '15px', outline: 'none', boxSizing: 'border-box', textAlign: 'left', transition: 'border-color 0.2s' },
+  eyeButton: { position: 'absolute', right: '14px', backgroundColor: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px', transition: 'color 0.2s' },
+  primaryButton: { backgroundColor: '#2563eb', color: '#ffffff', border: 'none', padding: '15px', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', marginTop: '8px', transition: 'background-color 0.2s' },
+  secondaryButton: { backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #1e293b', padding: '13px', borderRadius: '12px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
+  messageBox: { fontSize: '14px', textAlign: 'center', fontWeight: '500', marginTop: '14px', padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.03)' },
+  footerText: { marginTop: '20px', fontSize: '12px', color: '#475569', textAlign: 'center', maxWidth: '500px', lineHeight: '1.4' }
 };
