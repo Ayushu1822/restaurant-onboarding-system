@@ -22,6 +22,10 @@ public class RestaurantProfileController {
     @Autowired
     private UserRepository userRepository;
 
+    /**
+     * Social Media Style Lookup: Fetches profile by email.
+     * Auto-creates a default profile if not found.
+     */
     @GetMapping("/email/{email}")
     public ResponseEntity<RestaurantProfile> getOrCreateProfileByEmail(@PathVariable String email) {
         RestaurantProfile profile = profileRepository.findByEmail(email).orElseGet(() -> {
@@ -54,25 +58,31 @@ public class RestaurantProfileController {
         return ResponseEntity.ok(profile);
     }
 
+    /**
+     * Upsert / Update Profile: Safely updates existing profile or creates one without violating constraints.
+     */
     @PutMapping("/{id}")
     public ResponseEntity<RestaurantProfile> updateProfile(
             @PathVariable String id, 
             @RequestBody RestaurantProfile updatedDetails) {
         
-        // 1. Pehle ID se find karo, nahi toh email se find karo taaki insert ki jagah update ho
+        // 1. Try finding by ID first
         RestaurantProfile profile = profileRepository.findById(id).orElse(null);
         
+        // 2. If not found by ID, try finding by email
         if (profile == null && updatedDetails.getEmail() != null) {
             profile = profileRepository.findByEmail(updatedDetails.getEmail()).orElse(null);
         }
 
+        // 3. If still not found, initialize new profile safely
         if (profile == null) {
-            // Agar phir bhi nahi mila, toh naya object banao
             profile = new RestaurantProfile();
             profile.setRestaurantId(id != null ? id : UUID.randomUUID().toString());
+            profile.setUserId(updatedDetails.getUserId() != null ? updatedDetails.getUserId() : UUID.randomUUID().toString());
+            profile.setEmail(updatedDetails.getEmail() != null ? updatedDetails.getEmail() : "user@restaurant.com");
         }
 
-        // 2. Fields update karo safely
+        // 4. Update fields if provided
         if (updatedDetails.getBusinessName() != null) {
             profile.setBusinessName(updatedDetails.getBusinessName());
         }
