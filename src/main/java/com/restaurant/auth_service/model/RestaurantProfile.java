@@ -13,7 +13,7 @@ public class RestaurantProfile {
     @Column(name = "user_id")
     private String userId;
 
-    private String email; // Added to support lookup by email
+    private String email; // Make sure this field exists!
 
     @Column(name = "business_name", nullable = false)
     private String businessName;
@@ -35,7 +35,7 @@ public class RestaurantProfile {
     public void setUserId(String userId) { this.userId = userId; }
 
     public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public void setEmail(String email) { this.email = email; } // Make sure this setter exists!
 
     public String getBusinessName() { return businessName; }
     public void setBusinessName(String businessName) { this.businessName = businessName; }

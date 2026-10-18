@@ -56,10 +56,11 @@ public class AuthService {
         user.setWhatsappNumber((String) request.get("whatsappNumber"));
         User savedUser = userRepository.save(user);
 
-        // 2. Save Restaurant Profile
+        // 2. Save Restaurant Profile (Including Email for secure dashboard lookup)
         RestaurantProfile profile = new RestaurantProfile();
         profile.setRestaurantId(restaurantId);
         profile.setUserId(userId);
+        profile.setEmail(email); // Crucial for /api/v1/restaurants/email/{email} lookups
         profile.setBusinessName((String) request.get("businessName"));
         profile.setOwnerName((String) request.get("ownerName"));
         profile.setPhoneNumber((String) request.get("phoneNumber"));
