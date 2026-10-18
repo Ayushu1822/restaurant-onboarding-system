@@ -32,8 +32,9 @@ export default function Dashboard({ user, onLogout }) {
   const [isProfileFallback, setIsProfileFallback] = useState(false);
   const [isOrdersFallback, setIsOrdersFallback] = useState(false);
   
-  // Live Table Stats State for Header Bar (Open, Occupied, Billing — Reserved removed)
+  // Live Table Stats State for Header Bar
   const [tableStats, setTableStats] = useState({ open: 5, total: 10, occupied: 3, billing: 1 });
+  const [pausedCount, setPausedCount] = useState(0);
 
   const [restaurantId, setRestaurantId] = useState('ae41c831-372b-4f56-8905-f67a93b8045b');
   const [profileData, setProfileData] = useState({
@@ -49,8 +50,8 @@ export default function Dashboard({ user, onLogout }) {
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
-  // Fetch live table stats from PostgreSQL
-  const fetchTableStats = () => {
+  // Fetch live table stats & paused items count from PostgreSQL
+  const fetchHeaderData = () => {
     fetch(`${API_BASE_URL}/api/v1/tables`)
       .then(res => res.json())
       .then(data => {
@@ -62,11 +63,21 @@ export default function Dashboard({ user, onLogout }) {
         }
       })
       .catch(err => console.log("Table stats sync note:", err));
+
+    fetch(`${API_BASE_URL}/api/v1/menu`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const paused = data.filter(i => i.status === 'PAUSED').length;
+          setPausedCount(paused);
+        }
+      })
+      .catch(err => console.log("Paused items sync note:", err));
   };
 
   useEffect(() => {
-    fetchTableStats();
-    const interval = setInterval(fetchTableStats, 10000);
+    fetchHeaderData();
+    const interval = setInterval(fetchHeaderData, 6000);
     return () => clearInterval(interval);
   }, []);
 
@@ -111,10 +122,11 @@ export default function Dashboard({ user, onLogout }) {
         let orderList = Array.isArray(data) ? data : [];
         setIsOrdersFallback(false);
         
-        // Filter out Counter orders so Online Orders strictly shows Zomato/Swiggy/WhatsApp aggregators
+        // Strict Online Orders Filter (excluding COUNTER, POS, WALK-IN)
         const onlineOnlyList = orderList.filter(o => {
           const ch = (o.channel || '').toUpperCase();
-          return ch !== 'COUNTER' && ch !== 'POS' && ch !== 'WALK-IN';
+          const type = (o.orderType || '').toUpperCase();
+          return ch !== 'COUNTER' && ch !== 'POS' && ch !== 'WALK-IN' && type !== 'DINE-IN' && type !== 'TAKEAWAY';
         });
 
         const formattedOrders = onlineOnlyList.map((o, index) => {
@@ -186,6 +198,7 @@ export default function Dashboard({ user, onLogout }) {
         setProfileData(savedProfile);
         setEditForm(savedProfile);
         setIsEditingProfile(false);
+        setShowProfileModal(false);
         alert('Profile globally updated and saved to PostgreSQL database!');
       })
       .catch(err => {
@@ -225,7 +238,7 @@ export default function Dashboard({ user, onLogout }) {
 
   return (
     <div style={styles.container}>
-      {/* Sidebar */}
+      {/* Sidebar with Smooth Hover Animations */}
       <div style={styles.sidebar}>
         <div style={styles.brandBox}>
           <span style={styles.logoIcon}>🛡️</span>
@@ -254,7 +267,7 @@ export default function Dashboard({ user, onLogout }) {
                 onMouseEnter={() => setHoveredTab(tab)}
                 onMouseLeave={() => setHoveredTab(null)}
               >
-                <span style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                <span style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
                   {tab === 'Online Orders' ? '🛒' : tab === 'Counter POS' ? '💳' : tab === 'Tables' ? '🪑' : tab === 'Kitchen' ? '🍳' : tab === 'Menu' ? '📖' : tab === 'Reports' ? '📊' : tab === 'Promotions' ? '🏷️' : tab === 'Customers' ? '👥' : tab === 'Complaints' ? '⚠️' : tab === 'Gallery' ? '🖼️' : '⚙️'} {tab}
                 </span>
                 {tab === 'Online Orders' && <span style={styles.badgeCount}>{orders.filter(o => o.status === 'New').length}</span>}
@@ -263,6 +276,7 @@ export default function Dashboard({ user, onLogout }) {
           })}
         </ul>
 
+        {/* Social-Media-Style Admin Profile Widget */}
         <div 
           style={{
             ...styles.userInfo,
@@ -270,11 +284,15 @@ export default function Dashboard({ user, onLogout }) {
           }} 
           onClick={() => { setShowProfileModal(true); setIsEditingProfile(false); }}
         >
-          <div style={styles.userAvatar}>{profileData.ownerName && profileData.ownerName !== 'Loading...' ? profileData.ownerName.substring(0, 2).toUpperCase() : 'AY'}</div>
-          <div style={{flex: 1, overflow: 'hidden', textAlign: 'left'}}>
-            <div style={{fontSize: '13px', fontWeight: 'bold', color: '#fff'}}>{profileData.ownerName} {isProfileFallback && <span style={{color: '#f87171', fontSize: '10px'}}>⚠️ (Fallback)</span>}</div>
-            <div style={{fontSize: '11px', color: '#6ee7b7'}}>{profileData.businessName}</div>
+          <div style={styles.userAvatar}>
+            {profileData.ownerName && profileData.ownerName !== 'Loading...' ? profileData.ownerName.substring(0, 2).toUpperCase() : 'AY'}
+            <span style={styles.onlineDot}></span>
           </div>
+          <div style={{flex: 1, overflow: 'hidden', textAlign: 'left'}}>
+            <div style={{fontSize: '13px', fontWeight: '800', color: '#fff'}}>{profileData.ownerName}</div>
+            <div style={{fontSize: '11px', color: '#6ee7b7', fontWeight: '600'}}>{profileData.businessName}</div>
+          </div>
+          <span style={{color: '#94a3b8', fontSize: '14px'}}>⚙️</span>
         </div>
       </div>
 
@@ -283,16 +301,19 @@ export default function Dashboard({ user, onLogout }) {
         <div style={styles.header}>
           <h2 style={styles.pageTitle}>{activeTab}</h2>
           <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
-            <button onClick={() => setActiveTab('Menu')} style={styles.pausedItemsBtn}>
-              Manage Paused Items <span style={styles.pausedCountBadge}>5</span>
+            <button 
+              onClick={() => setActiveTab('Menu')} 
+              style={styles.pausedItemsBtn}
+            >
+              🔴 Manage Paused Items <span style={styles.pausedCountBadge}>{pausedCount}</span>
             </button>
             <button onClick={onLogout} style={styles.topLogoutBtn}>Sign Out</button>
           </div>
         </div>
 
-        {/* Live Tables Header Bar (Reserved removed as requested) */}
+        {/* Live Tables Header Bar */}
         <div style={styles.tablesStatusBar} onClick={() => setActiveTab('Tables')}>
-          <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600', color: '#334155'}}>
+          <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700', color: '#334155'}}>
             <span>🪑</span>
             <span>Tables</span>
             <span style={{color: '#cbd5e1'}}>·</span>
@@ -314,7 +335,7 @@ export default function Dashboard({ user, onLogout }) {
         {activeTab === 'Online Orders' && (
           <div style={styles.onlineOrdersContainer}>
             <div style={styles.subHeader}>
-              <span style={{fontWeight: '600', color: '#0f172a'}}>
+              <span style={{fontWeight: '700', color: '#0f172a'}}>
                 {orders.length} online orders · <span style={{color: '#16a34a'}}>{orders.filter(o => o.status === 'New').length} need action</span>
               </span>
             </div>
@@ -322,7 +343,7 @@ export default function Dashboard({ user, onLogout }) {
             <div style={styles.splitViewWrapper}>
               <div style={styles.masterListColumn}>
                 <div style={styles.listHeaderTopRow}>
-                  <span style={styles.listHeaderTitle}>All orders ({orders.length})</span>
+                  <span style={styles.listHeaderTitle}>All online orders ({orders.length})</span>
                 </div>
                 
                 <div style={styles.scrollableCards}>
@@ -448,7 +469,7 @@ export default function Dashboard({ user, onLogout }) {
         {activeTab === 'Tables' && <TablesModule />}
         {activeTab === 'Kitchen' && <KitchenModule />}
         {activeTab === 'Menu' && <MenuModule />}
-        {activeTab === 'Reports' && <ReportsModule />}
+        {activeTab === 'Reports' && <ReportsModule orders={orders} />}
         {activeTab === 'Customers' && <CustomersModule />}
         {activeTab === 'Complaints' && <ComplaintsModule />}
         {activeTab === 'Promotions' && <PromotionsModule />}
@@ -456,11 +477,15 @@ export default function Dashboard({ user, onLogout }) {
         {activeTab === 'Settings' && <SettingsModule />}
       </div>
 
-      {/* Profile Modal */}
+      {/* Social-Media-Style Profile Modal */}
       {showProfileModal && (
         <div style={styles.drawerOverlay} onClick={() => setShowProfileModal(false)}>
           <div style={styles.profileModal} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{margin: '0 0 5px 0', color: '#0f172a'}}>Admin Profile</h3>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
+              <h3 style={{margin: 0, color: '#0f172a', fontSize: '18px', fontWeight: '900'}}>Admin Profile Settings</h3>
+              <button onClick={() => setShowProfileModal(false)} style={styles.closeXBtn}>✕</button>
+            </div>
+
             {isProfileFallback && (
               <div style={{fontSize: '11px', color: '#dc2626', marginBottom: '12px', fontWeight: 'bold'}}>
                 ⚠️ Running on local profile fallback (Database sync pending)
@@ -469,14 +494,15 @@ export default function Dashboard({ user, onLogout }) {
             <div style={styles.modalRedAccentLine}></div>
             
             {!isEditingProfile ? (
-              <div style={{marginTop: '15px'}}>
-                <p style={{color: '#334155'}}><strong>Business:</strong> {profileData.businessName}</p>
-                <p style={{color: '#334155'}}><strong>Owner:</strong> {profileData.ownerName}</p>
-                <p style={{color: '#334155'}}><strong>Email:</strong> {profileData.email}</p>
-                <p style={{color: '#334155'}}><strong>Phone:</strong> {profileData.phone}</p>
-                <p style={{color: '#334155'}}><strong>WhatsApp:</strong> {profileData.whatsappNumber}</p>
+              <div style={{marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                <div style={styles.profileCardRow}><span>Business Name:</span> <strong>{profileData.businessName}</strong></div>
+                <div style={styles.profileCardRow}><span>Owner Name:</span> <strong>{profileData.ownerName}</strong></div>
+                <div style={styles.profileCardRow}><span>Email Address:</span> <strong>{profileData.email}</strong></div>
+                <div style={styles.profileCardRow}><span>Phone Number:</span> <strong>{profileData.phone}</strong></div>
+                <div style={styles.profileCardRow}><span>WhatsApp Number:</span> <strong>{profileData.whatsappNumber}</strong></div>
+
                 <div style={{display: 'flex', gap: '10px', marginTop: '20px'}}>
-                  <button onClick={() => setIsEditingProfile(true)} style={styles.actionBtn}>Edit Profile</button>
+                  <button onClick={() => setIsEditingProfile(true)} style={styles.actionBtn}>Edit Live Profile</button>
                   <button onClick={() => setShowProfileModal(false)} style={{...styles.actionBtn, backgroundColor: '#64748b'}}>Close</button>
                 </div>
               </div>
@@ -484,34 +510,38 @@ export default function Dashboard({ user, onLogout }) {
               <form onSubmit={handleSaveProfile} style={{display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px'}}>
                 <label style={{fontSize: '12px', fontWeight: 'bold'}}>Business Name:</label>
                 <input 
-                  style={{padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1'}}
+                  style={{padding: '10px', borderRadius: '8px', border: '1.5px solid #cbd5e1', outline: 'none'}}
                   value={editForm.businessName} 
                   onChange={e => setEditForm({...editForm, businessName: e.target.value})} 
+                  required
                 />
                 
                 <label style={{fontSize: '12px', fontWeight: 'bold'}}>Owner Name:</label>
                 <input 
-                  style={{padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1'}}
+                  style={{padding: '10px', borderRadius: '8px', border: '1.5px solid #cbd5e1', outline: 'none'}}
                   value={editForm.ownerName} 
                   onChange={e => setEditForm({...editForm, ownerName: e.target.value})} 
+                  required
                 />
 
                 <label style={{fontSize: '12px', fontWeight: 'bold'}}>Phone Number:</label>
                 <input 
-                  style={{padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1'}}
+                  style={{padding: '10px', borderRadius: '8px', border: '1.5px solid #cbd5e1', outline: 'none'}}
                   value={editForm.phone} 
                   onChange={e => setEditForm({...editForm, phone: e.target.value})} 
+                  required
                 />
 
                 <label style={{fontSize: '12px', fontWeight: 'bold'}}>WhatsApp Number:</label>
                 <input 
-                  style={{padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1'}}
+                  style={{padding: '10px', borderRadius: '8px', border: '1.5px solid #cbd5e1', outline: 'none'}}
                   value={editForm.whatsappNumber} 
                   onChange={e => setEditForm({...editForm, whatsappNumber: e.target.value})} 
+                  required
                 />
 
                 <div style={{display: 'flex', gap: '10px', marginTop: '15px'}}>
-                  <button type="submit" style={styles.actionBtn}>Save Changes</button>
+                  <button type="submit" style={styles.actionBtn}>Save to Database</button>
                   <button type="button" onClick={() => setIsEditingProfile(false)} style={{...styles.actionBtn, backgroundColor: '#64748b'}}>Cancel</button>
                 </div>
               </form>
@@ -524,71 +554,51 @@ export default function Dashboard({ user, onLogout }) {
 }
 
 const styles = {
-  container: { 
-    display: 'flex', 
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    height: '100vh', 
-    width: '100vw', 
-    backgroundColor: '#f8fafc', 
-    overflow: 'hidden', 
-    fontFamily: 'sans-serif', 
-    boxSizing: 'border-box', 
-    margin: 0, 
-    padding: 0 
-  },
+  container: { display: 'flex', position: 'fixed', top: 0, left: 0, height: '100vh', width: '100vw', backgroundColor: '#f8fafc', overflow: 'hidden', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', margin: 0, padding: 0 },
   sidebar: { width: '260px', backgroundColor: '#022c22', display: 'flex', flexDirection: 'column', color: '#fff', height: '100vh', flexShrink: 0 },
-  brandBox: { display: 'flex', alignItems: 'center', gap: '12px', padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)' },
+  brandBox: { display: 'flex', alignItems: 'center', gap: '12px', padding: '22px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)' },
   logoIcon: { fontSize: '24px' },
-  brandName: { fontSize: '18px', fontWeight: '800' },
-  brandSub: { fontSize: '10px', color: '#6ee7b7' },
-  navLinks: { listStyle: 'none', padding: '10px 0', margin: 0, flex: 1, overflowY: 'auto' },
-  navItem: { padding: '12px 20px', fontSize: '14px', color: '#94a3b8', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', textAlign: 'left' },
-  navItemHover: { backgroundColor: '#033d30', color: '#fff' },
-  navItemActive: { padding: '12px 20px', fontSize: '14px', color: '#fff', backgroundColor: '#047857', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', borderLeft: '4px solid #10b981', fontWeight: '600', textAlign: 'left' },
-  badgeCount: { backgroundColor: '#10b981', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '10px' },
-  userInfo: { padding: '15px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#01231b', cursor: 'pointer' },
+  brandName: { fontSize: '18px', fontWeight: '900', letterSpacing: '0.02em' },
+  brandSub: { fontSize: '10px', color: '#6ee7b7', fontWeight: '700', letterSpacing: '0.05em' },
+  navLinks: { listStyle: 'none', padding: '12px 0', margin: 0, flex: 1, overflowY: 'auto' },
+  navItem: { padding: '13px 20px', fontSize: '14px', color: '#94a3b8', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', textAlign: 'left', fontWeight: '600', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' },
+  navItemHover: { backgroundColor: '#033d30', color: '#fff', transform: 'translateX(4px)' },
+  navItemActive: { padding: '13px 20px', fontSize: '14px', color: '#fff', backgroundColor: '#047857', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', borderLeft: '4px solid #10b981', fontWeight: '800', textAlign: 'left', boxShadow: 'inset 0 0 12px rgba(0,0,0,0.15)' },
+  badgeCount: { backgroundColor: '#10b981', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', fontWeight: '900' },
+  userInfo: { padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#01231b', cursor: 'pointer', transition: 'background 0.2s' },
   userInfoFallbackRedLine: { borderBottom: '3px solid #ef4444', backgroundColor: '#450a0a' },
-  userAvatar: { width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff' },
+  userAvatar: { width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', color: '#fff', position: 'relative', border: '2px solid #10b981', fontSize: '13px' },
+  onlineDot: { position: 'absolute', bottom: '0px', right: '0px', width: '10px', height: '10px', backgroundColor: '#10b981', borderRadius: '50%', border: '2px solid #01231b' },
   mainContent: { flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', minWidth: 0 },
   header: { height: '65px', backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 25px', flexShrink: 0 },
-  pageTitle: { fontSize: '18px', fontWeight: '700', color: '#0f172a', margin: 0 },
-  tablesStatusBar: {
-    backgroundColor: '#eff6ff',
-    borderBottom: '1px solid #dbeafe',
-    padding: '10px 25px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    cursor: 'pointer',
-    flexShrink: 0,
-    fontSize: '13px'
-  },
+  pageTitle: { fontSize: '20px', fontWeight: '900', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' },
+  tablesStatusBar: { backgroundColor: '#eff6ff', borderBottom: '1px solid #dbeafe', padding: '10px 25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', flexShrink: 0, fontSize: '13px', transition: 'background 0.2s' },
   fallbackNoticeBar: { backgroundColor: '#fef2f2', borderBottom: '1px solid #fecaca', borderLeft: '4px solid #dc2626', padding: '10px 25px', fontSize: '13px', color: '#991b1b', textAlign: 'left', flexShrink: 0 },
-  pausedItemsBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#334155', cursor: 'pointer' },
-  pausedCountBadge: { backgroundColor: '#e11d48', color: '#fff', fontSize: '10px', padding: '1px 6px', borderRadius: '10px' },
-  topLogoutBtn: { backgroundColor: '#fee2e2', color: '#991b1b', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
+  pausedItemsBtn: { backgroundColor: '#fff', border: '1.5px solid #dc2626', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '800', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' },
+  pausedCountBadge: { backgroundColor: '#dc2626', color: '#fff', fontSize: '11px', padding: '1px 6px', borderRadius: '10px', fontWeight: '900' },
+  topLogoutBtn: { backgroundColor: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', padding: '8px 16px', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', fontSize: '12px', transition: 'all 0.2s' },
   onlineOrdersContainer: { display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', backgroundColor: '#f8fafc', minWidth: 0 },
   subHeader: { padding: '12px 25px', backgroundColor: '#fff', borderBottom: '1px solid #f1f5f9', fontSize: '14px', textAlign: 'left', flexShrink: 0 },
   splitViewWrapper: { display: 'flex', flex: 1, padding: '20px', gap: '24px', overflow: 'hidden', minHeight: 0, minWidth: 0 },
   masterListColumn: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, minWidth: 0 },
   detailPanelColumn: { flex: 1.2, display: 'flex', flexDirection: 'column', overflowY: 'auto', minHeight: 0, minWidth: 0, paddingRight: '5px' },
   listHeaderTopRow: { display: 'flex', justifyContent: 'space-between', marginBottom: '12px', flexShrink: 0 },
-  listHeaderTitle: { fontSize: '14px', fontWeight: '700', color: '#334155', textAlign: 'left', flexShrink: 0, marginBottom: '10px' },
+  listHeaderTitle: { fontSize: '14px', fontWeight: '800', color: '#334155', textAlign: 'left', flexShrink: 0, marginBottom: '10px' },
   scrollableCards: { display: 'flex', flexDirection: 'column', gap: '14px', overflowY: 'auto', flex: 1, paddingRight: '5px' },
-  orderSummaryCard: { border: '1px solid #cbd5e1', borderRadius: '12px', padding: '20px', cursor: 'pointer', backgroundColor: '#fff', textAlign: 'left', flexShrink: 0 },
-  detailCard: { backgroundColor: '#fff', border: '1px solid #cbd5e1', borderRadius: '14px', padding: '24px', textAlign: 'left' },
-  emptyDetailPrompt: { backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '40px', textAlign: 'center', color: '#64748b', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  orderSummaryCard: { border: '1.5px solid #cbd5e1', borderRadius: '14px', padding: '20px', cursor: 'pointer', backgroundColor: '#fff', textAlign: 'left', flexShrink: 0, transition: 'all 0.2s' },
+  detailCard: { backgroundColor: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '16px', padding: '24px', textAlign: 'left' },
+  emptyDetailPrompt: { backgroundColor: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '40px', textAlign: 'center', color: '#64748b', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600' },
   statusBadgeSmall: (status) => ({
     backgroundColor: status === 'New' ? '#e0f2fe' : status === 'Accepted' ? '#fef9c3' : status === 'Preparing' ? '#ffedd5' : status === 'Ready' ? '#ede9fe' : '#dcfce7',
     color: status === 'New' ? '#0369a1' : status === 'Accepted' ? '#854d0e' : status === 'Preparing' ? '#c2410c' : status === 'Ready' ? '#6d28d9' : '#15803d',
-    fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '6px', textTransform: 'uppercase'
+    fontSize: '11px', fontWeight: '800', padding: '4px 10px', borderRadius: '6px', textTransform: 'uppercase'
   }),
-  customerRequestBox: { backgroundColor: '#fef3c7', border: '1px solid #fde68a', padding: '12px 14px', borderRadius: '8px', fontSize: '13px', color: '#92400e', marginBottom: '16px', textAlign: 'left' },
-  printIconBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
-  actionBtn: { backgroundColor: '#10b981', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' },
-  drawerOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-  profileModal: { width: '420px', backgroundColor: '#fff', padding: '25px', borderRadius: '14px', textAlign: 'left' },
-  modalRedAccentLine: { height: '3px', backgroundColor: '#ef4444', width: '100%', marginBottom: '10px', borderRadius: '2px' }
+  customerRequestBox: { backgroundColor: '#fef3c7', border: '1.5px solid #fde68a', padding: '12px 14px', borderRadius: '10px', fontSize: '13px', color: '#92400e', marginBottom: '16px', textAlign: 'left', fontWeight: '600' },
+  printIconBtn: { backgroundColor: '#f1f5f9', border: '1.5px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' },
+  actionBtn: { backgroundColor: '#047857', color: '#fff', border: 'none', padding: '11px 20px', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s' },
+  drawerOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
+  profileModal: { width: '460px', backgroundColor: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'left', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #e2e8f0' },
+  modalRedAccentLine: { height: '3px', backgroundColor: '#10b981', width: '100%', marginBottom: '16px', borderRadius: '2px' },
+  profileCardRow: { fontSize: '13px', color: '#334155', display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' },
+  closeXBtn: { background: 'none', border: 'none', fontSize: '16px', fontWeight: 'bold', color: '#64748b', cursor: 'pointer' }
 };
