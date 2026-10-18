@@ -8,6 +8,7 @@ export default function MenuModule() {
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCatalog, setActiveCatalog] = useState('Default Online Menu');
+  const [showPausedOnly, setShowPausedOnly] = useState(false);
   
   const [hoveredCard, setHoveredCard] = useState(null);
   const [hoveredRow, setHoveredRow] = useState(null);
@@ -97,36 +98,58 @@ export default function MenuModule() {
       .catch(err => alert('Error: ' + err.message));
   };
 
-  const catalogFilteredItems = menuItems.filter(i => (i.catalogName || 'Default In-House Menu') === activeCatalog);
+  const totalPausedCount = menuItems.filter(i => i.status === 'PAUSED').length;
 
-  const totalAvailable = catalogFilteredItems.filter(i => i.status === 'LIVE').length;
-  const totalPaused = catalogFilteredItems.filter(i => i.status === 'PAUSED').length;
+  const catalogFilteredItems = menuItems.filter(i => {
+    const catalogMatch = (i.catalogName || 'Default In-House Menu') === activeCatalog;
+    const pausedMatch = showPausedOnly ? i.status === 'PAUSED' : true;
+    return catalogMatch && pausedMatch;
+  });
 
-  // Extract unique categories dynamically from existing items + defaults
+  const totalAvailable = menuItems.filter(i => (i.catalogName || 'Default In-House Menu') === activeCatalog && i.status === 'LIVE').length;
+  const totalPaused = menuItems.filter(i => (i.catalogName || 'Default In-House Menu') === activeCatalog && i.status === 'PAUSED').length;
+
   const dynamicCategories = Array.from(new Set([...DEFAULT_CATEGORIES, ...menuItems.map(i => i.category).filter(Boolean)]));
 
   return (
     <div style={styles.container}>
       
-      {/* Header Bar */}
+      {/* Header Bar with Manage Paused Items Badge Button */}
       <div style={styles.headerRow}>
         <div>
           <h2 style={{margin: 0, fontSize: '22px', fontWeight: '800', color: '#0f172a'}}>Menus</h2>
           <p style={{margin: '4px 0 0 0', fontSize: '13px', color: '#64748b'}}>Create menus, activate them per channel, and manage items.</p>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          onMouseEnter={() => setHoveredBtn('newMenu')}
-          onMouseLeave={() => setHoveredBtn(null)}
-          style={{
-            ...styles.primaryBtn,
-            background: hoveredBtn === 'newMenu' ? '#065f46' : '#047857',
-            transform: hoveredBtn === 'newMenu' ? 'translateY(-2px) scale(1.02)' : 'translateY(0) scale(1)',
-            boxShadow: hoveredBtn === 'newMenu' ? '0 6px 16px rgba(4,120,87,0.35)' : '0 2px 6px rgba(4,120,87,0.2)'
-          }}
-        >
-          + Add Dish to {activeCatalog}
-        </button>
+
+        <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
+          <button 
+            onClick={() => setShowPausedOnly(!showPausedOnly)}
+            onMouseEnter={() => setHoveredBtn('paused')}
+            onMouseLeave={() => setHoveredBtn(null)}
+            style={{
+              ...styles.pausedHeaderBtn,
+              background: showPausedOnly ? '#fef2f2' : (hoveredBtn === 'paused' ? '#f8fafc' : '#fff'),
+              borderColor: showPausedOnly ? '#dc2626' : '#cbd5e1',
+              color: showPausedOnly ? '#dc2626' : '#334155'
+            }}
+          >
+            🔴 Manage Paused Items <span style={styles.pausedCountPill}>{totalPausedCount}</span>
+          </button>
+
+          <button 
+            onClick={() => setShowModal(true)}
+            onMouseEnter={() => setHoveredBtn('newMenu')}
+            onMouseLeave={() => setHoveredBtn(null)}
+            style={{
+              ...styles.primaryBtn,
+              background: hoveredBtn === 'newMenu' ? '#065f46' : '#047857',
+              transform: hoveredBtn === 'newMenu' ? 'translateY(-2px) scale(1.02)' : 'translateY(0) scale(1)',
+              boxShadow: hoveredBtn === 'newMenu' ? '0 6px 16px rgba(4,120,87,0.35)' : '0 2px 6px rgba(4,120,87,0.2)'
+            }}
+          >
+            + Add Dish
+          </button>
+        </div>
       </div>
 
       {/* Menu Catalog Cards */}
@@ -134,7 +157,7 @@ export default function MenuModule() {
         
         {/* Default Online Menu Card */}
         <div 
-          onClick={() => setActiveCatalog('Default Online Menu')}
+          onClick={() => { setActiveCatalog('Default Online Menu'); setShowPausedOnly(false); }}
           onMouseEnter={() => setHoveredCard('online')}
           onMouseLeave={() => setHoveredCard(null)}
           style={{
@@ -155,7 +178,7 @@ export default function MenuModule() {
 
         {/* Default In-House Menu Card */}
         <div 
-          onClick={() => setActiveCatalog('Default In-House Menu')}
+          onClick={() => { setActiveCatalog('Default In-House Menu'); setShowPausedOnly(false); }}
           onMouseEnter={() => setHoveredCard('inhouse')}
           onMouseLeave={() => setHoveredCard(null)}
           style={{
@@ -178,7 +201,10 @@ export default function MenuModule() {
 
       {/* Summary Status Strip */}
       <div style={styles.summaryStrip}>
-        <span>{activeCatalog.toUpperCase()} • <strong>{totalAvailable} AVAILABLE</strong> • <strong style={{color: '#dc2626'}}>{totalPaused} PAUSED</strong></span>
+        <span>{showPausedOnly ? 'PAUSED ITEMS FILTER ACTIVE' : activeCatalog.toUpperCase()} • <strong>{totalAvailable} AVAILABLE</strong> • <strong style={{color: '#dc2626'}}>{totalPaused} PAUSED</strong></span>
+        {showPausedOnly && (
+          <button onClick={() => setShowPausedOnly(false)} style={styles.clearFilterBtn}>Show All Items ✕</button>
+        )}
       </div>
 
       {/* Categorized Items List */}
@@ -186,7 +212,7 @@ export default function MenuModule() {
         <div style={{textAlign: 'center', padding: '50px', color: '#64748b'}}>Loading menu catalog from PostgreSQL...</div>
       ) : catalogFilteredItems.length === 0 ? (
         <div style={{textAlign: 'center', padding: '60px', background: '#fff', borderRadius: '12px', border: '1.5px dashed #cbd5e1', color: '#64748b'}}>
-          No items found in {activeCatalog}. Click "+ Add Dish" above!
+          {showPausedOnly ? 'No paused items found!' : `No items found in ${activeCatalog}.`}
         </div>
       ) : (
         dynamicCategories.map(cat => {
@@ -214,7 +240,10 @@ export default function MenuModule() {
                     >
                       <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
                         <span style={{width: '8px', height: '8px', borderRadius: '50%', background: isLive ? '#10b981' : '#ef4444'}}></span>
-                        <span style={{fontSize: '14px', fontWeight: '700', color: '#0f172a'}}>{item.itemName}</span>
+                        <div>
+                          <span style={{fontSize: '14px', fontWeight: '700', color: '#0f172a'}}>{item.itemName}</span>
+                          <span style={{fontSize: '11px', color: '#94a3b8', marginLeft: '10px'}}>({item.catalogName || 'Default In-House Menu'})</span>
+                        </div>
                       </div>
 
                       <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
@@ -323,6 +352,9 @@ const styles = {
   container: { padding: '24px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', overflowY: 'auto', paddingBottom: '80px' },
   headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' },
   primaryBtn: { background: '#047857', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' },
+  pausedHeaderBtn: { border: '1.5px solid #cbd5e1', padding: '9px 16px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' },
+  pausedCountPill: { background: '#dc2626', color: '#fff', padding: '1px 6px', borderRadius: '10px', fontSize: '11px', fontWeight: '800' },
+  clearFilterBtn: { background: 'none', border: 'none', color: '#047857', fontWeight: '700', fontSize: '12px', cursor: 'pointer' },
   catalogsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '24px' },
   catalogCard: { background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '14px', padding: '20px', transition: 'all 0.25s ease', cursor: 'pointer' },
   liveOnlineBadge: { background: '#ecfdf5', color: '#047857', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800' },
