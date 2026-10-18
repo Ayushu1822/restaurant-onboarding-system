@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -58,12 +59,20 @@ public class RestaurantProfileController {
             @PathVariable String id, 
             @RequestBody RestaurantProfile updatedDetails) {
         
-        RestaurantProfile profile = profileRepository.findById(id).orElseGet(() -> {
-            RestaurantProfile p = new RestaurantProfile();
-            p.setRestaurantId(id);
-            return p;
-        });
+        // 1. Pehle ID se find karo, nahi toh email se find karo taaki insert ki jagah update ho
+        RestaurantProfile profile = profileRepository.findById(id).orElse(null);
+        
+        if (profile == null && updatedDetails.getEmail() != null) {
+            profile = profileRepository.findByEmail(updatedDetails.getEmail()).orElse(null);
+        }
 
+        if (profile == null) {
+            // Agar phir bhi nahi mila, toh naya object banao
+            profile = new RestaurantProfile();
+            profile.setRestaurantId(id != null ? id : UUID.randomUUID().toString());
+        }
+
+        // 2. Fields update karo safely
         if (updatedDetails.getBusinessName() != null) {
             profile.setBusinessName(updatedDetails.getBusinessName());
         }
@@ -84,7 +93,7 @@ public class RestaurantProfileController {
         }
 
         RestaurantProfile saved = profileRepository.save(profile);
-        System.out.println("✅ PROFILE SUCCESSFULLY SAVED/UPDATED — ID: " + id);
+        System.out.println("✅ PROFILE SUCCESSFULLY SAVED/UPDATED — ID: " + saved.getRestaurantId());
         return ResponseEntity.ok(saved);
     }
 }
