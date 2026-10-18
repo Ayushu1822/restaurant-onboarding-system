@@ -497,7 +497,6 @@ export default function Dashboard({ user, onLogout }) {
               <div style={{marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px'}}>
                 <div style={styles.profileCardRow}><span>Business Name:</span> <strong>{profileData.businessName}</strong></div>
                 <div style={styles.profileCardRow}><span>Owner Name:</span> <strong>{profileData.ownerName}</strong></div>
-                <div style={styles.profileCardRow}><span>Email Address:</span> <strong>{profileData.email}</strong></div>
                 <div style={styles.profileCardRow}><span>Phone Number:</span> <strong>{profileData.phone}</strong></div>
                 <div style={styles.profileCardRow}><span>WhatsApp Number:</span> <strong>{profileData.whatsappNumber}</strong></div>
 
