@@ -22,4 +22,4 @@ export default function App() {
   }
 
   return <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />;
-} in this?
+} 
