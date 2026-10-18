@@ -12,7 +12,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping({"/api/restaurants", "/api/v1/restaurants"})
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = {"https://restaurant-system-sand-gamma.vercel.app", "http://localhost:3000", "http://localhost:5173"}, allowCredentials = "true")
 public class RestaurantProfileController {
 
     @Autowired
@@ -21,13 +21,17 @@ public class RestaurantProfileController {
     @Autowired
     private UserRepository userRepository;
 
-    // Social Media Style: Get profile by email. Auto-creates if missing!
+    /**
+     * Social Media Style Lookup: Fetches profile by email.
+     * If it doesn't exist for this email (e.g. ne@gmail.com), it automatically creates 
+     * and saves a default profile instantly on the fly so the frontend never sees a 404 error.
+     */
     @GetMapping("/email/{email}")
     public ResponseEntity<RestaurantProfile> getOrCreateProfileByEmail(@PathVariable String email) {
         RestaurantProfile profile = profileRepository.findByEmail(email).orElseGet(() -> {
             System.out.println("🌱 PROFILE NOT FOUND FOR " + email + " — AUTO-CREATING NEW PROFILE...");
             
-            // Look up user to pull their info if available
+            // Look up the user to pull their registered details if available
             User user = userRepository.findByEmail(email).orElse(null);
             
             RestaurantProfile newProfile = new RestaurantProfile();
@@ -51,10 +55,13 @@ public class RestaurantProfileController {
             return profileRepository.save(newProfile);
         });
 
+        System.out.println("🏢 SERVING PROFILE FOR EMAIL: " + email);
         return ResponseEntity.ok(profile);
     }
 
-    // Social Media Style: Update profile with fallback auto-creation
+    /**
+     * Upsert / Update Profile: Updates existing profile data or creates it if the ID is new.
+     */
     @PutMapping("/{id}")
     public ResponseEntity<RestaurantProfile> updateProfile(
             @PathVariable String id, 
