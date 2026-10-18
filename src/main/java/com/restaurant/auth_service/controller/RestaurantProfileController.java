@@ -23,7 +23,7 @@ public class RestaurantProfileController {
 
     /**
      * Social Media Style Lookup: Fetches profile by email.
-     * If it doesn't exist for this email (e.g. ne@gmail.com), it automatically creates 
+     * If it doesn't exist for this email, it automatically creates 
      * and saves a default profile instantly on the fly so the frontend never sees a 404 error.
      */
     @GetMapping("/email/{email}")
@@ -61,6 +61,7 @@ public class RestaurantProfileController {
 
     /**
      * Upsert / Update Profile: Updates existing profile data or creates it if the ID is new.
+     * Safely preserves existing userId and email if not provided in request body.
      */
     @PutMapping("/{id}")
     public ResponseEntity<RestaurantProfile> updateProfile(
@@ -87,6 +88,9 @@ public class RestaurantProfileController {
         }
         if (updatedDetails.getEmail() != null) {
             profile.setEmail(updatedDetails.getEmail());
+        }
+        if (updatedDetails.getUserId() != null) {
+            profile.setUserId(updatedDetails.getUserId());
         }
 
         RestaurantProfile saved = profileRepository.save(profile);
