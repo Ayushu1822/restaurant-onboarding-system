@@ -22,10 +22,6 @@ public class RestaurantProfileController {
     @Autowired
     private UserRepository userRepository;
 
-    /**
-     * Social Media Style Lookup: Fetches profile by email.
-     * Auto-creates a default profile if not found.
-     */
     @GetMapping("/email/{email}")
     public ResponseEntity<RestaurantProfile> getOrCreateProfileByEmail(@PathVariable String email) {
         RestaurantProfile profile = profileRepository.findByEmail(email).orElseGet(() -> {
@@ -58,39 +54,36 @@ public class RestaurantProfileController {
         return ResponseEntity.ok(profile);
     }
 
-    /**
-     * Upsert / Update Profile: Safely updates existing profile or creates one without violating constraints.
-     */
     @PutMapping("/{id}")
-    public ResponseEntity<RestaurantProfile> updateProfile(
+    public ResponseEntity<?> updateProfile(
             @PathVariable String id, 
             @RequestBody RestaurantProfile updatedDetails) {
         
-        // 1. Try finding by ID first
         RestaurantProfile profile = profileRepository.findById(id).orElse(null);
         
-        // 2. If not found by ID, try finding by email
         if (profile == null && updatedDetails.getEmail() != null) {
             profile = profileRepository.findByEmail(updatedDetails.getEmail()).orElse(null);
         }
 
-        // 3. If still not found, initialize new profile safely
         if (profile == null) {
             profile = new RestaurantProfile();
             profile.setRestaurantId(id != null ? id : UUID.randomUUID().toString());
-            profile.setUserId(updatedDetails.getUserId() != null ? updatedDetails.getUserId() : UUID.randomUUID().toString());
-            profile.setEmail(updatedDetails.getEmail() != null ? updatedDetails.getEmail() : "user@restaurant.com");
         }
 
-        // 4. Update fields if provided
+        // Check if phone number is already taken by another restaurant profile
+        if (updatedDetails.getPhoneNumber() != null) {
+            Optional<RestaurantProfile> existingWithPhone = profileRepository.findByPhoneNumber(updatedDetails.getPhoneNumber());
+            if (existingWithPhone.isPresent() && !existingWithPhone.get().getRestaurantId().equals(profile.getRestaurantId())) {
+                return ResponseEntity.badRequest().body("Phone number already exists! Please use a different number.");
+            }
+            profile.setPhoneNumber(updatedDetails.getPhoneNumber());
+        }
+
         if (updatedDetails.getBusinessName() != null) {
             profile.setBusinessName(updatedDetails.getBusinessName());
         }
         if (updatedDetails.getOwnerName() != null) {
             profile.setOwnerName(updatedDetails.getOwnerName());
-        }
-        if (updatedDetails.getPhoneNumber() != null) {
-            profile.setPhoneNumber(updatedDetails.getPhoneNumber());
         }
         if (updatedDetails.getWhatsappNumber() != null) {
             profile.setWhatsappNumber(updatedDetails.getWhatsappNumber());
