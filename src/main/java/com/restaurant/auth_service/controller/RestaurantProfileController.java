@@ -21,17 +21,11 @@ public class RestaurantProfileController {
     @Autowired
     private UserRepository userRepository;
 
-    /**
-     * Social Media Style Lookup: Fetches profile by email.
-     * If it doesn't exist for this email, it automatically creates 
-     * and saves a default profile instantly on the fly so the frontend never sees a 404 error.
-     */
     @GetMapping("/email/{email}")
     public ResponseEntity<RestaurantProfile> getOrCreateProfileByEmail(@PathVariable String email) {
         RestaurantProfile profile = profileRepository.findByEmail(email).orElseGet(() -> {
             System.out.println("🌱 PROFILE NOT FOUND FOR " + email + " — AUTO-CREATING NEW PROFILE...");
             
-            // Look up the user to pull their registered details if available
             User user = userRepository.findByEmail(email).orElse(null);
             
             RestaurantProfile newProfile = new RestaurantProfile();
@@ -59,10 +53,6 @@ public class RestaurantProfileController {
         return ResponseEntity.ok(profile);
     }
 
-    /**
-     * Upsert / Update Profile: Updates existing profile data or creates it if the ID is new.
-     * Safely preserves existing userId and email if not provided in request body.
-     */
     @PutMapping("/{id}")
     public ResponseEntity<RestaurantProfile> updateProfile(
             @PathVariable String id, 
