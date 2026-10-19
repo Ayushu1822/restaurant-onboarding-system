@@ -4,9 +4,11 @@ import com.restaurant.auth_service.model.Order;
 import com.restaurant.auth_service.model.OrderItem;
 import com.restaurant.auth_service.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -22,24 +24,22 @@ public class OrderController {
     public List<Order> getAllOrders() {
         List<Order> allOrders = orderRepository.findAll();
         
-        // FIX 1: Filter out completed, ready, or picked up orders so only active queue shows up
+        // Keep PREPARING and READY visible in the kitchen queue; filter out only COMPLETED/DELIVERED
         List<Order> activeOrders = allOrders.stream().filter(o -> {
             String status = o.getStatus() != null ? o.getStatus().toUpperCase() : "PREPARING";
-            return !status.equals("COMPLETED") && !status.equals("READY") && !status.equals("PICKED UP");
+            return !status.equals("COMPLETED") && !status.equals("DELIVERED") && !status.equals("PICKED UP");
         }).collect(Collectors.toList());
 
-        System.out.println("📦 FETCHED ACTIVE ORDERS — Total Active: " + activeOrders.size() + " (Ignored completed)");
+        System.out.println("📦 FETCHED ACTIVE ORDERS — Total Active: " + activeOrders.size());
         return activeOrders;
     }
 
     @PostMapping
     public Order createOrder(@RequestBody Order newOrder) {
-        // FIX 2: Ensure new orders start with 'Preparing' status for Kitchen Display
         if (newOrder.getStatus() == null || newOrder.getStatus().trim().isEmpty()) {
             newOrder.setStatus("Preparing");
         }
 
-        // FIX 3: Ensure customer name fallback for Counter POS / Walk-in orders
         if (newOrder.getCustomerName() == null || newOrder.getCustomerName().trim().isEmpty()) {
             newOrder.setCustomerName("Walk-In Guest");
         }
@@ -52,15 +52,67 @@ public class OrderController {
         }
         
         Order savedOrder = orderRepository.save(newOrder);
-        System.out.println("✅ NEW ORDER CREATED & SYNCED TO KITCHEN — ID: " + savedOrder.getDisplayId() + " | Channel: " + savedOrder.getChannel());
+        System.out.println("✅ NEW ORDER CREATED — ID: " + savedOrder.getDisplayId() + " | Channel: " + savedOrder.getChannel());
         return savedOrder;
     }
 
-    // 🧹 EMERGENCY WIPE ENDPOINT (You can hit this once via Postman/Browser to clear old 53 test orders)
+    // 🔄 PERMANENT FIX: Endpoint for updating order status (Mark Ready / Complete)
+    @PutMapping("/{id}")
+    public ResponseEntity<Order> updateOrder(@PathVariable String id, @RequestBody Order updatedDetails) {
+        try {
+            Optional<Order> orderOpt = findOrderById(id);
+            if (orderOpt.isPresent()) {
+                Order order = orderOpt.get();
+                if (updatedDetails.getStatus() != null && !updatedDetails.getStatus().trim().isEmpty()) {
+                    order.setStatus(updatedDetails.getStatus());
+                }
+                if (updatedDetails.getCustomerName() != null) {
+                    order.setCustomerName(updatedDetails.getCustomerName());
+                }
+                Order saved = orderRepository.save(order);
+                System.out.println("🔄 ORDER STATUS UPDATED — ID: " + id + " | Status: " + saved.getStatus());
+                return ResponseEntity.ok(saved);
+            }
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            System.err.println("❌ Error updating order: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    // 🗑️ PERMANENT FIX: Endpoint for deleting/dismissing an order
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteOrder(@PathVariable String id) {
+        try {
+            Optional<Order> orderOpt = findOrderById(id);
+            if (orderOpt.isPresent()) {
+                orderRepository.delete(orderOpt.get());
+                System.out.println("🗑️ ORDER DELETED/DISMISSED — ID: " + id);
+                return ResponseEntity.ok().build();
+            }
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            System.err.println("❌ Error deleting order: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    // Helper method to safely find order regardless of whether ID is UUID, Long, or DisplayId String
+    private Optional<Order> findOrderById(String id) {
+        return orderRepository.findAll().stream()
+            .filter(o -> {
+                String oid = o.getId() != null ? o.getId().toString() : "";
+                String dispId = o.getDisplayId() != null ? o.getDisplayId() : "";
+                return oid.equalsIgnoreCase(id) || dispId.equalsIgnoreCase(id);
+            })
+            .findFirst();
+    }
+
+    // 🧹 EMERGENCY WIPE ENDPOINT
     @DeleteMapping("/clear-all")
     public String clearAllOrders() {
         orderRepository.deleteAll();
-        System.out.println("⚠️ DATABASE WIPED: All orders have been deleted via API.");
+        System.out.println("⚠️ DATABASE WIPED: All orders deleted via API.");
         return "SUCCESS: All orders deleted from the active database!";
     }
 }
