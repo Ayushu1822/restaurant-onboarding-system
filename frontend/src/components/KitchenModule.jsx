@@ -145,7 +145,10 @@ export default function KitchenModule() {
           {filteredOrders.map((order, idx) => {
             const orderId = order.id || order.orderId || idx;
             const displayId = order.displayId || order.id || `#KOT-${idx + 1}`;
-            const customerName = order.customerName || 'Valued Guest';
+            
+            // Robust customer name extraction for Counter POS & Online orders
+            const customerName = order.customerName || order.customer_name || order.customer || 'Walk-In Guest';
+            
             const channel = order.channel || order.orderType || 'Online';
             const isCardHovered = hoveredCard === orderId;
 
