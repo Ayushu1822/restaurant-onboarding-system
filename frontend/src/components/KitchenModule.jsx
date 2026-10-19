@@ -5,234 +5,190 @@ const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 export default function KitchenModule() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState('ALL');
-  const [hoveredCard, setHoveredCard] = useState(null);
-  const [hoveredBtn, setHoveredBtn] = useState(null);
-
-  useEffect(() => {
-    fetchKitchenOrders();
-    const interval = setInterval(fetchKitchenOrders, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  const [error, setError] = useState(null);
 
   const fetchKitchenOrders = () => {
     fetch(`${API_BASE_URL}/api/v1/orders`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
-          const activeOrders = data.filter(o => {
-            const st = (o.status || 'Preparing').toUpperCase();
-            return st !== 'READY' && st !== 'COMPLETED' && st !== 'PICKED UP';
-          });
-          setOrders(activeOrders);
+          // Filter to show active kitchen orders (e.g. Preparing, New, Accepted, Ready)
+          setOrders(data);
         }
         setLoading(false);
       })
       .catch(err => {
         console.error("Kitchen orders fetch error:", err);
+        setError("Failed to load kitchen orders");
         setLoading(false);
       });
   };
 
-  const handleMarkReady = (id) => {
-    fetch(`${API_BASE_URL}/api/v1/orders/${id}`, { method: 'DELETE' })
-      .then(() => {
-        setOrders(orders.filter(o => o.id !== id && o.displayId !== id && o.orderId !== id));
+  useEffect(() => {
+    fetchKitchenOrders();
+    const interval = setInterval(fetchKitchenOrders, 10000); // Live poll every 10s
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleUpdateStatus = (orderId, newStatus) => {
+    // Optimistic UI update so it instantly moves / updates without lagging
+    setOrders(prev => prev.map(o => {
+      const oid = o.id || o.orderId;
+      if (oid === orderId) {
+        return { ...o, status: newStatus };
+      }
+      return o;
+    }));
+
+    // Send update to backend API
+    fetch(`${API_BASE_URL}/api/v1/orders/${orderId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    })
+      .then(res => {
+        if (!res.ok) {
+          // Fallback try with query param if patch route differs
+          return fetch(`${API_BASE_URL}/api/v1/orders/${orderId}?status=${newStatus}`, { method: 'PUT' });
+        }
       })
-      .catch(() => {
-        setOrders(orders.filter(o => o.id !== id && o.displayId !== id && o.orderId !== id));
+      .catch(err => {
+        console.log("Status update network fallback or notice:", err);
       });
   };
 
-  const handlePrintKOT = () => window.print();
+  const handleDeleteOrder = (orderId) => {
+    // Optimistic removal from UI
+    setOrders(prev => prev.filter(o => (o.id || o.orderId) !== orderId));
 
-  // Filter orders based on Online vs Counter & Dine-In categories
-  const filteredOrders = orders.filter(o => {
-    const ch = (o.channel || o.orderType || '').toUpperCase();
-    if (activeFilter === 'ALL') return true;
-    
-    // Online category (WhatsApp, Zomato, Swiggy, Online)
-    if (activeFilter === 'ONLINE') {
-      return ch.includes('WHATSAPP') || ch.includes('ZOMATO') || ch.includes('SWIGGY') || ch.includes('ONLINE');
-    }
-    
-    // Counter & Dine-In category (Counter POS, Walk-in, Dine-In, Table)
-    if (activeFilter === 'COUNTER_POS') {
-      return ch.includes('COUNTER') || ch.includes('POS') || ch.includes('WALK') || ch.includes('DINE') || ch.includes('TABLE');
-    }
-    
-    return true;
+    fetch(`${API_BASE_URL}/api/v1/orders/${orderId}`, {
+      method: 'DELETE'
+    }).catch(err => console.log("Delete order error:", err));
+  };
+
+  // Filter only active kitchen orders
+  const activeOrders = orders.filter(o => {
+    const st = (o.status || 'Preparing').toLowerCase();
+    return st !== 'completed' && st !== 'delivered' && st !== 'picked up';
   });
 
   return (
     <div style={styles.container}>
-      
-      {/* Header Bar */}
-      <div style={styles.headerRow}>
+      <div style={styles.header}>
         <div>
-          <h2 style={{margin: 0, fontSize: '22px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.02em'}}>Kitchen Display System (KDS)</h2>
-          <p style={{margin: '4px 0 0 0', fontSize: '13px', color: '#64748b', fontWeight: '500'}}>Live incoming orders sorted by Online & Counter/Dine-In POS</p>
+          <h2 style={{margin: '0 0 4px 0', fontSize: '22px', fontWeight: '900', color: '#0f172a'}}>Kitchen Display System (KDS)</h2>
+          <span style={{fontSize: '12px', color: '#64748b'}}>Live synchronized order preparation queue</span>
         </div>
-
-        {/* Category Filter Tabs */}
-        <div style={styles.filterBar}>
-          {[
-            { key: 'ALL', label: `All (${orders.length})` },
-            { key: 'ONLINE', label: '🌐 Online Orders' },
-            { key: 'COUNTER_POS', label: '💳 Counter & Dine-In POS' }
-          ].map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveFilter(tab.key)}
-              style={{
-                ...styles.filterTabBtn,
-                ...(activeFilter === tab.key ? styles.filterTabActive : {})
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <button onClick={fetchKitchenOrders} style={styles.refreshBtn}>🔄 Refresh Queue</button>
       </div>
 
-      {/* Status Bar */}
-      <div style={styles.statusBar}>
-        <span style={styles.statusPill}>🔥 {filteredOrders.length} Active Tickets in Queue</span>
-        <span style={{color: '#94a3b8'}}>•</span>
-        <span style={{color: '#475569', fontWeight: '600'}}>Auto-syncing every 5 seconds</span>
-      </div>
-
-      {/* Kitchen Ticket Cards Grid */}
       {loading ? (
-        <div style={{textAlign: 'center', padding: '60px', color: '#64748b', fontSize: '14px', fontWeight: '600'}}>Synchronizing live kitchen tickets...</div>
-      ) : filteredOrders.length === 0 ? (
-        <div style={styles.emptyState}>
-          <span style={{fontSize: '48px', marginBottom: '12px'}}>✨</span>
-          <h3 style={{margin: '0 0 6px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a'}}>No orders in this category!</h3>
-          <p style={{margin: 0, fontSize: '13px', color: '#64748b'}}>Kitchen queue is fully caught up.</p>
-        </div>
+        <div style={styles.centerMsg}>Loading live kitchen orders...</div>
+      ) : error ? (
+        <div style={{...styles.centerMsg, color: '#dc2626'}}>{error}</div>
+      ) : activeOrders.length === 0 ? (
+        <div style={styles.centerMsg}>🎉 All kitchen orders are completed! Queue is empty.</div>
       ) : (
-        <div style={styles.ticketsGrid}>
-          {filteredOrders.map((order, idx) => {
-            const orderId = order.id || order.orderId || idx;
-            const displayId = order.displayId || order.id || `#KOT-${idx + 1}`;
-            const customerName = order.customerName || order.customer_name || order.customer || 'Walk-In Guest';
-            const channel = order.channel || order.orderType || 'Online';
-            const isCardHovered = hoveredCard === orderId;
-
-            const getChannelBadgeStyle = (ch) => {
-              const upper = ch.toUpperCase();
-              if (upper.includes('WHATSAPP')) return { bg: '#dcfce7', color: '#166534', border: '#bbf7d0', icon: '🟢' };
-              if (upper.includes('ZOMATO')) return { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5', icon: '🔴' };
-              if (upper.includes('SWIGGY')) return { bg: '#ffedd5', color: '#9a3412', border: '#fed7aa', icon: '🟠' };
-              if (upper.includes('COUNTER') || upper.includes('POS')) return { bg: '#dbeafe', color: '#1e40af', border: '#bfdbfe', icon: '💳' };
-              if (upper.includes('DINE') || upper.includes('TABLE')) return { bg: '#ede9fe', color: '#5b21b6', border: '#ddd6fe', icon: '🪑' };
-              return { bg: '#f1f5f9', color: '#334155', border: '#cbd5e1', icon: '🍽️' };
-            };
-
-            const badgeInfo = getChannelBadgeStyle(channel);
+        <div style={styles.kanbanGrid}>
+          {activeOrders.map((o, idx) => {
+            const orderId = o.id || o.orderId;
+            const displayId = o.displayId || `#ORD-${idx+1}`;
+            const customerName = o.customer || o.customerName || 'Walk-In Guest';
+            const orderType = o.type || o.orderType || 'Dine-In';
+            const channel = o.channel || 'COUNTER';
+            const status = o.status || 'Preparing';
+            const specialNote = o.customerRequest || o.specialNote || '';
+            const items = o.items || [];
 
             return (
-              <div 
-                key={orderId}
-                onMouseEnter={() => setHoveredCard(orderId)}
-                onMouseLeave={() => setHoveredCard(null)}
-                style={{
-                  ...styles.ticketCard,
-                  borderColor: isCardHovered ? '#047857' : '#cbd5e1',
-                  transform: isCardHovered ? 'translateY(-4px)' : 'translateY(0)',
-                  boxShadow: isCardHovered ? '0 16px 30px -10px rgba(4,120,87,0.15)' : '0 4px 12px rgba(0,0,0,0.03)'
-                }}
-              >
-                {/* Ticket Header */}
-                <div>
-                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px'}}>
-                    <div>
-                      <div style={{fontSize: '17px', fontWeight: '900', color: '#0f172a', marginBottom: '4px'}}>{displayId}</div>
-                      <div style={{fontSize: '13px', fontWeight: '800', color: '#047857'}}>👤 {customerName}</div>
-                    </div>
-                    <span style={styles.timeBadge}>🕒 {order.timeAgo || 'Just now'}</span>
+              <div key={orderId || idx} style={styles.orderCard}>
+                <div style={styles.cardHeader}>
+                  <div>
+                    <span style={styles.displayIdBadge}>{displayId}</span>
+                    <span style={styles.channelBadge}>{channel}</span>
                   </div>
-
-                  <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px'}}>
-                    <span style={{
-                      backgroundColor: badgeInfo.bg, 
-                      color: badgeInfo.color, 
-                      border: `1px solid ${badgeInfo.border}`, 
-                      padding: '3px 9px', 
-                      borderRadius: '6px', 
-                      fontSize: '11.5px', 
-                      fontWeight: '800'
-                    }}>
-                      {badgeInfo.icon} {channel}
-                    </span>
-                  </div>
+                  <span style={styles.orderTypeBadge}>{orderType}</span>
                 </div>
 
-                {/* Special Instructions */}
-                {order.orderNotes && (
-                  <div style={styles.orderNotesBox}>
-                    <div style={{fontSize: '10px', fontWeight: '900', color: '#b45309', textTransform: 'uppercase', marginBottom: '2px', letterSpacing: '0.05em'}}>⚠️ Special Instructions</div>
-                    <div style={{fontSize: '12.5px', color: '#78350f', fontWeight: '700', lineHeight: '1.4'}}>{order.orderNotes}</div>
+                <div style={styles.customerInfoBox}>
+                  <div style={{fontWeight: '800', color: '#0f172a', fontSize: '14px'}}>{customerName}</div>
+                  <div style={{fontSize: '11px', color: '#64748b'}}>{o.phone || o.customerPhone || ''}</div>
+                </div>
+
+                {specialNote && (
+                  <div style={styles.noteBox}>
+                    <span style={{fontWeight: '800', color: '#d97706'}}>📝 Special Note:</span> {specialNote}
                   </div>
                 )}
 
-                {/* Items List */}
                 <div style={styles.itemsList}>
-                  {order.items && order.items.map((it, i) => (
-                    <div key={i} style={{marginBottom: i === order.items.length - 1 ? 0 : '10px'}}>
-                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: '14.5px', fontWeight: '900', color: '#0f172a'}}>
-                        <span>{it.itemName || it.name}</span>
-                        <span style={{color: '#047857', background: '#ecfdf5', padding: '1px 8px', borderRadius: '6px', fontSize: '13px'}}>×{it.quantity || it.qty || 1}</span>
-                      </div>
-                      {(it.itemDescription || it.desc) && (
-                        <div style={{fontSize: '12px', color: '#64748b', marginTop: '2px', fontWeight: '600'}}>{it.itemDescription || it.desc}</div>
+                  {items.map((it, iIdx) => (
+                    <div key={iIdx} style={styles.itemRow}>
+                      <span style={styles.itemQty}>{it.quantity || it.qty || 1}x</span>
+                      <span style={styles.itemName}>{it.itemName || it.name}</span>
+                      {it.itemDescription && (
+                        <span style={styles.itemDesc}>({it.itemDescription})</span>
                       )}
                     </div>
                   ))}
                 </div>
 
-                {/* Action Buttons */}
-                <div style={styles.ticketActions}>
-                  <button onClick={handlePrintKOT} style={styles.printKotBtn}>🖨️ KOT</button>
-                  <button 
-                    onClick={() => handleMarkReady(orderId)}
-                    onMouseEnter={() => setHoveredBtn(orderId)}
-                    onMouseLeave={() => setHoveredBtn(null)}
-                    style={{
-                      ...styles.readyBtn,
-                      backgroundColor: hoveredBtn === orderId ? '#065f46' : '#047857',
-                      transform: hoveredBtn === orderId ? 'scale(1.01)' : 'scale(1)'
-                    }}
-                  >
-                    Mark Ready ✓
-                  </button>
+                <div style={styles.cardFooter}>
+                  <div style={{display: 'flex', gap: '8px', width: '100%'}}>
+                    {status === 'Preparing' && (
+                      <button 
+                        onClick={() => handleUpdateStatus(orderId, 'Ready')}
+                        style={styles.readyBtn}
+                      >
+                        ✅ Mark Ready
+                      </button>
+                    )}
+                    {status === 'Ready' && (
+                      <button 
+                        onClick={() => handleUpdateStatus(orderId, 'Completed')}
+                        style={styles.completeBtn}
+                      >
+                        🚀 Complete Order
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => handleDeleteOrder(orderId)}
+                      style={styles.clearCardBtn}
+                      title="Clear / Dismiss"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
       )}
-
     </div>
   );
 }
 
 const styles = {
-  container: { padding: '24px 30px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', overflowY: 'auto', paddingBottom: '90px' },
-  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '15px' },
-  filterBar: { display: 'flex', gap: '8px', background: '#e2e8f0', padding: '4px', borderRadius: '10px' },
-  filterTabBtn: { background: 'transparent', border: 'none', padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', color: '#475569', cursor: 'pointer', transition: 'all 0.2s' },
-  filterTabActive: { background: '#fff', color: '#0f172a', boxShadow: '0 2px 5px rgba(0,0,0,0.08)' },
-  statusBar: { fontSize: '13px', color: '#334155', fontWeight: '700', marginBottom: '22px', display: 'flex', gap: '8px', alignItems: 'center' },
-  statusPill: { background: '#ecfdf5', color: '#047857', padding: '4px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '800', border: '1px solid #a7f3d0' },
-  ticketsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' },
-  ticketCard: { background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', transition: 'all 0.2s ease' },
-  timeBadge: { background: '#f1f5f9', color: '#475569', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '800' },
-  orderNotesBox: { background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: '10px', padding: '10px 12px', marginBottom: '14px' },
-  itemsList: { flex: 1, borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', padding: '12px 0', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' },
-  ticketActions: { display: 'flex', gap: '10px', alignItems: 'center' },
-  printKotBtn: { background: '#f1f5f9', color: '#334155', border: '1.5px solid #cbd5e1', padding: '10px 14px', borderRadius: '9px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' },
-  readyBtn: { flex: 1, color: '#fff', border: 'none', padding: '10px 14px', borderRadius: '9px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' },
-  emptyState: { textAlign: 'center', padding: '70px 20px', background: '#fff', borderRadius: '16px', border: '2px dashed #cbd5e1' }
+  container: { display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', backgroundColor: '#f8fafc', overflowY: 'auto', boxSizing: 'border-box' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' },
+  refreshBtn: { backgroundColor: '#fff', border: '1.5px solid #cbd5e1', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', color: '#334155' },
+  centerMsg: { textAlign: 'center', padding: '60px', color: '#64748b', fontSize: '15px', fontWeight: '600' },
+  kanbanGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' },
+  orderCard: { backgroundColor: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '18px', display: 'flex', flexDirection: 'column', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)', textAlign: 'left' },
+  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' },
+  displayIdBadge: { backgroundColor: '#0f172a', color: '#fff', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '800', marginRight: '6px' },
+  channelBadge: { backgroundColor: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase' },
+  orderTypeBadge: { backgroundColor: '#dcfce7', color: '#15803d', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800' },
+  customerInfoBox: { backgroundColor: '#f8fafc', padding: '10px 12px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #f1f5f9' },
+  noteBox: { backgroundColor: '#fffbeb', border: '1px solid #fde68a', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginBottom: '12px', color: '#b45309' },
+  itemsList: { flex: 1, marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #f1f5f9', paddingTop: '10px' },
+  itemRow: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' },
+  itemQty: { fontWeight: '900', color: '#047857', minWidth: '24px' },
+  itemName: { fontWeight: '700', color: '#0f172a', flex: 1 },
+  itemDesc: { fontSize: '11px', color: '#d97706', fontStyle: 'italic' },
+  cardFooter: { borderTop: '1px solid #f1f5f9', paddingTop: '12px' },
+  readyBtn: { flex: 1, backgroundColor: '#047857', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(4,120,87,0.2)' },
+  completeBtn: { flex: '1', backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '800', fontSize: '13px', cursor: 'pointer' },
+  clearCardBtn: { backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '10px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' }
 };
