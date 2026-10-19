@@ -9,8 +9,6 @@ const AGE_GROUPS = [
 
 export default function CounterPOS() {
   const [orderType, setOrderType] = useState(null); // 'Dine-In' or 'Takeaway'
-  const [selectedTable, setSelectedTable] = useState('T1');
-  const [tablesList, setTablesList] = useState([]);
 
   const [hoveredCard, setHoveredCard] = useState(null);
   const [hoveredBtn, setHoveredBtn] = useState(null);
@@ -19,6 +17,7 @@ export default function CounterPOS() {
   const [menuItems, setMenuItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState([]);
+  const [specialNote, setSpecialNote] = useState(''); // 📝 Special Note / Instructions state
   
   // Identical Customer Form State matching CustomersModule
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -48,11 +47,6 @@ export default function CounterPOS() {
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setSavedCustomers(data); })
       .catch(err => console.log("Customers fetch error:", err));
-
-    fetch(`${API_BASE_URL}/api/v1/tables`)
-      .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setTablesList(data); })
-      .catch(err => console.log("Tables fetch error:", err));
   }, []);
 
   const handlePhoneLookup = (phone) => {
@@ -153,17 +147,18 @@ export default function CounterPOS() {
       customerEmail,
       orderType: orderType,
       channel: 'COUNTER',
-      deliveryAddress: orderType === 'Dine-In' ? `Table: ${selectedTable}` : (address || 'Takeaway Counter'),
+      deliveryAddress: orderType === 'Dine-In' ? 'Dine-In Counter Service' : 'Takeaway Counter',
+      customerRequest: specialNote || '', // 📝 Special note saved here
       paymentMethod,
       paymentStatus: 'PAID',
-      status: 'Preparing', // ✅ FIXED: Set to Preparing so it instantly appears in Kitchen & Active Orders
+      status: 'Preparing', // Appears instantly in Kitchen & Active Orders
       subtotal: subtotal,
       totalAmount: totalAmount,
       items: cart.map(item => ({
         itemName: item.name,
         quantity: item.qty,
         unitPrice: item.price,
-        itemDescription: ''
+        itemDescription: specialNote || ''
       }))
     };
 
@@ -226,7 +221,7 @@ export default function CounterPOS() {
             >
               <span style={{fontSize: '36px', marginBottom: '10px'}}>🪑</span>
               <div style={{fontSize: '16px', fontWeight: '800', color: '#0f172a'}}>DINE IN</div>
-              <div style={{fontSize: '11px', color: '#64748b', marginTop: '4px'}}>Restaurant Table Service</div>
+              <div style={{fontSize: '11px', color: '#64748b', marginTop: '4px'}}>Table Service Counter</div>
             </div>
 
             <div 
@@ -262,23 +257,6 @@ export default function CounterPOS() {
             <span style={{fontSize: '12px', color: '#64748b'}}>Live Menu Synchronized</span>
           </div>
           <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
-            {orderType === 'Dine-In' && (
-              <select 
-                style={styles.tableSelectDropdown}
-                value={selectedTable}
-                onChange={e => setSelectedTable(e.target.value)}
-              >
-                {tablesList.length > 0 ? (
-                  tablesList.map(t => <option key={t.tableId} value={t.tableId}>Table {t.tableId} ({t.section})</option>)
-                ) : (
-                  <>
-                    <option value="T1">Table T1</option>
-                    <option value="T2">Table T2</option>
-                    <option value="T3">Table T3</option>
-                  </>
-                )}
-              </select>
-            )}
             <input 
               style={styles.searchBar}
               placeholder="🔍 Search dishes or categories..."
@@ -401,7 +379,7 @@ export default function CounterPOS() {
 
         <div style={styles.cartItemsList}>
           {cart.length === 0 ? (
-            <div style={{textAlign: 'center', color: '#94a3b8', padding: '40px 0', fontSize: '13px'}}>Cart is empty. Tap menu items.</div>
+            <div style={{textAlign: 'center', color: '#94a3b8', padding: '30px 0', fontSize: '13px'}}>Cart is empty. Tap menu items.</div>
           ) : (
             cart.map(item => (
               <div key={item.id} style={styles.cartItemRow}>
@@ -418,6 +396,17 @@ export default function CounterPOS() {
               </div>
             ))
           )}
+        </div>
+
+        {/* 📝 Special Note / Customer Instructions Input Box */}
+        <div style={{marginTop: '10px', marginBottom: '10px'}}>
+          <label style={{fontSize: '11px', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '4px'}}>SPECIAL NOTE / KITCHEN INSTRUCTION</label>
+          <input 
+            style={styles.specialNoteInput}
+            placeholder="e.g. Less spicy, Extra cheese..."
+            value={specialNote}
+            onChange={e => setSpecialNote(e.target.value)}
+          />
         </div>
 
         <div style={styles.cartFooter}>
@@ -626,7 +615,10 @@ export default function CounterPOS() {
 
             <div style={{fontSize: '13px', marginBottom: '14px', lineHeight: '1.6'}}>
               <div><strong>Customer:</strong> {lastCompletedOrder.customerName} ({lastCompletedOrder.customerPhone})</div>
-              <div><strong>Fulfillment:</strong> {lastCompletedOrder.orderType} {lastCompletedOrder.deliveryAddress}</div>
+              <div><strong>Fulfillment:</strong> {lastCompletedOrder.orderType} ({lastCompletedOrder.deliveryAddress})</div>
+              {lastCompletedOrder.customerRequest && (
+                <div><strong>Note:</strong> <span style={{color: '#d97706', fontWeight: '700'}}>{lastCompletedOrder.customerRequest}</span></div>
+              )}
               <div><strong>Payment Mode:</strong> {lastCompletedOrder.paymentMethod} (PAID)</div>
             </div>
 
@@ -648,7 +640,7 @@ export default function CounterPOS() {
               <button onClick={() => window.print()} style={{flex: 1, background: '#047857', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(4,120,87,0.3)'}}>
                 🖨️ Print Bill
               </button>
-              <button onClick={() => { setLastCompletedOrder(null); setCart([]); setCustomerPhone(''); setCustomerName(''); setOrderType(null); }} style={{flex: 1, background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer'}}>
+              <button onClick={() => { setLastCompletedOrder(null); setCart([]); setCustomerPhone(''); setCustomerName(''); setSpecialNote(''); setOrderType(null); }} style={{flex: 1, background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer'}}>
                 New Order
               </button>
             </div>
@@ -668,7 +660,6 @@ const styles = {
   menuSection: { flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', overflowY: 'hidden' },
   posHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '15px' },
   searchBar: { width: '280px', padding: '10px 15px', borderRadius: '8px', border: '1.5px solid #cbd5e1', background: '#fff', fontSize: '13px', transition: 'all 0.2s', outline: 'none' },
-  tableSelectDropdown: { padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #10b981', background: '#ecfdf5', fontWeight: '700', color: '#065f46', fontSize: '13px', cursor: 'pointer' },
   switchModeBtn: { border: '1px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' },
   scrollableMenuArea: { flex: 1, overflowY: 'auto', paddingBottom: '20px' },
   categoryTitle: { fontSize: '12px', fontWeight: '800', color: '#64748b', letterSpacing: '0.06em', marginBottom: '10px', textTransform: 'uppercase' },
@@ -676,18 +667,19 @@ const styles = {
   menuCard: { background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px', cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
   cartSidebar: { width: '380px', background: '#fff', borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '24px', boxSizing: 'border-box', flexShrink: '0' },
   addCustomerBtn: { border: '1px solid #10b981', padding: '7px 14px', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' },
+  specialNoteInput: { width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1.5px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box', background: '#fff', outline: 'none' },
   inputField: { width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box', marginBottom: '10px', background: '#fff', outline: 'none' },
   cartItemsList: { flex: 1, overflowY: 'auto', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', padding: '10px 0', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'left' },
   cartItemRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', padding: '8px 10px', borderRadius: '8px' },
   qtyBtn: { background: '#e2e8f0', border: 'none', width: '24px', height: '24px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.2s' },
-  cartFooter: { paddingTop: '15px' },
+  cartFooter: { paddingTop: '10px' },
   checkoutBtn: { width: '100%', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
   customerModalCard: { width: '480px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' },
   modalLabel: { fontSize: '11px', fontWeight: '700', display: 'block', marginBottom: '3px', textAlign: 'left', color: '#334155' },
   closeXBtn: { background: 'none', border: 'none', fontSize: '16px', fontWeight: 'bold', color: '#64748b', cursor: 'pointer' },
   saveCustomerBtn: { width: '100%', background: '#047857', color: '#fff', border: 'none', padding: '11px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s', marginTop: '5px' },
-  recentSearchInput: { width: '110px', padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none' },
+  recentSearchInput: { width: '110px', padding: '4px 8px', borderRadius: '6px', border: '1.5px solid #cbd5e1', fontSize: '11px', outline: 'none' },
   recentCustomerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', border: '1px solid #e2e8f0', transition: 'all 0.15s' },
   deleteCustomerBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: '4px', borderRadius: '4px' },
   receiptCard: { width: '400px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'left', fontFamily: 'monospace', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' }
