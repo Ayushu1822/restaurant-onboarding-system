@@ -30,7 +30,7 @@ export default function KitchenModule() {
   }, []);
 
   const handleUpdateStatus = (orderId, newStatus) => {
-    // 1. Optimistic UI update instantly so it never reverts or jumps back
+    // 1. Instantly update UI state so it never reverts or jumps back
     setOrders(prev => prev.map(o => {
       const oid = o.id || o.orderId || o.displayId;
       if (oid === orderId || o.displayId === orderId) {
@@ -39,14 +39,18 @@ export default function KitchenModule() {
       return o;
     }));
 
-    // 2. Safe background sync to backend API (caught to prevent 404 breaking UI)
-    fetch(`${API_BASE_URL}/api/v1/orders/${orderId}/status`, {
-      method: 'PATCH',
+    // 2. Send standard REST update to backend (PUT /api/v1/orders/:id)
+    fetch(`${API_BASE_URL}/api/v1/orders/${orderId}`, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus })
     }).catch(() => {
-      // Fallback request
-      fetch(`${API_BASE_URL}/api/v1/orders/${orderId}?status=${newStatus}`, { method: 'PUT' }).catch(() => {});
+      // Fallback patch attempt
+      fetch(`${API_BASE_URL}/api/v1/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      }).catch(() => {});
     });
   };
 
