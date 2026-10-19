@@ -122,11 +122,13 @@ export default function Dashboard({ user, onLogout }) {
         let orderList = Array.isArray(data) ? data : [];
         setIsOrdersFallback(false);
         
-        // Strict Online Orders Filter (excluding COUNTER, POS, WALK-IN)
+        // Flexible Online Orders Filter (hides only explicit counter/POS orders)
         const onlineOnlyList = orderList.filter(o => {
-          const ch = (o.channel || '').toUpperCase();
-          const type = (o.orderType || '').toUpperCase();
-          return ch !== 'COUNTER' && ch !== 'POS' && ch !== 'WALK-IN' && type !== 'DINE-IN' && type !== 'TAKEAWAY';
+          const ch = (o.channel || o.orderType || '').toUpperCase();
+          if (ch.includes('COUNTER') || ch.includes('POS') || ch.includes('WALK-IN')) {
+            return false;
+          }
+          return true;
         });
 
         const formattedOrders = onlineOnlyList.map((o, index) => {
@@ -159,7 +161,7 @@ export default function Dashboard({ user, onLogout }) {
         });
 
         setOrders(formattedOrders);
-        if (formattedOrders.length > 0) setSelectedOrder(formattedOrders[0]);
+        if (formattedOrders.length > 0 && !selectedOrder) setSelectedOrder(formattedOrders[0]);
         setLoadingOrders(false);
       })
       .catch(err => {
@@ -178,7 +180,7 @@ export default function Dashboard({ user, onLogout }) {
       body: JSON.stringify({
         businessName: editForm.businessName,
         ownerName: editForm.ownerName,
-        phoneNumber: editForm.phone, // locked phone number
+        phoneNumber: editForm.phone,
         whatsappNumber: editForm.whatsappNumber
       })
     })
