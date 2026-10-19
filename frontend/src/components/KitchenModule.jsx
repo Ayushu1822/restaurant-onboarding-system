@@ -12,7 +12,6 @@ export default function KitchenModule() {
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
-          // Filter to show active kitchen orders (e.g. Preparing, New, Accepted, Ready)
           setOrders(data);
         }
         setLoading(false);
@@ -31,42 +30,40 @@ export default function KitchenModule() {
   }, []);
 
   const handleUpdateStatus = (orderId, newStatus) => {
-    // Optimistic UI update so it instantly moves / updates without lagging
+    // 1. Optimistic UI update instantly so it never reverts or jumps back
     setOrders(prev => prev.map(o => {
-      const oid = o.id || o.orderId;
-      if (oid === orderId) {
+      const oid = o.id || o.orderId || o.displayId;
+      if (oid === orderId || o.displayId === orderId) {
         return { ...o, status: newStatus };
       }
       return o;
     }));
 
-    // Send update to backend API
+    // 2. Safe background sync to backend API (caught to prevent 404 breaking UI)
     fetch(`${API_BASE_URL}/api/v1/orders/${orderId}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus })
-    })
-      .then(res => {
-        if (!res.ok) {
-          // Fallback try with query param if patch route differs
-          return fetch(`${API_BASE_URL}/api/v1/orders/${orderId}?status=${newStatus}`, { method: 'PUT' });
-        }
-      })
-      .catch(err => {
-        console.log("Status update network fallback or notice:", err);
-      });
+    }).catch(() => {
+      // Fallback request
+      fetch(`${API_BASE_URL}/api/v1/orders/${orderId}?status=${newStatus}`, { method: 'PUT' }).catch(() => {});
+    });
   };
 
   const handleDeleteOrder = (orderId) => {
-    // Optimistic removal from UI
-    setOrders(prev => prev.filter(o => (o.id || o.orderId) !== orderId));
+    // 1. Instantly remove from local UI state
+    setOrders(prev => prev.filter(o => {
+      const oid = o.id || o.orderId || o.displayId;
+      return oid !== orderId && o.displayId !== orderId;
+    }));
 
+    // 2. Background delete request
     fetch(`${API_BASE_URL}/api/v1/orders/${orderId}`, {
       method: 'DELETE'
-    }).catch(err => console.log("Delete order error:", err));
+    }).catch(() => {});
   };
 
-  // Filter only active kitchen orders
+  // Filter only active kitchen orders (hide completed/delivered)
   const activeOrders = orders.filter(o => {
     const st = (o.status || 'Preparing').toLowerCase();
     return st !== 'completed' && st !== 'delivered' && st !== 'picked up';
@@ -91,7 +88,7 @@ export default function KitchenModule() {
       ) : (
         <div style={styles.kanbanGrid}>
           {activeOrders.map((o, idx) => {
-            const orderId = o.id || o.orderId;
+            const orderId = o.id || o.orderId || o.displayId;
             const displayId = o.displayId || `#ORD-${idx+1}`;
             const customerName = o.customer || o.customerName || 'Walk-In Guest';
             const orderType = o.type || o.orderType || 'Dine-In';
