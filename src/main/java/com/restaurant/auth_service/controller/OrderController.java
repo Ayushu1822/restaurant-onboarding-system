@@ -24,7 +24,7 @@ public class OrderController {
     public List<Order> getAllOrders() {
         List<Order> allOrders = orderRepository.findAll();
         
-        // Keep PREPARING and READY visible in the kitchen queue; filter out only COMPLETED/DELIVERED
+        // Keep PREPARING and READY visible in the kitchen queue; filter out only COMPLETED, DELIVERED, PICKED UP
         List<Order> activeOrders = allOrders.stream().filter(o -> {
             String status = o.getStatus() != null ? o.getStatus().toUpperCase() : "PREPARING";
             return !status.equals("COMPLETED") && !status.equals("DELIVERED") && !status.equals("PICKED UP");
@@ -97,11 +97,11 @@ public class OrderController {
         }
     }
 
-    // Helper method to safely find order regardless of whether ID is UUID, Long, or DisplayId String
+    // Helper method using getOrderId() instead of getId()
     private Optional<Order> findOrderById(String id) {
         return orderRepository.findAll().stream()
             .filter(o -> {
-                String oid = o.getId() != null ? o.getId().toString() : "";
+                String oid = o.getOrderId() != null ? o.getOrderId().toString() : "";
                 String dispId = o.getDisplayId() != null ? o.getDisplayId() : "";
                 return oid.equalsIgnoreCase(id) || dispId.equalsIgnoreCase(id);
             })
