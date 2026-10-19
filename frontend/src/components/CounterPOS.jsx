@@ -156,7 +156,7 @@ export default function CounterPOS() {
       deliveryAddress: orderType === 'Dine-In' ? `Table: ${selectedTable}` : (address || 'Takeaway Counter'),
       paymentMethod,
       paymentStatus: 'PAID',
-      status: 'Completed',
+      status: 'Preparing', // ✅ FIXED: Set to Preparing so it instantly appears in Kitchen & Active Orders
       subtotal: subtotal,
       totalAmount: totalAmount,
       items: cart.map(item => ({
@@ -303,7 +303,7 @@ export default function CounterPOS() {
           </div>
         </div>
 
-        {/* Categorized Rectangular Card Grid matching Screenshot */}
+        {/* Categorized Rectangular Card Grid */}
         <div style={styles.scrollableMenuArea}>
           {filteredMenu.length === 0 ? (
             <div style={{textAlign: 'center', padding: '60px', color: '#64748b'}}>
@@ -470,7 +470,7 @@ export default function CounterPOS() {
         </div>
       </div>
 
-      {/* Identical Customer Form Modal Matching CustomersModule */}
+      {/* Customer Form Modal */}
       {showCustomerModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.customerModalCard}>
@@ -614,7 +614,7 @@ export default function CounterPOS() {
         </div>
       )}
 
-      {/* Larger Thermal Bill Print Modal */}
+      {/* Bill Print Modal */}
       {lastCompletedOrder && (
         <div style={styles.modalOverlay}>
           <div style={styles.receiptCard}>
@@ -672,7 +672,6 @@ const styles = {
   switchModeBtn: { border: '1px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' },
   scrollableMenuArea: { flex: 1, overflowY: 'auto', paddingBottom: '20px' },
   categoryTitle: { fontSize: '12px', fontWeight: '800', color: '#64748b', letterSpacing: '0.06em', marginBottom: '10px', textTransform: 'uppercase' },
-  // Wide Rectangular Grid Layout matching Screenshot
   menuGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' },
   menuCard: { background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px', cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
   cartSidebar: { width: '380px', background: '#fff', borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '24px', boxSizing: 'border-box', flexShrink: '0' },
