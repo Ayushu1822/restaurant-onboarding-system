@@ -10,6 +10,7 @@ export default function ReportsModule() {
   const [dateRange, setDateRange] = useState('today'); // 'today', 'yesterday', 'month', 'year'
   const [orderChannelFilter, setOrderChannelFilter] = useState('ALL'); // 'ALL', 'TABLE', 'COUNTER', 'ONLINE'
   const [selectedCaptainFilter, setSelectedCaptainFilter] = useState('ALL'); // 'ALL' or specific captain name
+  const [analyticsCategoryFilter, setAnalyticsCategoryFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCustomerHistory, setSelectedCustomerHistory] = useState(null);
 
@@ -45,12 +46,12 @@ export default function ReportsModule() {
     const cName = customerName || '';
     if (cName.includes('(') && cName.includes(')')) {
       const match = cName.match(/\(([^)]+)\)/);
-      if (match) return match[1];
+      if (match) return match[1].trim();
     }
-    return 'Unassigned / Counter';
+    return null;
   };
 
-  const allCaptains = ['ALL', ...new Set(orders.map(o => extractCaptain(o.customerName)))];
+  const allCaptains = ['ALL', ...new Set(orders.map(o => extractCaptain(o.customerName)).filter(Boolean))];
 
   // Filtering logic
   const filteredOrders = orders.filter((o, idx) => {
@@ -103,22 +104,35 @@ export default function ReportsModule() {
     return st !== 'completed' && st !== 'delivered' && st !== 'picked up';
   });
 
+  // STRICT REAL HISTORY (Only completed, delivered, or picked up)
   const completedHistoryOrders = filteredOrders.filter(o => {
     const st = (o.status || 'New').toLowerCase();
     return st === 'completed' || st === 'delivered' || st === 'picked up';
   });
 
-  const totalRevenue = filteredOrders.reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0);
-  const totalOrdersCount = filteredOrders.length;
+  const analyticsOrders = filteredOrders.filter(o => {
+    if (analyticsCategoryFilter === 'ALL') return true;
+    const channel = (o.channel || 'COUNTER').toUpperCase();
+    const disp = (o.displayId || '').toUpperCase();
+    if (analyticsCategoryFilter === 'TABLE') return disp.includes('TABLE');
+    if (analyticsCategoryFilter === 'COUNTER') return channel === 'COUNTER' && !disp.includes('TABLE');
+    if (analyticsCategoryFilter === 'ONLINE') return channel === 'ZOMATO' || channel === 'SWIGGY' || channel === 'WHATSAPP';
+    return true;
+  });
+
+  const totalRevenue = analyticsOrders.reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0);
+  const totalOrdersCount = analyticsOrders.length;
 
   const captainMap = {};
   orders.forEach(o => {
     const capName = extractCaptain(o.customerName);
-    if (!captainMap[capName]) {
-      captainMap[capName] = { orderCount: 0, revenue: 0 };
+    if (capName) {
+      if (!captainMap[capName]) {
+        captainMap[capName] = { orderCount: 0, revenue: 0 };
+      }
+      captainMap[capName].orderCount += 1;
+      captainMap[capName].revenue += Number(o.totalAmount || 0);
     }
-    captainMap[capName].orderCount += 1;
-    captainMap[capName].revenue += Number(o.totalAmount || 0);
   });
 
   const downloadCSV = (filename, rows, headers) => {
@@ -147,16 +161,17 @@ export default function ReportsModule() {
   };
 
   const exportCompletedHistory = () => {
-    const headers = ["Order ID", "Customer Name", "Type", "Status", "Total Amount", "Completion Timestamp"];
+    const headers = ["Order ID", "Customer Name", "Captain", "Type", "Status", "Total Amount", "Timestamp"];
     const rows = completedHistoryOrders.map((o, i) => [
       o.displayId || o.orderId || 'N/A',
       `"${o.customerName || 'Walk-In'}"`,
+      extractCaptain(o.customerName) || 'None',
       o.orderType || 'Dine-In',
       o.status || 'Completed',
       o.totalAmount || 0,
       getSafeTimestamp(o, i).toISOString()
     ]);
-    downloadCSV(`completed_orders_history_${dateRange}.csv`, rows, headers);
+    downloadCSV(`completed_history_${dateRange}.csv`, rows, headers);
   };
 
   const customerHistoryMap = {};
@@ -172,7 +187,7 @@ export default function ReportsModule() {
         <div>
           <h2 style={{ fontSize: '26px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Reports & Analytics Hub</h2>
           <p style={{ color: '#64748b', fontSize: '13px', margin: '4px 0 0 0', fontWeight: '700' }}>
-            Captain performance tracking, category filters, date ranges, and completed order histories
+            Real completed order histories, assigned captain revenue tracking, and category filters
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -258,7 +273,7 @@ export default function ReportsModule() {
                 {activeBreakdownOrders.map((o, idx) => {
                   const dateStr = getSafeTimestamp(o, idx).toLocaleString();
                   const cName = o.customerName || 'Walk-In Guest';
-                  const captain = extractCaptain(o.customerName);
+                  const captain = extractCaptain(o.customerName) || 'Counter / Unassigned';
                   return (
                     <tr key={idx} style={styles.tableRow}>
                       <td style={styles.td}><strong style={{ color: '#0f172a' }}>{o.displayId || o.orderId || 'N/A'}</strong></td>
@@ -291,23 +306,25 @@ export default function ReportsModule() {
       {/* ========================================== */}
       {/* 2. CAPTAIN PERFORMANCE SECTION */}
       {/* ========================================== */}
-      <div style={styles.sectionCard}>
-        <h3 style={{ margin: '0 0 14px 0', fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>
-          🧑‍✈️ Captain Performance & Revenue Generation
-        </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
-          {Object.keys(captainMap).map((capName, cIdx) => (
-            <div key={cIdx} style={{ background: '#f8fafc', padding: '16px', borderRadius: '14px', border: '2px solid #e2e8f0' }}>
-              <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a', marginBottom: '6px' }}>🧑‍✈️ {capName}</div>
-              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800' }}>Orders Processed: <strong style={{ color: '#2563eb' }}>{captainMap[capName].orderCount}</strong></div>
-              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', marginTop: '4px' }}>Revenue Generated: <strong style={{ color: '#059669' }}>₹{captainMap[capName].revenue}</strong></div>
-            </div>
-          ))}
+      {Object.keys(captainMap).length > 0 && (
+        <div style={styles.sectionCard}>
+          <h3 style={{ margin: '0 0 14px 0', fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>
+            🧑‍✈️ Captain Performance & Revenue Generation
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
+            {Object.keys(captainMap).map((capName, cIdx) => (
+              <div key={cIdx} style={{ background: '#f8fafc', padding: '16px', borderRadius: '14px', border: '2px solid #e2e8f0' }}>
+                <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a', marginBottom: '6px' }}>🧑‍✈️ {capName}</div>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800' }}>Orders Processed: <strong style={{ color: '#2563eb' }}>{captainMap[capName].orderCount}</strong></div>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', marginTop: '4px' }}>Revenue Generated: <strong style={{ color: '#059669' }}>₹{captainMap[capName].revenue}</strong></div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ========================================== */}
-      {/* 3. COMPLETED ORDERS HISTORY SECTION */}
+      {/* 3. REAL COMPLETED ORDERS HISTORY SECTION */}
       {/* ========================================== */}
       <div style={styles.sectionCard}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -318,13 +335,13 @@ export default function ReportsModule() {
         </div>
 
         {completedHistoryOrders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px', fontWeight: '800' }}>No completed order archives found. Ensure order status is marked as 'Completed' or 'Delivered'.</div>
+          <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px', fontWeight: '800' }}>No real history orders found. Orders will appear here only after status is marked as 'Completed' or 'Delivered'.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {completedHistoryOrders.map((o, idx) => {
               const dateStr = getSafeTimestamp(o, idx).toLocaleString();
               const items = o.items || [];
-              const captain = extractCaptain(o.customerName);
+              const captain = extractCaptain(o.customerName) || 'Counter / Unassigned';
               return (
                 <div key={idx} style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
@@ -339,7 +356,7 @@ export default function ReportsModule() {
                       <div style={{ fontSize: '11px', color: '#2563eb', fontWeight: '900' }}>{o.status}</div>
                     </div>
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', marginBottom: '8px' }}>🕒 Completed at: {dateStr}</div>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', marginBottom: '8px' }}>🕒 Timestamp: {dateStr}</div>
                   
                   {/* Item Breakdown List */}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
@@ -361,10 +378,22 @@ export default function ReportsModule() {
       </div>
 
       {/* ========================================== */}
-      {/* 4. REVENUE SUMMARY & PIE CHART */}
+      {/* 4. ANALYTICS SECTION WITH CATEGORY DROPDOWN */}
       {/* ========================================== */}
       <div style={styles.sectionCard}>
-        <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>📊 Revenue Summary & Distribution</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>📊 Revenue Summary & Distribution</h3>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b' }}>Analytics Filter:</label>
+            <select value={analyticsCategoryFilter} onChange={e => setAnalyticsCategoryFilter(e.target.value)} style={{ ...styles.select, padding: '6px 10px', fontSize: '12px' }}>
+              <option value="ALL">All Categories</option>
+              <option value="TABLE">Table Orders</option>
+              <option value="COUNTER">Counter POS</option>
+              <option value="ONLINE">Online Orders</option>
+            </select>
+          </div>
+        </div>
 
         <div style={styles.metricsGrid}>
           <div style={styles.metricCard}>
@@ -384,7 +413,7 @@ export default function ReportsModule() {
         </div>
 
         <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '1.5px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          {filteredOrders.length === 0 ? (
+          {analyticsOrders.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontWeight: '800' }}>No revenue distribution data for this filter.</div>
           ) : (
             <>
