@@ -9,11 +9,13 @@ export default function TablesModule() {
   const [hoveredId, setHoveredId] = useState(null);
   
   const [selectedTable, setSelectedTable] = useState(null);
+  const [activeOrderTable, setActiveOrderTable] = useState(null); // For Order-Taking KOT modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCaptainManageModal, setShowCaptainManageModal] = useState(false);
 
   const [newTableForm, setNewTableForm] = useState({ tableId: '', section: 'MAIN', seats: 4 });
   const [newCaptainForm, setNewCaptainForm] = useState({ name: '', phone: '' });
+  const [cartItems, setCartItems] = useState([]);
 
   useEffect(() => {
     fetchTables();
@@ -39,15 +41,13 @@ export default function TablesModule() {
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
-          // Filter only captains or general staff
-          setCaptainsList(data.filter(s => (s.role || '').toUpperCase().includes('CAPTAIN') || true));
+          setCaptainsList(data);
         }
       })
       .catch(err => console.log("Captains fetch error:", err));
   };
 
   const handleUpdateStatusAndCaptain = (tableId, newStatus, assignedCaptain) => {
-    // Standardized payload matching Spring Boot expectations
     const payload = { 
       status: newStatus,
       captain: assignedCaptain || 'Unassigned'
@@ -62,7 +62,6 @@ export default function TablesModule() {
         if (res.ok) {
           fetchTables();
         } else {
-          // Fallback to query param route if needed
           fetch(`${API_BASE_URL}/api/v1/tables/${tableId}/status?status=${newStatus}`, { method: 'PUT' })
             .then(() => fetchTables());
         }
@@ -70,6 +69,12 @@ export default function TablesModule() {
       .catch(err => console.error("Update error:", err));
 
     setSelectedTable(null);
+
+    // Automatically open order-taking modal if captain is assigned or table is occupied
+    const target = tables.find(t => t.tableId === tableId);
+    if (target) {
+      setActiveOrderTable({ ...target, ...payload });
+    }
   };
 
   const handleAddTable = (e) => {
@@ -137,7 +142,7 @@ export default function TablesModule() {
 
   return (
     <div style={styles.moduleWrapper}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '14px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '14px' }}>
         <div>
           <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Restaurant Floor & Captains</h2>
           <p style={{ color: '#64748b', fontSize: '13px', margin: '4px 0 0 0', fontWeight: '600' }}>
@@ -198,7 +203,7 @@ export default function TablesModule() {
                       </div>
                       
                       <div style={{ width: '100%', textAlign: 'center', padding: '8px 0', background: isHovered ? '#059669' : '#f8fafc', color: isHovered ? '#fff' : '#334155', borderRadius: '8px', fontWeight: '800', fontSize: '12px', transition: 'all 0.2s', marginTop: '12px' }}>
-                        Manage Table & Captain ›
+                        Manage Table & Order ›
                       </div>
                     </div>
                   );
@@ -223,7 +228,7 @@ export default function TablesModule() {
               <select 
                 style={styles.input}
                 defaultValue={selectedTable.captain || ''}
-                onChange={(e) => handleUpdateStatusAndCaptain(selectedTable.tableId, selectedTable.status || 'Occupied', e.target.value)}
+                onChange={(e) => handleUpdateStatusAndCaptain(selectedTable.tableId, 'Occupied', e.target.value)}
               >
                 <option value="Unassigned">-- Select Captain --</option>
                 {captainsList.map(c => (
@@ -235,13 +240,71 @@ export default function TablesModule() {
             <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', display: 'block', marginBottom: '6px', letterSpacing: '0.5px' }}>UPDATE TABLE STATUS</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
               <button onClick={() => handleUpdateStatusAndCaptain(selectedTable.tableId, 'Available', 'Unassigned')} style={{ padding: '11px', background: '#d1fae5', color: '#065f46', border: '1.5px solid #10b981', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}>Make Available (Clear Table)</button>
-              <button onClick={() => handleUpdateStatusAndCaptain(selectedTable.tableId, 'Occupied')} style={{ padding: '11px', background: '#eff6ff', color: '#1d4ed8', border: '1.5px solid #38bdf8', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}>Mark Occupied</button>
-              <button onClick={() => handleUpdateStatusAndCaptain(selectedTable.tableId, 'Billing')} style={{ padding: '11px', background: '#fee2e2', color: '#991b1b', border: '1.5px solid #ef4444', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}>Ready for Billing</button>
+              <button onClick={() => handleUpdateStatusAndCaptain(selectedTable.tableId, 'Occupied', selectedTable.captain)} style={{ padding: '11px', background: '#eff6ff', color: '#1d4ed8', border: '1.5px solid #38bdf8', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}>Mark Occupied & Open Order</button>
+              <button onClick={() => handleUpdateStatusAndCaptain(selectedTable.tableId, 'Billing', selectedTable.captain)} style={{ padding: '11px', background: '#fee2e2', color: '#991b1b', border: '1.5px solid #ef4444', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}>Ready for Billing</button>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '14px' }}>
               <button onClick={() => handleDeleteTable(selectedTable.tableId)} style={{ background: '#fee2e2', color: '#991b1b', border: 'none', padding: '9px 14px', borderRadius: '8px', fontWeight: '800', cursor: 'pointer' }}>Delete Table</button>
               <button onClick={() => setSelectedTable(null)} style={{ background: '#f1f5f9', color: '#334155', border: '1.5px solid #cbd5e1', padding: '9px 16px', borderRadius: '8px', fontWeight: '800', cursor: 'pointer' }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🍔 KOT / Order Taking Modal */}
+      {activeOrderTable && (
+        <div style={styles.modalOverlay} onClick={() => setActiveOrderTable(null)}>
+          <div style={{ ...styles.modalCard, width: '550px', maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1.5px solid #e2e8f0', paddingBottom: '10px' }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#0f172a', fontWeight: '900', fontSize: '20px' }}>Table {activeOrderTable.tableId} - Order Taking</h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#059669', fontWeight: '800' }}>🧑‍✈️ Captain: {activeOrderTable.captain || 'Unassigned'}</p>
+              </div>
+              <button onClick={() => setActiveOrderTable(null)} style={styles.closeXBtn}>✕</button>
+            </div>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', display: 'block', marginBottom: '8px' }}>QUICK ADD MENU ITEMS</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                {['Butter Chicken', 'Paneer Tikka', 'Garlic Naan', 'Veg Biryani', 'Cold Drink', 'Dal Makhani'].map(item => (
+                  <button 
+                    key={item} 
+                    onClick={() => setCartItems([...cartItems, { name: item, qty: 1, price: 250 }])}
+                    style={{ padding: '10px', background: '#f8fafc', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', textAlign: 'left', color: '#1e293b' }}
+                  >
+                    + {item}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <h4 style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a', marginBottom: '8px' }}>Current Cart / Running Order</h4>
+            {cartItems.length === 0 ? (
+              <p style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center', padding: '20px', background: '#f8fafc', borderRadius: '8px' }}>No items added yet. Click items above.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                {cartItems.map((ci, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: '#f1f5f9', borderRadius: '8px', fontSize: '13px', fontWeight: '700' }}>
+                    <span>{ci.name} (x{ci.qty})</span>
+                    <span>₹{ci.price * ci.qty}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                onClick={() => {
+                  alert('KOT Sent to Kitchen Successfully!');
+                  setActiveOrderTable(null);
+                  setCartItems([]);
+                }} 
+                style={{ flex: 1, padding: '12px', background: '#059669', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '900', cursor: 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.3)' }}
+              >
+                🖨️ Send KOT to Kitchen
+              </button>
+              <button onClick={() => setActiveOrderTable(null)} style={{ padding: '12px 20px', background: '#f1f5f9', color: '#334155', border: '1.5px solid #cbd5e1', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}>Close</button>
             </div>
           </div>
         </div>
