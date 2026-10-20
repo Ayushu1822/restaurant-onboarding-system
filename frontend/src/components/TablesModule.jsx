@@ -9,7 +9,7 @@ export default function TablesModule() {
   const [hoveredId, setHoveredId] = useState(null);
   
   const [selectedTable, setSelectedTable] = useState(null);
-  const [activeOrderTable, setActiveOrderTable] = useState(null); // For Order-Taking KOT modal
+  const [activeOrderTable, setActiveOrderTable] = useState(null); // Full POS & Order Terminal modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCaptainManageModal, setShowCaptainManageModal] = useState(false);
 
@@ -70,7 +70,6 @@ export default function TablesModule() {
 
     setSelectedTable(null);
 
-    // Automatically open order-taking modal if captain is assigned or table is occupied
     const target = tables.find(t => t.tableId === tableId);
     if (target) {
       setActiveOrderTable({ ...target, ...payload });
@@ -203,7 +202,7 @@ export default function TablesModule() {
                       </div>
                       
                       <div style={{ width: '100%', textAlign: 'center', padding: '8px 0', background: isHovered ? '#059669' : '#f8fafc', color: isHovered ? '#fff' : '#334155', borderRadius: '8px', fontWeight: '800', fontSize: '12px', transition: 'all 0.2s', marginTop: '12px' }}>
-                        Manage Table & Order ›
+                        Manage Table & POS ›
                       </div>
                     </div>
                   );
@@ -240,7 +239,7 @@ export default function TablesModule() {
             <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', display: 'block', marginBottom: '6px', letterSpacing: '0.5px' }}>UPDATE TABLE STATUS</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
               <button onClick={() => handleUpdateStatusAndCaptain(selectedTable.tableId, 'Available', 'Unassigned')} style={{ padding: '11px', background: '#d1fae5', color: '#065f46', border: '1.5px solid #10b981', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}>Make Available (Clear Table)</button>
-              <button onClick={() => handleUpdateStatusAndCaptain(selectedTable.tableId, 'Occupied', selectedTable.captain)} style={{ padding: '11px', background: '#eff6ff', color: '#1d4ed8', border: '1.5px solid #38bdf8', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}>Mark Occupied & Open Order</button>
+              <button onClick={() => handleUpdateStatusAndCaptain(selectedTable.tableId, 'Occupied', selectedTable.captain)} style={{ padding: '11px', background: '#eff6ff', color: '#1d4ed8', border: '1.5px solid #38bdf8', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}>Mark Occupied & Open POS</button>
               <button onClick={() => handleUpdateStatusAndCaptain(selectedTable.tableId, 'Billing', selectedTable.captain)} style={{ padding: '11px', background: '#fee2e2', color: '#991b1b', border: '1.5px solid #ef4444', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}>Ready for Billing</button>
             </div>
 
@@ -252,60 +251,126 @@ export default function TablesModule() {
         </div>
       )}
 
-      {/* 🍔 KOT / Order Taking Modal */}
+      {/* 🖥️ Professional Full POS & Billing / Order Terminal Modal */}
       {activeOrderTable && (
         <div style={styles.modalOverlay} onClick={() => setActiveOrderTable(null)}>
-          <div style={{ ...styles.modalCard, width: '550px', maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1.5px solid #e2e8f0', paddingBottom: '10px' }}>
+          <div style={{ ...styles.modalCard, width: '900px', maxWidth: '95vw', height: '85vh', display: 'flex', flexDirection: 'column', padding: '0', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', background: '#0f172a', color: '#fff' }}>
               <div>
-                <h3 style={{ margin: 0, color: '#0f172a', fontWeight: '900', fontSize: '20px' }}>Table {activeOrderTable.tableId} - Order Taking</h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#059669', fontWeight: '800' }}>🧑‍✈️ Captain: {activeOrderTable.captain || 'Unassigned'}</p>
+                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '950' }}>Table {activeOrderTable.tableId} - POS & Order Terminal</h3>
+                <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: '#38bdf8', fontWeight: '700' }}>🧑‍✈️ Assigned Captain: {activeOrderTable.captain || 'Unassigned'}</p>
               </div>
-              <button onClick={() => setActiveOrderTable(null)} style={styles.closeXBtn}>✕</button>
+              <button onClick={() => setActiveOrderTable(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', width: '32px', height: '32px', borderRadius: '8px', cursor: 'pointer', fontWeight: '900' }}>✕</button>
             </div>
 
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', display: 'block', marginBottom: '8px' }}>QUICK ADD MENU ITEMS</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                {['Butter Chicken', 'Paneer Tikka', 'Garlic Naan', 'Veg Biryani', 'Cold Drink', 'Dal Makhani'].map(item => (
-                  <button 
-                    key={item} 
-                    onClick={() => setCartItems([...cartItems, { name: item, qty: 1, price: 250 }])}
-                    style={{ padding: '10px', background: '#f8fafc', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', textAlign: 'left', color: '#1e293b' }}
-                  >
-                    + {item}
-                  </button>
-                ))}
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#f8fafc' }}>
+              
+              {/* Left Side: Menu Items Catalog */}
+              <div style={{ flex: 1.3, padding: '20px', overflowY: 'auto', borderRight: '1.5px solid #e2e8f0' }}>
+                <h4 style={{ fontSize: '12px', fontWeight: '900', color: '#64748b', marginBottom: '12px', letterSpacing: '0.5px' }}>SELECT MENU ITEMS</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
+                  {[
+                    { name: 'Butter Chicken', price: 350 },
+                    { name: 'Paneer Tikka', price: 280 },
+                    { name: 'Garlic Naan', price: 50 },
+                    { name: 'Veg Biryani', price: 220 },
+                    { name: 'Dal Makhani', price: 240 },
+                    { name: 'Cold Drink', price: 60 },
+                    { name: 'Chicken Biryani', price: 300 },
+                    { name: 'Masala Dosa', price: 150 }
+                  ].map(food => (
+                    <div 
+                      key={food.name}
+                      onClick={() => {
+                        const existing = cartItems.find(i => i.name === food.name);
+                        if (existing) {
+                          setCartItems(cartItems.map(i => i.name === food.name ? {...i, qty: i.qty + 1} : i));
+                        } else {
+                          setCartItems([...cartItems, { ...food, qty: 1 }]);
+                        }
+                      }}
+                      style={{ background: '#fff', padding: '14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
+                      onMouseEnter={e => e.currentTarget.style.borderColor = '#059669'}
+                      onMouseLeave={e => e.currentTarget.style.borderColor = '#e2e8f0'}
+                    >
+                      <div style={{ fontSize: '13px', fontWeight: '900', color: '#1e293b', marginBottom: '6px' }}>{food.name}</div>
+                      <div style={{ fontSize: '12px', fontWeight: '800', color: '#059669' }}>₹{food.price}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <h4 style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a', marginBottom: '8px' }}>Current Cart / Running Order</h4>
-            {cartItems.length === 0 ? (
-              <p style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center', padding: '20px', background: '#f8fafc', borderRadius: '8px' }}>No items added yet. Click items above.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-                {cartItems.map((ci, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: '#f1f5f9', borderRadius: '8px', fontSize: '13px', fontWeight: '700' }}>
-                    <span>{ci.name} (x{ci.qty})</span>
-                    <span>₹{ci.price * ci.qty}</span>
+              {/* Right Side: Receipt & Cart Summary */}
+              <div style={{ width: '360px', background: '#fff', display: 'flex', flexDirection: 'column', padding: '20px', borderLeft: '1.5px solid #e2e8f0' }}>
+                <h4 style={{ fontSize: '12px', fontWeight: '900', color: '#64748b', marginBottom: '12px', letterSpacing: '0.5px' }}>CURRENT ORDER / RECEIPT</h4>
+                
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                  {cartItems.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', padding: '40px 20px', background: '#f8fafc', borderRadius: '12px', border: '2px dashed #cbd5e1' }}>
+                      No items added yet. Click items from the left menu.
+                    </div>
+                  ) : (
+                    cartItems.map((item, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>{item.name}</div>
+                          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>₹{item.price} x {item.qty}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <button onClick={() => setCartItems(cartItems.map((i, iIdx) => iIdx === idx && i.qty > 1 ? {...i, qty: i.qty - 1} : i))} style={styles.qtyBtn}>-</button>
+                          <span style={{ fontSize: '13px', fontWeight: '900', width: '20px', textAlign: 'center' }}>{item.qty}</span>
+                          <button onClick={() => setCartItems(cartItems.map((i, iIdx) => iIdx === idx ? {...i, qty: i.qty + 1} : i))} style={styles.qtyBtn}>+</button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {cartItems.length > 0 && (
+                  <div style={{ borderTop: '1.5px solid #e2e8f0', paddingTop: '12px', marginBottom: '14px', fontSize: '13px', fontWeight: '800', color: '#334155' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span>Subtotal:</span>
+                      <span>₹{cartItems.reduce((acc, item) => acc + (item.price * item.qty), 0)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#64748b' }}>
+                      <span>GST (5%):</span>
+                      <span>₹{Math.round(cartItems.reduce((acc, item) => acc + (item.price * item.qty), 0) * 0.05)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: '950', color: '#0f172a', borderTop: '1px dashed #cbd5e1', paddingTop: '8px' }}>
+                      <span>Total Amount:</span>
+                      <span style={{ color: '#059669' }}>₹{Math.round(cartItems.reduce((acc, item) => acc + (item.price * item.qty), 0) * 1.05)}</span>
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
+                )}
 
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button 
-                onClick={() => {
-                  alert('KOT Sent to Kitchen Successfully!');
-                  setActiveOrderTable(null);
-                  setCartItems([]);
-                }} 
-                style={{ flex: 1, padding: '12px', background: '#059669', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '900', cursor: 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.3)' }}
-              >
-                🖨️ Send KOT to Kitchen
-              </button>
-              <button onClick={() => setActiveOrderTable(null)} style={{ padding: '12px 20px', background: '#f1f5f9', color: '#334155', border: '1.5px solid #cbd5e1', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}>Close</button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button 
+                    onClick={() => {
+                      alert('🖨️ KOT Generated & Sent to Kitchen successfully!');
+                      setActiveOrderTable(null);
+                      setCartItems([]);
+                    }}
+                    disabled={cartItems.length === 0}
+                    style={{ padding: '12px', background: cartItems.length === 0 ? '#cbd5e1' : '#059669', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '900', cursor: cartItems.length === 0 ? 'not-allowed' : 'pointer', boxShadow: cartItems.length === 0 ? 'none' : '0 4px 12px rgba(5,150,105,0.25)' }}
+                  >
+                    Send KOT to Kitchen
+                  </button>
+                  <button 
+                    onClick={() => {
+                      alert('💳 Opening Split Payment & Checkout Terminal...');
+                    }}
+                    disabled={cartItems.length === 0}
+                    style={{ padding: '11px', background: cartItems.length === 0 ? '#f1f5f9' : '#2563eb', color: cartItems.length === 0 ? '#94a3b8' : '#fff', border: 'none', borderRadius: '10px', fontWeight: '900', cursor: cartItems.length === 0 ? 'not-allowed' : 'pointer' }}
+                  >
+                    Split Payment & Checkout
+                  </button>
+                </div>
+
+              </div>
+
             </div>
+
           </div>
         </div>
       )}
@@ -358,5 +423,6 @@ const styles = {
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
   modalCard: { width: '420px', backgroundColor: '#fff', padding: '24px', borderRadius: '20px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #e2e8f0' },
   input: { width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', marginBottom: '15px', boxSizing: 'border-box', fontSize: '13px', outline: 'none', fontWeight: '600' },
+  qtyBtn: { width: '24px', height: '24px', background: '#e2e8f0', border: 'none', borderRadius: '6px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   closeXBtn: { background: 'none', border: 'none', fontSize: '16px', fontWeight: 'bold', color: '#64748b', cursor: 'pointer' }
 };
