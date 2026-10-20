@@ -7,9 +7,9 @@ export default function ReportsModule() {
   const [loading, setLoading] = useState(true);
   
   // Filter States
-  const [graphType, setGraphType] = useState('bar'); // 'bar', 'circle', 'line'
   const [dateRange, setDateRange] = useState('today'); // 'today', 'yesterday', 'month', 'year'
   const [orderChannelFilter, setOrderChannelFilter] = useState('ALL'); // 'ALL', 'TABLE', 'COUNTER', 'ONLINE'
+  const [selectedCaptainFilter, setSelectedCaptainFilter] = useState('ALL'); // 'ALL' or specific captain name
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCustomerHistory, setSelectedCustomerHistory] = useState(null);
 
@@ -31,19 +31,28 @@ export default function ReportsModule() {
       });
   };
 
-  // Safe Timestamp Helper (Fixes "Just now" bug for past orders)
   const getSafeTimestamp = (order, index) => {
     if (order.timestamp) {
       const d = new Date(order.timestamp);
       if (!isNaN(d.getTime())) return d;
     }
-    // Fallback: staggered fake past dates if timestamp is missing
     const fallbackDate = new Date();
     fallbackDate.setHours(fallbackDate.getHours() - (index + 1));
     return fallbackDate;
   };
 
-  // Date filtering logic
+  const extractCaptain = (customerName) => {
+    const cName = customerName || '';
+    if (cName.includes('(') && cName.includes(')')) {
+      const match = cName.match(/\(([^)]+)\)/);
+      if (match) return match[1];
+    }
+    return 'Unassigned / Counter';
+  };
+
+  const allCaptains = ['ALL', ...new Set(orders.map(o => extractCaptain(o.customerName)))];
+
+  // Filtering logic
   const filteredOrders = orders.filter((o, idx) => {
     const orderDate = getSafeTimestamp(o, idx);
     const now = new Date();
@@ -72,6 +81,12 @@ export default function ReportsModule() {
       matchesChannel = channel === 'ZOMATO' || channel === 'SWIGGY' || channel === 'WHATSAPP';
     }
 
+    let matchesCaptain = true;
+    const orderCaptain = extractCaptain(o.customerName);
+    if (selectedCaptainFilter !== 'ALL') {
+      matchesCaptain = orderCaptain === selectedCaptainFilter;
+    }
+
     let matchesSearch = true;
     if (searchQuery.trim() !== '') {
       const q = searchQuery.toLowerCase();
@@ -80,7 +95,7 @@ export default function ReportsModule() {
       matchesSearch = cName.includes(q) || oId.includes(q);
     }
 
-    return matchesDate && matchesChannel && matchesSearch;
+    return matchesDate && matchesChannel && matchesCaptain && matchesSearch;
   });
 
   const activeBreakdownOrders = filteredOrders.filter(o => {
@@ -96,21 +111,14 @@ export default function ReportsModule() {
   const totalRevenue = filteredOrders.reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0);
   const totalOrdersCount = filteredOrders.length;
 
-  // Captain Performance Mapping
   const captainMap = {};
-  filteredOrders.forEach(o => {
-    // Extract captain name from customerName format "Table T1 (Rahul Sharma)" or dedicated field
-    let captainName = 'Unassigned / Counter';
-    const cName = o.customerName || '';
-    if (cName.includes('(') && cName.includes(')')) {
-      const match = cName.match(/\(([^)]+)\)/);
-      if (match) captainName = match[1];
+  orders.forEach(o => {
+    const capName = extractCaptain(o.customerName);
+    if (!captainMap[capName]) {
+      captainMap[capName] = { orderCount: 0, revenue: 0 };
     }
-    if (!captainMap[captainName]) {
-      captainMap[captainName] = { orderCount: 0, revenue: 0 };
-    }
-    captainMap[captainName].orderCount += 1;
-    captainMap[captainName].revenue += Number(o.totalAmount || 0);
+    captainMap[capName].orderCount += 1;
+    captainMap[capName].revenue += Number(o.totalAmount || 0);
   });
 
   const downloadCSV = (filename, rows, headers) => {
@@ -160,12 +168,11 @@ export default function ReportsModule() {
 
   return (
     <div style={styles.container}>
-      {/* Header Row */}
       <div style={styles.headerRow}>
         <div>
           <h2 style={{ fontSize: '26px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Reports & Analytics Hub</h2>
           <p style={{ color: '#64748b', fontSize: '13px', margin: '4px 0 0 0', fontWeight: '700' }}>
-            Captain performance tracking, itemized order histories, and visual graphs
+            Captain performance tracking, category filters, date ranges, and completed order histories
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -198,6 +205,15 @@ export default function ReportsModule() {
         </div>
 
         <div style={styles.filterGroup}>
+          <label style={styles.label}>🧑‍✈️ Filter by Captain</label>
+          <select value={selectedCaptainFilter} onChange={e => setSelectedCaptainFilter(e.target.value)} style={styles.select}>
+            {allCaptains.map((cap, cIdx) => (
+              <option key={cIdx} value={cap}>{cap === 'ALL' ? 'All Captains' : cap}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={styles.filterGroup}>
           <label style={styles.label}>📅 Date Range</label>
           <select value={dateRange} onChange={e => setDateRange(e.target.value)} style={styles.select}>
             <option value="today">Present Day (Today)</option>
@@ -209,7 +225,7 @@ export default function ReportsModule() {
       </div>
 
       {/* ========================================== */}
-      {/* 1. TOP SECTION: DETAILED ACTIVE ORDERS */}
+      {/* 1. DETAILED ACTIVE ORDERS */}
       {/* ========================================== */}
       <div style={styles.sectionCard}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -231,6 +247,7 @@ export default function ReportsModule() {
                   <th style={styles.th}>Order ID</th>
                   <th style={styles.th}>Customer Name & Phone</th>
                   <th style={styles.th}>Channel / Type</th>
+                  <th style={styles.th}>Captain / Staff</th>
                   <th style={styles.th}>Date & Time</th>
                   <th style={styles.th}>Status</th>
                   <th style={styles.th}>Total Amount</th>
@@ -241,6 +258,7 @@ export default function ReportsModule() {
                 {activeBreakdownOrders.map((o, idx) => {
                   const dateStr = getSafeTimestamp(o, idx).toLocaleString();
                   const cName = o.customerName || 'Walk-In Guest';
+                  const captain = extractCaptain(o.customerName);
                   return (
                     <tr key={idx} style={styles.tableRow}>
                       <td style={styles.td}><strong style={{ color: '#0f172a' }}>{o.displayId || o.orderId || 'N/A'}</strong></td>
@@ -252,6 +270,7 @@ export default function ReportsModule() {
                         <span style={styles.badge}>{o.channel || 'COUNTER'}</span>
                         <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{o.orderType || 'Dine-In'}</div>
                       </td>
+                      <td style={{ ...styles.td, color: '#2563eb', fontWeight: '900' }}>{captain}</td>
                       <td style={{ ...styles.td, fontSize: '12px', color: '#64748b' }}>{dateStr}</td>
                       <td style={styles.td}><span style={{ color: '#059669', fontWeight: '900' }}>{o.status || 'New'}</span></td>
                       <td style={{ ...styles.td, color: '#059669', fontWeight: '950' }}>₹{o.totalAmount || 0}</td>
@@ -270,17 +289,17 @@ export default function ReportsModule() {
       </div>
 
       {/* ========================================== */}
-      {/* 2. CAPTAIN PERFORMANCE & REVENUE BREAKDOWN */}
+      {/* 2. CAPTAIN PERFORMANCE SECTION */}
       {/* ========================================== */}
       <div style={styles.sectionCard}>
         <h3 style={{ margin: '0 0 14px 0', fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>
-          🧑‍✈️ Captain Performance & Order Breakdown
+          🧑‍✈️ Captain Performance & Revenue Generation
         </h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
           {Object.keys(captainMap).map((capName, cIdx) => (
             <div key={cIdx} style={{ background: '#f8fafc', padding: '16px', borderRadius: '14px', border: '2px solid #e2e8f0' }}>
               <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a', marginBottom: '6px' }}>🧑‍✈️ {capName}</div>
-              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800' }}>Orders Handled: <strong style={{ color: '#2563eb' }}>{captainMap[capName].orderCount}</strong></div>
+              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800' }}>Orders Processed: <strong style={{ color: '#2563eb' }}>{captainMap[capName].orderCount}</strong></div>
               <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', marginTop: '4px' }}>Revenue Generated: <strong style={{ color: '#059669' }}>₹{captainMap[capName].revenue}</strong></div>
             </div>
           ))}
@@ -288,7 +307,7 @@ export default function ReportsModule() {
       </div>
 
       {/* ========================================== */}
-      {/* 3. COMPLETED ORDERS HISTORY (WITH ITEM DETAILS) */}
+      {/* 3. COMPLETED ORDERS HISTORY SECTION */}
       {/* ========================================== */}
       <div style={styles.sectionCard}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -299,12 +318,13 @@ export default function ReportsModule() {
         </div>
 
         {completedHistoryOrders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px', fontWeight: '800' }}>No completed order archives found for this filter.</div>
+          <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px', fontWeight: '800' }}>No completed order archives found. Ensure order status is marked as 'Completed' or 'Delivered'.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {completedHistoryOrders.map((o, idx) => {
               const dateStr = getSafeTimestamp(o, idx).toLocaleString();
               const items = o.items || [];
+              const captain = extractCaptain(o.customerName);
               return (
                 <div key={idx} style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
@@ -312,6 +332,7 @@ export default function ReportsModule() {
                       <span style={{ fontWeight: '950', color: '#0f172a', fontSize: '15px', marginRight: '10px' }}>{o.displayId || o.orderId}</span>
                       <span style={styles.badge}>{o.channel || 'COUNTER'}</span>
                       <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', marginLeft: '10px' }}>👤 {o.customerName || 'Walk-In'}</span>
+                      <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: '900', marginLeft: '10px' }}>🧑‍✈️ {captain}</span>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <span style={{ fontSize: '15px', fontWeight: '950', color: '#059669' }}>₹{o.totalAmount || 0}</span>
@@ -340,34 +361,11 @@ export default function ReportsModule() {
       </div>
 
       {/* ========================================== */}
-      {/* 4. BOTTOM SECTION: ANALYTICS & FIXED GRAPHS */}
+      {/* 4. REVENUE SUMMARY & PIE CHART */}
       {/* ========================================== */}
       <div style={styles.sectionCard}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>📊 Visual Analytics & Summary</h3>
-            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>Accurate revenue representation across selected filters</span>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {['bar', 'circle', 'line'].map(type => (
-              <button
-                key={type}
-                onClick={() => setGraphType(type)}
-                style={{
-                  padding: '8px 14px', borderRadius: '10px', fontWeight: '950', fontSize: '12px', cursor: 'pointer',
-                  background: graphType === type ? '#0f172a' : '#f1f5f9',
-                  color: graphType === type ? '#fff' : '#334155',
-                  border: '1.5px solid #cbd5e1', textTransform: 'capitalize'
-                }}
-              >
-                {type === 'circle' ? 'Pie Chart' : `${type} Graph`}
-              </button>
-            ))}
-          </div>
-        </div>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>📊 Revenue Summary & Distribution</h3>
 
-        {/* Metrics Summary Cards */}
         <div style={styles.metricsGrid}>
           <div style={styles.metricCard}>
             <div style={styles.metricTitle}>Total Revenue ({dateRange.toUpperCase()})</div>
@@ -385,67 +383,28 @@ export default function ReportsModule() {
           </div>
         </div>
 
-        {/* Scaled & Fixed Graph Visualizer */}
-        <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0' }}>
+        <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '1.5px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           {filteredOrders.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8', fontWeight: '800' }}>No analytics data to render for this range.</div>
+            <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontWeight: '800' }}>No revenue distribution data for this filter.</div>
           ) : (
-            <div>
-              {graphType === 'bar' && (
-                <div style={styles.barGraphContainer}>
-                  {filteredOrders.slice(0, 10).map((o, idx) => {
-                    const amt = Number(o.totalAmount) || 0;
-                    const maxAmt = Math.max(...filteredOrders.map(x => Number(x.totalAmount) || 1), 100);
-                    const heightPercent = Math.min(Math.max(Math.round((amt / maxAmt) * 140), 20), 140);
-                    return (
-                      <div key={idx} style={styles.barCol}>
-                        <span style={{ fontSize: '10px', fontWeight: '900', color: '#059669' }}>₹{amt}</span>
-                        <div style={{ width: '36px', height: `${heightPercent}px`, background: '#059669', borderRadius: '6px 6px 0 0' }}></div>
-                        <span style={{ fontSize: '10px', fontWeight: '800', color: '#64748b', marginTop: '6px' }}>{o.displayId || `#${idx+1}`}</span>
-                      </div>
-                    );
-                  })}
+            <>
+              <div style={{ width: '160px', height: '160px', borderRadius: '50%', background: 'conic-gradient(#059669 0% 65%, #2563eb 65% 88%, #d97706 88% 100%)', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+                <div style={{ width: '90px', height: '90px', background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '950', fontSize: '13px', color: '#0f172a' }}>
+                  ₹{totalRevenue}
                 </div>
-              )}
-
-              {graphType === 'circle' && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px' }}>
-                  <div style={{ width: '160px', height: '160px', borderRadius: '50%', background: 'conic-gradient(#059669 0% 65%, #2563eb 65% 88%, #d97706 88% 100%)', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: '90px', height: '90px', background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '950', fontSize: '13px', color: '#0f172a' }}>
-                      ₹{totalRevenue}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '20px', marginTop: '16px', fontSize: '12px', fontWeight: '900' }}>
-                    <span style={{ color: '#059669' }}>■ Dine-In (65%)</span>
-                    <span style={{ color: '#2563eb' }}>■ Takeaway (23%)</span>
-                    <span style={{ color: '#d97706' }}>■ Online (12%)</span>
-                  </div>
-                </div>
-              )}
-
-              {graphType === 'line' && (
-                <div style={{ padding: '20px 10px', height: '180px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', borderBottom: '2px solid #cbd5e1' }}>
-                  {filteredOrders.slice(0, 8).map((o, idx) => {
-                    const amt = Number(o.totalAmount) || 0;
-                    const maxAmt = Math.max(...filteredOrders.map(x => Number(x.totalAmount) || 1), 100);
-                    const bottomPx = Math.min(Math.max(Math.round((amt / maxAmt) * 120), 10), 120);
-                    return (
-                      <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                        <span style={{ fontSize: '10px', fontWeight: '900', color: '#2563eb', marginBottom: '4px' }}>₹{amt}</span>
-                        <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#2563eb', border: '2px solid #fff', boxShadow: '0 0 0 2px #2563eb', marginBottom: `${bottomPx}px` }}></div>
-                        <span style={{ fontSize: '10px', fontWeight: '800', color: '#64748b' }}>{o.displayId || `#${idx+1}`}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+              </div>
+              <div style={{ display: 'flex', gap: '20px', fontSize: '12px', fontWeight: '900' }}>
+                <span style={{ color: '#059669' }}>■ Dine-In (65%)</span>
+                <span style={{ color: '#2563eb' }}>■ Takeaway (23%)</span>
+                <span style={{ color: '#d97706' }}>■ Online (12%)</span>
+              </div>
+            </>
           )}
         </div>
       </div>
 
       {/* ========================================== */}
-      {/* CUSTOMER HISTORY MODAL VIEW */}
+      {/* CUSTOMER HISTORY MODAL */}
       {/* ========================================== */}
       {selectedCustomerHistory && (
         <div style={styles.modalOverlay} onClick={() => setSelectedCustomerHistory(null)}>
@@ -490,7 +449,7 @@ const styles = {
   headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' },
   exportBtn: { background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', border: 'none', padding: '9px 14px', borderRadius: '10px', fontWeight: '950', fontSize: '11px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' },
   filterBar: { display: 'flex', gap: '16px', background: '#ffffff', padding: '18px 22px', borderRadius: '20px', border: '2px solid #e2e8f0', marginBottom: '24px', flexWrap: 'wrap', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.03)' },
-  filterGroup: { display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '220px' },
+  filterGroup: { display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '200px' },
   label: { fontSize: '11px', fontWeight: '950', color: '#64748b', letterSpacing: '0.05em' },
   select: { padding: '11px 14px', borderRadius: '12px', border: '2px solid #cbd5e1', fontSize: '13px', fontWeight: '800', background: '#f8fafc', outline: 'none', cursor: 'pointer' },
   input: { padding: '11px 14px', borderRadius: '12px', border: '2px solid #cbd5e1', fontSize: '13px', fontWeight: '800', background: '#f8fafc', outline: 'none' },
@@ -499,8 +458,6 @@ const styles = {
   metricCard: { background: 'linear-gradient(145deg, #f8fafc, #f1f5f9)', padding: '20px', borderRadius: '16px', border: '2px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' },
   metricTitle: { fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' },
   metricValue: { fontSize: '28px', fontWeight: '950', color: '#059669', letterSpacing: '-0.02em' },
-  barGraphContainer: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: '180px', borderBottom: '2px solid #cbd5e1', paddingBottom: '10px' },
-  barCol: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flex: 1 },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: '13px' },
   th: { padding: '12px 14px', fontWeight: '950', color: '#475569', borderBottom: '2px solid #e2e8f0', letterSpacing: '0.03em' },
   td: { padding: '14px', color: '#334155', fontWeight: '800' },
