@@ -11,11 +11,10 @@ export default function TablesModule() {
   const [hoveredMenuId, setHoveredMenuId] = useState(null);
   
   const [selectedTable, setSelectedTable] = useState(null);
-  const [activeOrderTable, setActiveOrderTable] = useState(null); // Active when POS is open inline on window
+  const [activeOrderTable, setActiveOrderTable] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCaptainManageModal, setShowCaptainManageModal] = useState(false);
   
-  // Split payment state
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [splitCount, setSplitCount] = useState(2);
 
@@ -165,14 +164,21 @@ export default function TablesModule() {
     const subtotal = cartItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
     const totalAmount = Math.round(subtotal * 1.05);
 
+    // Perfectly matched payload with backend Order & OrderItem models
     const orderPayload = {
-      tableId: activeOrderTable.tableId,
-      captain: activeOrderTable.captain,
-      items: cartItems,
-      instruction: orderNote,
+      displayId: `Table ${activeOrderTable.tableId}`,
+      customerName: `Table ${activeOrderTable.tableId} (${activeOrderTable.captain || 'Unassigned'})`,
+      channel: 'COUNTER',
+      orderType: 'Dine-In',
+      status: 'New',
       subtotal: subtotal,
       totalAmount: totalAmount,
-      timestamp: new Date().toISOString()
+      items: cartItems.map(i => ({
+        itemName: i.name,
+        quantity: i.qty,
+        unitPrice: i.price,
+        itemDescription: orderNote || ''
+      }))
     };
 
     fetch(`${API_BASE_URL}/api/v1/orders`, {
@@ -182,7 +188,10 @@ export default function TablesModule() {
     })
     .then(res => {
       if (!res.ok) throw new Error("Server responded with error");
-      alert(`🖨️ KOT Generated & Sent to Kitchen successfully for Table ${activeOrderTable.tableId}!\nNote: "${orderNote || 'None'}"\nSaved for Reports.`);
+      return res.json();
+    })
+    .then(data => {
+      alert(`🖨️ KOT Generated & Sent to Kitchen successfully for Table ${activeOrderTable.tableId}!\nNote: "${orderNote || 'None'}"\nSaved for Reports & Kitchen.`);
       setActiveOrderTable(null);
       setCartItems([]);
       setOrderNote('');
@@ -190,17 +199,14 @@ export default function TablesModule() {
     })
     .catch(err => {
       console.error(err);
-      alert('Order placed successfully (Saved locally / synced)!');
-      setActiveOrderTable(null);
-      setCartItems([]);
-      setOrderNote('');
+      alert('Error sending order to kitchen. Please verify backend connection.');
     });
   };
 
   const categories = [...new Set(menuItems.map(item => item.category))];
 
   // ==========================================
-  // INLINE POS TERMINAL VIEW (When activeOrderTable is open)
+  // INLINE POS TERMINAL VIEW
   // ==========================================
   if (activeOrderTable) {
     const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.qty), 0);
@@ -209,7 +215,6 @@ export default function TablesModule() {
 
     return (
       <div style={styles.inlinePOSWrapper}>
-        {/* Top Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', background: '#0f172a', color: '#fff', borderRadius: '14px 14px 0 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '950' }}>Table {activeOrderTable.tableId} - POS & Order Terminal</h3>
@@ -218,10 +223,8 @@ export default function TablesModule() {
           <button onClick={() => setActiveOrderTable(null)} style={{ background: 'rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.3)', color: '#fff', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: '950' }}>✕ Exit POS</button>
         </div>
 
-        {/* Split Content */}
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#f8fafc', borderRadius: '0 0 14px 14px' }}>
           
-          {/* Menu Catalog */}
           <div style={{ flex: 1.4, padding: '24px', overflowY: 'auto', borderRight: '2px solid #e2e8f0' }}>
             <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '16px', letterSpacing: '0.08em' }}>LIVE RESTAURANT MENU (DATABASE)</h4>
             
@@ -275,7 +278,6 @@ export default function TablesModule() {
             )}
           </div>
 
-          {/* Receipt & KOT Summary */}
           <div style={{ width: '420px', background: '#fff', display: 'flex', flexDirection: 'column', padding: '24px', borderLeft: '2px solid #e2e8f0' }}>
             <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '14px', letterSpacing: '0.08em' }}>ORDER RECEIPT & KOT</h4>
             
@@ -350,7 +352,6 @@ export default function TablesModule() {
 
         </div>
 
-        {/* Split Payment Modal */}
         {showSplitModal && (
           <div style={styles.modalOverlay} onClick={() => setShowSplitModal(false)}>
             <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
@@ -381,7 +382,7 @@ export default function TablesModule() {
                     alert(`✅ Payment settled successfully for Table ${activeOrderTable.tableId} split among ${splitCount} people!`);
                     setShowSplitModal(false);
                     setActiveOrderTable(null);
-                    setCartItems();
+                    setCartItems([]);
                     fetchTables();
                   }}
                   style={{ flex: 1, padding: '12px', background: '#059669', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}
@@ -470,7 +471,6 @@ export default function TablesModule() {
         })
       )}
 
-      {/* Table Control Modal */}
       {selectedTable && (
         <div style={styles.modalOverlay} onClick={() => setSelectedTable(null)}>
           <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
@@ -517,7 +517,6 @@ export default function TablesModule() {
         </div>
       )}
 
-      {/* Add New Table Modal */}
       {showAddModal && (
         <div style={styles.modalOverlay} onClick={() => setShowAddModal(false)}>
           <form onSubmit={handleAddTable} style={styles.modalCard} onClick={e => e.stopPropagation()}>
@@ -538,7 +537,6 @@ export default function TablesModule() {
         </div>
       )}
 
-      {/* Manage Captains Modal */}
       {showCaptainManageModal && (
         <div style={styles.modalOverlay} onClick={() => setShowCaptainManageModal(false)}>
           <form onSubmit={handleAddCaptain} style={styles.modalCard} onClick={e => e.stopPropagation()}>
