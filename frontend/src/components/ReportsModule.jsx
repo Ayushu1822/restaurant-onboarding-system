@@ -10,7 +10,11 @@ export default function ReportsModule() {
   const [dateRange, setDateRange] = useState('today'); // 'today', 'yesterday', 'month', 'year'
   const [orderChannelFilter, setOrderChannelFilter] = useState('ALL'); // 'ALL', 'TABLE', 'COUNTER', 'ONLINE'
   const [selectedCaptainFilter, setSelectedCaptainFilter] = useState('ALL'); // 'ALL' or specific captain name
+  
+  // Analytics specific separate filters
+  const [analyticsDateRange, setAnalyticsDateRange] = useState('today');
   const [analyticsCategoryFilter, setAnalyticsCategoryFilter] = useState('ALL');
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCustomerHistory, setSelectedCustomerHistory] = useState(null);
 
@@ -53,23 +57,27 @@ export default function ReportsModule() {
 
   const allCaptains = ['ALL', ...new Set(orders.map(o => extractCaptain(o.customerName)).filter(Boolean))];
 
-  // Filtering logic
-  const filteredOrders = orders.filter((o, idx) => {
-    const orderDate = getSafeTimestamp(o, idx);
+  // Helper function for date filtering
+  const checkDateMatch = (orderDate, range) => {
     const now = new Date();
-    
-    let matchesDate = true;
-    if (dateRange === 'today') {
-      matchesDate = orderDate.toDateString() === now.toDateString();
-    } else if (dateRange === 'yesterday') {
+    if (range === 'today') {
+      return orderDate.toDateString() === now.toDateString();
+    } else if (range === 'yesterday') {
       const yesterday = new Date(now);
       yesterday.setDate(now.getDate() - 1);
-      matchesDate = orderDate.toDateString() === yesterday.toDateString();
-    } else if (dateRange === 'month') {
-      matchesDate = orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
-    } else if (dateRange === 'year') {
-      matchesDate = orderDate.getFullYear() === now.getFullYear();
+      return orderDate.toDateString() === yesterday.toDateString();
+    } else if (range === 'month') {
+      return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+    } else if (range === 'year') {
+      return orderDate.getFullYear() === now.getFullYear();
     }
+    return true;
+  };
+
+  // Main table filtering logic
+  const filteredOrders = orders.filter((o, idx) => {
+    const orderDate = getSafeTimestamp(o, idx);
+    let matchesDate = checkDateMatch(orderDate, dateRange);
 
     let matchesChannel = true;
     const channel = (o.channel || 'COUNTER').toUpperCase();
@@ -101,23 +109,29 @@ export default function ReportsModule() {
 
   const activeBreakdownOrders = filteredOrders.filter(o => {
     const st = (o.status || 'New').toLowerCase();
-    return st !== 'completed' && st !== 'delivered' && st !== 'picked up';
+    return st !== 'completed' && st !== 'delivered' && st !== 'picked up' && st !== 'ready' && st !== 'settled';
   });
 
-  // STRICT REAL HISTORY (Only completed, delivered, or picked up)
+  // FLEXIBLE HISTORY (Catches Completed, Delivered, Ready, Settled, Picked Up)
   const completedHistoryOrders = filteredOrders.filter(o => {
     const st = (o.status || 'New').toLowerCase();
-    return st === 'completed' || st === 'delivered' || st === 'picked up';
+    return st === 'completed' || st === 'delivered' || st === 'picked up' || st === 'ready' || st === 'settled';
   });
 
-  const analyticsOrders = filteredOrders.filter(o => {
-    if (analyticsCategoryFilter === 'ALL') return true;
-    const channel = (o.channel || 'COUNTER').toUpperCase();
-    const disp = (o.displayId || '').toUpperCase();
-    if (analyticsCategoryFilter === 'TABLE') return disp.includes('TABLE');
-    if (analyticsCategoryFilter === 'COUNTER') return channel === 'COUNTER' && !disp.includes('TABLE');
-    if (analyticsCategoryFilter === 'ONLINE') return channel === 'ZOMATO' || channel === 'SWIGGY' || channel === 'WHATSAPP';
-    return true;
+  // Analytics filtered orders (Using its own Date & Category dropdowns for accurate graphs)
+  const analyticsOrders = orders.filter((o, idx) => {
+    const orderDate = getSafeTimestamp(o, idx);
+    let matchesDate = checkDateMatch(orderDate, analyticsDateRange);
+
+    let matchesCat = true;
+    if (analyticsCategoryFilter !== 'ALL') {
+      const channel = (o.channel || 'COUNTER').toUpperCase();
+      const disp = (o.displayId || '').toUpperCase();
+      if (analyticsCategoryFilter === 'TABLE') matchesCat = disp.includes('TABLE');
+      if (analyticsCategoryFilter === 'COUNTER') matchesCat = channel === 'COUNTER' && !disp.includes('TABLE');
+      if (analyticsCategoryFilter === 'ONLINE') matchesCat = channel === 'ZOMATO' || channel === 'SWIGGY' || channel === 'WHATSAPP';
+    }
+    return matchesDate && matchesCat;
   });
 
   const totalRevenue = analyticsOrders.reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0);
@@ -187,12 +201,13 @@ export default function ReportsModule() {
         <div>
           <h2 style={{ fontSize: '26px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Reports & Analytics Hub</h2>
           <p style={{ color: '#64748b', fontSize: '13px', margin: '4px 0 0 0', fontWeight: '700' }}>
-            Real completed order histories, assigned captain revenue tracking, and category filters
+            Real completed order histories, assigned captain revenue tracking, and accurate analytics
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button onClick={exportOrderDetails} style={styles.exportBtn}>📥 Orders CSV</button>
           <button onClick={exportCompletedHistory} style={styles.exportBtn}>📦 History CSV</button>
+          <button onClick={() => window.print()} style={{ ...styles.exportBtn, background: 'linear-gradient(135deg, #059669, #047857)' }}>🖨️ Print Report</button>
         </div>
       </div>
 
@@ -324,7 +339,7 @@ export default function ReportsModule() {
       )}
 
       {/* ========================================== */}
-      {/* 3. REAL COMPLETED ORDERS HISTORY SECTION */}
+      {/* 3. COMPLETED ORDERS HISTORY SECTION */}
       {/* ========================================== */}
       <div style={styles.sectionCard}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -335,7 +350,7 @@ export default function ReportsModule() {
         </div>
 
         {completedHistoryOrders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px', fontWeight: '800' }}>No real history orders found. Orders will appear here only after status is marked as 'Completed' or 'Delivered'.</div>
+          <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px', fontWeight: '800' }}>No history orders found. Ensure orders are marked completed, ready, or delivered.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {completedHistoryOrders.map((o, idx) => {
@@ -378,26 +393,40 @@ export default function ReportsModule() {
       </div>
 
       {/* ========================================== */}
-      {/* 4. ANALYTICS SECTION WITH CATEGORY DROPDOWN */}
+      {/* 4. ANALYTICS SECTION WITH DATE & CATEGORY DROPDOWNS & PRINT BUTTON */}
       {/* ========================================== */}
       <div style={styles.sectionCard}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
           <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>📊 Revenue Summary & Distribution</h3>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b' }}>Analytics Filter:</label>
-            <select value={analyticsCategoryFilter} onChange={e => setAnalyticsCategoryFilter(e.target.value)} style={{ ...styles.select, padding: '6px 10px', fontSize: '12px' }}>
-              <option value="ALL">All Categories</option>
-              <option value="TABLE">Table Orders</option>
-              <option value="COUNTER">Counter POS</option>
-              <option value="ONLINE">Online Orders</option>
-            </select>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b' }}>Graph Date:</label>
+              <select value={analyticsDateRange} onChange={e => setAnalyticsDateRange(e.target.value)} style={{ ...styles.select, padding: '6px 10px', fontSize: '12px' }}>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="month">Last Month</option>
+                <option value="year">Year</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b' }}>Category:</label>
+              <select value={analyticsCategoryFilter} onChange={e => setAnalyticsCategoryFilter(e.target.value)} style={{ ...styles.select, padding: '6px 10px', fontSize: '12px' }}>
+                <option value="ALL">All Categories</option>
+                <option value="TABLE">Table Orders</option>
+                <option value="COUNTER">Counter POS</option>
+                <option value="ONLINE">Online Orders</option>
+              </select>
+            </div>
+
+            <button onClick={() => window.print()} style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '7px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '950', cursor: 'pointer' }}>🖨️ Print Graph</button>
           </div>
         </div>
 
         <div style={styles.metricsGrid}>
           <div style={styles.metricCard}>
-            <div style={styles.metricTitle}>Total Revenue ({dateRange.toUpperCase()})</div>
+            <div style={styles.metricTitle}>Total Revenue ({analyticsDateRange.toUpperCase()})</div>
             <div style={styles.metricValue}>₹{totalRevenue.toFixed(2)}</div>
           </div>
           <div style={styles.metricCard}>
@@ -414,7 +443,7 @@ export default function ReportsModule() {
 
         <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '1.5px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           {analyticsOrders.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontWeight: '800' }}>No revenue distribution data for this filter.</div>
+            <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontWeight: '800' }}>No revenue distribution data for this date and category filter.</div>
           ) : (
             <>
               <div style={{ width: '160px', height: '160px', borderRadius: '50%', background: 'conic-gradient(#059669 0% 65%, #2563eb 65% 88%, #d97706 88% 100%)', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
