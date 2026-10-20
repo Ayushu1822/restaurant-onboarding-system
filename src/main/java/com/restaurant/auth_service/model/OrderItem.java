@@ -1,6 +1,8 @@
 package com.restaurant.auth_service.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -21,28 +23,40 @@ public class OrderItem {
     @JoinColumn(name = "order_id")
     private Order order;
 
-    @Column(name = "item_name")
+    @Column(name = "item_name", nullable = false)
+    @JsonAlias({"itemName", "name", "dishName", "title"})
     private String itemName;
 
-    private int quantity;
+    @Column(nullable = false)
+    @JsonAlias({"quantity", "qty"})
+    private int quantity = 1;
 
-    @Column(name = "unit_price")
-    private BigDecimal unitPrice;
+    @Column(name = "unit_price", nullable = false)
+    @JsonAlias({"unitPrice", "price", "rate", "amount"})
+    private BigDecimal unitPrice = BigDecimal.ZERO;
 
     @Column(name = "item_description")
+    @JsonAlias({"itemDescription", "description", "instruction", "note"})
     private String itemDescription;
 
     @PrePersist
     @PreUpdate
     public void syncItemIds() {
-        if (this.itemId != null && this.duplicateItemId == null) {
+        if (this.itemId == null) {
+            this.itemId = UUID.randomUUID();
+        }
+        if (this.duplicateItemId == null) {
             this.duplicateItemId = this.itemId;
-        } else if (this.duplicateItemId != null && this.itemId == null) {
-            this.itemId = this.duplicateItemId;
+        }
+        if (this.itemName == null || this.itemName.trim().isEmpty()) {
+            this.itemName = "Custom Item";
+        }
+        if (this.unitPrice == null) {
+            this.unitPrice = BigDecimal.ZERO;
         }
     }
 
-    // Getters and Setters
+    // Getters and Setters with explicit JSON property support
     public UUID getItemId() { return itemId; }
     public void setItemId(UUID itemId) { 
         this.itemId = itemId; 
@@ -58,14 +72,18 @@ public class OrderItem {
     public void setOrder(Order order) { this.order = order; }
 
     public String getItemName() { return itemName; }
+    @JsonProperty("itemName")
     public void setItemName(String itemName) { this.itemName = itemName; }
 
     public int getQuantity() { return quantity; }
+    @JsonProperty("quantity")
     public void setQuantity(int quantity) { this.quantity = quantity; }
 
     public BigDecimal getUnitPrice() { return unitPrice; }
+    @JsonProperty("unitPrice")
     public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
 
     public String getItemDescription() { return itemDescription; }
+    @JsonProperty("itemDescription")
     public void setItemDescription(String itemDescription) { this.itemDescription = itemDescription; }
 }
