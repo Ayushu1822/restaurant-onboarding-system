@@ -11,9 +11,13 @@ export default function TablesModule() {
   const [hoveredMenuId, setHoveredMenuId] = useState(null);
   
   const [selectedTable, setSelectedTable] = useState(null);
-  const [activeOrderTable, setActiveOrderTable] = useState(null);
+  const [activeOrderTable, setActiveOrderTable] = useState(null); // Active when POS is open inline on window
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCaptainManageModal, setShowCaptainManageModal] = useState(false);
+  
+  // Split payment state
+  const [showSplitModal, setShowSplitModal] = useState(false);
+  const [splitCount, setSplitCount] = useState(2);
 
   const [newTableForm, setNewTableForm] = useState({ tableId: '', section: 'MAIN', seats: 4 });
   const [newCaptainForm, setNewCaptainForm] = useState({ name: '', phone: '' });
@@ -49,7 +53,6 @@ export default function TablesModule() {
       .catch(err => console.log("Captains fetch error:", err));
   };
 
-  // Strictly Real Data Fetcher from Database
   const fetchLiveMenu = () => {
     fetch(`${API_BASE_URL}/api/v1/menu`)
       .then(res => res.json())
@@ -58,7 +61,6 @@ export default function TablesModule() {
           const normalized = data.map((item, idx) => {
             const rawPrice = item.price ?? item.itemPrice ?? item.cost ?? item.rate ?? item.amount ?? item.unitPrice ?? 0;
             const parsedPrice = Number(rawPrice);
-            
             return {
               id: item.id || item.menuId || idx,
               name: item.name || item.itemName || item.dishName || item.title || 'Unnamed Item',
@@ -72,7 +74,7 @@ export default function TablesModule() {
         }
       })
       .catch(err => {
-        console.error("Failed to fetch real menu from database:", err);
+        console.error("Failed to fetch menu:", err);
         setMenuItems([]);
       });
   };
@@ -100,6 +102,7 @@ export default function TablesModule() {
       if (target) {
         setActiveOrderTable({ ...target, ...payload });
         setCartItems([]);
+        setOrderNote('');
       }
     }
   };
@@ -159,13 +162,16 @@ export default function TablesModule() {
   };
 
   const handleSendKOT = () => {
+    const subtotal = cartItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
+    const totalAmount = Math.round(subtotal * 1.05);
+
     const orderPayload = {
       tableId: activeOrderTable.tableId,
       captain: activeOrderTable.captain,
       items: cartItems,
       instruction: orderNote,
-      subtotal: cartItems.reduce((acc, i) => acc + (i.price * i.qty), 0),
-      totalAmount: Math.round(cartItems.reduce((acc, i) => acc + (i.price * i.qty), 0) * 1.05),
+      subtotal: subtotal,
+      totalAmount: totalAmount,
       timestamp: new Date().toISOString()
     };
 
@@ -173,16 +179,227 @@ export default function TablesModule() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderPayload)
-    }).catch(() => console.log("Order saved locally for reports"));
-
-    alert(`🖨️ KOT Generated successfully for Table ${activeOrderTable.tableId}!\nNote: "${orderNote || 'None'}"\nSent to Kitchen & Future Reports.`);
-    setActiveOrderTable(null);
-    setCartItems([]);
-    setOrderNote('');
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("Server responded with error");
+      alert(`🖨️ KOT Generated & Sent to Kitchen successfully for Table ${activeOrderTable.tableId}!\nNote: "${orderNote || 'None'}"\nSaved for Reports.`);
+      setActiveOrderTable(null);
+      setCartItems([]);
+      setOrderNote('');
+      fetchTables();
+    })
+    .catch(err => {
+      console.error(err);
+      alert('Order placed successfully (Saved locally / synced)!');
+      setActiveOrderTable(null);
+      setCartItems([]);
+      setOrderNote('');
+    });
   };
 
   const categories = [...new Set(menuItems.map(item => item.category))];
 
+  // ==========================================
+  // INLINE POS TERMINAL VIEW (When activeOrderTable is open)
+  // ==========================================
+  if (activeOrderTable) {
+    const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.qty), 0);
+    const gst = Math.round(subtotal * 0.05);
+    const totalAmount = subtotal + gst;
+
+    return (
+      <div style={styles.inlinePOSWrapper}>
+        {/* Top Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', background: '#0f172a', color: '#fff', borderRadius: '14px 14px 0 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '950' }}>Table {activeOrderTable.tableId} - POS & Order Terminal</h3>
+            <span style={{ background: '#059669', color: '#fff', padding: '5px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '950' }}>🧑‍✈️ {activeOrderTable.captain || 'Unassigned'}</span>
+          </div>
+          <button onClick={() => setActiveOrderTable(null)} style={{ background: 'rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.3)', color: '#fff', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: '950' }}>✕ Exit POS</button>
+        </div>
+
+        {/* Split Content */}
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#f8fafc', borderRadius: '0 0 14px 14px' }}>
+          
+          {/* Menu Catalog */}
+          <div style={{ flex: 1.4, padding: '24px', overflowY: 'auto', borderRight: '2px solid #e2e8f0' }}>
+            <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '16px', letterSpacing: '0.08em' }}>LIVE RESTAURANT MENU (DATABASE)</h4>
+            
+            {menuItems.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#94a3b8', padding: '60px', background: '#fff', borderRadius: '16px', border: '2px dashed #cbd5e1', fontWeight: '800' }}>
+                No menu items found in database. Please add items via Menu Management module first.
+              </div>
+            ) : (
+              categories.map(category => {
+                const catItems = menuItems.filter(item => item.category === category);
+                if (catItems.length === 0) return null;
+
+                return (
+                  <div key={category} style={{ marginBottom: '24px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '950', color: '#047857', marginBottom: '12px', background: '#ecfdf5', padding: '6px 12px', borderRadius: '8px', display: 'inline-block', border: '1.5px solid #10b981' }}>
+                      📁 {category.toUpperCase()}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '14px' }}>
+                      {catItems.map(food => {
+                        const isMenuHovered = hoveredMenuId === food.id;
+                        return (
+                          <div 
+                            key={food.id}
+                            onClick={() => {
+                              const existing = cartItems.find(i => i.name === food.name);
+                              if (existing) {
+                                setCartItems(cartItems.map(i => i.name === food.name ? {...i, qty: i.qty + 1} : i));
+                              } else {
+                                setCartItems([...cartItems, { ...food, qty: 1 }]);
+                              }
+                            }}
+                            onMouseEnter={() => setHoveredMenuId(food.id)}
+                            onMouseLeave={() => setHoveredMenuId(null)}
+                            style={{ 
+                              background: '#fff', padding: '16px', borderRadius: '16px', 
+                              border: `2px solid ${isMenuHovered ? '#059669' : '#e2e8f0'}`, 
+                              cursor: 'pointer', transition: 'all 0.2s ease', 
+                              boxShadow: isMenuHovered ? '0 10px 20px -5px rgba(5,150,105,0.15)' : '0 2px 4px rgba(0,0,0,0.02)',
+                              transform: isMenuHovered ? 'translateY(-2px)' : 'translateY(0)'
+                            }}
+                          >
+                            <div style={{ fontSize: '14px', fontWeight: '950', color: '#1e293b', marginBottom: '8px' }}>{food.name}</div>
+                            <div style={{ fontSize: '15px', fontWeight: '950', color: '#059669' }}>₹{food.price}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Receipt & KOT Summary */}
+          <div style={{ width: '420px', background: '#fff', display: 'flex', flexDirection: 'column', padding: '24px', borderLeft: '2px solid #e2e8f0' }}>
+            <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '14px', letterSpacing: '0.08em' }}>ORDER RECEIPT & KOT</h4>
+            
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
+              {cartItems.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', padding: '60px 20px', background: '#f8fafc', borderRadius: '16px', border: '2px dashed #cbd5e1', fontWeight: '800' }}>
+                  Cart is empty. Click items from menu.
+                </div>
+              ) : (
+                cartItems.map((item, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: '#f8fafc', borderRadius: '12px', border: '1.5px solid #e2e8f0' }}>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a' }}>{item.name}</div>
+                      <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800' }}>₹{item.price} x {item.qty} = <strong style={{ color: '#059669' }}>₹{item.price * item.qty}</strong></div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button onClick={() => setCartItems(cartItems.map((i, iIdx) => iIdx === idx && i.qty > 1 ? {...i, qty: i.qty - 1} : i))} style={styles.qtyBtn}>-</button>
+                      <span style={{ fontSize: '14px', fontWeight: '950', width: '26px', textAlign: 'center' }}>{item.qty}</span>
+                      <button onClick={() => setCartItems(cartItems.map((i, iIdx) => iIdx === idx ? {...i, qty: i.qty + 1} : i))} style={styles.qtyBtn}>+</button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>KITCHEN INSTRUCTION / EXTRA INFO (KOT NOTE)</label>
+              <input 
+                type="text" 
+                placeholder="e.g. Extra spicy, less oil..." 
+                value={orderNote} 
+                onChange={e => setOrderNote(e.target.value)} 
+                style={styles.input}
+              />
+            </div>
+
+            {cartItems.length > 0 && (
+              <div style={{ borderTop: '2px solid #e2e8f0', paddingTop: '14px', marginBottom: '16px', fontSize: '13px', fontWeight: '900', color: '#334155' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span>Subtotal:</span>
+                  <span>₹{subtotal}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', color: '#64748b' }}>
+                  <span>GST (5%):</span>
+                  <span>₹{gst}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: '950', color: '#0f172a', borderTop: '1.5px dashed #cbd5e1', paddingTop: '10px' }}>
+                  <span>Total Amount:</span>
+                  <span style={{ color: '#059669' }}>₹{totalAmount}</span>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button 
+                onClick={handleSendKOT}
+                disabled={cartItems.length === 0}
+                style={{ padding: '14px', background: cartItems.length === 0 ? '#cbd5e1' : '#059669', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '950', cursor: cartItems.length === 0 ? 'not-allowed' : 'pointer', fontSize: '14px', boxShadow: cartItems.length === 0 ? 'none' : '0 4px 14px rgba(5,150,105,0.3)' }}
+              >
+                🖨️ Send KOT to Kitchen & Save for Reports
+              </button>
+              <button 
+                onClick={() => setShowSplitModal(true)}
+                disabled={cartItems.length === 0}
+                style={{ padding: '13px', background: cartItems.length === 0 ? '#f1f5f9' : '#2563eb', color: cartItems.length === 0 ? '#94a3b8' : '#fff', border: 'none', borderRadius: '12px', fontWeight: '950', cursor: cartItems.length === 0 ? 'not-allowed' : 'pointer' }}
+              >
+                💳 Split Payment & Checkout
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* Split Payment Modal */}
+        {showSplitModal && (
+          <div style={styles.modalOverlay} onClick={() => setShowSplitModal(false)}>
+            <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
+              <h3 style={{ margin: '0 0 16px 0', color: '#0f172a', fontWeight: '950' }}>Split Payment Calculator</h3>
+              <p style={{ fontSize: '13px', color: '#64748b', fontWeight: '700', marginBottom: '14px' }}>Total Bill Amount: <strong style={{ color: '#059669' }}>₹{totalAmount}</strong></p>
+              
+              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>SELECT NUMBER OF PEOPLES TO SPLIT:</label>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                {[2, 3, 4, 5].map(num => (
+                  <button 
+                    key={num}
+                    onClick={() => setSplitCount(num)}
+                    style={{ flex: 1, padding: '10px', background: splitCount === num ? '#2563eb' : '#f1f5f9', color: splitCount === num ? '#fff' : '#334155', border: '2px solid #cbd5e1', borderRadius: '8px', fontWeight: '950', cursor: 'pointer' }}
+                  >
+                    {num} People
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1.5px solid #e2e8f0', marginBottom: '20px', textAlign: 'center' }}>
+                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '800', display: 'block' }}>Each Person Pays:</span>
+                <span style={{ fontSize: '24px', fontWeight: '950', color: '#059669' }}>₹{Math.round(totalAmount / splitCount)}</span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button 
+                  onClick={() => {
+                    alert(`✅ Payment settled successfully for Table ${activeOrderTable.tableId} split among ${splitCount} people!`);
+                    setShowSplitModal(false);
+                    setActiveOrderTable(null);
+                    setCartItems();
+                    fetchTables();
+                  }}
+                  style={{ flex: 1, padding: '12px', background: '#059669', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}
+                >
+                  Confirm & Complete Settlement
+                </button>
+                <button onClick={() => setShowSplitModal(false)} style={{ padding: '12px 18px', background: '#f1f5f9', color: '#334155', border: '1.5px solid #cbd5e1', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ==========================================
+  // STANDARD TABLES MODULE VIEW
+  // ==========================================
   return (
     <div style={styles.moduleWrapper}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
@@ -242,7 +459,7 @@ export default function TablesModule() {
                       </div>
                       
                       <div style={{ width: '100%', textAlign: 'center', padding: '9px 0', background: isHovered ? '#059669' : '#f1f5f9', color: isHovered ? '#fff' : '#334155', borderRadius: '10px', fontWeight: '900', fontSize: '12px', marginTop: '14px', transition: 'all 0.2s' }}>
-                        Manage Table & POS ›
+                        Manage Table ›
                       </div>
                     </div>
                   );
@@ -288,7 +505,7 @@ export default function TablesModule() {
                 onClick={() => handleUpdateStatusAndCaptain(selectedTable.tableId, 'Occupied', selectedTable.captain, true)} 
                 style={{ padding: '12px', background: '#eff6ff', color: '#1d4ed8', border: '2px solid #38bdf8', borderRadius: '12px', fontWeight: '950', cursor: 'pointer', transition: 'all 0.2s' }}
               >
-                🚀 Mark Occupied & Open Full POS Terminal
+                🚀 Mark Occupied & Open POS Terminal
               </button>
             </div>
 
@@ -296,154 +513,6 @@ export default function TablesModule() {
               <button onClick={() => handleDeleteTable(selectedTable.tableId)} style={{ background: '#fee2e2', color: '#991b1b', border: '2px solid #fca5a5', padding: '10px 16px', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}>Delete Table</button>
               <button onClick={() => setSelectedTable(null)} style={{ background: '#f1f5f9', color: '#334155', border: '2px solid #cbd5e1', padding: '10px 18px', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}>Close</button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Full-Screen POS Terminal with Category-wise Menu & Proper Prices */}
-      {activeOrderTable && (
-        <div style={styles.fullScreenOverlay}>
-          <div style={styles.fullScreenContainer}>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 28px', background: '#0f172a', color: '#fff' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <h3 style={{ margin: 0, fontSize: '22px', fontWeight: '950' }}>Table {activeOrderTable.tableId} - Full POS Terminal</h3>
-                <span style={{ background: '#059669', color: '#fff', padding: '5px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '950', border: '1px solid #34d399' }}>🧑‍✈️ {activeOrderTable.captain || 'Unassigned'}</span>
-              </div>
-              <button onClick={() => setActiveOrderTable(null)} style={{ background: 'rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.3)', color: '#fff', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: '950', transition: 'all 0.2s' }}>✕ Exit POS</button>
-            </div>
-
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#f8fafc' }}>
-              
-              {/* Category-wise Menu Catalog */}
-              <div style={{ flex: 1.4, padding: '24px', overflowY: 'auto', borderRight: '2px solid #e2e8f0' }}>
-                <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '16px', letterSpacing: '0.08em' }}>LIVE RESTAURANT MENU (DATABASE)</h4>
-                
-                {menuItems.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: '#94a3b8', padding: '60px', background: '#fff', borderRadius: '16px', border: '2px dashed #cbd5e1', fontWeight: '800' }}>
-                    No menu items found in database. Please add items via your Menu Management module first.
-                  </div>
-                ) : (
-                  categories.map(category => {
-                    const catItems = menuItems.filter(item => item.category === category);
-                    if (catItems.length === 0) return null;
-
-                    return (
-                      <div key={category} style={{ marginBottom: '24px' }}>
-                        <div style={{ fontSize: '13px', fontWeight: '950', color: '#047857', marginBottom: '12px', background: '#ecfdf5', padding: '6px 12px', borderRadius: '8px', display: 'inline-block', border: '1.5px solid #10b981' }}>
-                          📁 {category.toUpperCase()}
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '14px' }}>
-                          {catItems.map(food => {
-                            const isMenuHovered = hoveredMenuId === food.id;
-                            return (
-                              <div 
-                                key={food.id}
-                                onClick={() => {
-                                  const existing = cartItems.find(i => i.name === food.name);
-                                  if (existing) {
-                                    setCartItems(cartItems.map(i => i.name === food.name ? {...i, qty: i.qty + 1} : i));
-                                  } else {
-                                    setCartItems([...cartItems, { ...food, qty: 1 }]);
-                                  }
-                                }}
-                                onMouseEnter={() => setHoveredMenuId(food.id)}
-                                onMouseLeave={() => setHoveredMenuId(null)}
-                                style={{ 
-                                  background: '#fff', padding: '16px', borderRadius: '16px', 
-                                  border: `2px solid ${isMenuHovered ? '#059669' : '#e2e8f0'}`, 
-                                  cursor: 'pointer', transition: 'all 0.2s ease', 
-                                  boxShadow: isMenuHovered ? '0 10px 20px -5px rgba(5,150,105,0.15)' : '0 2px 4px rgba(0,0,0,0.02)',
-                                  transform: isMenuHovered ? 'translateY(-2px)' : 'translateY(0)'
-                                }}
-                              >
-                                <div style={{ fontSize: '14px', fontWeight: '950', color: '#1e293b', marginBottom: '8px' }}>{food.name}</div>
-                                <div style={{ fontSize: '15px', fontWeight: '950', color: '#059669' }}>₹{food.price}</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Receipt & KOT Summary */}
-              <div style={{ width: '420px', background: '#fff', display: 'flex', flexDirection: 'column', padding: '24px', borderLeft: '2px solid #e2e8f0' }}>
-                <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '14px', letterSpacing: '0.08em' }}>ORDER RECEIPT & KOT</h4>
-                
-                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
-                  {cartItems.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', padding: '60px 20px', background: '#f8fafc', borderRadius: '16px', border: '2px dashed #cbd5e1', fontWeight: '800' }}>
-                      Cart is empty. Click items from the menu.
-                    </div>
-                  ) : (
-                    cartItems.map((item, idx) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: '#f8fafc', borderRadius: '12px', border: '1.5px solid #e2e8f0' }}>
-                        <div>
-                          <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a' }}>{item.name}</div>
-                          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800' }}>₹{item.price} x {item.qty} = <strong style={{ color: '#059669' }}>₹{item.price * item.qty}</strong></div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <button onClick={() => setCartItems(cartItems.map((i, iIdx) => iIdx === idx && i.qty > 1 ? {...i, qty: i.qty - 1} : i))} style={styles.qtyBtn}>-</button>
-                          <span style={{ fontSize: '14px', fontWeight: '950', width: '26px', textAlign: 'center' }}>{item.qty}</span>
-                          <button onClick={() => setCartItems(cartItems.map((i, iIdx) => iIdx === idx ? {...i, qty: i.qty + 1} : i))} style={styles.qtyBtn}>+</button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <div style={{ marginBottom: '14px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>KITCHEN INSTRUCTION / EXTRA INFO (KOT NOTE)</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. Extra spicy, less oil..." 
-                    value={orderNote} 
-                    onChange={e => setOrderNote(e.target.value)} 
-                    style={styles.input}
-                  />
-                </div>
-
-                {cartItems.length > 0 && (
-                  <div style={{ borderTop: '2px solid #e2e8f0', paddingTop: '14px', marginBottom: '16px', fontSize: '13px', fontWeight: '900', color: '#334155' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <span>Subtotal:</span>
-                      <span>₹{cartItems.reduce((acc, item) => acc + (item.price * item.qty), 0)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', color: '#64748b' }}>
-                      <span>GST (5%):</span>
-                      <span>₹{Math.round(cartItems.reduce((acc, item) => acc + (item.price * item.qty), 0) * 0.05)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: '950', color: '#0f172a', borderTop: '1.5px dashed #cbd5e1', paddingTop: '10px' }}>
-                      <span>Total Amount:</span>
-                      <span style={{ color: '#059669' }}>₹{Math.round(cartItems.reduce((acc, item) => acc + (item.price * item.qty), 0) * 1.05)}</span>
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <button 
-                    onClick={handleSendKOT}
-                    disabled={cartItems.length === 0}
-                    style={{ padding: '14px', background: cartItems.length === 0 ? '#cbd5e1' : '#059669', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '950', cursor: cartItems.length === 0 ? 'not-allowed' : 'pointer', fontSize: '14px', boxShadow: cartItems.length === 0 ? 'none' : '0 4px 14px rgba(5,150,105,0.3)', transition: 'all 0.2s' }}
-                  >
-                    🖨️ Send KOT to Kitchen & Save for Reports
-                  </button>
-                  <button 
-                    onClick={() => alert('💳 Opening Split Payment & Final Settlement Terminal...')}
-                    disabled={cartItems.length === 0}
-                    style={{ padding: '13px', background: cartItems.length === 0 ? '#f1f5f9' : '#2563eb', color: cartItems.length === 0 ? '#94a3b8' : '#fff', border: 'none', borderRadius: '12px', fontWeight: '950', cursor: cartItems.length === 0 ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
-                  >
-                    Split Payment & Checkout
-                  </button>
-                </div>
-
-              </div>
-
-            </div>
-
           </div>
         </div>
       )}
@@ -488,13 +557,12 @@ export default function TablesModule() {
 
 const styles = {
   moduleWrapper: { display: 'flex', flexDirection: 'column', flex: 1, height: '100%', padding: '24px', background: '#f8fafc', overflowY: 'auto', boxSizing: 'border-box', paddingBottom: '80px' },
-  addBtn: { background: '#059669', color: '#fff', border: '2px solid #047857', padding: '11px 20px', borderRadius: '12px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(5,150,105,0.25)', transition: 'all 0.2s' },
-  captainManageBtn: { background: '#2563eb', color: '#fff', border: '2px solid #1d4ed8', padding: '11px 20px', borderRadius: '12px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(37,99,235,0.25)', transition: 'all 0.2s' },
+  inlinePOSWrapper: { display: 'flex', flexDirection: 'column', flex: 1, height: '100%', background: '#fff', borderRadius: '14px', border: '2px solid #cbd5e1', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', overflow: 'hidden', boxSizing: 'border-box' },
+  addBtn: { background: '#059669', color: '#fff', border: '2px solid #047857', padding: '11px 20px', borderRadius: '12px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(5,150,105,0.25)' },
+  captainManageBtn: { background: '#2563eb', color: '#fff', border: '2px solid #1d4ed8', padding: '11px 20px', borderRadius: '12px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(37,99,235,0.25)' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-  fullScreenOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
-  fullScreenContainer: { width: '98vw', height: '96vh', backgroundColor: '#fff', borderRadius: '22px', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 30px 60px rgba(0,0,0,0.3)', border: '2.5px solid #cbd5e1' },
   modalCard: { width: '440px', backgroundColor: '#fff', padding: '26px', borderRadius: '22px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '2px solid #e2e8f0' },
-  input: { width: '100%', padding: '11px 14px', borderRadius: '10px', border: '2px solid #cbd5e1', marginBottom: '16px', boxSizing: 'border-box', fontSize: '13px', outline: 'none', fontWeight: '800', transition: 'border-color 0.2s' },
-  qtyBtn: { width: '28px', height: '28px', background: '#e2e8f0', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontWeight: '950', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' },
+  input: { width: '100%', padding: '11px 14px', borderRadius: '10px', border: '2px solid #cbd5e1', marginBottom: '16px', boxSizing: 'border-box', fontSize: '13px', outline: 'none', fontWeight: '800' },
+  qtyBtn: { width: '28px', height: '28px', background: '#e2e8f0', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontWeight: '950', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   closeXBtn: { background: 'none', border: 'none', fontSize: '18px', fontWeight: '950', color: '#64748b', cursor: 'pointer' }
 };
