@@ -24,10 +24,12 @@ export default function ReportsModule() {
 
   useEffect(() => {
     fetchOrders();
+    // Live polling every 5 seconds to keep online orders & status synced
+    const interval = setInterval(fetchOrders, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchOrders = () => {
-    setLoading(true);
     fetch(`${API_BASE_URL}/api/v1/orders`)
       .then(res => res.json())
       .then(data => {
@@ -115,7 +117,7 @@ export default function ReportsModule() {
     return st !== 'completed' && st !== 'delivered' && st !== 'picked up' && st !== 'ready' && st !== 'settled';
   });
 
-  // 2. Completed History Filtering (with its own Date & Channel Dropdowns)
+  // 2. Completed History Filtering (Strictly capturing completed, delivered, ready, settled, picked up)
   const completedHistoryOrders = orders.filter((o, idx) => {
     const st = (o.status || 'New').toLowerCase();
     const isCompleted = st === 'completed' || st === 'delivered' || st === 'picked up' || st === 'ready' || st === 'settled';
@@ -169,78 +171,37 @@ export default function ReportsModule() {
     }
   });
 
-  // Export as Excel (.xls / .csv format)
-  const downloadExcelCSV = (filename, rows, headers) => {
-    let csvContent = "\uFEFF" + [headers.join("\t"), ...rows.map(e => e.join("\t"))].join("\n");
-    var blob = new Blob([csvContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-    var link = document.createElement("a");
-    var url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const exportOrderDetails = () => {
-    const headers = ["Order ID", "Customer Name", "Channel", "Type", "Status", "Total Amount", "Timestamp"];
-    const rows = filteredOrders.map((o, i) => [
-      o.displayId || o.orderId || 'N/A',
-      o.customerName || 'Walk-In',
-      o.channel || 'COUNTER',
-      o.orderType || 'Dine-In',
-      o.status || 'New',
-      o.totalAmount || 0,
-      getSafeTimestamp(o, i).toLocaleString()
-    ]);
-    downloadExcelCSV(`order_breakdown_${dateRange}.xls`, rows, headers);
-  };
-
-  const exportCompletedHistoryExcel = () => {
-    const headers = ["Order ID", "Customer Name", "Captain", "Type", "Status", "Total Amount", "Timestamp"];
-    const rows = completedHistoryOrders.map((o, i) => [
-      o.displayId || o.orderId || 'N/A',
-      o.customerName || 'Walk-In',
-      extractCaptain(o.customerName) || 'None',
-      o.orderType || 'Dine-In',
-      o.status || 'Completed',
-      o.totalAmount || 0,
-      getSafeTimestamp(o, i).toLocaleString()
-    ]);
-    downloadExcelCSV(`completed_history_${historyDateRange}.xls`, rows, headers);
-  };
-
-  // Individual Order Receipt Download
-  const downloadSingleReceipt = (o, index) => {
+  // Print Individual Receipt
+  const printSingleReceipt = (o, index) => {
     const dateStr = getSafeTimestamp(o, index).toLocaleString();
     const items = o.items || [];
-    let receiptText = `=================================\n`;
-    receiptText += `       RESTAURANT POS RECEIPT\n`;
-    receiptText += `=================================\n`;
-    receiptText += `Order ID : ${o.displayId || o.orderId}\n`;
-    receiptText += `Customer : ${o.customerName || 'Walk-In'}\n`;
-    receiptText += `Captain  : ${extractCaptain(o.customerName) || 'N/A'}\n`;
-    receiptText += `Channel  : ${o.channel || 'COUNTER'} (${o.orderType || 'Dine-In'})\n`;
-    receiptText += `Status   : ${o.status || 'Completed'}\n`;
-    receiptText += `Date     : ${dateStr}\n`;
-    receiptText += `---------------------------------\n`;
-    receiptText += `ITEMS:\n`;
-    items.forEach((it, idx) => {
-      receiptText += `${idx + 1}. ${it.itemName || it.name} x ${it.quantity || it.qty || 1}  -  ₹${(it.unitPrice || 0) * (it.quantity || it.qty || 1)}\n`;
-    });
-    receiptText += `---------------------------------\n`;
-    receiptText += `TOTAL AMOUNT: ₹${o.totalAmount || 0}\n`;
-    receiptText += `=================================\n`;
-    receiptText += `       Thank You! Visit Again\n`;
-    receiptText += `=================================\n`;
-
-    var blob = new Blob([receiptText], { type: 'text/plain;charset=utf-8;' });
-    var link = document.createElement("a");
-    link.setAttribute("href", URL.createObjectURL(blob));
-    link.setAttribute("download", `receipt_${o.displayId || 'order'}.txt`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    let receiptWindow = window.open('', '_blank', 'width=400,height=600');
+    receiptWindow.document.write(`
+      <html>
+        <head><title>Receipt - ${o.displayId || 'Order'}</title></head>
+        <body style="font-family: monospace; padding: 20px; font-size: 14px;">
+          <h3 style="text-align: center; margin: 0;">RESTAURANT POS</h3>
+          <p style="text-align: center; margin: 2px 0 15px 0; font-size: 12px;">Thermal Receipt</p>
+          <hr style="border: dashed 1px #000;" />
+          <p><b>Order ID:</b> ${o.displayId || o.orderId}</p>
+          <p><b>Customer:</b> ${o.customerName || 'Walk-In'}</p>
+          <p><b>Captain:</b> ${extractCaptain(o.customerName) || 'N/A'}</p>
+          <p><b>Channel:</b> ${o.channel || 'COUNTER'} (${o.orderType || 'Dine-In'})</p>
+          <p><b>Status:</b> ${o.status || 'Completed'}</p>
+          <p><b>Date:</b> ${dateStr}</p>
+          <hr style="border: dashed 1px #000;" />
+          <p><b>ITEMS:</b></p>
+          <ul>
+            ${items.map(it => `<li>${it.itemName || it.name} x ${it.quantity \vert{}\vert{} it.qty \vert{}\vert{} 1} — ₹${(it.unitPrice || 0) * (it.quantity || it.qty || 1)}</li>`).join('')}
+          </ul>
+          <hr style="border: dashed 1px #000;" />
+          <h3 style="text-align: center;">TOTAL: ₹${o.totalAmount || 0}</h3>
+          <p style="text-align: center; font-size: 11px; margin-top: 20px;">Thank You! Visit Again</p>
+        </body>
+      </html>
+    `);
+    receiptWindow.document.close();
+    receiptWindow.print();
   };
 
   const customerHistoryMap = {};
@@ -256,13 +217,11 @@ export default function ReportsModule() {
         <div>
           <h2 style={{ fontSize: '26px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Reports & Analytics Hub</h2>
           <p style={{ color: '#64748b', fontSize: '13px', margin: '4px 0 0 0', fontWeight: '700' }}>
-            Real completed order histories with Excel exports, individual receipts, and captain tracking
+            Real-time kitchen synced order histories, single-line archives, and thermal receipt printing
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button onClick={exportOrderDetails} style={styles.exportBtn}>📥 Orders Excel (.xls)</button>
-          <button onClick={exportCompletedHistoryExcel} style={styles.exportBtn}>📦 History Excel (.xls)</button>
-          <button onClick={() => window.print()} style={{ ...styles.exportBtn, background: 'linear-gradient(135deg, #059669, #047857)' }}>🖨️ Print Report</button>
+          <button onClick={() => window.print()} style={{ ...styles.exportBtn, background: 'linear-gradient(135deg, #059669, #047857)' }}>🖨️ Print Full Report</button>
         </div>
       </div>
 
@@ -394,15 +353,15 @@ export default function ReportsModule() {
       )}
 
       {/* ========================================== */}
-      {/* 3. COMPLETED ORDERS HISTORY SECTION (WITH CHANNEL & DATE DROPDOWNS) */}
+      {/* 3. COMPLETED ORDERS HISTORY SECTION (SINGLE-LINE & RECEIPT PRINT) */}
       {/* ========================================== */}
       <div style={styles.sectionCard}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>
-              📦 Completed Orders History & Receipts ({completedHistoryOrders.length})
+              📦 Completed Orders History Archive ({completedHistoryOrders.length})
             </h3>
-            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>Download individual receipts or export group history to Excel</span>
+            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>Compact single-line logs with thermal receipt print option</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -425,51 +384,31 @@ export default function ReportsModule() {
                 <option value="year">Year</option>
               </select>
             </div>
-
-            <button onClick={exportCompletedHistoryExcel} style={{ ...styles.exportBtn, padding: '7px 12px', fontSize: '11px' }}>📥 Export History (.xls)</button>
           </div>
         </div>
 
         {completedHistoryOrders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px', fontWeight: '800' }}>No history orders found matching this filter. Ensure orders are marked completed, ready, or delivered.</div>
+          <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px', fontWeight: '800' }}>No history orders found. Complete an order in Kitchen or POS to see it logged here.</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {completedHistoryOrders.map((o, idx) => {
               const dateStr = getSafeTimestamp(o, idx).toLocaleString();
-              const items = o.items || [];
               const captain = extractCaptain(o.customerName) || 'Counter / Unassigned';
               return (
-                <div key={idx} style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', flexWrap: 'wrap', gap: '10px' }}>
-                    <div>
-                      <span style={{ fontWeight: '950', color: '#0f172a', fontSize: '15px', marginRight: '10px' }}>{o.displayId || o.orderId}</span>
-                      <span style={styles.badge}>{o.channel || 'COUNTER'}</span>
-                      <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', marginLeft: '10px' }}>👤 {o.customerName || 'Walk-In'}</span>
-                      <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: '900', marginLeft: '10px' }}>🧑‍✈️ {captain}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <span style={{ fontSize: '15px', fontWeight: '950', color: '#059669' }}>₹{o.totalAmount || 0}</span>
-                        <div style={{ fontSize: '11px', color: '#2563eb', fontWeight: '900' }}>{o.status}</div>
-                      </div>
-                      <button onClick={() => downloadSingleReceipt(o, idx)} style={styles.receiptBtn}>
-                        🖨️ Receipt
-                      </button>
-                    </div>
+                <div key={idx} style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: '950', color: '#0f172a', fontSize: '14px' }}>{o.displayId || o.orderId}</span>
+                    <span style={styles.badge}>{o.channel || 'COUNTER'}</span>
+                    <span style={{ fontSize: '12px', color: '#334155', fontWeight: '800' }}>👤 {o.customerName || 'Walk-In'}</span>
+                    <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: '900' }}>🧑‍✈️ {captain}</span>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>🕒 {dateStr}</span>
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', marginBottom: '8px' }}>🕒 Timestamp: {dateStr}</div>
-                  
-                  {/* Item Breakdown List */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
-                    {items.length === 0 ? (
-                      <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>No item details recorded.</span>
-                    ) : (
-                      items.map((it, iIdx) => (
-                        <div key={iIdx} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '6px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: '800', color: '#334155' }}>
-                          🍽️ {it.itemName || it.name} x <strong style={{ color: '#059669' }}>{it.quantity || it.qty || 1}</strong>
-                        </div>
-                      ))
-                    )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: '950', color: '#059669' }}>₹{o.totalAmount || 0}</span>
+                    <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: '900', textTransform: 'uppercase' }}>{o.status}</span>
+                    <button onClick={() => printSingleReceipt(o, idx)} style={styles.receiptBtn}>
+                      🖨️ Receipt
+                    </button>
                   </div>
                 </div>
               );
@@ -592,7 +531,7 @@ const styles = {
   container: { display: 'flex', flexDirection: 'column', flex: 1, padding: '28px', background: '#f1f5f9', overflowY: 'auto', boxSizing: 'border-box', paddingBottom: '90px', fontFamily: 'system-ui, -apple-system, sans-serif' },
   headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' },
   exportBtn: { background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', border: 'none', padding: '9px 14px', borderRadius: '10px', fontWeight: '950', fontSize: '11px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' },
-  receiptBtn: { background: '#059669', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '950', cursor: 'pointer', boxShadow: '0 2px 6px rgba(5,150,105,0.2)' },
+  receiptBtn: { background: '#059669', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '950', cursor: 'pointer', boxShadow: '0 2px 6px rgba(5,150,105,0.2)' },
   filterBar: { display: 'flex', gap: '16px', background: '#ffffff', padding: '18px 22px', borderRadius: '20px', border: '2px solid #e2e8f0', marginBottom: '24px', flexWrap: 'wrap', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.03)' },
   filterGroup: { display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '200px' },
   label: { fontSize: '11px', fontWeight: '950', color: '#64748b', letterSpacing: '0.05em' },
