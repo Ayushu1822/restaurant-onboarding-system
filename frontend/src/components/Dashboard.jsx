@@ -28,6 +28,7 @@ export default function Dashboard({ user, onLogout }) {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [hoveredTab, setHoveredTab] = useState(null);
+  const [hoveredCardId, setHoveredCardId] = useState(null);
   
   const [isProfileFallback, setIsProfileFallback] = useState(false);
   const [isOrdersFallback, setIsOrdersFallback] = useState(false);
@@ -376,7 +377,7 @@ export default function Dashboard({ user, onLogout }) {
             </div>
 
             <div style={styles.splitViewWrapper}>
-              {/* Left Column: Order Cards */}
+              {/* Left Column: Order Cards with Hover Effects */}
               <div style={styles.masterListColumn}>
                 <div style={styles.listHeaderTopRow}>
                   <span style={styles.listHeaderTitle}>Active Queue ({orders.length})</span>
@@ -390,16 +391,20 @@ export default function Dashboard({ user, onLogout }) {
                   ) : (
                     orders.map(order => {
                       const isSelected = selectedOrder?.orderId === order.orderId;
+                      const isHovered = hoveredCardId === order.orderId;
                       return (
                         <div 
                           key={order.orderId || order.id} 
                           style={{
                             ...styles.orderSummaryCard, 
-                            borderColor: isSelected ? '#059669' : '#e2e8f0',
+                            borderColor: isSelected || isHovered ? '#059669' : '#e2e8f0',
                             backgroundColor: isSelected ? '#f0fdf4' : '#fff',
-                            boxShadow: isSelected ? '0 10px 15px -3px rgba(5, 150, 105, 0.1)' : '0 4px 6px -1px rgba(0,0,0,0.02)'
+                            transform: isHovered ? 'translateY(-3px)' : 'none',
+                            boxShadow: isHovered || isSelected ? '0 10px 20px -3px rgba(5, 150, 105, 0.15)' : '0 4px 6px -1px rgba(0,0,0,0.02)'
                           }}
                           onClick={() => setSelectedOrder(order)}
+                          onMouseEnter={() => setHoveredCardId(order.orderId)}
+                          onMouseLeave={() => setHoveredCardId(null)}
                         >
                           <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '8px'}}>
                             <div>
@@ -432,7 +437,7 @@ export default function Dashboard({ user, onLogout }) {
                 </div>
               </div>
 
-              {/* Right Column: Order Details & Ultra-Modern Thermal Receipt */}
+              {/* Right Column: Order Details & Compact Modern Thermal Receipt */}
               <div style={styles.detailPanelColumn}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   <div style={styles.listHeaderTitle}>Order Details & Thermal Receipt</div>
@@ -456,21 +461,21 @@ export default function Dashboard({ user, onLogout }) {
                       <span style={styles.statusBadgeSmall(selectedOrder.status)}>{selectedOrder.status}</span>
                     </div>
 
-                    {/* ULTRA-MODERN ISOLATED THERMAL RECEIPT BOX (Only this prints) */}
+                    {/* COMPACT & SCROLLABLE THERMAL RECEIPT BOX WITH LARGER TEXT */}
                     <div id="printable-thermal-receipt" style={styles.thermalReceiptBox}>
                       <div style={styles.receiptTopAccent}></div>
                       <div style={{ textAlign: 'center', fontWeight: '900', fontSize: '16px', color: '#0f172a', marginTop: '6px', letterSpacing: '0.5px' }}>{profileData.businessName}</div>
-                      <div style={{ textAlign: 'center', fontSize: '10px', color: '#64748b', marginBottom: '8px', fontWeight: '600' }}>Phone: {profileData.phone} • GSTIN: 29AAAAA0000A1Z5</div>
+                      <div style={{ textAlign: 'center', fontSize: '11px', color: '#64748b', marginBottom: '8px', fontWeight: '600' }}>Phone: {profileData.phone} • GSTIN: 29AAAAA0000A1Z5</div>
                       <div style={{ borderBottom: '1.5px dashed #cbd5e1', margin: '8px 0' }}></div>
                       
-                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between', color: '#334155', fontWeight: '800' }}>
+                      <div style={{ fontSize: '12px', display: 'flex', justifyContent: 'space-between', color: '#334155', fontWeight: '800' }}>
                         <span>Order: {selectedOrder.id}</span>
                         <span>{new Date().toLocaleDateString()}</span>
                       </div>
                       <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px', fontWeight: '600' }}>Type: {selectedOrder.type} • Channel: {selectedOrder.channel}</div>
                       <div style={{ borderBottom: '1.5px dashed #cbd5e1', margin: '8px 0' }}></div>
 
-                      <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {selectedOrder.items.map((item, i) => (
                           <div key={i} style={styles.receiptItemRow}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', color: '#0f172a' }}>
@@ -501,14 +506,14 @@ export default function Dashboard({ user, onLogout }) {
                       </div>
 
                       <div style={{ borderBottom: '1.5px dashed #cbd5e1', margin: '10px 0' }}></div>
-                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between', color: '#475569', fontWeight: '600' }}><span>Subtotal</span><span>₹{selectedOrder.subtotal.toFixed(2)}</span></div>
-                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between', color: '#475569', fontWeight: '600' }}><span>GST (5%)</span><span>₹{(selectedOrder.subtotal * 0.05).toFixed(2)}</span></div>
+                      <div style={{ fontSize: '12px', display: 'flex', justifyContent: 'space-between', color: '#475569', fontWeight: '600' }}><span>Subtotal</span><span>₹{selectedOrder.subtotal.toFixed(2)}</span></div>
+                      <div style={{ fontSize: '12px', display: 'flex', justifyContent: 'space-between', color: '#475569', fontWeight: '600' }}><span>GST (5%)</span><span>₹{(selectedOrder.subtotal * 0.05).toFixed(2)}</span></div>
                       <div style={{ borderBottom: '1.5px dashed #cbd5e1', margin: '10px 0' }}></div>
-                      <div style={{ fontSize: '14px', display: 'flex', justifyContent: 'space-between', fontWeight: '900', color: '#059669' }}>
+                      <div style={{ fontSize: '15px', display: 'flex', justifyContent: 'space-between', fontWeight: '900', color: '#059669' }}>
                         <span>TOTAL PAID</span>
                         <span>₹{selectedOrder.total.toFixed(2)}</span>
                       </div>
-                      <div style={{ textAlign: 'center', fontSize: '10px', color: '#059669', fontWeight: '800', marginTop: '12px', letterSpacing: '0.5px' }}>*** THANK YOU FOR VISITING TASTE HUB ***</div>
+                      <div style={{ textAlign: 'center', fontSize: '11px', color: '#059669', fontWeight: '800', marginTop: '12px', letterSpacing: '0.5px' }}>*** THANK YOU FOR VISITING TASTE HUB ***</div>
                     </div>
 
                     <div style={{fontSize: '12px', color: '#334155', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', marginTop: '12px', fontWeight: '600'}}>
@@ -796,7 +801,7 @@ const styles = {
   listHeaderTopRow: { display: 'flex', justifyContent: 'space-between', marginBottom: '12px', flexShrink: 0 },
   listHeaderTitle: { fontSize: '14px', fontWeight: '800', color: '#334155', textAlign: 'left', flexShrink: 0, marginBottom: '10px' },
   scrollableCards: { display: 'flex', flexDirection: 'column', gap: '14px', overflowY: 'auto', flex: 1, paddingRight: '5px' },
-  orderSummaryCard: { border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '18px', cursor: 'pointer', backgroundColor: '#fff', textAlign: 'left', flexShrink: 0, transition: 'all 0.2s ease' },
+  orderSummaryCard: { border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '18px', cursor: 'pointer', backgroundColor: '#fff', textAlign: 'left', flexShrink: 0, transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' },
   detailCard: { backgroundColor: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '16px', padding: '24px', textAlign: 'left', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.02)' },
   emptyDetailPrompt: { backgroundColor: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '40px', textAlign: 'center', color: '#64748b', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600' },
   statusBadgeSmall: (status) => ({
@@ -808,11 +813,11 @@ const styles = {
   printIconBtn: { backgroundColor: '#f1f5f9', border: '1.5px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', color: '#334155' },
   actionBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '11px 20px', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(5, 150, 105, 0.2)' },
   
-  // Ultra-Modern Thermal Receipt Styling
-  thermalReceiptBox: { backgroundColor: '#fff', border: '2px solid #e2e8f0', borderRadius: '16px', padding: '18px', fontFamily: 'monospace', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', marginBottom: '16px', transition: 'all 0.3s ease', position: 'relative', overflow: 'hidden' },
+  // Compact & Scrollable Modern Thermal Receipt Styling with Larger Text
+  thermalReceiptBox: { backgroundColor: '#fff', border: '2px solid #e2e8f0', borderRadius: '16px', padding: '16px', fontFamily: 'monospace', maxHeight: '310px', overflowY: 'auto', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', marginBottom: '16px', transition: 'all 0.3s ease', position: 'relative' },
   receiptTopAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: '5px', background: 'linear-gradient(90deg, #059669, #2563eb, #d97706)' },
-  receiptItemRow: { backgroundColor: '#f8fafc', padding: '8px 10px', borderRadius: '8px', border: '1px solid #f1f5f9', transition: 'all 0.2s' },
-  receiptItemInstructionInput: { width: '100%', marginTop: '6px', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', backgroundColor: '#fff', boxSizing: 'border-box' },
+  receiptItemRow: { backgroundColor: '#f8fafc', padding: '8px 10px', borderRadius: '8px', border: '1.5px solid #f1f5f9', transition: 'all 0.2s' },
+  receiptItemInstructionInput: { width: '100%', marginTop: '6px', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', outline: 'none', backgroundColor: '#fff', boxSizing: 'border-box' },
   checkoutTriggerBtn: { backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(37,99,235,0.2)' },
   
   drawerOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
