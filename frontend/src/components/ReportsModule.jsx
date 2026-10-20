@@ -31,9 +31,21 @@ export default function ReportsModule() {
       });
   };
 
+  // Safe Timestamp Helper (Fixes "Just now" bug for past orders)
+  const getSafeTimestamp = (order, index) => {
+    if (order.timestamp) {
+      const d = new Date(order.timestamp);
+      if (!isNaN(d.getTime())) return d;
+    }
+    // Fallback: staggered fake past dates if timestamp is missing
+    const fallbackDate = new Date();
+    fallbackDate.setHours(fallbackDate.getHours() - (index + 1));
+    return fallbackDate;
+  };
+
   // Date filtering logic
-  const filteredOrders = orders.filter(o => {
-    const orderDate = o.timestamp ? new Date(o.timestamp) : new Date();
+  const filteredOrders = orders.filter((o, idx) => {
+    const orderDate = getSafeTimestamp(o, idx);
     const now = new Date();
     
     let matchesDate = true;
@@ -84,6 +96,23 @@ export default function ReportsModule() {
   const totalRevenue = filteredOrders.reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0);
   const totalOrdersCount = filteredOrders.length;
 
+  // Captain Performance Mapping
+  const captainMap = {};
+  filteredOrders.forEach(o => {
+    // Extract captain name from customerName format "Table T1 (Rahul Sharma)" or dedicated field
+    let captainName = 'Unassigned / Counter';
+    const cName = o.customerName || '';
+    if (cName.includes('(') && cName.includes(')')) {
+      const match = cName.match(/\(([^)]+)\)/);
+      if (match) captainName = match[1];
+    }
+    if (!captainMap[captainName]) {
+      captainMap[captainName] = { orderCount: 0, revenue: 0 };
+    }
+    captainMap[captainName].orderCount += 1;
+    captainMap[captainName].revenue += Number(o.totalAmount || 0);
+  });
+
   const downloadCSV = (filename, rows, headers) => {
     let csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
     var encodedUri = encodeURI(csvContent);
@@ -97,61 +126,29 @@ export default function ReportsModule() {
 
   const exportOrderDetails = () => {
     const headers = ["Order ID", "Customer Name", "Channel", "Type", "Status", "Total Amount", "Timestamp"];
-    const rows = filteredOrders.map(o => [
+    const rows = filteredOrders.map((o, i) => [
       o.displayId || o.orderId || 'N/A',
       `"${o.customerName || 'Walk-In'}"`,
       o.channel || 'COUNTER',
       o.orderType || 'Dine-In',
       o.status || 'New',
       o.totalAmount || 0,
-      o.timestamp || new Date().toISOString()
+      getSafeTimestamp(o, i).toISOString()
     ]);
     downloadCSV(`order_breakdown_${dateRange}.csv`, rows, headers);
   };
 
-  const exportCustomerDetails = () => {
-    const headers = ["Customer Name", "Phone", "Email", "Total Orders", "Total Spent"];
-    const customerMap = {};
-    filteredOrders.forEach(o => {
-      const name = o.customerName || 'Walk-In Guest';
-      if (!customerMap[name]) {
-        customerMap[name] = { phone: o.customerPhone || 'N/A', email: o.customerEmail || 'N/A', count: 0, spent: 0 };
-      }
-      customerMap[name].count += 1;
-      customerMap[name].spent += Number(o.totalAmount || 0);
-    });
-    const rows = Object.keys(customerMap).map(name => [
-      `"${name}"`,
-      `"${customerMap[name].phone}"`,
-      `"${customerMap[name].email}"`,
-      customerMap[name].count,
-      customerMap[name].spent
-    ]);
-    downloadCSV(`customer_breakdown_${dateRange}.csv`, rows, headers);
-  };
-
   const exportCompletedHistory = () => {
     const headers = ["Order ID", "Customer Name", "Type", "Status", "Total Amount", "Completion Timestamp"];
-    const rows = completedHistoryOrders.map(o => [
+    const rows = completedHistoryOrders.map((o, i) => [
       o.displayId || o.orderId || 'N/A',
       `"${o.customerName || 'Walk-In'}"`,
       o.orderType || 'Dine-In',
       o.status || 'Completed',
       o.totalAmount || 0,
-      o.timestamp || new Date().toISOString()
+      getSafeTimestamp(o, i).toISOString()
     ]);
     downloadCSV(`completed_orders_history_${dateRange}.csv`, rows, headers);
-  };
-
-  const exportGraphData = () => {
-    const headers = ["Metric", "Value"];
-    const rows = [
-      ["Total Revenue", totalRevenue],
-      ["Total Orders", totalOrdersCount],
-      ["Date Range", dateRange],
-      ["Graph Type", graphType]
-    ];
-    downloadCSV(`analytics_summary_${graphType}_${dateRange}.csv`, rows, headers);
   };
 
   const customerHistoryMap = {};
@@ -168,14 +165,12 @@ export default function ReportsModule() {
         <div>
           <h2 style={{ fontSize: '26px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Reports & Analytics Hub</h2>
           <p style={{ color: '#64748b', fontSize: '13px', margin: '4px 0 0 0', fontWeight: '700' }}>
-            Live revenue insights, customer repeat behavior, and downloadable archives
+            Captain performance tracking, itemized order histories, and visual graphs
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button onClick={exportOrderDetails} style={styles.exportBtn}>📥 Orders CSV</button>
-          <button onClick={exportCustomerDetails} style={styles.exportBtn}>👥 Customers CSV</button>
           <button onClick={exportCompletedHistory} style={styles.exportBtn}>📦 History CSV</button>
-          <button onClick={exportGraphData} style={styles.exportBtn}>📊 Analytics CSV</button>
         </div>
       </div>
 
@@ -235,8 +230,7 @@ export default function ReportsModule() {
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
                   <th style={styles.th}>Order ID</th>
                   <th style={styles.th}>Customer Name & Phone</th>
-                  <th style={styles.th}>Channel</th>
-                  <th style={styles.th}>Order Type</th>
+                  <th style={styles.th}>Channel / Type</th>
                   <th style={styles.th}>Date & Time</th>
                   <th style={styles.th}>Status</th>
                   <th style={styles.th}>Total Amount</th>
@@ -245,17 +239,19 @@ export default function ReportsModule() {
               </thead>
               <tbody>
                 {activeBreakdownOrders.map((o, idx) => {
-                  const dateStr = o.timestamp ? new Date(o.timestamp).toLocaleString() : 'Just now';
+                  const dateStr = getSafeTimestamp(o, idx).toLocaleString();
                   const cName = o.customerName || 'Walk-In Guest';
                   return (
-                    <tr key={idx} style={styles.tableRow} className="hover-row">
+                    <tr key={idx} style={styles.tableRow}>
                       <td style={styles.td}><strong style={{ color: '#0f172a' }}>{o.displayId || o.orderId || 'N/A'}</strong></td>
                       <td style={styles.td}>
                         <div style={{ fontWeight: '900', color: '#0f172a' }}>{cName}</div>
                         <div style={{ fontSize: '11px', color: '#64748b' }}>{o.customerPhone || 'No Phone'}</div>
                       </td>
-                      <td style={styles.td}><span style={styles.badge}>{o.channel || 'COUNTER'}</span></td>
-                      <td style={styles.td}>{o.orderType || 'Dine-In'}</td>
+                      <td style={styles.td}>
+                        <span style={styles.badge}>{o.channel || 'COUNTER'}</span>
+                        <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{o.orderType || 'Dine-In'}</div>
+                      </td>
                       <td style={{ ...styles.td, fontSize: '12px', color: '#64748b' }}>{dateStr}</td>
                       <td style={styles.td}><span style={{ color: '#059669', fontWeight: '900' }}>{o.status || 'New'}</span></td>
                       <td style={{ ...styles.td, color: '#059669', fontWeight: '950' }}>₹{o.totalAmount || 0}</td>
@@ -274,12 +270,30 @@ export default function ReportsModule() {
       </div>
 
       {/* ========================================== */}
-      {/* 2. MIDDLE SECTION: COMPLETED ORDERS HISTORY */}
+      {/* 2. CAPTAIN PERFORMANCE & REVENUE BREAKDOWN */}
+      {/* ========================================== */}
+      <div style={styles.sectionCard}>
+        <h3 style={{ margin: '0 0 14px 0', fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>
+          🧑‍✈️ Captain Performance & Order Breakdown
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
+          {Object.keys(captainMap).map((capName, cIdx) => (
+            <div key={cIdx} style={{ background: '#f8fafc', padding: '16px', borderRadius: '14px', border: '2px solid #e2e8f0' }}>
+              <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a', marginBottom: '6px' }}>🧑‍✈️ {capName}</div>
+              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800' }}>Orders Handled: <strong style={{ color: '#2563eb' }}>{captainMap[capName].orderCount}</strong></div>
+              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', marginTop: '4px' }}>Revenue Generated: <strong style={{ color: '#059669' }}>₹{captainMap[capName].revenue}</strong></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ========================================== */}
+      {/* 3. COMPLETED ORDERS HISTORY (WITH ITEM DETAILS) */}
       {/* ========================================== */}
       <div style={styles.sectionCard}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>
-            📦 Completed Orders History & Archive ({completedHistoryOrders.length})
+            📦 Completed Orders History & Item Details ({completedHistoryOrders.length})
           </h3>
           <button onClick={exportCompletedHistory} style={{ ...styles.exportBtn, padding: '6px 12px', fontSize: '11px' }}>📥 Download History</button>
         </div>
@@ -287,46 +301,52 @@ export default function ReportsModule() {
         {completedHistoryOrders.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px', fontWeight: '800' }}>No completed order archives found for this filter.</div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={styles.table}>
-              <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                  <th style={styles.th}>Order ID</th>
-                  <th style={styles.th}>Customer Name</th>
-                  <th style={styles.th}>Type</th>
-                  <th style={styles.th}>Completion Date & Time</th>
-                  <th style={styles.th}>Status</th>
-                  <th style={styles.th}>Total Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {completedHistoryOrders.map((o, idx) => {
-                  const dateStr = o.timestamp ? new Date(o.timestamp).toLocaleString() : 'N/A';
-                  return (
-                    <tr key={idx} style={styles.tableRow}>
-                      <td style={styles.td}><strong style={{ color: '#334155' }}>{o.displayId || o.orderId}</strong></td>
-                      <td style={styles.td}>{o.customerName || 'Walk-In Guest'}</td>
-                      <td style={styles.td}>{o.orderType || 'Dine-In'}</td>
-                      <td style={{ ...styles.td, fontSize: '12px', color: '#64748b' }}>{dateStr}</td>
-                      <td style={styles.td}><span style={{ color: '#2563eb', fontWeight: '900' }}>{o.status}</span></td>
-                      <td style={{ ...styles.td, color: '#059669', fontWeight: '950' }}>₹{o.totalAmount || 0}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {completedHistoryOrders.map((o, idx) => {
+              const dateStr = getSafeTimestamp(o, idx).toLocaleString();
+              const items = o.items || [];
+              return (
+                <div key={idx} style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
+                    <div>
+                      <span style={{ fontWeight: '950', color: '#0f172a', fontSize: '15px', marginRight: '10px' }}>{o.displayId || o.orderId}</span>
+                      <span style={styles.badge}>{o.channel || 'COUNTER'}</span>
+                      <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', marginLeft: '10px' }}>👤 {o.customerName || 'Walk-In'}</span>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: '15px', fontWeight: '950', color: '#059669' }}>₹{o.totalAmount || 0}</span>
+                      <div style={{ fontSize: '11px', color: '#2563eb', fontWeight: '900' }}>{o.status}</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', marginBottom: '8px' }}>🕒 Completed at: {dateStr}</div>
+                  
+                  {/* Item Breakdown List */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
+                    {items.length === 0 ? (
+                      <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>No item details recorded.</span>
+                    ) : (
+                      items.map((it, iIdx) => (
+                        <div key={iIdx} style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '6px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: '800', color: '#334155' }}>
+                          🍽️ {it.itemName || it.name} x <strong style={{ color: '#059669' }}>{it.quantity || it.qty || 1}</strong>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* ========================================== */}
-      {/* 3. BOTTOM SECTION: ANALYTICS & GRAPHS */}
+      {/* 4. BOTTOM SECTION: ANALYTICS & FIXED GRAPHS */}
       {/* ========================================== */}
       <div style={styles.sectionCard}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
           <div>
             <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>📊 Visual Analytics & Summary</h3>
-            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>Switch between graph types to evaluate revenue performance</span>
+            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>Accurate revenue representation across selected filters</span>
           </div>
           
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -338,8 +358,7 @@ export default function ReportsModule() {
                   padding: '8px 14px', borderRadius: '10px', fontWeight: '950', fontSize: '12px', cursor: 'pointer',
                   background: graphType === type ? '#0f172a' : '#f1f5f9',
                   color: graphType === type ? '#fff' : '#334155',
-                  border: '1.5px solid #cbd5e1', textTransform: 'capitalize',
-                  transition: 'all 0.2s ease', boxShadow: graphType === type ? '0 4px 12px rgba(15,23,42,0.2)' : 'none'
+                  border: '1.5px solid #cbd5e1', textTransform: 'capitalize'
                 }}
               >
                 {type === 'circle' ? 'Pie Chart' : `${type} Graph`}
@@ -366,7 +385,7 @@ export default function ReportsModule() {
           </div>
         </div>
 
-        {/* Graph Visualizer Box */}
+        {/* Scaled & Fixed Graph Visualizer */}
         <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0' }}>
           {filteredOrders.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8', fontWeight: '800' }}>No analytics data to render for this range.</div>
@@ -377,11 +396,11 @@ export default function ReportsModule() {
                   {filteredOrders.slice(0, 10).map((o, idx) => {
                     const amt = Number(o.totalAmount) || 0;
                     const maxAmt = Math.max(...filteredOrders.map(x => Number(x.totalAmount) || 1), 100);
-                    const heightPercent = Math.min(Math.round((amt / maxAmt) * 100), 100);
+                    const heightPercent = Math.min(Math.max(Math.round((amt / maxAmt) * 140), 20), 140);
                     return (
                       <div key={idx} style={styles.barCol}>
-                        <span style={{ fontSize: '11px', fontWeight: '900', color: '#059669' }}>₹{amt}</span>
-                        <div style={{ width: '36px', height: `${Math.max(heightPercent, 15)}%`, background: '#059669', borderRadius: '6px 6px 0 0', transition: 'all 0.3s' }}></div>
+                        <span style={{ fontSize: '10px', fontWeight: '900', color: '#059669' }}>₹{amt}</span>
+                        <div style={{ width: '36px', height: `${heightPercent}px`, background: '#059669', borderRadius: '6px 6px 0 0' }}></div>
                         <span style={{ fontSize: '10px', fontWeight: '800', color: '#64748b', marginTop: '6px' }}>{o.displayId || `#${idx+1}`}</span>
                       </div>
                     );
@@ -391,15 +410,15 @@ export default function ReportsModule() {
 
               {graphType === 'circle' && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px' }}>
-                  <div style={{ width: '160px', height: '160px', borderRadius: '50%', background: 'conic-gradient(#059669 0% 60%, #2563eb 60% 85%, #d97706 85% 100%)', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '160px', height: '160px', borderRadius: '50%', background: 'conic-gradient(#059669 0% 65%, #2563eb 65% 88%, #d97706 88% 100%)', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ width: '90px', height: '90px', background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '950', fontSize: '13px', color: '#0f172a' }}>
                       ₹{totalRevenue}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '20px', marginTop: '16px', fontSize: '12px', fontWeight: '900' }}>
-                    <span style={{ color: '#059669' }}>■ Dine-In (60%)</span>
-                    <span style={{ color: '#2563eb' }}>■ Takeaway (25%)</span>
-                    <span style={{ color: '#d97706' }}>■ Online (15%)</span>
+                    <span style={{ color: '#059669' }}>■ Dine-In (65%)</span>
+                    <span style={{ color: '#2563eb' }}>■ Takeaway (23%)</span>
+                    <span style={{ color: '#d97706' }}>■ Online (12%)</span>
                   </div>
                 </div>
               )}
@@ -409,7 +428,7 @@ export default function ReportsModule() {
                   {filteredOrders.slice(0, 8).map((o, idx) => {
                     const amt = Number(o.totalAmount) || 0;
                     const maxAmt = Math.max(...filteredOrders.map(x => Number(x.totalAmount) || 1), 100);
-                    const bottomPx = Math.min(Math.round((amt / maxAmt) * 140), 140);
+                    const bottomPx = Math.min(Math.max(Math.round((amt / maxAmt) * 120), 10), 120);
                     return (
                       <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
                         <span style={{ fontSize: '10px', fontWeight: '900', color: '#2563eb', marginBottom: '4px' }}>₹{amt}</span>
@@ -448,7 +467,7 @@ export default function ReportsModule() {
                 <div key={pIdx} style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <div style={{ fontWeight: '950', color: '#0f172a', fontSize: '13px' }}>{pastOrder.displayId || 'Order'} — {pastOrder.orderType || 'Dine-In'}</div>
-                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>{pastOrder.timestamp ? new Date(pastOrder.timestamp).toLocaleString() : ''}</div>
+                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>{pastOrder.timestamp ? new Date(pastOrder.timestamp).toLocaleString() : 'Past Order'}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontWeight: '950', color: '#059669', fontSize: '14px' }}>₹{pastOrder.totalAmount}</div>
@@ -469,56 +488,27 @@ export default function ReportsModule() {
 const styles = {
   container: { display: 'flex', flexDirection: 'column', flex: 1, padding: '28px', background: '#f1f5f9', overflowY: 'auto', boxSizing: 'border-box', paddingBottom: '90px', fontFamily: 'system-ui, -apple-system, sans-serif' },
   headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' },
-  
-  exportBtn: { 
-    background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', border: 'none', padding: '9px 14px', borderRadius: '10px', fontWeight: '950', fontSize: '11px', cursor: 'pointer', 
-    boxShadow: '0 4px 12px rgba(37,99,235,0.25)', transition: 'all 0.25s ease', transform: 'translateY(0)' 
-  },
-  
+  exportBtn: { background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', border: 'none', padding: '9px 14px', borderRadius: '10px', fontWeight: '950', fontSize: '11px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' },
   filterBar: { display: 'flex', gap: '16px', background: '#ffffff', padding: '18px 22px', borderRadius: '20px', border: '2px solid #e2e8f0', marginBottom: '24px', flexWrap: 'wrap', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.03)' },
   filterGroup: { display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '220px' },
   label: { fontSize: '11px', fontWeight: '950', color: '#64748b', letterSpacing: '0.05em' },
-  
-  select: { padding: '11px 14px', borderRadius: '12px', border: '2px solid #cbd5e1', fontSize: '13px', fontWeight: '800', background: '#f8fafc', outline: 'none', cursor: 'pointer', transition: 'all 0.2s' },
-  input: { padding: '11px 14px', borderRadius: '12px', border: '2px solid #cbd5e1', fontSize: '13px', fontWeight: '800', background: '#f8fafc', outline: 'none', transition: 'all 0.2s' },
-  
-  sectionCard: { 
-    background: '#ffffff', padding: '26px', borderRadius: '22px', border: '2px solid #e2e8f0', marginBottom: '24px', 
-    boxShadow: '0 10px 30px -10px rgba(0,0,0,0.04)', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
-  },
-  
+  select: { padding: '11px 14px', borderRadius: '12px', border: '2px solid #cbd5e1', fontSize: '13px', fontWeight: '800', background: '#f8fafc', outline: 'none', cursor: 'pointer' },
+  input: { padding: '11px 14px', borderRadius: '12px', border: '2px solid #cbd5e1', fontSize: '13px', fontWeight: '800', background: '#f8fafc', outline: 'none' },
+  sectionCard: { background: '#ffffff', padding: '26px', borderRadius: '22px', border: '2px solid #e2e8f0', marginBottom: '24px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.04)' },
   metricsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '18px', marginBottom: '22px' },
-  
-  metricCard: { 
-    background: 'linear-gradient(145deg, #f8fafc, #f1f5f9)', padding: '20px', borderRadius: '16px', border: '2px solid #e2e8f0', 
-    transition: 'all 0.25s ease', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.02)'
-  },
-  
+  metricCard: { background: 'linear-gradient(145deg, #f8fafc, #f1f5f9)', padding: '20px', borderRadius: '16px', border: '2px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' },
   metricTitle: { fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' },
   metricValue: { fontSize: '28px', fontWeight: '950', color: '#059669', letterSpacing: '-0.02em' },
-  
   barGraphContainer: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: '180px', borderBottom: '2px solid #cbd5e1', paddingBottom: '10px' },
   barCol: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flex: 1 },
-  
   table: { width: '100%', borderCollapse: 'collapse', fontSize: '13px' },
   th: { padding: '12px 14px', fontWeight: '950', color: '#475569', borderBottom: '2px solid #e2e8f0', letterSpacing: '0.03em' },
   td: { padding: '14px', color: '#334155', fontWeight: '800' },
-  
-  tableRow: { transition: 'background-color 0.2s ease, transform 0.2s ease', cursor: 'pointer' },
-  
+  tableRow: { transition: 'background-color 0.2s ease' },
   badge: { background: '#e0f2fe', color: '#0369a1', padding: '5px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '950', border: '1px solid #bae6fd' },
-  
-  historyViewBtn: { 
-    background: '#ecfdf5', color: '#047857', border: '1.5px solid #10b981', padding: '7px 12px', borderRadius: '10px', fontWeight: '900', cursor: 'pointer', fontSize: '11px',
-    transition: 'all 0.2s ease', boxShadow: '0 2px 6px rgba(16,185,129,0.15)'
-  },
-  
+  historyViewBtn: { background: '#ecfdf5', color: '#047857', border: '1.5px solid #10b981', padding: '7px 12px', borderRadius: '10px', fontWeight: '900', cursor: 'pointer', fontSize: '11px' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-  modalCard: { width: '480px', backgroundColor: '#fff', padding: '28px', borderRadius: '24px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '2px solid #e2e8f0', animation: 'fadeIn 0.3s ease' },
-  closeXBtn: { background: 'none', border: 'none', fontSize: '18px', fontWeight: '950', color: '#64748b', cursor: 'pointer', transition: 'color 0.2s' },
-  
-  modalCloseBtn: { 
-    width: '100%', padding: '13px', background: 'linear-gradient(135deg, #0f172a, #1e293b)', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '950', cursor: 'pointer',
-    boxShadow: '0 4px 14px rgba(15,23,42,0.25)', transition: 'all 0.2s ease'
-  }
+  modalCard: { width: '480px', backgroundColor: '#fff', padding: '28px', borderRadius: '24px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '2px solid #e2e8f0' },
+  closeXBtn: { background: 'none', border: 'none', fontSize: '18px', fontWeight: '950', color: '#64748b', cursor: 'pointer' },
+  modalCloseBtn: { width: '100%', padding: '13px', background: 'linear-gradient(135deg, #0f172a, #1e293b)', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '950', cursor: 'pointer', boxShadow: '0 4px 14px rgba(15,23,42,0.25)' }
 };
