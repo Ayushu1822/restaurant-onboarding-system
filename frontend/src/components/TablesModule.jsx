@@ -49,40 +49,31 @@ export default function TablesModule() {
       .catch(err => console.log("Captains fetch error:", err));
   };
 
-  // Robust Live Menu Fetcher with exact price & category normalization
+  // Strictly Real Data Fetcher from Database
   const fetchLiveMenu = () => {
     fetch(`${API_BASE_URL}/api/v1/menu`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
           const normalized = data.map((item, idx) => {
-            const rawPrice = item.price !== undefined ? item.price : (item.itemPrice !== undefined ? item.itemPrice : (item.rate !== undefined ? item.rate : 0));
+            const rawPrice = item.price ?? item.itemPrice ?? item.cost ?? item.rate ?? item.amount ?? item.unitPrice ?? 0;
+            const parsedPrice = Number(rawPrice);
+            
             return {
               id: item.id || item.menuId || idx,
               name: item.name || item.itemName || item.dishName || item.title || 'Unnamed Item',
-              price: Number(rawPrice) || 0,
+              price: isNaN(parsedPrice) ? 0 : parsedPrice,
               category: item.category || item.foodType || item.menuType || 'Main Course'
             };
           });
           setMenuItems(normalized);
         } else {
-          setMenuItems([
-            { id: 1, name: 'Butter Chicken', price: 350, category: 'Main Course' },
-            { id: 2, name: 'Paneer Tikka', price: 280, category: 'Starters' },
-            { id: 3, name: 'Garlic Naan', price: 50, category: 'Breads' },
-            { id: 4, name: 'Veg Biryani', price: 220, category: 'Rice' },
-            { id: 5, name: 'Cold Drink', price: 60, category: 'Beverages' }
-          ]);
+          setMenuItems([]);
         }
       })
-      .catch(() => {
-        setMenuItems([
-          { id: 1, name: 'Butter Chicken', price: 350, category: 'Main Course' },
-          { id: 2, name: 'Paneer Tikka', price: 280, category: 'Starters' },
-          { id: 3, name: 'Garlic Naan', price: 50, category: 'Breads' },
-          { id: 4, name: 'Veg Biryani', price: 220, category: 'Rice' },
-          { id: 5, name: 'Cold Drink', price: 60, category: 'Beverages' }
-        ]);
+      .catch(err => {
+        console.error("Failed to fetch real menu from database:", err);
+        setMenuItems([]);
       });
   };
 
@@ -184,13 +175,12 @@ export default function TablesModule() {
       body: JSON.stringify(orderPayload)
     }).catch(() => console.log("Order saved locally for reports"));
 
-    alert(`🖨️ KOT Generated successfully for Table ${activeOrderTable.tableId}!\nNote: "${orderNote || 'None'}"\nSent to Kitchen & Reports Module.`);
+    alert(`🖨️ KOT Generated successfully for Table ${activeOrderTable.tableId}!\nNote: "${orderNote || 'None'}"\nSent to Kitchen & Future Reports.`);
     setActiveOrderTable(null);
     setCartItems([]);
     setOrderNote('');
   };
 
-  // Group menu items category-wise
   const categories = [...new Set(menuItems.map(item => item.category))];
 
   return (
@@ -327,50 +317,56 @@ export default function TablesModule() {
               
               {/* Category-wise Menu Catalog */}
               <div style={{ flex: 1.4, padding: '24px', overflowY: 'auto', borderRight: '2px solid #e2e8f0' }}>
-                <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '16px', letterSpacing: '0.08em' }}>LIVE RESTAURANT MENU (CATEGORY-WISE)</h4>
+                <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '16px', letterSpacing: '0.08em' }}>LIVE RESTAURANT MENU (DATABASE)</h4>
                 
-                {categories.map(category => {
-                  const catItems = menuItems.filter(item => item.category === category);
-                  if (catItems.length === 0) return null;
+                {menuItems.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: '#94a3b8', padding: '60px', background: '#fff', borderRadius: '16px', border: '2px dashed #cbd5e1', fontWeight: '800' }}>
+                    No menu items found in database. Please add items via your Menu Management module first.
+                  </div>
+                ) : (
+                  categories.map(category => {
+                    const catItems = menuItems.filter(item => item.category === category);
+                    if (catItems.length === 0) return null;
 
-                  return (
-                    <div key={category} style={{ marginBottom: '24px' }}>
-                      <div style={{ fontSize: '13px', fontWeight: '950', color: '#047857', marginBottom: '12px', background: '#ecfdf5', padding: '6px 12px', borderRadius: '8px', display: 'inline-block', border: '1.5px solid #10b981' }}>
-                        📁 {category.toUpperCase()}
+                    return (
+                      <div key={category} style={{ marginBottom: '24px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '950', color: '#047857', marginBottom: '12px', background: '#ecfdf5', padding: '6px 12px', borderRadius: '8px', display: 'inline-block', border: '1.5px solid #10b981' }}>
+                          📁 {category.toUpperCase()}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '14px' }}>
+                          {catItems.map(food => {
+                            const isMenuHovered = hoveredMenuId === food.id;
+                            return (
+                              <div 
+                                key={food.id}
+                                onClick={() => {
+                                  const existing = cartItems.find(i => i.name === food.name);
+                                  if (existing) {
+                                    setCartItems(cartItems.map(i => i.name === food.name ? {...i, qty: i.qty + 1} : i));
+                                  } else {
+                                    setCartItems([...cartItems, { ...food, qty: 1 }]);
+                                  }
+                                }}
+                                onMouseEnter={() => setHoveredMenuId(food.id)}
+                                onMouseLeave={() => setHoveredMenuId(null)}
+                                style={{ 
+                                  background: '#fff', padding: '16px', borderRadius: '16px', 
+                                  border: `2px solid ${isMenuHovered ? '#059669' : '#e2e8f0'}`, 
+                                  cursor: 'pointer', transition: 'all 0.2s ease', 
+                                  boxShadow: isMenuHovered ? '0 10px 20px -5px rgba(5,150,105,0.15)' : '0 2px 4px rgba(0,0,0,0.02)',
+                                  transform: isMenuHovered ? 'translateY(-2px)' : 'translateY(0)'
+                                }}
+                              >
+                                <div style={{ fontSize: '14px', fontWeight: '950', color: '#1e293b', marginBottom: '8px' }}>{food.name}</div>
+                                <div style={{ fontSize: '15px', fontWeight: '950', color: '#059669' }}>₹{food.price}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '14px' }}>
-                        {catItems.map(food => {
-                          const isMenuHovered = hoveredMenuId === food.id;
-                          return (
-                            <div 
-                              key={food.id}
-                              onClick={() => {
-                                const existing = cartItems.find(i => i.name === food.name);
-                                if (existing) {
-                                  setCartItems(cartItems.map(i => i.name === food.name ? {...i, qty: i.qty + 1} : i));
-                                } else {
-                                  setCartItems([...cartItems, { ...food, qty: 1 }]);
-                                }
-                              }}
-                              onMouseEnter={() => setHoveredMenuId(food.id)}
-                              onMouseLeave={() => setHoveredMenuId(null)}
-                              style={{ 
-                                background: '#fff', padding: '16px', borderRadius: '16px', 
-                                border: `2px solid ${isMenuHovered ? '#059669' : '#e2e8f0'}`, 
-                                cursor: 'pointer', transition: 'all 0.2s ease', 
-                                boxShadow: isMenuHovered ? '0 10px 20px -5px rgba(5,150,105,0.15)' : '0 2px 4px rgba(0,0,0,0.02)',
-                                transform: isMenuHovered ? 'translateY(-2px)' : 'translateY(0)'
-                              }}
-                            >
-                              <div style={{ fontSize: '14px', fontWeight: '950', color: '#1e293b', marginBottom: '8px' }}>{food.name}</div>
-                              <div style={{ fontSize: '15px', fontWeight: '950', color: '#059669' }}>₹{food.price}</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
 
               {/* Receipt & KOT Summary */}
