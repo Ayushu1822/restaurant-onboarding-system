@@ -24,7 +24,6 @@ export default function ReportsModule() {
 
   useEffect(() => {
     fetchOrders();
-    // Live polling every 5 seconds to keep online orders & status synced
     const interval = setInterval(fetchOrders, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -117,7 +116,7 @@ export default function ReportsModule() {
     return st !== 'completed' && st !== 'delivered' && st !== 'picked up' && st !== 'ready' && st !== 'settled';
   });
 
-  // 2. Completed History Filtering (Strictly capturing completed, delivered, ready, settled, picked up)
+  // 2. Completed History Filtering
   const completedHistoryOrders = orders.filter((o, idx) => {
     const st = (o.status || 'New').toLowerCase();
     const isCompleted = st === 'completed' || st === 'delivered' || st === 'picked up' || st === 'ready' || st === 'settled';
@@ -171,37 +170,47 @@ export default function ReportsModule() {
     }
   });
 
-  // Print Individual Receipt
+  // Print Individual Thermal Receipt Function (Using string concatenation to prevent nesting errors)
   const printSingleReceipt = (o, index) => {
     const dateStr = getSafeTimestamp(o, index).toLocaleString();
     const items = o.items || [];
+    
     let receiptWindow = window.open('', '_blank', 'width=400,height=600');
-    receiptWindow.document.write(`
-      <html>
-        <head><title>Receipt - ${o.displayId || 'Order'}</title></head>
-        <body style="font-family: monospace; padding: 20px; font-size: 14px;">
-          <h3 style="text-align: center; margin: 0;">RESTAURANT POS</h3>
-          <p style="text-align: center; margin: 2px 0 15px 0; font-size: 12px;">Thermal Receipt</p>
-          <hr style="border: dashed 1px #000;" />
-          <p><b>Order ID:</b> ${o.displayId || o.orderId}</p>
-          <p><b>Customer:</b> ${o.customerName || 'Walk-In'}</p>
-          <p><b>Captain:</b> ${extractCaptain(o.customerName) || 'N/A'}</p>
-          <p><b>Channel:</b> ${o.channel || 'COUNTER'} (${o.orderType || 'Dine-In'})</p>
-          <p><b>Status:</b> ${o.status || 'Completed'}</p>
-          <p><b>Date:</b> ${dateStr}</p>
-          <hr style="border: dashed 1px #000;" />
-          <p><b>ITEMS:</b></p>
-          <ul>
-            ${items.map(it => `<li>${it.itemName || it.name} x ${it.quantity \vert{}\vert{} it.qty \vert{}\vert{} 1} — ₹${(it.unitPrice || 0) * (it.quantity || it.qty || 1)}</li>`).join('')}
-          </ul>
-          <hr style="border: dashed 1px #000;" />
-          <h3 style="text-align: center;">TOTAL: ₹${o.totalAmount || 0}</h3>
-          <p style="text-align: center; font-size: 11px; margin-top: 20px;">Thank You! Visit Again</p>
-        </body>
-      </html>
-    `);
+    if (!receiptWindow) return;
+
+    const itemsHtml = items.map(it => 
+      '<li>' + (it.itemName || it.name || 'Item') + ' x ' + (it.quantity || it.qty || 1) + ' — ₹' + ((Number(it.unitPrice) || 0) * (Number(it.quantity || it.qty) || 1)) + '</li>'
+    ).join('');
+
+    receiptWindow.document.write(
+      '<html>' +
+        '<head><title>Receipt - ' + (o.displayId || 'Order') + '</title></head>' +
+        '<body style="font-family: monospace; padding: 20px; font-size: 14px; color: #000;">' +
+          '<h3 style="text-align: center; margin: 0;">RESTAURANT POS</h3>' +
+          '<p style="text-align: center; margin: 2px 0 15px 0; font-size: 12px;">Thermal Receipt</p>' +
+          '<hr style="border: dashed 1px #000;" />' +
+          '<p><b>Order ID:</b> ' + (o.displayId || o.orderId || 'N/A') + '</p>' +
+          '<p><b>Customer:</b> ' + (o.customerName || 'Walk-In') + '</p>' +
+          '<p><b>Captain:</b> ' + (extractCaptain(o.customerName) || 'N/A') + '</p>' +
+          '<p><b>Channel:</b> ' + (o.channel || 'COUNTER') + ' (' + (o.orderType || 'Dine-In') + ')</p>' +
+          '<p><b>Status:</b> ' + (o.status || 'Completed') + '</p>' +
+          '<p><b>Date:</b> ' + dateStr + '</p>' +
+          '<hr style="border: dashed 1px #000;" />' +
+          '<p><b>ITEMS:</b></p>' +
+          '<ul style="padding-left: 20px; margin: 5px 0;">' +
+            itemsHtml +
+          '</ul>' +
+          '<hr style="border: dashed 1px #000;" />' +
+          '<h3 style="text-align: center; margin: 15px 0;">TOTAL: ₹' + (o.totalAmount || 0) + '</h3>' +
+          '<p style="text-align: center; font-size: 11px; margin-top: 20px;">Thank You! Visit Again</p>' +
+        '</body>' +
+      '</html>'
+    );
     receiptWindow.document.close();
-    receiptWindow.print();
+    receiptWindow.focus();
+    setTimeout(() => {
+      receiptWindow.print();
+    }, 250);
   };
 
   const customerHistoryMap = {};
@@ -353,7 +362,7 @@ export default function ReportsModule() {
       )}
 
       {/* ========================================== */}
-      {/* 3. COMPLETED ORDERS HISTORY SECTION (SINGLE-LINE & RECEIPT PRINT) */}
+      {/* 3. COMPLETED ORDERS HISTORY SECTION */}
       {/* ========================================== */}
       <div style={styles.sectionCard}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
@@ -530,7 +539,6 @@ export default function ReportsModule() {
 const styles = {
   container: { display: 'flex', flexDirection: 'column', flex: 1, padding: '28px', background: '#f1f5f9', overflowY: 'auto', boxSizing: 'border-box', paddingBottom: '90px', fontFamily: 'system-ui, -apple-system, sans-serif' },
   headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' },
-  exportBtn: { background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', border: 'none', padding: '9px 14px', borderRadius: '10px', fontWeight: '950', fontSize: '11px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' },
   receiptBtn: { background: '#059669', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '950', cursor: 'pointer', boxShadow: '0 2px 6px rgba(5,150,105,0.2)' },
   filterBar: { display: 'flex', gap: '16px', background: '#ffffff', padding: '18px 22px', borderRadius: '20px', border: '2px solid #e2e8f0', marginBottom: '24px', flexWrap: 'wrap', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.03)' },
   filterGroup: { display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '200px' },
@@ -552,4 +560,4 @@ const styles = {
   modalCard: { width: '480px', backgroundColor: '#fff', padding: '28px', borderRadius: '24px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '2px solid #e2e8f0' },
   closeXBtn: { background: 'none', border: 'none', fontSize: '18px', fontWeight: '950', color: '#64748b', cursor: 'pointer' },
   modalCloseBtn: { width: '100%', padding: '13px', background: 'linear-gradient(135deg, #0f172a, #1e293b)', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '950', cursor: 'pointer', boxShadow: '0 4px 14px rgba(15,23,42,0.25)' }
-}
+};
