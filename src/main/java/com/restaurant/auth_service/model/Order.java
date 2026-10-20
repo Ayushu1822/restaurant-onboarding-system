@@ -47,8 +47,27 @@ public class Order {
     @Column(name = "payment_status")
     private String paymentStatus;
 
+    @Column(name = "order_timestamp")
+    private String timestamp;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.orderId == null) {
+            this.orderId = UUID.randomUUID();
+        }
+        if (this.timestamp == null || this.timestamp.trim().isEmpty()) {
+            this.timestamp = java.time.Instant.now().toString();
+        }
+        if (this.status == null || this.status.trim().isEmpty()) {
+            this.status = "New";
+        }
+        if (this.customerName == null || this.customerName.trim().isEmpty()) {
+            this.customerName = "Walk-In Guest";
+        }
+    }
 
     // Getters and Setters
     public UUID getOrderId() { return orderId; }
@@ -90,6 +109,16 @@ public class Order {
     public String getPaymentStatus() { return paymentStatus; }
     public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
 
+    public String getTimestamp() { return timestamp; }
+    public void setTimestamp(String timestamp) { this.timestamp = timestamp; }
+
     public List<OrderItem> getItems() { return items; }
-    public void setItems(List<OrderItem> items) { this.items = items; }
+    public void setItems(List<OrderItem> items) { 
+        this.items = items;
+        if (items != null) {
+            for (OrderItem item : items) {
+                item.setOrder(this);
+            }
+        }
+    }
 }
