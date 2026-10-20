@@ -5,19 +5,19 @@ const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 export default function TablesModule() {
   const [tables, setTables] = useState([]);
   const [captainsList, setCaptainsList] = useState([]);
-  const [menuItems, setMenuItems] = useState([]); // Live menu fetched from backend
+  const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hoveredId, setHoveredId] = useState(null);
   
   const [selectedTable, setSelectedTable] = useState(null);
-  const [activeOrderTable, setActiveOrderTable] = useState(null); // Full screen POS terminal
+  const [activeOrderTable, setActiveOrderTable] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCaptainManageModal, setShowCaptainManageModal] = useState(false);
 
   const [newTableForm, setNewTableForm] = useState({ tableId: '', section: 'MAIN', seats: 4 });
   const [newCaptainForm, setNewCaptainForm] = useState({ name: '', phone: '' });
   const [cartItems, setCartItems] = useState([]);
-  const [orderNote, setOrderNote] = useState(''); // Extra info / KOT instruction
+  const [orderNote, setOrderNote] = useState('');
 
   useEffect(() => {
     fetchTables();
@@ -48,15 +48,21 @@ export default function TablesModule() {
       .catch(err => console.log("Captains fetch error:", err));
   };
 
-  // Fetch live menu items from backend (no dummy data)
+  // Robust Live Menu Fetcher with Field Normalization
   const fetchLiveMenu = () => {
     fetch(`${API_BASE_URL}/api/v1/menu`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
-          setMenuItems(data);
+          // Normalize fields so any backend structure maps cleanly to { id, name, price, category }
+          const normalized = data.map((item, idx) => ({
+            id: item.id || item.menuId || idx,
+            name: item.name || item.itemName || item.dishName || item.title || 'Unnamed Item',
+            price: Number(item.price || item.itemPrice || item.cost || 0),
+            category: item.category || item.foodType || 'General'
+          }));
+          setMenuItems(normalized);
         } else {
-          // Fallback dynamic catalog if backend table is empty initially
           setMenuItems([
             { id: 1, name: 'Butter Chicken', price: 350, category: 'Main Course' },
             { id: 2, name: 'Paneer Tikka', price: 280, category: 'Starter' },
@@ -95,7 +101,6 @@ export default function TablesModule() {
 
     setSelectedTable(null);
 
-    // Rule 1: Only open full-screen POS when explicitly requested (Mark Occupied)
     if (shouldOpenPOS) {
       const target = tables.find(t => t.tableId === tableId);
       if (target) {
@@ -159,7 +164,6 @@ export default function TablesModule() {
     setSelectedTable(null);
   };
 
-  // Submit KOT to backend for future reports & KDS integration
   const handleSendKOT = () => {
     const orderPayload = {
       tableId: activeOrderTable.tableId,
@@ -171,14 +175,13 @@ export default function TablesModule() {
       timestamp: new Date().toISOString()
     };
 
-    // Push to backend orders endpoint for Reports module tracking
     fetch(`${API_BASE_URL}/api/v1/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderPayload)
-    }).catch(() => console.log("Order saved locally for reports simulation"));
+    }).catch(() => console.log("Order saved locally"));
 
-    alert(`🖨️ KOT Generated successfully for Table ${activeOrderTable.tableId}!\nInstruction: "${orderNote || 'None'}"\nSent to Kitchen & Reports.`);
+    alert(`🖨️ KOT Generated successfully for Table ${activeOrderTable.tableId}!\nNote: "${orderNote || 'None'}"\nSent to Kitchen & Reports.`);
     setActiveOrderTable(null);
     setCartItems([]);
     setOrderNote('');
@@ -253,7 +256,7 @@ export default function TablesModule() {
         })
       )}
 
-      {/* Table Management Modal */}
+      {/* Table Control Modal */}
       {selectedTable && (
         <div style={styles.modalOverlay} onClick={() => setSelectedTable(null)}>
           <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
@@ -300,12 +303,11 @@ export default function TablesModule() {
         </div>
       )}
 
-      {/* 🖥️ RULE 2: Full Screen Immersive POS & Order Terminal Modal */}
+      {/* Full-Screen POS Terminal */}
       {activeOrderTable && (
         <div style={styles.fullScreenOverlay}>
           <div style={styles.fullScreenContainer}>
             
-            {/* Top Bar */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 28px', background: '#0f172a', color: '#fff' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                 <h3 style={{ margin: 0, fontSize: '22px', fontWeight: '950' }}>Table {activeOrderTable.tableId} - Full POS Terminal</h3>
@@ -314,16 +316,15 @@ export default function TablesModule() {
               <button onClick={() => setActiveOrderTable(null)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '900' }}>✕ Exit POS</button>
             </div>
 
-            {/* Split Content (Live Menu Left, Receipt & Notes Right) */}
             <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#f8fafc' }}>
               
-              {/* Left Side: Live Menu Items from Database */}
+              {/* Menu Grid */}
               <div style={{ flex: 1.4, padding: '24px', overflowY: 'auto', borderRight: '1.5px solid #e2e8f0' }}>
-                <h4 style={{ fontSize: '13px', fontWeight: '900', color: '#64748b', marginBottom: '16px', letterSpacing: '0.5px' }}>LIVE RESTAURANT MENU (DATABASE)</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '14px' }}>
+                <h4 style={{ fontSize: '13px', fontWeight: '900', color: '#64748b', marginBottom: '16px', letterSpacing: '0.5px' }}>LIVE RESTAURANT MENU</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '14px' }}>
                   {menuItems.map(food => (
                     <div 
-                      key={food.id || food.name}
+                      key={food.id}
                       onClick={() => {
                         const existing = cartItems.find(i => i.name === food.name);
                         if (existing) {
@@ -337,28 +338,28 @@ export default function TablesModule() {
                       onMouseLeave={e => e.currentTarget.style.borderColor = '#e2e8f0'}
                     >
                       <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b', marginBottom: '6px' }}>{food.name}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', marginBottom: '8px' }}>{food.category || 'General'}</div>
+                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', marginBottom: '8px' }}>{food.category}</div>
                       <div style={{ fontSize: '13px', fontWeight: '900', color: '#059669' }}>₹{food.price}</div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Right Side: Receipt, KOT Instructions & Checkout */}
+              {/* Receipt & KOT Summary */}
               <div style={{ width: '420px', background: '#fff', display: 'flex', flexDirection: 'column', padding: '24px', borderLeft: '1.5px solid #e2e8f0' }}>
                 <h4 style={{ fontSize: '13px', fontWeight: '900', color: '#64748b', marginBottom: '14px', letterSpacing: '0.5px' }}>ORDER RECEIPT & KOT</h4>
                 
                 <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
                   {cartItems.length === 0 ? (
                     <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', padding: '60px 20px', background: '#f8fafc', borderRadius: '14px', border: '2px dashed #cbd5e1' }}>
-                      Cart is empty. Click items from the live menu.
+                      Cart is empty. Click items from the menu.
                     </div>
                   ) : (
                     cartItems.map((item, idx) => (
                       <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                         <div>
                           <div style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{item.name}</div>
-                          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>₹{item.price} x {item.qty}</div>
+                          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>₹{item.price} x {item.qty} = <strong style={{ color: '#059669' }}>₹{item.price * item.qty}</strong></div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <button onClick={() => setCartItems(cartItems.map((i, iIdx) => iIdx === idx && i.qty > 1 ? {...i, qty: i.qty - 1} : i))} style={styles.qtyBtn}>-</button>
@@ -370,12 +371,11 @@ export default function TablesModule() {
                   )}
                 </div>
 
-                {/* RULE 3: Extra Info / Special Instructions for Kitchen */}
                 <div style={{ marginBottom: '14px' }}>
                   <label style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', display: 'block', marginBottom: '6px' }}>KITCHEN INSTRUCTION / EXTRA INFO (KOT NOTE)</label>
                   <input 
                     type="text" 
-                    placeholder="e.g. Extra spicy, less oil, pack on priority..." 
+                    placeholder="e.g. Extra spicy, less oil..." 
                     value={orderNote} 
                     onChange={e => setOrderNote(e.target.value)} 
                     style={styles.input}
