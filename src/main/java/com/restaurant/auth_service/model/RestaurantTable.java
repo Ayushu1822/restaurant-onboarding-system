@@ -26,6 +26,9 @@ public class RestaurantTable {
     @Column(name = "current_amount")
     private Double currentAmount;
 
+    @Column(name = "captain")
+    private String captain; // 🧑‍✈️ Assigned Floor Captain
+
     public RestaurantTable() {}
 
     // Getters and Setters
@@ -49,4 +52,7 @@ public class RestaurantTable {
 
     public Double getCurrentAmount() { return currentAmount; }
     public void setCurrentAmount(Double currentAmount) { this.currentAmount = currentAmount; }
+
+    public String getCaptain() { return captain; }
+    public void setCaptain(String captain) { this.captain = captain; }
 }

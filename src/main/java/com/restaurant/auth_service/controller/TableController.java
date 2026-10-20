@@ -1,6 +1,6 @@
 package com.restaurant.auth_service.controller;
 
-import com.restaurant.auth_service.model.TableEntity; // or your Table model class name
+import com.restaurant.auth_service.model.RestaurantTable;
 import com.restaurant.auth_service.repository.TableRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -19,28 +19,32 @@ public class TableController {
     private TableRepository tableRepository;
 
     @GetMapping
-    public List<TableEntity> getAllTables() {
+    public List<RestaurantTable> getAllTables() {
         return tableRepository.findAll();
     }
 
     @PostMapping
-    public ResponseEntity<TableEntity> createTable(@RequestBody TableEntity table) {
-        TableEntity saved = tableRepository.save(table);
+    public ResponseEntity<RestaurantTable> createTable(@RequestBody RestaurantTable table) {
+        RestaurantTable saved = tableRepository.save(table);
         return ResponseEntity.ok(saved);
     }
 
-    // 🔄 UNIVERSAL TABLE UPDATE (Fixes 405 Method Not Allowed & 404 errors completely)
     @RequestMapping(value = {"/{id}", "/{id}/status"}, method = {RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.POST})
-    public ResponseEntity<TableEntity> updateTable(
+    public ResponseEntity<RestaurantTable> updateTable(
             @PathVariable String id,
             @RequestParam(required = false) String status,
             @RequestBody(required = false) Map<String, Object> body) {
         try {
-            Optional<TableEntity> tableOpt = findTableById(id);
-            if (tableOpt.isPresent()) {
-                TableEntity table = tableOpt.get();
+            Optional<RestaurantTable> tableOpt = tableRepository.findById(id);
+            if (!tableOpt.isPresent()) {
+                tableOpt = tableRepository.findAll().stream()
+                    .filter(t -> id.equalsIgnoreCase(t.getTableId()))
+                    .findFirst();
+            }
 
-                // Extract status from query param or request body
+            if (tableOpt.isPresent()) {
+                RestaurantTable table = tableOpt.get();
+
                 String targetStatus = status;
                 if (targetStatus == null && body != null && body.containsKey("status")) {
                     targetStatus = (String) body.get("status");
@@ -49,39 +53,34 @@ public class TableController {
                     table.setStatus(targetStatus);
                 }
 
-                // Extract captain/waiter name if provided
                 if (body != null && (body.containsKey("captain") || body.containsKey("waiterName"))) {
                     String cap = (String) body.getOrDefault("captain", body.get("waiterName"));
-                    table.setCaptain(cap); // Ensure your TableEntity has setCaptain(String) method
+                    table.setCaptain(cap);
                 }
 
-                TableEntity updated = tableRepository.save(table);
-                System.out.println("✅ TABLE UPDATED — ID: " + id + " | Status: " + updated.getStatus());
+                RestaurantTable updated = tableRepository.save(table);
                 return ResponseEntity.ok(updated);
             }
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            System.err.println("❌ Error updating table: " + e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTable(@PathVariable String id) {
-        Optional<TableEntity> tableOpt = findTableById(id);
-        if (tableOpt.isPresent()) {
-            tableRepository.delete(tableOpt.get());
+        try {
+            if (tableRepository.existsById(id)) {
+                tableRepository.deleteById(id);
+                return ResponseEntity.ok().build();
+            }
+            tableRepository.findAll().stream()
+                .filter(t -> id.equalsIgnoreCase(t.getTableId()))
+                .findFirst()
+                .ifPresent(t -> tableRepository.delete(t));
             return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.notFound().build();
-    }
-
-    private Optional<TableEntity> findTableById(String id) {
-        return tableRepository.findAll().stream()
-            .filter(t -> {
-                String tid = t.getTableId() != null ? t.getTableId() : "";
-                return tid.equalsIgnoreCase(id);
-            })
-            .findFirst();
     }
 }
