@@ -229,7 +229,7 @@ export default function Dashboard({ user, onLogout }) {
     const found = updatedList.find(o => o.orderId === targetId || o.id === targetId);
     if (found) setSelectedOrder(found);
 
-    fetch(`${API_BASE_URL}/api/v1/orders/${targetId}/status?status=${nextStatus}`, {
+    fetch(`${API_BASE_URL}/api/v1/orders/${targetId}/status?status=${encodeURIComponent(nextStatus)}`, {
       method: 'PUT'
     }).catch(err => console.log("Status sync warning:", err));
   };
@@ -427,30 +427,30 @@ export default function Dashboard({ user, onLogout }) {
                       <span style={styles.statusBadgeSmall(selectedOrder.status)}>{selectedOrder.status}</span>
                     </div>
 
-                    {/* Realistic Compact Thermal Receipt Preview */}
-                    <div style={styles.thermalReceiptBox}>
-                      <div style={{ textAlign: 'center', fontWeight: '900', fontSize: '14px', color: '#0f172a' }}>{profileData.businessName}</div>
+                    {/* Isolated Printable Thermal Receipt Preview */}
+                    <div id="printable-thermal-receipt" style={styles.thermalReceiptBox}>
+                      <div style={styles.receiptTopAccent}></div>
+                      <div style={{ textAlign: 'center', fontWeight: '900', fontSize: '15px', color: '#0f172a', marginTop: '4px' }}>{profileData.businessName}</div>
                       <div style={{ textAlign: 'center', fontSize: '10px', color: '#64748b', marginBottom: '6px' }}>Phone: {profileData.phone}</div>
-                      <div style={{ borderBottom: '1px dashed #cbd5e1', margin: '6px 0' }}></div>
+                      <div style={{ borderBottom: '1.5px dashed #cbd5e1', margin: '8px 0' }}></div>
                       
-                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between', color: '#334155' }}>
+                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between', color: '#334155', fontWeight: '700' }}>
                         <span>Order: {selectedOrder.id}</span>
                         <span>{new Date().toLocaleDateString()}</span>
                       </div>
-                      <div style={{ fontSize: '11px', color: '#334155', marginBottom: '6px' }}>Type: {selectedOrder.type} • Channel: {selectedOrder.channel}</div>
-                      <div style={{ borderBottom: '1px dashed #cbd5e1', margin: '6px 0' }}></div>
+                      <div style={{ fontSize: '11px', color: '#334155', marginBottom: '8px' }}>Type: {selectedOrder.type} • Channel: {selectedOrder.channel}</div>
+                      <div style={{ borderBottom: '1.5px dashed #cbd5e1', margin: '8px 0' }}></div>
 
-                      <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {selectedOrder.items.map((item, i) => (
-                          <div key={i}>
+                          <div key={i} style={styles.receiptItemRow}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700' }}>
                               <span>{item.qty}x {item.name}</span>
                               <span>₹{(item.price * item.qty).toFixed(2)}</span>
                             </div>
-                            {/* Item-level special instruction input */}
                             <input
                               type="text"
-                              placeholder="Add special instructions (e.g. less spicy)..."
+                              placeholder="Add instructions (e.g. less spicy)..."
                               value={item.desc || ''}
                               onChange={(e) => {
                                 const val = e.target.value;
@@ -471,15 +471,15 @@ export default function Dashboard({ user, onLogout }) {
                         ))}
                       </div>
 
-                      <div style={{ borderBottom: '1px dashed #cbd5e1', margin: '8px 0' }}></div>
-                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between' }}><span>Subtotal</span><span>₹{selectedOrder.subtotal.toFixed(2)}</span></div>
-                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between' }}><span>GST (5%)</span><span>₹{(selectedOrder.subtotal * 0.05).toFixed(2)}</span></div>
-                      <div style={{ borderBottom: '1px dashed #cbd5e1', margin: '8px 0' }}></div>
-                      <div style={{ fontSize: '13px', display: 'flex', justifyContent: 'space-between', fontWeight: '900', color: '#0f172a' }}>
-                        <span>TOTAL</span>
+                      <div style={{ borderBottom: '1.5px dashed #cbd5e1', margin: '10px 0' }}></div>
+                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between', color: '#475569' }}><span>Subtotal</span><span>₹{selectedOrder.subtotal.toFixed(2)}</span></div>
+                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between', color: '#475569' }}><span>GST (5%)</span><span>₹{(selectedOrder.subtotal * 0.05).toFixed(2)}</span></div>
+                      <div style={{ borderBottom: '1.5px dashed #cbd5e1', margin: '10px 0' }}></div>
+                      <div style={{ fontSize: '13px', display: 'flex', justifyContent: 'space-between', fontWeight: '900', color: '#047857' }}>
+                        <span>TOTAL PAID</span>
                         <span>₹{selectedOrder.total.toFixed(2)}</span>
                       </div>
-                      <div style={{ textAlign: 'center', fontSize: '10px', color: '#64748b', marginTop: '8px' }}>*** THANK YOU FOR ORDERING ***</div>
+                      <div style={{ textAlign: 'center', fontSize: '10px', color: '#047857', fontWeight: '700', marginTop: '10px' }}>*** THANK YOU FOR VISITING TASTE HUB ***</div>
                     </div>
 
                     <div style={{fontSize: '13px', color: '#334155', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', marginTop: '14px'}}>
@@ -778,8 +778,10 @@ const styles = {
   customerRequestBox: { backgroundColor: '#fef3c7', border: '1.5px solid #fde68a', padding: '12px 14px', borderRadius: '10px', fontSize: '13px', color: '#92400e', marginBottom: '16px', textAlign: 'left', fontWeight: '600' },
   printIconBtn: { backgroundColor: '#f1f5f9', border: '1.5px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' },
   actionBtn: { backgroundColor: '#047857', color: '#fff', border: 'none', padding: '11px 20px', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s' },
-  thermalReceiptBox: { backgroundColor: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '12px', padding: '14px', fontFamily: 'monospace', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)', marginBottom: '16px' },
-  receiptItemInstructionInput: { width: '100%', marginTop: '4px', padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', boxSizing: 'border-box' },
+  thermalReceiptBox: { backgroundColor: '#fff', border: '2px solid #e2e8f0', borderRadius: '16px', padding: '16px', fontFamily: 'monospace', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', marginBottom: '16px', transition: 'all 0.3s ease', position: 'relative', overflow: 'hidden' },
+  receiptTopAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, #10b981, #2563eb, #f59e0b)' },
+  receiptItemRow: { backgroundColor: '#f8fafc', padding: '6px 8px', borderRadius: '8px', border: '1px solid #f1f5f9', transition: 'all 0.2s' },
+  receiptItemInstructionInput: { width: '100%', marginTop: '4px', padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', backgroundColor: '#fff', boxSizing: 'border-box' },
   checkoutTriggerBtn: { backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: '800', fontSize: '12px', cursor: 'pointer' },
   drawerOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
   checkoutModalContent: { width: '480px', backgroundColor: '#fff', padding: '24px', borderRadius: '20px', textAlign: 'left', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #e2e8f0' },
