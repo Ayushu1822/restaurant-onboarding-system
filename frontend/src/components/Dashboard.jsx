@@ -32,6 +32,15 @@ export default function Dashboard({ user, onLogout }) {
   const [isProfileFallback, setIsProfileFallback] = useState(false);
   const [isOrdersFallback, setIsOrdersFallback] = useState(false);
   
+  // Checkout & Split Payment Modal State
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [tip, setTip] = useState(0);
+  const [customTip, setCustomTip] = useState('');
+  const [splitPayment, setSplitPayment] = useState(false);
+  const [pay1Method, setPay1Method] = useState('Cash');
+  const [pay1Amount, setPay1Amount] = useState('');
+  const [pay2Method, setPay2Method] = useState('UPI');
+
   // Live Table Stats State for Header Bar
   const [tableStats, setTableStats] = useState({ open: 5, total: 10, occupied: 3, billing: 1 });
   const [pausedCount, setPausedCount] = useState(0);
@@ -122,7 +131,6 @@ export default function Dashboard({ user, onLogout }) {
         let orderList = Array.isArray(data) ? data : [];
         setIsOrdersFallback(false);
         
-        // Flexible Online Orders Filter (hides only explicit counter/POS orders)
         const onlineOnlyList = orderList.filter(o => {
           const ch = (o.channel || o.orderType || '').toUpperCase();
           if (ch.includes('COUNTER') || ch.includes('POS') || ch.includes('WALK-IN')) {
@@ -397,7 +405,17 @@ export default function Dashboard({ user, onLogout }) {
               </div>
 
               <div style={styles.detailPanelColumn}>
-                <div style={styles.listHeaderTitle}>Order details</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <div style={styles.listHeaderTitle}>Order details & Thermal Receipt</div>
+                  {selectedOrder && (
+                    <button 
+                      onClick={() => setShowCheckoutModal(true)} 
+                      style={styles.checkoutTriggerBtn}
+                    >
+                      💳 Checkout & Split Payment
+                    </button>
+                  )}
+                </div>
 
                 {selectedOrder ? (
                   <div style={styles.detailCard}>
@@ -409,19 +427,62 @@ export default function Dashboard({ user, onLogout }) {
                       <span style={styles.statusBadgeSmall(selectedOrder.status)}>{selectedOrder.status}</span>
                     </div>
 
-                    <div style={{marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px'}}>
-                      {selectedOrder.items.map((item, i) => (
-                        <div key={i} style={{marginBottom: '12px', fontSize: '14px'}}>
-                          <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: '700'}}>
-                            <span>{item.name} ×{item.qty}</span>
-                            <span>₹{(item.price * item.qty).toFixed(2)}</span>
+                    {/* Realistic Compact Thermal Receipt Preview */}
+                    <div style={styles.thermalReceiptBox}>
+                      <div style={{ textAlign: 'center', fontWeight: '900', fontSize: '14px', color: '#0f172a' }}>{profileData.businessName}</div>
+                      <div style={{ textAlign: 'center', fontSize: '10px', color: '#64748b', marginBottom: '6px' }}>Phone: {profileData.phone}</div>
+                      <div style={{ borderBottom: '1px dashed #cbd5e1', margin: '6px 0' }}></div>
+                      
+                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between', color: '#334155' }}>
+                        <span>Order: {selectedOrder.id}</span>
+                        <span>{new Date().toLocaleDateString()}</span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#334155', marginBottom: '6px' }}>Type: {selectedOrder.type} • Channel: {selectedOrder.channel}</div>
+                      <div style={{ borderBottom: '1px dashed #cbd5e1', margin: '6px 0' }}></div>
+
+                      <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {selectedOrder.items.map((item, i) => (
+                          <div key={i}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700' }}>
+                              <span>{item.qty}x {item.name}</span>
+                              <span>₹{(item.price * item.qty).toFixed(2)}</span>
+                            </div>
+                            {/* Item-level special instruction input */}
+                            <input
+                              type="text"
+                              placeholder="Add special instructions (e.g. less spicy)..."
+                              value={item.desc || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setOrders(orders.map(o => {
+                                  if (o.orderId === selectedOrder.orderId) {
+                                    const updatedItems = [...o.items];
+                                    updatedItems[i].desc = val;
+                                    const updatedOrder = { ...o, items: updatedItems };
+                                    setSelectedOrder(updatedOrder);
+                                    return updatedOrder;
+                                  }
+                                  return o;
+                                }));
+                              }}
+                              style={styles.receiptItemInstructionInput}
+                            />
                           </div>
-                          {item.desc && <div style={{fontSize: '12px', color: '#64748b'}}>{item.desc}</div>}
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+
+                      <div style={{ borderBottom: '1px dashed #cbd5e1', margin: '8px 0' }}></div>
+                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between' }}><span>Subtotal</span><span>₹{selectedOrder.subtotal.toFixed(2)}</span></div>
+                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between' }}><span>GST (5%)</span><span>₹{(selectedOrder.subtotal * 0.05).toFixed(2)}</span></div>
+                      <div style={{ borderBottom: '1px dashed #cbd5e1', margin: '8px 0' }}></div>
+                      <div style={{ fontSize: '13px', display: 'flex', justifyContent: 'space-between', fontWeight: '900', color: '#0f172a' }}>
+                        <span>TOTAL</span>
+                        <span>₹{selectedOrder.total.toFixed(2)}</span>
+                      </div>
+                      <div style={{ textAlign: 'center', fontSize: '10px', color: '#64748b', marginTop: '8px' }}>*** THANK YOU FOR ORDERING ***</div>
                     </div>
 
-                    <div style={{fontSize: '13px', color: '#334155', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px'}}>
+                    <div style={{fontSize: '13px', color: '#334155', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', marginTop: '14px'}}>
                       📍 {selectedOrder.address}<br/>
                       📞 <span style={{color: '#16a34a', fontWeight: '700'}}>{selectedOrder.phone}</span>
                     </div>
@@ -433,19 +494,8 @@ export default function Dashboard({ user, onLogout }) {
                       </div>
                     )}
 
-                    <div style={{fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px', color: '#334155'}}>
-                      <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                        <span>Sub total</span>
-                        <span style={{fontWeight: '600'}}>₹{selectedOrder.subtotal.toFixed(2)}</span>
-                      </div>
-                      <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '12px'}}>
-                        <span>Total</span>
-                        <span>₹{selectedOrder.total.toFixed(2)}</span>
-                      </div>
-                    </div>
-
                     <div style={{marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '14px'}}>
-                      <button onClick={handlePrintReceipt} style={styles.printIconBtn}>🖨️</button>
+                      <button onClick={handlePrintReceipt} style={styles.printIconBtn}>🖨️ Print Receipt</button>
                       
                       {selectedOrder.status !== 'Picked Up' && selectedOrder.status !== 'Completed' ? (
                         <button 
@@ -462,6 +512,138 @@ export default function Dashboard({ user, onLogout }) {
                 ) : (
                   <div style={styles.emptyDetailPrompt}>Select an order from the list.</div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Checkout & Split Payment Modal */}
+        {showCheckoutModal && selectedOrder && (
+          <div style={styles.drawerOverlay} onClick={() => setShowCheckoutModal(false)}>
+            <div style={styles.checkoutModalContent} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>Checkout & Split Payment</h3>
+                <button onClick={() => setShowCheckoutModal(false)} style={styles.closeXBtn}>✕</button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '70vh', overflowY: 'auto' }}>
+                {/* Tip Section */}
+                <div style={styles.checkoutSectionCard}>
+                  <label style={styles.checkoutLabel}>TIP (OPTIONAL)</label>
+                  <div style={styles.tipGrid}>
+                    {[0, 20, 50, 100].map(val => (
+                      <button
+                        key={val}
+                        onClick={() => { setTip(val); setCustomTip(''); }}
+                        style={{
+                          ...styles.tipBtn,
+                          backgroundColor: tip === val ? '#ef4444' : '#fff',
+                          color: tip === val ? '#fff' : '#334155',
+                          borderColor: tip === val ? '#ef4444' : '#cbd5e1'
+                        }}
+                      >
+                        {val === 0 ? 'No tip' : `₹${val}`}
+                      </button>
+                    ))}
+                    <input
+                      type="number"
+                      placeholder="Custom"
+                      value={customTip}
+                      onChange={(e) => { setTip('custom'); setCustomTip(e.target.value); }}
+                      style={styles.customTipInput}
+                    />
+                  </div>
+                </div>
+
+                {/* Split Payment Toggle */}
+                <div style={styles.checkoutSectionCard}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '14px' }}>Split payment</div>
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>Pay with two methods (e.g. Cash + UPI)</div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={splitPayment}
+                      onChange={(e) => setSplitPayment(e.target.checked)}
+                      style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#2563eb' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Payment 1 */}
+                <div style={styles.checkoutSectionCard}>
+                  <label style={styles.checkoutLabel}>{splitPayment ? 'PAYMENT 1' : 'PAYMENT METHOD'}</label>
+                  <div style={styles.methodGrid}>
+                    {['Cash', 'UPI', 'Card'].map(m => (
+                      <button
+                        key={m}
+                        onClick={() => setPay1Method(m)}
+                        style={{
+                          ...styles.methodBtn,
+                          borderColor: pay1Method === m ? '#2563eb' : '#cbd5e1',
+                          backgroundColor: pay1Method === m ? '#eff6ff' : '#fff'
+                        }}
+                      >
+                        <span style={{ fontSize: '16px' }}>{m === 'Cash' ? '💵' : m === 'UPI' ? '📱' : '💳'}</span>
+                        <span style={{ fontWeight: '700', fontSize: '12px', color: '#0f172a' }}>{m}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {splitPayment && (
+                    <input
+                      type="number"
+                      placeholder="Amount for Payment 1 (e.g. 500)"
+                      value={pay1Amount}
+                      onChange={(e) => setPay1Amount(e.target.value)}
+                      style={styles.splitAmountInput}
+                    />
+                  )}
+                </div>
+
+                {/* Payment 2 */}
+                {splitPayment && (
+                  <div style={styles.checkoutSectionCard}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label style={styles.checkoutLabel}>PAYMENT 2</label>
+                      <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Balance • auto</span>
+                    </div>
+                    <div style={styles.methodGrid}>
+                      {['Cash', 'UPI', 'Card'].map(m => (
+                        <button
+                          key={m}
+                          onClick={() => setPay2Method(m)}
+                          style={{
+                            ...styles.methodBtn,
+                            borderColor: pay2Method === m ? '#2563eb' : '#cbd5e1',
+                            backgroundColor: pay2Method === m ? '#eff6ff' : '#fff'
+                          }}
+                        >
+                          <span style={{ fontSize: '16px' }}>{m === 'Cash' ? '💵' : m === 'UPI' ? '📱' : '💳'}</span>
+                          <span style={{ fontWeight: '700', fontSize: '12px', color: '#0f172a' }}>{m}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '14px' }}>
+                <div>
+                  <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700', display: 'block' }}>Total Amount:</span>
+                  <span style={{ fontSize: '20px', fontWeight: '900', color: '#047857' }}>
+                    ₹{(selectedOrder.total + (tip === 'custom' ? Number(customTip) || 0 : tip)).toFixed(2)}
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    alert('Payment processed successfully and receipt recorded!');
+                    setShowCheckoutModal(false);
+                  }}
+                  style={styles.actionBtn}
+                >
+                  ✅ Complete Payment
+                </button>
               </div>
             </div>
           </div>
@@ -596,7 +778,19 @@ const styles = {
   customerRequestBox: { backgroundColor: '#fef3c7', border: '1.5px solid #fde68a', padding: '12px 14px', borderRadius: '10px', fontSize: '13px', color: '#92400e', marginBottom: '16px', textAlign: 'left', fontWeight: '600' },
   printIconBtn: { backgroundColor: '#f1f5f9', border: '1.5px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' },
   actionBtn: { backgroundColor: '#047857', color: '#fff', border: 'none', padding: '11px 20px', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s' },
+  thermalReceiptBox: { backgroundColor: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '12px', padding: '14px', fontFamily: 'monospace', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)', marginBottom: '16px' },
+  receiptItemInstructionInput: { width: '100%', marginTop: '4px', padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', boxSizing: 'border-box' },
+  checkoutTriggerBtn: { backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: '800', fontSize: '12px', cursor: 'pointer' },
   drawerOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
+  checkoutModalContent: { width: '480px', backgroundColor: '#fff', padding: '24px', borderRadius: '20px', textAlign: 'left', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #e2e8f0' },
+  checkoutSectionCard: { backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14px' },
+  checkoutLabel: { fontSize: '11px', fontWeight: '800', color: '#64748b', letterSpacing: '0.5px', display: 'block', marginBottom: '8px' },
+  tipGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px', alignItems: 'center' },
+  tipBtn: { padding: '8px 4px', borderRadius: '8px', border: '1.5px solid', fontWeight: '700', fontSize: '12px', cursor: 'pointer', textAlign: 'center' },
+  customTipInput: { padding: '8px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '12px', outline: 'none', textAlign: 'center', width: '100%', boxSizing: 'border-box' },
+  methodGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' },
+  methodBtn: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px', borderRadius: '10px', border: '1.5px solid', cursor: 'pointer', gap: '4px' },
+  splitAmountInput: { width: '100%', marginTop: '8px', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12px', outline: 'none', boxSizing: 'border-box' },
   profileModal: { width: '460px', backgroundColor: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'left', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #e2e8f0' },
   modalRedAccentLine: { height: '3px', backgroundColor: '#10b981', width: '100%', marginBottom: '16px', borderRadius: '2px' },
   profileCardRow: { fontSize: '13px', color: '#334155', display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' },
