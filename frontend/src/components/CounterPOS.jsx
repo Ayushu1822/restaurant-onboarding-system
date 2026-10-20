@@ -34,6 +34,13 @@ export default function CounterPOS() {
   const [recentSearchQuery, setRecentSearchQuery] = useState('');
 
   const [paymentMethod, setPaymentMethod] = useState('UPI');
+  
+  // 💳 Split Payment State for Receipt & Checkout
+  const [splitPayment, setSplitPayment] = useState(false);
+  const [pay1Method, setPay1Method] = useState('Cash');
+  const [pay1Amount, setPay1Amount] = useState('');
+  const [pay2Method, setPay2Method] = useState('UPI');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastCompletedOrder, setLastCompletedOrder] = useState(null);
 
@@ -140,6 +147,10 @@ export default function CounterPOS() {
 
     setIsSubmitting(true);
 
+    const finalPaymentDescription = splitPayment 
+      ? `Split: ${pay1Method} (₹${pay1Amount || (totalAmount/2).toFixed(2)}) + ${pay2Method} (₹${(totalAmount - (pay1Amount || totalAmount/2)).toFixed(2)})`
+      : paymentMethod;
+
     const orderPayload = {
       displayId: `#POS-${Math.floor(1000 + Math.random() * 9000)}`,
       customerName,
@@ -148,10 +159,10 @@ export default function CounterPOS() {
       orderType: orderType,
       channel: 'COUNTER',
       deliveryAddress: orderType === 'Dine-In' ? 'Dine-In Counter Service' : 'Takeaway Counter',
-      customerRequest: specialNote || '', // 📝 Special note saved here
-      paymentMethod,
+      customerRequest: specialNote || '', 
+      paymentMethod: finalPaymentDescription,
       paymentStatus: 'PAID',
-      status: 'Preparing', // Appears instantly in Kitchen & Active Orders
+      status: 'Preparing', 
       subtotal: subtotal,
       totalAmount: totalAmount,
       items: cart.map(item => ({
@@ -603,26 +614,25 @@ export default function CounterPOS() {
         </div>
       )}
 
-      {/* Bill Print Modal */}
+      {/* Bill & Receipt Modal with Split Payment Option */}
       {lastCompletedOrder && (
         <div style={styles.modalOverlay}>
           <div style={styles.receiptCard}>
-            <div style={{textAlign: 'center', marginBottom: '15px'}}>
+            <div style={{textAlign: 'center', marginBottom: '12px'}}>
               <h3 style={{margin: 0, fontSize: '20px', fontWeight: '800'}}>FOODOS RESTAURANT</h3>
               <div style={{fontSize: '12px', color: '#64748b'}}>Counter POS Official Bill</div>
               <div style={{fontSize: '12px', borderBottom: '1.5px dashed #cbd5e1', paddingBottom: '8px', marginTop: '6px'}}>Order ID: {lastCompletedOrder.id}</div>
             </div>
 
-            <div style={{fontSize: '13px', marginBottom: '14px', lineHeight: '1.6'}}>
+            <div style={{fontSize: '13px', marginBottom: '12px', lineHeight: '1.5'}}>
               <div><strong>Customer:</strong> {lastCompletedOrder.customerName} ({lastCompletedOrder.customerPhone})</div>
               <div><strong>Fulfillment:</strong> {lastCompletedOrder.orderType} ({lastCompletedOrder.deliveryAddress})</div>
               {lastCompletedOrder.customerRequest && (
                 <div><strong>Note:</strong> <span style={{color: '#d97706', fontWeight: '700'}}>{lastCompletedOrder.customerRequest}</span></div>
               )}
-              <div><strong>Payment Mode:</strong> {lastCompletedOrder.paymentMethod} (PAID)</div>
             </div>
 
-            <div style={{borderTop: '1.5px dashed #cbd5e1', borderBottom: '1.5px dashed #cbd5e1', padding: '10px 0', marginBottom: '14px'}}>
+            <div style={{borderTop: '1.5px dashed #cbd5e1', borderBottom: '1.5px dashed #cbd5e1', padding: '10px 0', marginBottom: '12px'}}>
               {lastCompletedOrder.items.map((it, idx) => (
                 <div key={idx} style={{display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px'}}>
                   <span>{it.quantity}x {it.itemName}</span>
@@ -631,16 +641,68 @@ export default function CounterPOS() {
               ))}
             </div>
 
-            <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '16px', marginBottom: '24px'}}>
-              <span>Total Bill Amount:</span>
+            <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '15px', marginBottom: '12px'}}>
+              <span>Total Amount:</span>
               <span style={{color: '#047857'}}>₹{Number(lastCompletedOrder.totalAmount).toFixed(2)}</span>
+            </div>
+
+            {/* 💳 SPLIT PAYMENT SECTION INSIDE RECEIPT MODAL (Colorful & Responsive UX) */}
+            <div style={styles.splitPaymentBox}>
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                <div>
+                  <div style={{fontWeight: '800', fontSize: '13px', color: '#0f172a'}}>⚡ Split Payment</div>
+                  <div style={{fontSize: '10px', color: '#64748b'}}>Divide bill across two payment modes</div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={splitPayment}
+                  onChange={(e) => setSplitPayment(e.target.checked)}
+                  style={{width: '18px', height: '18px', cursor: 'pointer', accentColor: '#047857'}}
+                />
+              </div>
+
+              {splitPayment && (
+                <div style={{display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', borderTop: '1px solid #cbd5e1', paddingTop: '8px'}}>
+                  <div style={{display: 'flex', gap: '6px', alignItems: 'center'}}>
+                    <span style={{fontSize: '11px', fontWeight: '700', width: '65px'}}>Payment 1:</span>
+                    <select value={pay1Method} onChange={e => setPay1Method(e.target.value)} style={styles.splitSelect}>
+                      <option value="Cash">Cash 💵</option>
+                      <option value="UPI">UPI 📱</option>
+                      <option value="Card">Card 💳</option>
+                    </select>
+                    <input 
+                      type="number"
+                      placeholder="Amount"
+                      value={pay1Amount}
+                      onChange={e => setPay1Amount(e.target.value)}
+                      style={styles.splitInput}
+                    />
+                  </div>
+
+                  <div style={{display: 'flex', gap: '6px', alignItems: 'center'}}>
+                    <span style={{fontSize: '11px', fontWeight: '700', width: '65px'}}>Payment 2:</span>
+                    <select value={pay2Method} onChange={e => setPay2Method(e.target.value)} style={styles.splitSelect}>
+                      <option value="UPI">UPI 📱</option>
+                      <option value="Cash">Cash 💵</option>
+                      <option value="Card">Card 💳</option>
+                    </select>
+                    <span style={{fontSize: '11px', fontWeight: '700', color: '#047857', flex: 1, textAlign: 'right', paddingRight: '4px'}}>
+                      Bal: ₹{(lastCompletedOrder.totalAmount - (Number(pay1Amount) || lastCompletedOrder.totalAmount / 2)).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{fontSize: '12px', color: '#334155', marginBottom: '16px', background: '#f8fafc', padding: '8px', borderRadius: '6px'}}>
+              <strong>Payment Status:</strong> {splitPayment ? `Split (${pay1Method} + ${pay2Method})` : lastCompletedOrder.paymentMethod} (PAID ✓)
             </div>
 
             <div style={{display: 'flex', gap: '12px'}}>
               <button onClick={() => window.print()} style={{flex: 1, background: '#047857', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(4,120,87,0.3)'}}>
                 🖨️ Print Bill
               </button>
-              <button onClick={() => { setLastCompletedOrder(null); setCart([]); setCustomerPhone(''); setCustomerName(''); setSpecialNote(''); setOrderType(null); }} style={{flex: 1, background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer'}}>
+              <button onClick={() => { setLastCompletedOrder(null); setCart([]); setCustomerPhone(''); setCustomerName(''); setSpecialNote(''); setOrderType(null); setSplitPayment(false); }} style={{flex: 1, background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer'}}>
                 New Order
               </button>
             </div>
@@ -682,5 +744,8 @@ const styles = {
   recentSearchInput: { width: '110px', padding: '4px 8px', borderRadius: '6px', border: '1.5px solid #cbd5e1', fontSize: '11px', outline: 'none' },
   recentCustomerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', border: '1px solid #e2e8f0', transition: 'all 0.15s' },
   deleteCustomerBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: '4px', borderRadius: '4px' },
-  receiptCard: { width: '400px', background: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'left', fontFamily: 'monospace', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' }
+  receiptCard: { width: '420px', background: '#fff', padding: '24px', borderRadius: '20px', textAlign: 'left', fontFamily: 'Inter, sans-serif', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' },
+  splitPaymentBox: { background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '10px', padding: '10px 12px', marginBottom: '12px' },
+  splitSelect: { padding: '5px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', background: '#fff', outline: 'none', fontWeight: '600' },
+  splitInput: { width: '80px', padding: '5px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', background: '#fff', outline: 'none' }
 };
