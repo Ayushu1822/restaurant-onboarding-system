@@ -6,12 +6,16 @@ export default function ReportsModule() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Filter States
-  const [dateRange, setDateRange] = useState('today'); // 'today', 'yesterday', 'month', 'year'
-  const [orderChannelFilter, setOrderChannelFilter] = useState('ALL'); // 'ALL', 'TABLE', 'COUNTER', 'ONLINE'
-  const [selectedCaptainFilter, setSelectedCaptainFilter] = useState('ALL'); // 'ALL' or specific captain name
+  // Main Filter States (Active & General)
+  const [dateRange, setDateRange] = useState('today');
+  const [orderChannelFilter, setOrderChannelFilter] = useState('ALL');
+  const [selectedCaptainFilter, setSelectedCaptainFilter] = useState('ALL');
   
-  // Analytics specific separate filters
+  // History Specific Filter States
+  const [historyDateRange, setHistoryDateRange] = useState('today');
+  const [historyChannelFilter, setHistoryChannelFilter] = useState('ALL');
+
+  // Analytics Specific Filter States
   const [analyticsDateRange, setAnalyticsDateRange] = useState('today');
   const [analyticsCategoryFilter, setAnalyticsCategoryFilter] = useState('ALL');
 
@@ -57,7 +61,6 @@ export default function ReportsModule() {
 
   const allCaptains = ['ALL', ...new Set(orders.map(o => extractCaptain(o.customerName)).filter(Boolean))];
 
-  // Helper function for date filtering
   const checkDateMatch = (orderDate, range) => {
     const now = new Date();
     if (range === 'today') {
@@ -74,7 +77,7 @@ export default function ReportsModule() {
     return true;
   };
 
-  // Main table filtering logic
+  // 1. Active Orders Filtering
   const filteredOrders = orders.filter((o, idx) => {
     const orderDate = getSafeTimestamp(o, idx);
     let matchesDate = checkDateMatch(orderDate, dateRange);
@@ -112,13 +115,30 @@ export default function ReportsModule() {
     return st !== 'completed' && st !== 'delivered' && st !== 'picked up' && st !== 'ready' && st !== 'settled';
   });
 
-  // FLEXIBLE HISTORY (Catches Completed, Delivered, Ready, Settled, Picked Up)
-  const completedHistoryOrders = filteredOrders.filter(o => {
+  // 2. Completed History Filtering (with its own Date & Channel Dropdowns)
+  const completedHistoryOrders = orders.filter((o, idx) => {
     const st = (o.status || 'New').toLowerCase();
-    return st === 'completed' || st === 'delivered' || st === 'picked up' || st === 'ready' || st === 'settled';
+    const isCompleted = st === 'completed' || st === 'delivered' || st === 'picked up' || st === 'ready' || st === 'settled';
+    if (!isCompleted) return false;
+
+    const orderDate = getSafeTimestamp(o, idx);
+    let matchesDate = checkDateMatch(orderDate, historyDateRange);
+
+    let matchesChannel = true;
+    const channel = (o.channel || 'COUNTER').toUpperCase();
+    const disp = (o.displayId || '').toUpperCase();
+    if (historyChannelFilter === 'TABLE') {
+      matchesChannel = disp.includes('TABLE') || (o.orderType || '').toLowerCase().includes('dine');
+    } else if (historyChannelFilter === 'COUNTER') {
+      matchesChannel = channel === 'COUNTER' && !disp.includes('TABLE');
+    } else if (historyChannelFilter === 'ONLINE') {
+      matchesChannel = channel === 'ZOMATO' || channel === 'SWIGGY' || channel === 'WHATSAPP';
+    }
+
+    return matchesDate && matchesChannel;
   });
 
-  // Analytics filtered orders (Using its own Date & Category dropdowns for accurate graphs)
+  // 3. Analytics Filtering
   const analyticsOrders = orders.filter((o, idx) => {
     const orderDate = getSafeTimestamp(o, idx);
     let matchesDate = checkDateMatch(orderDate, analyticsDateRange);
@@ -149,11 +169,13 @@ export default function ReportsModule() {
     }
   });
 
-  const downloadCSV = (filename, rows, headers) => {
-    let csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    var encodedUri = encodeURI(csvContent);
+  // Export as Excel (.xls / .csv format)
+  const downloadExcelCSV = (filename, rows, headers) => {
+    let csvContent = "\uFEFF" + [headers.join("\t"), ...rows.map(e => e.join("\t"))].join("\n");
+    var blob = new Blob([csvContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     var link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    var url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
     link.setAttribute("download", filename);
     document.body.appendChild(link);
     link.click();
@@ -164,28 +186,61 @@ export default function ReportsModule() {
     const headers = ["Order ID", "Customer Name", "Channel", "Type", "Status", "Total Amount", "Timestamp"];
     const rows = filteredOrders.map((o, i) => [
       o.displayId || o.orderId || 'N/A',
-      `"${o.customerName || 'Walk-In'}"`,
+      o.customerName || 'Walk-In',
       o.channel || 'COUNTER',
       o.orderType || 'Dine-In',
       o.status || 'New',
       o.totalAmount || 0,
-      getSafeTimestamp(o, i).toISOString()
+      getSafeTimestamp(o, i).toLocaleString()
     ]);
-    downloadCSV(`order_breakdown_${dateRange}.csv`, rows, headers);
+    downloadExcelCSV(`order_breakdown_${dateRange}.xls`, rows, headers);
   };
 
-  const exportCompletedHistory = () => {
+  const exportCompletedHistoryExcel = () => {
     const headers = ["Order ID", "Customer Name", "Captain", "Type", "Status", "Total Amount", "Timestamp"];
     const rows = completedHistoryOrders.map((o, i) => [
       o.displayId || o.orderId || 'N/A',
-      `"${o.customerName || 'Walk-In'}"`,
+      o.customerName || 'Walk-In',
       extractCaptain(o.customerName) || 'None',
       o.orderType || 'Dine-In',
       o.status || 'Completed',
       o.totalAmount || 0,
-      getSafeTimestamp(o, i).toISOString()
+      getSafeTimestamp(o, i).toLocaleString()
     ]);
-    downloadCSV(`completed_history_${dateRange}.csv`, rows, headers);
+    downloadExcelCSV(`completed_history_${historyDateRange}.xls`, rows, headers);
+  };
+
+  // Individual Order Receipt Download
+  const downloadSingleReceipt = (o, index) => {
+    const dateStr = getSafeTimestamp(o, index).toLocaleString();
+    const items = o.items || [];
+    let receiptText = `=================================\n`;
+    receiptText += `       RESTAURANT POS RECEIPT\n`;
+    receiptText += `=================================\n`;
+    receiptText += `Order ID : ${o.displayId || o.orderId}\n`;
+    receiptText += `Customer : ${o.customerName || 'Walk-In'}\n`;
+    receiptText += `Captain  : ${extractCaptain(o.customerName) || 'N/A'}\n`;
+    receiptText += `Channel  : ${o.channel || 'COUNTER'} (${o.orderType || 'Dine-In'})\n`;
+    receiptText += `Status   : ${o.status || 'Completed'}\n`;
+    receiptText += `Date     : ${dateStr}\n`;
+    receiptText += `---------------------------------\n`;
+    receiptText += `ITEMS:\n`;
+    items.forEach((it, idx) => {
+      receiptText += `${idx + 1}. ${it.itemName || it.name} x ${it.quantity || it.qty || 1}  -  ₹${(it.unitPrice || 0) * (it.quantity || it.qty || 1)}\n`;
+    });
+    receiptText += `---------------------------------\n`;
+    receiptText += `TOTAL AMOUNT: ₹${o.totalAmount || 0}\n`;
+    receiptText += `=================================\n`;
+    receiptText += `       Thank You! Visit Again\n`;
+    receiptText += `=================================\n`;
+
+    var blob = new Blob([receiptText], { type: 'text/plain;charset=utf-8;' });
+    var link = document.createElement("a");
+    link.setAttribute("href", URL.createObjectURL(blob));
+    link.setAttribute("download", `receipt_${o.displayId || 'order'}.txt`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const customerHistoryMap = {};
@@ -201,12 +256,12 @@ export default function ReportsModule() {
         <div>
           <h2 style={{ fontSize: '26px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Reports & Analytics Hub</h2>
           <p style={{ color: '#64748b', fontSize: '13px', margin: '4px 0 0 0', fontWeight: '700' }}>
-            Real completed order histories, assigned captain revenue tracking, and accurate analytics
+            Real completed order histories with Excel exports, individual receipts, and captain tracking
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button onClick={exportOrderDetails} style={styles.exportBtn}>📥 Orders CSV</button>
-          <button onClick={exportCompletedHistory} style={styles.exportBtn}>📦 History CSV</button>
+          <button onClick={exportOrderDetails} style={styles.exportBtn}>📥 Orders Excel (.xls)</button>
+          <button onClick={exportCompletedHistoryExcel} style={styles.exportBtn}>📦 History Excel (.xls)</button>
           <button onClick={() => window.print()} style={{ ...styles.exportBtn, background: 'linear-gradient(135deg, #059669, #047857)' }}>🖨️ Print Report</button>
         </div>
       </div>
@@ -339,18 +394,44 @@ export default function ReportsModule() {
       )}
 
       {/* ========================================== */}
-      {/* 3. COMPLETED ORDERS HISTORY SECTION */}
+      {/* 3. COMPLETED ORDERS HISTORY SECTION (WITH CHANNEL & DATE DROPDOWNS) */}
       {/* ========================================== */}
       <div style={styles.sectionCard}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>
-            📦 Completed Orders History & Item Details ({completedHistoryOrders.length})
-          </h3>
-          <button onClick={exportCompletedHistory} style={{ ...styles.exportBtn, padding: '6px 12px', fontSize: '11px' }}>📥 Download History</button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '950', color: '#0f172a' }}>
+              📦 Completed Orders History & Receipts ({completedHistoryOrders.length})
+            </h3>
+            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>Download individual receipts or export group history to Excel</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b' }}>Channel:</label>
+              <select value={historyChannelFilter} onChange={e => setHistoryChannelFilter(e.target.value)} style={{ ...styles.select, padding: '6px 10px', fontSize: '12px' }}>
+                <option value="ALL">All Channels</option>
+                <option value="TABLE">Table Orders</option>
+                <option value="COUNTER">Counter POS</option>
+                <option value="ONLINE">Online Orders</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b' }}>Date:</label>
+              <select value={historyDateRange} onChange={e => setHistoryDateRange(e.target.value)} style={{ ...styles.select, padding: '6px 10px', fontSize: '12px' }}>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="month">Last Month</option>
+                <option value="year">Year</option>
+              </select>
+            </div>
+
+            <button onClick={exportCompletedHistoryExcel} style={{ ...styles.exportBtn, padding: '7px 12px', fontSize: '11px' }}>📥 Export History (.xls)</button>
+          </div>
         </div>
 
         {completedHistoryOrders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px', fontWeight: '800' }}>No history orders found. Ensure orders are marked completed, ready, or delivered.</div>
+          <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px', fontWeight: '800' }}>No history orders found matching this filter. Ensure orders are marked completed, ready, or delivered.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {completedHistoryOrders.map((o, idx) => {
@@ -359,16 +440,21 @@ export default function ReportsModule() {
               const captain = extractCaptain(o.customerName) || 'Counter / Unassigned';
               return (
                 <div key={idx} style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', flexWrap: 'wrap', gap: '10px' }}>
                     <div>
                       <span style={{ fontWeight: '950', color: '#0f172a', fontSize: '15px', marginRight: '10px' }}>{o.displayId || o.orderId}</span>
                       <span style={styles.badge}>{o.channel || 'COUNTER'}</span>
                       <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', marginLeft: '10px' }}>👤 {o.customerName || 'Walk-In'}</span>
                       <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: '900', marginLeft: '10px' }}>🧑‍✈️ {captain}</span>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '15px', fontWeight: '950', color: '#059669' }}>₹{o.totalAmount || 0}</span>
-                      <div style={{ fontSize: '11px', color: '#2563eb', fontWeight: '900' }}>{o.status}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ fontSize: '15px', fontWeight: '950', color: '#059669' }}>₹{o.totalAmount || 0}</span>
+                        <div style={{ fontSize: '11px', color: '#2563eb', fontWeight: '900' }}>{o.status}</div>
+                      </div>
+                      <button onClick={() => downloadSingleReceipt(o, idx)} style={styles.receiptBtn}>
+                        🖨️ Receipt
+                      </button>
                     </div>
                   </div>
                   <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', marginBottom: '8px' }}>🕒 Timestamp: {dateStr}</div>
@@ -393,7 +479,7 @@ export default function ReportsModule() {
       </div>
 
       {/* ========================================== */}
-      {/* 4. ANALYTICS SECTION WITH DATE & CATEGORY DROPDOWNS & PRINT BUTTON */}
+      {/* 4. ANALYTICS SECTION */}
       {/* ========================================== */}
       <div style={styles.sectionCard}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
@@ -506,6 +592,7 @@ const styles = {
   container: { display: 'flex', flexDirection: 'column', flex: 1, padding: '28px', background: '#f1f5f9', overflowY: 'auto', boxSizing: 'border-box', paddingBottom: '90px', fontFamily: 'system-ui, -apple-system, sans-serif' },
   headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' },
   exportBtn: { background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', border: 'none', padding: '9px 14px', borderRadius: '10px', fontWeight: '950', fontSize: '11px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' },
+  receiptBtn: { background: '#059669', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '950', cursor: 'pointer', boxShadow: '0 2px 6px rgba(5,150,105,0.2)' },
   filterBar: { display: 'flex', gap: '16px', background: '#ffffff', padding: '18px 22px', borderRadius: '20px', border: '2px solid #e2e8f0', marginBottom: '24px', flexWrap: 'wrap', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.03)' },
   filterGroup: { display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '200px' },
   label: { fontSize: '11px', fontWeight: '950', color: '#64748b', letterSpacing: '0.05em' },
