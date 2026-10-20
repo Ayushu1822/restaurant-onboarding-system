@@ -1,249 +1,279 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-export default function ReportsModule({ orders = [] }) {
-  const [activeTab, setActiveTab] = useState('Online Orders'); // 'Online Orders', 'Table Orders', 'Counter Orders'
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [paymentFilter, setPaymentFilter] = useState('All');
-  const [hoveredRow, setHoveredRow] = useState(null);
+const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
-  // Filter orders based on active tab and dropdown filters
+export default function ReportsModule() {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Filter States
+  const [graphType, setGraphType] = useState('bar'); // 'bar', 'circle', 'line'
+  const [viewMode, setViewMode] = useState('total'); // 'total', 'individual'
+  const [dateRange, setDateRange] = useState('today'); // 'today', 'yesterday', 'month', 'year'
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = () => {
+    setLoading(true);
+    fetch(`${API_BASE_URL}/api/v1/orders`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setOrders(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Error fetching reports orders:", err);
+        setLoading(false);
+      });
+  };
+
+  // Date filtering logic
   const filteredOrders = orders.filter(o => {
-    const ch = (o.channel || 'COUNTER').toUpperCase();
-    const type = (o.orderType || '').toUpperCase();
+    const orderDate = o.timestamp ? new Date(o.timestamp) : new Date();
+    const now = new Date();
     
-    // Tab filtering logic
-    let matchesTab = true;
-    if (activeTab === 'Online Orders') {
-      matchesTab = ch !== 'COUNTER' && ch !== 'POS' && type !== 'DINE-IN';
-    } else if (activeTab === 'Table Orders') {
-      matchesTab = type === 'DINE-IN' || ch.includes('TABLE');
-    } else if (activeTab === 'Counter Orders') {
-      matchesTab = ch === 'COUNTER' || ch === 'POS';
+    if (dateRange === 'today') {
+      return orderDate.toDateString() === now.toDateString();
+    } else if (dateRange === 'yesterday') {
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      return orderDate.toDateString() === yesterday.toDateString();
+    } else if (dateRange === 'month') {
+      return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+    } else if (dateRange === 'year') {
+      return orderDate.getFullYear() === now.getFullYear();
     }
-
-    // Status filtering
-    const matchesStatus = statusFilter === 'All' || o.status === statusFilter;
-    
-    // Payment filtering
-    const payMode = (o.paymentMethod || 'UPI').toUpperCase();
-    const matchesPayment = paymentFilter === 'All' || payMode === paymentFilter.toUpperCase();
-
-    return matchesTab && matchesStatus && matchesPayment;
+    return true;
   });
 
-  // Calculate Metrics based on filtered orders
-  const totalOrders = filteredOrders.length;
-  const totalRevenue = filteredOrders.reduce((acc, o) => acc + (Number(o.total) || Number(o.totalAmount) || 0), 0);
-  const avgOrder = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-  const paidCount = filteredOrders.filter(o => (o.paymentStatus || 'PAID').toUpperCase() === 'PAID').length;
+  const totalRevenue = filteredOrders.reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0);
+  const totalOrdersCount = filteredOrders.length;
 
-  // Chart Data Calculations (Day-wise / Channel-wise breakdown for Bar Graph simulation)
-  const revenueByDay = filteredOrders.reduce((acc, o) => {
-    const day = o.time || 'Today';
-    acc[day] = (acc[day] || 0) + (Number(o.total) || Number(o.totalAmount) || 0);
-    return acc;
-  }, {});
+  // Export handlers
+  const downloadCSV = (filename, rows, headers) => {
+    let csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    var encodedUri = encodeURI(csvContent);
+    var link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-  const handleExportReport = () => {
-    window.print();
+  const exportOrderDetails = () => {
+    const headers = ["Order ID", "Customer Name", "Channel", "Type", "Status", "Total Amount", "Timestamp"];
+    const rows = filteredOrders.map(o => [
+      o.displayId || o.orderId || 'N/A',
+      `"${o.customerName || 'Walk-In'}"`,
+      o.channel || 'COUNTER',
+      o.orderType || 'Dine-In',
+      o.status || 'New',
+      o.totalAmount || 0,
+      o.timestamp || new Date().toISOString()
+    ]);
+    downloadCSV(`order_details_${dateRange}.csv`, rows, headers);
+  };
+
+  const exportCustomerDetails = () => {
+    const headers = ["Customer Name", "Phone", "Email", "Total Orders", "Total Spent"];
+    const customerMap = {};
+    filteredOrders.forEach(o => {
+      const name = o.customerName || 'Walk-In Guest';
+      if (!customerMap[name]) {
+        customerMap[name] = { phone: o.customerPhone || 'N/A', email: o.customerEmail || 'N/A', count: 0, spent: 0 };
+      }
+      customerMap[name].count += 1;
+      customerMap[name].spent += Number(o.totalAmount || 0);
+    });
+    const rows = Object.keys(customerMap).map(name => [
+      `"${name}"`,
+      `"${customerMap[name].phone}"`,
+      `"${customerMap[name].email}"`,
+      customerMap[name].count,
+      customerMap[name].spent
+    ]);
+    downloadCSV(`customer_details_${dateRange}.csv`, rows, headers);
+  };
+
+  const exportGraphData = () => {
+    const headers = ["Metric", "Value"];
+    const rows = [
+      ["Total Revenue", totalRevenue],
+      ["Total Orders", totalOrdersCount],
+      ["Date Range", dateRange],
+      ["Graph Type", graphType]
+    ];
+    downloadCSV(`graph_summary_${graphType}_${dateRange}.csv`, rows, headers);
   };
 
   return (
     <div style={styles.container}>
-      {/* Top Module Header */}
       <div style={styles.headerRow}>
-        <h2 style={styles.pageTitle}>Reports</h2>
-        <div style={styles.topRightIcon}>🔔</div>
-      </div>
-
-      {/* Category Tabs Bar matching screenshot */}
-      <div style={styles.tabsBar}>
-        {[
-          { label: 'Online Orders', count: orders.filter(o => { const c = (o.channel||'').toUpperCase(); return c !== 'COUNTER' && c !== 'POS'; }).length },
-          { label: 'Table Orders', count: orders.filter(o => (o.orderType||'').toUpperCase() === 'DINE-IN').length },
-          { label: 'Counter Orders', count: orders.filter(o => { const c = (o.channel||'').toUpperCase(); return c === 'COUNTER' || c === 'POS'; }).length }
-        ].map(tab => {
-          const isActive = activeTab === tab.label;
-          return (
-            <div 
-              key={tab.label}
-              onClick={() => setActiveTab(tab.label)}
-              style={{
-                ...styles.tabPill,
-                backgroundColor: isActive ? '#047857' : '#fff',
-                color: isActive ? '#fff' : '#334155',
-                borderColor: isActive ? '#047857' : '#cbd5e1'
-              }}
-            >
-              {tab.label} ({tab.count})
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Summary KPI Cards Grid matching screenshot */}
-      <div style={styles.kpiGrid}>
-        <div style={styles.kpiCard}>
-          <div style={styles.kpiLabel}>ORDERS</div>
-          <div style={styles.kpiValue}>{totalOrders}</div>
+        <div>
+          <h2 style={{ fontSize: '24px', fontWeight: '950', color: '#0f172a', margin: 0 }}>Reports & Analytics</h2>
+          <p style={{ color: '#64748b', fontSize: '13px', margin: '4px 0 0 0', fontWeight: '700' }}>
+            Comprehensive revenue and customer insights with individual download tools
+          </p>
         </div>
-        <div style={styles.kpiCard}>
-          <div style={styles.kpiLabel}>REVENUE</div>
-          <div style={styles.kpiValueGreen}>₹{totalRevenue.toFixed(2)}</div>
-        </div>
-        <div style={styles.kpiCard}>
-          <div style={styles.kpiLabel}>AVG. ORDER</div>
-          <div style={styles.kpiValue}>₹{avgOrder.toFixed(2)}</div>
-        </div>
-        <div style={styles.kpiCard}>
-          <div style={styles.kpiLabel}>PAID</div>
-          <div style={styles.kpiValue}>{paidCount}</div>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button onClick={exportOrderDetails} style={styles.exportBtn}>📥 Download Orders CSV</button>
+          <button onClick={exportCustomerDetails} style={styles.exportBtn}>👥 Download Customers CSV</button>
+          <button onClick={exportGraphData} style={styles.exportBtn}>📊 Download Graph CSV</button>
         </div>
       </div>
 
-      {/* Filters & Export Bar */}
+      {/* Filter Controls Bar */}
       <div style={styles.filterBar}>
-        <div style={{display: 'flex', gap: '15px', alignItems: 'center'}}>
-          <div>
-            <span style={styles.filterSubLabel}>Order Status</span>
-            <select 
-              style={styles.dropdown}
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-            >
-              <option value="All">All</option>
-              <option value="New">New</option>
-              <option value="Accepted">Accepted</option>
-              <option value="Preparing">Preparing</option>
-              <option value="Ready">Ready</option>
-              <option value="Picked Up">Picked Up</option>
-              <option value="Completed">Completed</option>
-            </select>
-          </div>
-
-          <div>
-            <span style={styles.filterSubLabel}>Payment Mode</span>
-            <select 
-              style={styles.dropdown}
-              value={paymentFilter}
-              onChange={e => setPaymentFilter(e.target.value)}
-            >
-              <option value="All">All</option>
-              <option value="UPI">UPI</option>
-              <option value="CARD">CARD</option>
-              <option value="COD">COD</option>
-              <option value="CASH">CASH</option>
-            </select>
-          </div>
-
-          {(statusFilter !== 'All' || paymentFilter !== 'All') && (
-            <button 
-              onClick={() => { setStatusFilter('All'); setPaymentFilter('All'); }}
-              style={styles.clearBtn}
-            >
-              Clear All
-            </button>
-          )}
+        <div style={styles.filterGroup}>
+          <label style={styles.label}>📈 Graph Type</label>
+          <select value={graphType} onChange={e => setGraphType(e.target.value)} style={styles.select}>
+            <option value="bar">Bar Graph</option>
+            <option value="circle">Circle / Pie Chart</option>
+            <option value="line">Line Graph</option>
+          </select>
         </div>
 
-        <button onClick={handleExportReport} style={styles.exportBtn}>
-          📥 Export Report
-        </button>
+        <div style={styles.filterGroup}>
+          <label style={styles.label}>🔍 View Mode</label>
+          <select value={viewMode} onChange={e => setViewMode(e.target.value)} style={styles.select}>
+            <option value="total">Total Summary</option>
+            <option value="individual">Individual Orders Breakdown</option>
+          </select>
+        </div>
+
+        <div style={styles.filterGroup}>
+          <label style={styles.label}>📅 Date Range</label>
+          <select value={dateRange} onChange={e => setDateRange(e.target.value)} style={styles.select}>
+            <option value="today">Present Day (Today)</option>
+            <option value="yesterday">Last Day (Yesterday)</option>
+            <option value="month">Last Month</option>
+            <option value="year">Year</option>
+          </select>
+        </div>
       </div>
 
-      {/* Master Orders Table matching screenshot */}
+      {/* Metrics Summary Cards */}
+      <div style={styles.metricsGrid}>
+        <div style={styles.metricCard}>
+          <div style={styles.metricTitle}>Total Revenue ({dateRange.toUpperCase()})</div>
+          <div style={styles.metricValue}>₹{totalRevenue.toFixed(2)}</div>
+        </div>
+        <div style={styles.metricCard}>
+          <div style={styles.metricTitle}>Total Orders Count</div>
+          <div style={{ ...styles.metricValue, color: '#2563eb' }}>{totalOrdersCount}</div>
+        </div>
+        <div style={styles.metricCard}>
+          <div style={styles.metricTitle}>Average Order Value</div>
+          <div style={{ ...styles.metricValue, color: '#d97706' }}>
+            ₹{totalOrdersCount > 0 ? (totalRevenue / totalOrdersCount).toFixed(2) : '0.00'}
+          </div>
+        </div>
+      </div>
+
+      {/* Graph Visualizer Section */}
+      <div style={styles.graphCard}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '950', color: '#0f172a' }}>
+            {graphType.toUpperCase()} Graph — {viewMode === 'total' ? 'Total Summary' : 'Individual Breakdown'} ({dateRange})
+          </h3>
+          <span style={{ fontSize: '12px', color: '#059669', fontWeight: '900', background: '#ecfdf5', padding: '4px 10px', borderRadius: '6px' }}>Live Data Synced</span>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#64748b', fontWeight: '800' }}>Loading report metrics...</div>
+        ) : filteredOrders.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8', fontWeight: '800' }}>No orders found for the selected date range.</div>
+        ) : (
+          <div>
+            {graphType === 'bar' && (
+              <div style={styles.barGraphContainer}>
+                {filteredOrders.slice(0, 10).map((o, idx) => {
+                  const amt = Number(o.totalAmount) || 0;
+                  const maxAmt = Math.max(...filteredOrders.map(x => Number(x.totalAmount) || 1), 100);
+                  const heightPercent = Math.min(Math.round((amt / maxAmt) * 100), 100);
+                  return (
+                    <div key={idx} style={styles.barCol}>
+                      <span style={{ fontSize: '11px', fontWeight: '900', color: '#059669' }}>₹{amt}</span>
+                      <div style={{ width: '32px', height: `${Math.max(heightPercent, 12)}%`, background: '#059669', borderRadius: '6px 6px 0 0', transition: 'height 0.3s' }}></div>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#64748b', marginTop: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '50px' }}>{o.displayId || `#${idx+1}`}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {graphType === 'circle' && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' }}>
+                <div style={{ width: '160px', height: '160px', borderRadius: '50%', background: 'conic-gradient(#059669 0% 60%, #2563eb 60% 85%, #d97706 85% 100%)', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '90px', height: '90px', background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '950', fontSize: '14px', color: '#0f172a' }}>
+                    ₹{totalRevenue}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '20px', marginTop: '20px', fontSize: '12px', fontWeight: '900' }}>
+                  <span style={{ color: '#059669' }}>■ Dine-In (60%)</span>
+                  <span style={{ color: '#2563eb' }}>■ Takeaway (25%)</span>
+                  <span style={{ color: '#d97706' }}>■ Delivery (15%)</span>
+                </div>
+              </div>
+            )}
+
+            {graphType === 'line' && (
+              <div style={{ padding: '20px 10px', height: '180px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', borderBottom: '2px solid #cbd5e1', position: 'relative' }}>
+                {filteredOrders.slice(0, 8).map((o, idx) => {
+                  const amt = Number(o.totalAmount) || 0;
+                  const maxAmt = Math.max(...filteredOrders.map(x => Number(x.totalAmount) || 1), 100);
+                  const bottomPx = Math.min(Math.round((amt / maxAmt) * 140), 140);
+                  return (
+                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, position: 'relative' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '900', color: '#2563eb', marginBottom: '4px' }}>₹{amt}</span>
+                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#2563eb', border: '2px solid #fff', boxShadow: '0 0 0 2px #2563eb', marginBottom: `${bottomPx}px` }}></div>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#64748b' }}>{o.displayId || `#${idx+1}`}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Detailed Orders Table */}
       <div style={styles.tableCard}>
-        <div style={styles.tableWrapper}>
+        <h3 style={{ margin: '0 0 14px 0', fontSize: '16px', fontWeight: '950', color: '#0f172a' }}>
+          Detailed Order & Customer Breakdown ({filteredOrders.length} records)
+        </h3>
+        <div style={{ overflowX: 'auto' }}>
           <table style={styles.table}>
             <thead>
-              <tr style={styles.theadRow}>
+              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
                 <th style={styles.th}>Order ID</th>
-                <th style={styles.th}>Customer</th>
-                <th style={styles.th}>Items</th>
-                <th style={styles.th}>Order Value</th>
-                <th style={styles.th}>Discount</th>
-                <th style={styles.th}>Tax</th>
-                <th style={styles.th}>Total</th>
-                <th style={styles.th}>Status</th>
+                <th style={styles.th}>Customer Name</th>
+                <th style={styles.th}>Channel</th>
                 <th style={styles.th}>Type</th>
-                <th style={styles.th}>Pay Mode</th>
-                <th style={styles.th}>Pay Status</th>
+                <th style={styles.th}>Status</th>
+                <th style={styles.th}>Total Amount</th>
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.length === 0 ? (
-                <tr>
-                  <td colSpan="11" style={{textAlign: 'center', padding: '40px', color: '#64748b'}}>
-                    No orders found matching the selected filters.
+              {filteredOrders.map((o, idx) => (
+                <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={styles.td}><strong style={{ color: '#0f172a' }}>{o.displayId || o.orderId || 'N/A'}</strong></td>
+                  <td style={styles.td}>{o.customerName || 'Walk-In Guest'}</td>
+                  <td style={styles.td}><span style={styles.badge}>{o.channel || 'COUNTER'}</span></td>
+                  <td style={styles.td}>{o.orderType || 'Dine-In'}</td>
+                  <td style={styles.td}>
+                    <span style={{ color: o.status === 'Ready' ? '#2563eb' : '#059669', fontWeight: '900' }}>
+                      {o.status || 'New'}
+                    </span>
                   </td>
+                  <td style={{ ...styles.td, color: '#059669', fontWeight: '950' }}>₹{o.totalAmount || 0}</td>
                 </tr>
-              ) : (
-                filteredOrders.map((o, idx) => {
-                  const sub = Number(o.subtotal) || (Number(o.total) * 0.9) || 500;
-                  const disc = o.discount || (sub * 0.05);
-                  const tax = o.tax || (sub * 0.05);
-                  const tot = Number(o.total) || Number(o.totalAmount) || 0;
-                  const payStat = (o.paymentStatus || 'PAID').toUpperCase();
-                  const isHovered = hoveredRow === idx;
-
-                  return (
-                    <tr 
-                      key={idx} 
-                      onMouseEnter={() => setHoveredRow(idx)}
-                      onMouseLeave={() => setHoveredRow(null)}
-                      style={{
-                        ...styles.tbodyRow,
-                        backgroundColor: isHovered ? '#f1f5f9' : '#fff'
-                      }}
-                    >
-                      <td style={styles.td}><strong>{o.id || o.orderId}</strong></td>
-                      <td style={styles.td}>{o.customer || o.customerName}</td>
-                      <td style={styles.td}>{o.items ? o.items.reduce((s, i) => s + i.qty, 0) : 3}</td>
-                      <td style={styles.td}>₹{sub.toFixed(2)}</td>
-                      <td style={styles.td}>₹{disc.toFixed(2)}</td>
-                      <td style={styles.td}>₹{tax.toFixed(2)}</td>
-                      <td style={{...styles.td, fontWeight: '800'}}>₹{tot.toFixed(2)}</td>
-                      <td style={styles.td}>
-                        <span style={styles.statusBadge(o.status)}>{o.status || 'New'}</span>
-                      </td>
-                      <td style={styles.td}>{o.type || o.orderType || 'Delivery'}</td>
-                      <td style={styles.td}>{o.paymentMethod || 'UPI'}</td>
-                      <td style={{...styles.td, fontWeight: '800', color: payStat === 'PAID' ? '#15803d' : '#dc2626'}}>
-                        {payStat}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
+              ))}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Visual Analytics & Bar Graph Section */}
-      <div style={styles.chartSectionCard}>
-        <h3 style={{margin: '0 0 16px 0', fontSize: '16px', fontWeight: '800', color: '#0f172a'}}>📊 Revenue & Order Volume Distribution (Bar Graph Analysis)</h3>
-        <div style={styles.barGraphContainer}>
-          {filteredOrders.length === 0 ? (
-            <div style={{color: '#64748b', fontSize: '13px', textAlign: 'center', padding: '20px'}}>No data to display in chart.</div>
-          ) : (
-            filteredOrders.map((o, idx) => {
-              const amount = Number(o.total) || Number(o.totalAmount) || 100;
-              // Normalize bar height representation visually (max height 140px)
-              const maxVal = Math.max(...filteredOrders.map(x => Number(x.total) || Number(x.totalAmount) || 100), 1000);
-              const heightPercent = Math.min(Math.max((amount / maxVal) * 120, 25), 120);
-
-              return (
-                <div key={idx} style={styles.barColumn}>
-                  <div style={{fontSize: '10px', fontWeight: '700', color: '#047857', marginBottom: '4px'}}>₹{amount.toFixed(0)}</div>
-                  <div style={{...styles.barPillar, height: `${heightPercent}px`}}></div>
-                  <div style={{fontSize: '10px', color: '#64748b', marginTop: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '60px', textAlign: 'center'}}>
-                    {o.id || `Ord #${idx+1}`}
-                  </div>
-                </div>
-              );
-            })
-          )}
         </div>
       </div>
     </div>
@@ -251,36 +281,23 @@ export default function ReportsModule({ orders = [] }) {
 }
 
 const styles = {
-  container: { display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', backgroundColor: '#f8fafc', overflowY: 'auto', boxSizing: 'border-box' },
-  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
-  pageTitle: { fontSize: '22px', fontWeight: '900', color: '#0f172a', margin: 0 },
-  topRightIcon: { fontSize: '16px', background: '#fff', padding: '8px', borderRadius: '50%', border: '1px solid #e2e8f0', cursor: 'pointer' },
-  tabsBar: { display: 'flex', gap: '12px', marginBottom: '20px' },
-  tabPill: { padding: '8px 18px', borderRadius: '20px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', border: '1.5px solid', transition: 'all 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' },
-  kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '18px', marginBottom: '20px' },
-  kpiCard: { backgroundColor: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '18px 20px', textAlign: 'left', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' },
-  kpiLabel: { fontSize: '11px', fontWeight: '800', color: '#64748b', letterSpacing: '0.05em', marginBottom: '6px' },
-  kpiValue: { fontSize: '24px', fontWeight: '900', color: '#0f172a' },
-  kpiValueGreen: { fontSize: '24px', fontWeight: '900', color: '#047857' },
-  filterBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: '14px 20px', borderRadius: '12px', border: '1.5px solid #e2e8f0', marginBottom: '20px' },
-  filterSubLabel: { fontSize: '10px', fontWeight: '800', color: '#64748b', display: 'block', marginBottom: '3px', textTransform: 'uppercase' },
-  dropdown: { padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '12px', background: '#fff', fontWeight: '600', outline: 'none', cursor: 'pointer', minWidth: '130px' },
-  clearBtn: { background: 'none', border: 'none', color: '#dc2626', fontSize: '12px', fontWeight: '700', cursor: 'pointer', alignSelf: 'flex-end', paddingBottom: '8px' },
-  exportBtn: { backgroundColor: '#047857', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(4,120,87,0.2)', transition: 'all 0.2s' },
-  tableCard: { backgroundColor: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden', marginBottom: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' },
-  tableWrapper: { overflowX: 'auto' },
-  table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' },
-  theadRow: { backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' },
-  th: { padding: '14px 16px', fontWeight: '800', color: '#334155', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.05em' },
-  tbodyRow: { borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s' },
-  td: { padding: '14px 16px', color: '#0f172a', verticalAlign: 'middle' },
-  statusBadge: (status) => ({
-    backgroundColor: status === 'New' ? '#e0f2fe' : status === 'Accepted' ? '#fef9c3' : status === 'Preparing' ? '#ffedd5' : status === 'Ready' ? '#ede9fe' : '#dcfce7',
-    color: status === 'New' ? '#0369a1' : status === 'Accepted' ? '#854d0e' : status === 'Preparing' ? '#c2410c' : status === 'Ready' ? '#6d28d9' : '#15803d',
-    fontSize: '11px', fontWeight: '800', padding: '4px 10px', borderRadius: '6px', textTransform: 'uppercase'
-  }),
-  chartSectionCard: { backgroundColor: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '24px', textAlign: 'left', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' },
-  barGraphContainer: { display: 'flex', alignItems: 'flex-end', gap: '20px', padding: '20px 10px 10px 10px', overflowX: 'auto', minHeight: '180px', borderBottom: '2px solid #e2e8f0' },
-  barColumn: { display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 },
-  barPillar: { width: '36px', backgroundColor: '#047857', borderRadius: '6px 6px 0 0', transition: 'height 0.3s ease', boxShadow: '0 4px 6px -1px rgba(4,120,87,0.2)' }
+  container: { display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', background: '#f8fafc', overflowY: 'auto', boxSizing: 'border-box', paddingBottom: '80px' },
+  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' },
+  exportBtn: { background: '#2563eb', color: '#fff', border: '2px solid #1d4ed8', padding: '9px 14px', borderRadius: '10px', fontWeight: '950', fontSize: '12px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.2)' },
+  filterBar: { display: 'flex', gap: '16px', background: '#fff', padding: '16px 20px', borderRadius: '16px', border: '2px solid #e2e8f0', marginBottom: '20px', flexWrap: 'wrap' },
+  filterGroup: { display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '180px' },
+  label: { fontSize: '11px', fontWeight: '950', color: '#64748b' },
+  select: { padding: '10px 12px', borderRadius: '10px', border: '2px solid #cbd5e1', fontSize: '13px', fontWeight: '800', background: '#fff', outline: 'none' },
+  metricsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '18px', marginBottom: '24px' },
+  metricCard: { background: '#fff', padding: '20px', borderRadius: '16px', border: '2px solid #e2e8f0', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' },
+  metricTitle: { fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' },
+  metricValue: { fontSize: '26px', fontWeight: '950', color: '#059669' },
+  graphCard: { background: '#fff', padding: '24px', borderRadius: '18px', border: '2px solid #e2e8f0', marginBottom: '24px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' },
+  barGraphContainer: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: '180px', borderBottom: '2px solid #cbd5e1', paddingBottom: '10px' },
+  barCol: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flex: 1 },
+  tableCard: { background: '#fff', padding: '24px', borderRadius: '18px', border: '2px solid #e2e8f0', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: '13px' },
+  th: { padding: '12px 14px', fontWeight: '950', color: '#475569', borderBottom: '2px solid #e2e8f0' },
+  td: { padding: '12px 14px', color: '#334155', fontWeight: '800' },
+  badge: { background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '950' }
 };

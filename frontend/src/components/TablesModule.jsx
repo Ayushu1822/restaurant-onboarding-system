@@ -15,8 +15,12 @@ export default function TablesModule() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCaptainManageModal, setShowCaptainManageModal] = useState(false);
   
+  // Split payment state
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [splitCount, setSplitCount] = useState(2);
+
+  // Counter POS Order Type state (Dine-In vs Takeaway)
+  const [orderType, setOrderType] = useState('Dine-In');
 
   const [newTableForm, setNewTableForm] = useState({ tableId: '', section: 'MAIN', seats: 4 });
   const [newCaptainForm, setNewCaptainForm] = useState({ name: '', phone: '' });
@@ -102,6 +106,7 @@ export default function TablesModule() {
         setActiveOrderTable({ ...target, ...payload });
         setCartItems([]);
         setOrderNote('');
+        setOrderType('Dine-In');
       }
     }
   };
@@ -164,12 +169,11 @@ export default function TablesModule() {
     const subtotal = cartItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
     const totalAmount = Math.round(subtotal * 1.05);
 
-    // Perfectly matched payload with backend Order & OrderItem models
     const orderPayload = {
       displayId: `Table ${activeOrderTable.tableId}`,
       customerName: `Table ${activeOrderTable.tableId} (${activeOrderTable.captain || 'Unassigned'})`,
       channel: 'COUNTER',
-      orderType: 'Dine-In',
+      orderType: orderType, // Dine-In or Takeaway
       status: 'New',
       subtotal: subtotal,
       totalAmount: totalAmount,
@@ -191,7 +195,7 @@ export default function TablesModule() {
       return res.json();
     })
     .then(data => {
-      alert(`🖨️ KOT Generated & Sent to Kitchen successfully for Table ${activeOrderTable.tableId}!\nNote: "${orderNote || 'None'}"\nSaved for Reports & Kitchen.`);
+      alert(`🖨️ KOT Generated & Sent to Kitchen successfully for Table ${activeOrderTable.tableId}!\nType: ${orderType}\nSaved for Reports & Kitchen.`);
       setActiveOrderTable(null);
       setCartItems([]);
       setOrderNote('');
@@ -225,6 +229,7 @@ export default function TablesModule() {
 
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#f8fafc', borderRadius: '0 0 14px 14px' }}>
           
+          {/* Menu Catalog */}
           <div style={{ flex: 1.4, padding: '24px', overflowY: 'auto', borderRight: '2px solid #e2e8f0' }}>
             <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '16px', letterSpacing: '0.08em' }}>LIVE RESTAURANT MENU (DATABASE)</h4>
             
@@ -278,12 +283,35 @@ export default function TablesModule() {
             )}
           </div>
 
+          {/* Receipt & KOT Summary */}
           <div style={{ width: '420px', background: '#fff', display: 'flex', flexDirection: 'column', padding: '24px', borderLeft: '2px solid #e2e8f0' }}>
             <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '14px', letterSpacing: '0.08em' }}>ORDER RECEIPT & KOT</h4>
             
+            {/* Order Type Toggle Selector */}
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>ORDER TYPE</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {['Dine-In', 'Takeaway'].map(type => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setOrderType(type)}
+                    style={{
+                      flex: 1, padding: '10px',
+                      background: orderType === type ? '#059669' : '#f1f5f9',
+                      color: orderType === type ? '#fff' : '#334155',
+                      border: '2px solid #cbd5e1', borderRadius: '10px', fontWeight: '950', cursor: 'pointer'
+                    }}
+                  >
+                    {type === 'Dine-In' ? '🍽️ Dine-In' : '🛍️ Takeaway'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
               {cartItems.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', padding: '60px 20px', background: '#f8fafc', borderRadius: '16px', border: '2px dashed #cbd5e1', fontWeight: '800' }}>
+                <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', padding: '40px 20px', background: '#f8fafc', borderRadius: '16px', border: '2px dashed #cbd5e1', fontWeight: '800' }}>
                   Cart is empty. Click items from menu.
                 </div>
               ) : (
