@@ -248,7 +248,32 @@ export default function Dashboard({ user, onLogout }) {
 
   return (
     <div style={styles.container}>
-      {/* Sidebar with Smooth Hover Animations */}
+      {/* Dynamic CSS Print Styling injected to ensure ONLY receipt prints */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-thermal-receipt, #printable-thermal-receipt * {
+            visibility: visible !important;
+          }
+          #printable-thermal-receipt {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-shadow: none !important;
+            border: none !important;
+            background: #fff !important;
+            margin: 0 !important;
+            padding: 20px !important;
+            z-index: 999999 !important;
+          }
+        }
+      `}</style>
+
+      {/* Sidebar */}
       <div style={styles.sidebar}>
         <div style={styles.brandBox}>
           <span style={styles.logoIcon}>🛡️</span>
@@ -286,7 +311,7 @@ export default function Dashboard({ user, onLogout }) {
           })}
         </ul>
 
-        {/* Social-Media-Style Admin Profile Widget */}
+        {/* Profile Widget */}
         <div 
           style={{
             ...styles.userInfo,
@@ -300,13 +325,13 @@ export default function Dashboard({ user, onLogout }) {
           </div>
           <div style={{flex: 1, overflow: 'hidden', textAlign: 'left'}}>
             <div style={{fontSize: '13px', fontWeight: '800', color: '#fff'}}>{profileData.ownerName}</div>
-            <div style={{fontSize: '11px', color: '#6ee7b7', fontWeight: '600'}}>{profileData.businessName}</div>
+            <div style={{fontSize: '11px', color: '#34d399', fontWeight: '600'}}>{profileData.businessName}</div>
           </div>
           <span style={{color: '#94a3b8', fontSize: '14px'}}>⚙️</span>
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <div style={styles.mainContent}>
         <div style={styles.header}>
           <h2 style={styles.pageTitle}>{activeTab}</h2>
@@ -321,18 +346,18 @@ export default function Dashboard({ user, onLogout }) {
           </div>
         </div>
 
-        {/* Live Tables Header Bar */}
+        {/* Tables Status Bar */}
         <div style={styles.tablesStatusBar} onClick={() => setActiveTab('Tables')}>
-          <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700', color: '#334155'}}>
+          <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700', color: '#1e293b'}}>
             <span>🪑</span>
-            <span>Tables</span>
+            <span>Tables Status</span>
             <span style={{color: '#cbd5e1'}}>·</span>
             <span style={{color: '#16a34a'}}>{tableStats.open}/{tableStats.total} open</span>
             <span style={{color: '#cbd5e1'}}>·</span>
             <span>{tableStats.occupied} occupied</span>
-            <span style={{backgroundColor: '#2563eb', color: '#fff', padding: '1px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: '700'}}>{tableStats.billing} billing</span>
+            <span style={{backgroundColor: '#2563eb', color: '#fff', padding: '2px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: '800'}}>{tableStats.billing} billing</span>
           </div>
-          <span style={{color: '#94a3b8', fontSize: '16px', fontWeight: 'bold'}}>›</span>
+          <span style={{color: '#64748b', fontSize: '16px', fontWeight: 'bold'}}>›</span>
         </div>
 
         {isOrdersFallback && activeTab === 'Online Orders' && (
@@ -345,22 +370,23 @@ export default function Dashboard({ user, onLogout }) {
         {activeTab === 'Online Orders' && (
           <div style={styles.onlineOrdersContainer}>
             <div style={styles.subHeader}>
-              <span style={{fontWeight: '700', color: '#0f172a'}}>
-                {orders.length} online orders · <span style={{color: '#16a34a'}}>{orders.filter(o => o.status === 'New').length} need action</span>
+              <span style={{fontWeight: '800', color: '#0f172a', fontSize: '14px'}}>
+                {orders.length} Live Orders · <span style={{color: '#059669'}}>{orders.filter(o => o.status === 'New').length} pending action</span>
               </span>
             </div>
 
             <div style={styles.splitViewWrapper}>
+              {/* Left Column: Order Cards */}
               <div style={styles.masterListColumn}>
                 <div style={styles.listHeaderTopRow}>
-                  <span style={styles.listHeaderTitle}>All online orders ({orders.length})</span>
+                  <span style={styles.listHeaderTitle}>Active Queue ({orders.length})</span>
                 </div>
                 
                 <div style={styles.scrollableCards}>
                   {loadingOrders ? (
-                    <div style={{padding: '20px', textAlign: 'center'}}>Loading database orders...</div>
+                    <div style={{padding: '30px', textAlign: 'center', color: '#64748b', fontWeight: '600'}}>Loading live database orders...</div>
                   ) : orders.length === 0 ? (
-                    <div style={{padding: '20px', textAlign: 'center', color: '#64748b'}}>No online orders found in database.</div>
+                    <div style={{padding: '40px', textAlign: 'center', color: '#64748b', fontWeight: '600'}}>🎉 All orders completed! Queue is empty.</div>
                   ) : (
                     orders.map(order => {
                       const isSelected = selectedOrder?.orderId === order.orderId;
@@ -369,33 +395,35 @@ export default function Dashboard({ user, onLogout }) {
                           key={order.orderId || order.id} 
                           style={{
                             ...styles.orderSummaryCard, 
-                            borderColor: isSelected ? '#10b981' : '#cbd5e1'
+                            borderColor: isSelected ? '#059669' : '#e2e8f0',
+                            backgroundColor: isSelected ? '#f0fdf4' : '#fff',
+                            boxShadow: isSelected ? '0 10px 15px -3px rgba(5, 150, 105, 0.1)' : '0 4px 6px -1px rgba(0,0,0,0.02)'
                           }}
                           onClick={() => setSelectedOrder(order)}
                         >
                           <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '8px'}}>
                             <div>
-                              <strong style={{fontSize: '16px', color: '#0f172a'}}>{order.customer}</strong>
-                              <div style={{fontSize: '12px', color: '#64748b'}}>{order.id}</div>
+                              <strong style={{fontSize: '15px', color: '#0f172a'}}>{order.customer}</strong>
+                              <div style={{fontSize: '11px', color: '#64748b', fontWeight: '700'}}>{order.id}</div>
                             </div>
                             <span style={styles.statusBadgeSmall(order.status)}>{order.status}</span>
                           </div>
 
-                          <div style={{fontSize: '12px', color: '#64748b', marginBottom: '12px'}}>
+                          <div style={{fontSize: '11px', color: '#64748b', marginBottom: '10px', fontWeight: '600'}}>
                             🛵 {order.type} · 🟢 {order.channel} · 🕒 {order.time}
                           </div>
 
-                          <div style={{fontSize: '14px', color: '#334155', borderTop: '1px solid #f1f5f9', paddingTop: '10px', marginBottom: '10px'}}>
+                          <div style={{fontSize: '13px', color: '#334155', borderTop: '1px solid #f1f5f9', paddingTop: '8px', marginBottom: '8px'}}>
                             {order.items.map((it, idx) => (
-                              <div key={idx} style={{marginBottom: '4px', fontWeight: '500'}}>
-                                {it.qty} × {it.name}
+                              <div key={idx} style={{marginBottom: '3px', fontWeight: '600'}}>
+                                <span style={{color: '#059669', fontWeight: '900'}}>{it.qty}x</span> {it.name}
                               </div>
                             ))}
                           </div>
 
-                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '700', fontSize: '16px', borderTop: '1px solid #f1f5f9', paddingTop: '10px'}}>
-                            <span>₹{order.total.toFixed(2)}</span>
-                            <span style={{color: '#10b981', fontSize: '18px'}}>›</span>
+                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '900', fontSize: '15px', borderTop: '1px solid #f1f5f9', paddingTop: '8px'}}>
+                            <span style={{color: '#0f172a'}}>₹{order.total.toFixed(2)}</span>
+                            <span style={{color: '#059669', fontSize: '18px'}}>›</span>
                           </div>
                         </div>
                       );
@@ -404,9 +432,10 @@ export default function Dashboard({ user, onLogout }) {
                 </div>
               </div>
 
+              {/* Right Column: Order Details & Ultra-Modern Thermal Receipt */}
               <div style={styles.detailPanelColumn}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <div style={styles.listHeaderTitle}>Order details & Thermal Receipt</div>
+                  <div style={styles.listHeaderTitle}>Order Details & Thermal Receipt</div>
                   {selectedOrder && (
                     <button 
                       onClick={() => setShowCheckoutModal(true)} 
@@ -419,38 +448,38 @@ export default function Dashboard({ user, onLogout }) {
 
                 {selectedOrder ? (
                   <div style={styles.detailCard}>
-                    <div style={{display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', marginBottom: '14px'}}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', marginBottom: '14px'}}>
                       <div>
-                        <h3 style={{margin: '0 0 2px 0', fontSize: '18px', color: '#0f172a'}}>{selectedOrder.customer}</h3>
-                        <div style={{fontSize: '12px', color: '#64748b'}}>{selectedOrder.id} · {selectedOrder.time}</div>
+                        <h3 style={{margin: '0 0 2px 0', fontSize: '18px', color: '#0f172a', fontWeight: '900'}}>{selectedOrder.customer}</h3>
+                        <div style={{fontSize: '12px', color: '#64748b', fontWeight: '700'}}>{selectedOrder.id} • {selectedOrder.time}</div>
                       </div>
                       <span style={styles.statusBadgeSmall(selectedOrder.status)}>{selectedOrder.status}</span>
                     </div>
 
-                    {/* Isolated Printable Thermal Receipt Preview */}
+                    {/* ULTRA-MODERN ISOLATED THERMAL RECEIPT BOX (Only this prints) */}
                     <div id="printable-thermal-receipt" style={styles.thermalReceiptBox}>
                       <div style={styles.receiptTopAccent}></div>
-                      <div style={{ textAlign: 'center', fontWeight: '900', fontSize: '15px', color: '#0f172a', marginTop: '4px' }}>{profileData.businessName}</div>
-                      <div style={{ textAlign: 'center', fontSize: '10px', color: '#64748b', marginBottom: '6px' }}>Phone: {profileData.phone}</div>
+                      <div style={{ textAlign: 'center', fontWeight: '900', fontSize: '16px', color: '#0f172a', marginTop: '6px', letterSpacing: '0.5px' }}>{profileData.businessName}</div>
+                      <div style={{ textAlign: 'center', fontSize: '10px', color: '#64748b', marginBottom: '8px', fontWeight: '600' }}>Phone: {profileData.phone} • GSTIN: 29AAAAA0000A1Z5</div>
                       <div style={{ borderBottom: '1.5px dashed #cbd5e1', margin: '8px 0' }}></div>
                       
-                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between', color: '#334155', fontWeight: '700' }}>
+                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between', color: '#334155', fontWeight: '800' }}>
                         <span>Order: {selectedOrder.id}</span>
                         <span>{new Date().toLocaleDateString()}</span>
                       </div>
-                      <div style={{ fontSize: '11px', color: '#334155', marginBottom: '8px' }}>Type: {selectedOrder.type} • Channel: {selectedOrder.channel}</div>
+                      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px', fontWeight: '600' }}>Type: {selectedOrder.type} • Channel: {selectedOrder.channel}</div>
                       <div style={{ borderBottom: '1.5px dashed #cbd5e1', margin: '8px 0' }}></div>
 
                       <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {selectedOrder.items.map((item, i) => (
                           <div key={i} style={styles.receiptItemRow}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', color: '#0f172a' }}>
                               <span>{item.qty}x {item.name}</span>
-                              <span>₹{(item.price * item.qty).toFixed(2)}</span>
+                              <span style={{ color: '#059669' }}>₹{(item.price * item.qty).toFixed(2)}</span>
                             </div>
                             <input
                               type="text"
-                              placeholder="Add instructions (e.g. less spicy)..."
+                              placeholder="Add special instructions (e.g. less spicy)..."
                               value={item.desc || ''}
                               onChange={(e) => {
                                 const val = e.target.value;
@@ -472,30 +501,30 @@ export default function Dashboard({ user, onLogout }) {
                       </div>
 
                       <div style={{ borderBottom: '1.5px dashed #cbd5e1', margin: '10px 0' }}></div>
-                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between', color: '#475569' }}><span>Subtotal</span><span>₹{selectedOrder.subtotal.toFixed(2)}</span></div>
-                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between', color: '#475569' }}><span>GST (5%)</span><span>₹{(selectedOrder.subtotal * 0.05).toFixed(2)}</span></div>
+                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between', color: '#475569', fontWeight: '600' }}><span>Subtotal</span><span>₹{selectedOrder.subtotal.toFixed(2)}</span></div>
+                      <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between', color: '#475569', fontWeight: '600' }}><span>GST (5%)</span><span>₹{(selectedOrder.subtotal * 0.05).toFixed(2)}</span></div>
                       <div style={{ borderBottom: '1.5px dashed #cbd5e1', margin: '10px 0' }}></div>
-                      <div style={{ fontSize: '13px', display: 'flex', justifyContent: 'space-between', fontWeight: '900', color: '#047857' }}>
+                      <div style={{ fontSize: '14px', display: 'flex', justifyContent: 'space-between', fontWeight: '900', color: '#059669' }}>
                         <span>TOTAL PAID</span>
                         <span>₹{selectedOrder.total.toFixed(2)}</span>
                       </div>
-                      <div style={{ textAlign: 'center', fontSize: '10px', color: '#047857', fontWeight: '700', marginTop: '10px' }}>*** THANK YOU FOR VISITING TASTE HUB ***</div>
+                      <div style={{ textAlign: 'center', fontSize: '10px', color: '#059669', fontWeight: '800', marginTop: '12px', letterSpacing: '0.5px' }}>*** THANK YOU FOR VISITING TASTE HUB ***</div>
                     </div>
 
-                    <div style={{fontSize: '13px', color: '#334155', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', marginTop: '14px'}}>
+                    <div style={{fontSize: '12px', color: '#334155', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', marginTop: '12px', fontWeight: '600'}}>
                       📍 {selectedOrder.address}<br/>
-                      📞 <span style={{color: '#16a34a', fontWeight: '700'}}>{selectedOrder.phone}</span>
+                      📞 <span style={{color: '#059669', fontWeight: '800'}}>{selectedOrder.phone}</span>
                     </div>
 
                     {selectedOrder.customerRequest && (
                       <div style={styles.customerRequestBox}>
-                        <strong style={{fontSize: '11px', display: 'block', marginBottom: '4px'}}>CUSTOMER REQUEST</strong>
+                        <strong style={{fontSize: '11px', display: 'block', marginBottom: '4px'}}>CUSTOMER SPECIAL REQUEST</strong>
                         <div>{selectedOrder.customerRequest}</div>
                       </div>
                     )}
 
-                    <div style={{marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '14px'}}>
-                      <button onClick={handlePrintReceipt} style={styles.printIconBtn}>🖨️ Print Receipt</button>
+                    <div style={{marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '14px'}}>
+                      <button onClick={handlePrintReceipt} style={styles.printIconBtn}>🖨️ Print Receipt Only</button>
                       
                       {selectedOrder.status !== 'Picked Up' && selectedOrder.status !== 'Completed' ? (
                         <button 
@@ -505,12 +534,12 @@ export default function Dashboard({ user, onLogout }) {
                           {getNextActionLabel(selectedOrder.status)}
                         </button>
                       ) : (
-                        <span style={{color: '#16a34a', fontWeight: '700', fontSize: '14px'}}>Order Completed Successfully ✓</span>
+                        <span style={{color: '#059669', fontWeight: '800', fontSize: '13px'}}>Order Completed Successfully ✓</span>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <div style={styles.emptyDetailPrompt}>Select an order from the list.</div>
+                  <div style={styles.emptyDetailPrompt}>Select an order from the queue to view details & receipt.</div>
                 )}
               </div>
             </div>
@@ -537,9 +566,9 @@ export default function Dashboard({ user, onLogout }) {
                         onClick={() => { setTip(val); setCustomTip(''); }}
                         style={{
                           ...styles.tipBtn,
-                          backgroundColor: tip === val ? '#ef4444' : '#fff',
+                          backgroundColor: tip === val ? '#059669' : '#fff',
                           color: tip === val ? '#fff' : '#334155',
-                          borderColor: tip === val ? '#ef4444' : '#cbd5e1'
+                          borderColor: tip === val ? '#059669' : '#cbd5e1'
                         }}
                       >
                         {val === 0 ? 'No tip' : `₹${val}`}
@@ -566,7 +595,7 @@ export default function Dashboard({ user, onLogout }) {
                       type="checkbox"
                       checked={splitPayment}
                       onChange={(e) => setSplitPayment(e.target.checked)}
-                      style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#2563eb' }}
+                      style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#059669' }}
                     />
                   </div>
                 </div>
@@ -581,8 +610,8 @@ export default function Dashboard({ user, onLogout }) {
                         onClick={() => setPay1Method(m)}
                         style={{
                           ...styles.methodBtn,
-                          borderColor: pay1Method === m ? '#2563eb' : '#cbd5e1',
-                          backgroundColor: pay1Method === m ? '#eff6ff' : '#fff'
+                          borderColor: pay1Method === m ? '#059669' : '#cbd5e1',
+                          backgroundColor: pay1Method === m ? '#ecfdf5' : '#fff'
                         }}
                       >
                         <span style={{ fontSize: '16px' }}>{m === 'Cash' ? '💵' : m === 'UPI' ? '📱' : '💳'}</span>
@@ -615,8 +644,8 @@ export default function Dashboard({ user, onLogout }) {
                           onClick={() => setPay2Method(m)}
                           style={{
                             ...styles.methodBtn,
-                            borderColor: pay2Method === m ? '#2563eb' : '#cbd5e1',
-                            backgroundColor: pay2Method === m ? '#eff6ff' : '#fff'
+                            borderColor: pay2Method === m ? '#059669' : '#cbd5e1',
+                            backgroundColor: pay2Method === m ? '#ecfdf5' : '#fff'
                           }}
                         >
                           <span style={{ fontSize: '16px' }}>{m === 'Cash' ? '💵' : m === 'UPI' ? '📱' : '💳'}</span>
@@ -631,7 +660,7 @@ export default function Dashboard({ user, onLogout }) {
               <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '14px' }}>
                 <div>
                   <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700', display: 'block' }}>Total Amount:</span>
-                  <span style={{ fontSize: '20px', fontWeight: '900', color: '#047857' }}>
+                  <span style={{ fontSize: '20px', fontWeight: '900', color: '#059669' }}>
                     ₹{(selectedOrder.total + (tip === 'custom' ? Number(customTip) || 0 : tip)).toFixed(2)}
                   </span>
                 </div>
@@ -661,7 +690,7 @@ export default function Dashboard({ user, onLogout }) {
         {activeTab === 'Settings' && <SettingsModule />}
       </div>
 
-      {/* Social-Media-Style Profile Modal */}
+      {/* Profile Modal */}
       {showProfileModal && (
         <div style={styles.drawerOverlay} onClick={() => setShowProfileModal(false)}>
           <div style={styles.profileModal} onClick={(e) => e.stopPropagation()}>
@@ -741,20 +770,20 @@ const styles = {
   brandBox: { display: 'flex', alignItems: 'center', gap: '12px', padding: '22px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)' },
   logoIcon: { fontSize: '24px' },
   brandName: { fontSize: '18px', fontWeight: '900', letterSpacing: '0.02em' },
-  brandSub: { fontSize: '10px', color: '#6ee7b7', fontWeight: '700', letterSpacing: '0.05em' },
+  brandSub: { fontSize: '10px', color: '#34d399', fontWeight: '700', letterSpacing: '0.05em' },
   navLinks: { listStyle: 'none', padding: '12px 0', margin: 0, flex: 1, overflowY: 'auto' },
   navItem: { padding: '13px 20px', fontSize: '14px', color: '#94a3b8', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', textAlign: 'left', fontWeight: '600', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' },
   navItemHover: { backgroundColor: '#033d30', color: '#fff', transform: 'translateX(4px)' },
-  navItemActive: { padding: '13px 20px', fontSize: '14px', color: '#fff', backgroundColor: '#047857', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', borderLeft: '4px solid #10b981', fontWeight: '800', textAlign: 'left', boxShadow: 'inset 0 0 12px rgba(0,0,0,0.15)' },
-  badgeCount: { backgroundColor: '#10b981', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', fontWeight: '900' },
+  navItemActive: { padding: '13px 20px', fontSize: '14px', color: '#fff', backgroundColor: '#059669', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', borderLeft: '4px solid #34d399', fontWeight: '800', textAlign: 'left', boxShadow: 'inset 0 0 12px rgba(0,0,0,0.15)' },
+  badgeCount: { backgroundColor: '#34d399', color: '#022c22', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', fontWeight: '900' },
   userInfo: { padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#01231b', cursor: 'pointer', transition: 'background 0.2s' },
   userInfoFallbackRedLine: { borderBottom: '3px solid #ef4444', backgroundColor: '#450a0a' },
-  userAvatar: { width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', color: '#fff', position: 'relative', border: '2px solid #10b981', fontSize: '13px' },
-  onlineDot: { position: 'absolute', bottom: '0px', right: '0px', width: '10px', height: '10px', backgroundColor: '#10b981', borderRadius: '50%', border: '2px solid #01231b' },
+  userAvatar: { width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', color: '#fff', position: 'relative', border: '2px solid #34d399', fontSize: '13px' },
+  onlineDot: { position: 'absolute', bottom: '0px', right: '0px', width: '10px', height: '10px', backgroundColor: '#34d399', borderRadius: '50%', border: '2px solid #01231b' },
   mainContent: { flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', minWidth: 0 },
   header: { height: '65px', backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 25px', flexShrink: 0 },
   pageTitle: { fontSize: '20px', fontWeight: '900', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' },
-  tablesStatusBar: { backgroundColor: '#eff6ff', borderBottom: '1px solid #dbeafe', padding: '10px 25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', flexShrink: 0, fontSize: '13px', transition: 'background 0.2s' },
+  tablesStatusBar: { backgroundColor: '#f0fdf4', borderBottom: '1px solid #dcfce7', padding: '10px 25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', flexShrink: 0, fontSize: '13px', transition: 'background 0.2s' },
   fallbackNoticeBar: { backgroundColor: '#fef2f2', borderBottom: '1px solid #fecaca', borderLeft: '4px solid #dc2626', padding: '10px 25px', fontSize: '13px', color: '#991b1b', textAlign: 'left', flexShrink: 0 },
   pausedItemsBtn: { backgroundColor: '#fff', border: '1.5px solid #dc2626', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '800', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' },
   pausedCountBadge: { backgroundColor: '#dc2626', color: '#fff', fontSize: '11px', padding: '1px 6px', borderRadius: '10px', fontWeight: '900' },
@@ -767,22 +796,25 @@ const styles = {
   listHeaderTopRow: { display: 'flex', justifyContent: 'space-between', marginBottom: '12px', flexShrink: 0 },
   listHeaderTitle: { fontSize: '14px', fontWeight: '800', color: '#334155', textAlign: 'left', flexShrink: 0, marginBottom: '10px' },
   scrollableCards: { display: 'flex', flexDirection: 'column', gap: '14px', overflowY: 'auto', flex: 1, paddingRight: '5px' },
-  orderSummaryCard: { border: '1.5px solid #cbd5e1', borderRadius: '14px', padding: '20px', cursor: 'pointer', backgroundColor: '#fff', textAlign: 'left', flexShrink: 0, transition: 'all 0.2s' },
-  detailCard: { backgroundColor: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '16px', padding: '24px', textAlign: 'left' },
+  orderSummaryCard: { border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '18px', cursor: 'pointer', backgroundColor: '#fff', textAlign: 'left', flexShrink: 0, transition: 'all 0.2s ease' },
+  detailCard: { backgroundColor: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '16px', padding: '24px', textAlign: 'left', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.02)' },
   emptyDetailPrompt: { backgroundColor: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '40px', textAlign: 'center', color: '#64748b', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600' },
   statusBadgeSmall: (status) => ({
     backgroundColor: status === 'New' ? '#e0f2fe' : status === 'Accepted' ? '#fef9c3' : status === 'Preparing' ? '#ffedd5' : status === 'Ready' ? '#ede9fe' : '#dcfce7',
     color: status === 'New' ? '#0369a1' : status === 'Accepted' ? '#854d0e' : status === 'Preparing' ? '#c2410c' : status === 'Ready' ? '#6d28d9' : '#15803d',
     fontSize: '11px', fontWeight: '800', padding: '4px 10px', borderRadius: '6px', textTransform: 'uppercase'
   }),
-  customerRequestBox: { backgroundColor: '#fef3c7', border: '1.5px solid #fde68a', padding: '12px 14px', borderRadius: '10px', fontSize: '13px', color: '#92400e', marginBottom: '16px', textAlign: 'left', fontWeight: '600' },
-  printIconBtn: { backgroundColor: '#f1f5f9', border: '1.5px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' },
-  actionBtn: { backgroundColor: '#047857', color: '#fff', border: 'none', padding: '11px 20px', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s' },
-  thermalReceiptBox: { backgroundColor: '#fff', border: '2px solid #e2e8f0', borderRadius: '16px', padding: '16px', fontFamily: 'monospace', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', marginBottom: '16px', transition: 'all 0.3s ease', position: 'relative', overflow: 'hidden' },
-  receiptTopAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, #10b981, #2563eb, #f59e0b)' },
-  receiptItemRow: { backgroundColor: '#f8fafc', padding: '6px 8px', borderRadius: '8px', border: '1px solid #f1f5f9', transition: 'all 0.2s' },
-  receiptItemInstructionInput: { width: '100%', marginTop: '4px', padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', backgroundColor: '#fff', boxSizing: 'border-box' },
-  checkoutTriggerBtn: { backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: '800', fontSize: '12px', cursor: 'pointer' },
+  customerRequestBox: { backgroundColor: '#fffbeb', border: '1.5px solid #fde68a', padding: '12px 14px', borderRadius: '10px', fontSize: '13px', color: '#b45309', marginBottom: '16px', textAlign: 'left', fontWeight: '600' },
+  printIconBtn: { backgroundColor: '#f1f5f9', border: '1.5px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', color: '#334155' },
+  actionBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '11px 20px', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(5, 150, 105, 0.2)' },
+  
+  // Ultra-Modern Thermal Receipt Styling
+  thermalReceiptBox: { backgroundColor: '#fff', border: '2px solid #e2e8f0', borderRadius: '16px', padding: '18px', fontFamily: 'monospace', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', marginBottom: '16px', transition: 'all 0.3s ease', position: 'relative', overflow: 'hidden' },
+  receiptTopAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: '5px', background: 'linear-gradient(90deg, #059669, #2563eb, #d97706)' },
+  receiptItemRow: { backgroundColor: '#f8fafc', padding: '8px 10px', borderRadius: '8px', border: '1px solid #f1f5f9', transition: 'all 0.2s' },
+  receiptItemInstructionInput: { width: '100%', marginTop: '6px', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none', backgroundColor: '#fff', boxSizing: 'border-box' },
+  checkoutTriggerBtn: { backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(37,99,235,0.2)' },
+  
   drawerOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
   checkoutModalContent: { width: '480px', backgroundColor: '#fff', padding: '24px', borderRadius: '20px', textAlign: 'left', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #e2e8f0' },
   checkoutSectionCard: { backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14px' },
@@ -794,7 +826,7 @@ const styles = {
   methodBtn: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px', borderRadius: '10px', border: '1.5px solid', cursor: 'pointer', gap: '4px' },
   splitAmountInput: { width: '100%', marginTop: '8px', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12px', outline: 'none', boxSizing: 'border-box' },
   profileModal: { width: '460px', backgroundColor: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'left', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #e2e8f0' },
-  modalRedAccentLine: { height: '3px', backgroundColor: '#10b981', width: '100%', marginBottom: '16px', borderRadius: '2px' },
+  modalRedAccentLine: { height: '3px', backgroundColor: '#059669', width: '100%', marginBottom: '16px', borderRadius: '2px' },
   profileCardRow: { fontSize: '13px', color: '#334155', display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' },
   closeXBtn: { background: 'none', border: 'none', fontSize: '16px', fontWeight: 'bold', color: '#64748b', cursor: 'pointer' }
 };
