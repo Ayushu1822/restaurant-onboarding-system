@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -24,9 +25,8 @@ public class OrderController {
     public List<Order> getAllOrders() {
         List<Order> allOrders = orderRepository.findAll();
         
-        // Keep PREPARING and READY visible in the kitchen queue; filter out only COMPLETED, DELIVERED, PICKED UP
         List<Order> activeOrders = allOrders.stream().filter(o -> {
-            String status = o.getStatus() != null ? o.getStatus().toUpperCase() : "PREPARING";
+            String status = o.getStatus() != null ? o.getStatus().toUpperCase() : "NEW";
             return !status.equals("COMPLETED") && !status.equals("DELIVERED") && !status.equals("PICKED UP");
         }).collect(Collectors.toList());
 
@@ -36,8 +36,9 @@ public class OrderController {
 
     @PostMapping
     public Order createOrder(@RequestBody Order newOrder) {
+        // FIX: Ensure new orders start with 'New' status so they appear in online orders queue correctly
         if (newOrder.getStatus() == null || newOrder.getStatus().trim().isEmpty()) {
-            newOrder.setStatus("Preparing");
+            newOrder.setStatus("New");
         }
 
         if (newOrder.getCustomerName() == null || newOrder.getCustomerName().trim().isEmpty()) {
@@ -52,42 +53,49 @@ public class OrderController {
         }
         
         Order savedOrder = orderRepository.save(newOrder);
-        System.out.println("✅ NEW ORDER CREATED — ID: " + savedOrder.getDisplayId() + " | Channel: " + savedOrder.getChannel());
+        System.out.println("✅ NEW ORDER CREATED — ID: " + savedOrder.getDisplayId() + " | Status: " + savedOrder.getStatus());
         return savedOrder;
     }
 
-    // 🔄 PERMANENT FIX: Endpoint for updating order status (Mark Ready / Complete)
-    @PutMapping("/{id}")
-    public ResponseEntity<Order> updateOrder(@PathVariable String id, @RequestBody Order updatedDetails) {
+    // 🔄 UNIVERSAL STATUS UPDATE (Supports PUT/PATCH, /{id}/status, query-params & request body)
+    @RequestMapping(value = {"/{id}/status", "/{id}"}, method = {RequestMethod.PUT, RequestMethod.PATCH})
+    public ResponseEntity<Order> updateOrderStatus(
+            @PathVariable String id, 
+            @RequestParam(required = false) String status,
+            @RequestBody(required = false) Map<String, Object> body) {
         try {
+            String targetStatus = status;
+            if (targetStatus == null && body != null && body.containsKey("status")) {
+                targetStatus = (String) body.get("status");
+            }
+
             Optional<Order> orderOpt = findOrderById(id);
             if (orderOpt.isPresent()) {
                 Order order = orderOpt.get();
-                if (updatedDetails.getStatus() != null && !updatedDetails.getStatus().trim().isEmpty()) {
-                    order.setStatus(updatedDetails.getStatus());
+                if (targetStatus != null && !targetStatus.trim().isEmpty()) {
+                    order.setStatus(targetStatus);
                 }
-                if (updatedDetails.getCustomerName() != null) {
-                    order.setCustomerName(updatedDetails.getCustomerName());
+                if (body != null && body.containsKey("customerName")) {
+                    order.setCustomerName((String) body.get("customerName"));
                 }
                 Order saved = orderRepository.save(order);
-                System.out.println("🔄 ORDER STATUS UPDATED — ID: " + id + " | Status: " + saved.getStatus());
+                System.out.println("🔄 ORDER STATUS UPDATED — ID: " + id + " | New Status: " + saved.getStatus());
                 return ResponseEntity.ok(saved);
             }
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            System.err.println("❌ Error updating order: " + e.getMessage());
+            System.err.println("❌ Error updating order status: " + e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
 
-    // 🗑️ PERMANENT FIX: Endpoint for deleting/dismissing an order
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteOrder(@PathVariable String id) {
         try {
             Optional<Order> orderOpt = findOrderById(id);
             if (orderOpt.isPresent()) {
                 orderRepository.delete(orderOpt.get());
-                System.out.println("🗑️ ORDER DELETED/DISMISSED — ID: " + id);
+                System.out.println("🗑️ ORDER DELETED — ID: " + id);
                 return ResponseEntity.ok().build();
             }
             return ResponseEntity.notFound().build();
@@ -97,7 +105,6 @@ public class OrderController {
         }
     }
 
-    // Helper method using getOrderId() instead of getId()
     private Optional<Order> findOrderById(String id) {
         return orderRepository.findAll().stream()
             .filter(o -> {
@@ -108,11 +115,10 @@ public class OrderController {
             .findFirst();
     }
 
-    // 🧹 EMERGENCY WIPE ENDPOINT
     @DeleteMapping("/clear-all")
     public String clearAllOrders() {
         orderRepository.deleteAll();
-        System.out.println("⚠️ DATABASE WIPED: All orders deleted via API.");
-        return "SUCCESS: All orders deleted from the active database!";
+        System.out.println("⚠️ DATABASE WIPED.");
+        return "SUCCESS: All orders deleted!";
     }
 }
