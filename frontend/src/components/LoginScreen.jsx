@@ -198,7 +198,7 @@ export default function LoginScreen({ onLoginSuccess }) {
             </div>
 
             <div className="portalPitch">
-              <h1>Good food, great<br />operations, better dining.</h1>
+              <h1>Good food, great<br />operations, better<br />dining.</h1>
               <p className="portalTagline">Run smoother, serve happier. <span>•</span></p>
             </div>
 
