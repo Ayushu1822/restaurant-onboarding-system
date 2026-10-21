@@ -1,5 +1,5 @@
 import { useState } from 'react';
-
+import './LoginScreen.css';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 const GOOGLE_AUTH_URL = import.meta.env.VITE_GOOGLE_AUTH_URL;
@@ -48,7 +48,7 @@ function FeatureIcon({ type }) {
 function FormField({ label, name, value, onChange, type = 'text', required = false, placeholder = '', className = '', ...props }) {
   return (
     <label className={`authField ${className}`.trim()}>
-      <span>{label}{required && <i> *</i>}</span>
+      {label && <span>{label}{required && <i> *</i>}</span>}
       <input
         name={name}
         type={type}
@@ -247,7 +247,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                   <span className="portalFieldLabel">PASSWORD</span>
                   <button type="button" className="inlineFormLink" onClick={() => openView('forgot')}>Forgot Password?</button>
                 </div>
-                <FormField label="" type="password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} placeholder="••••••••••••" required autoComplete="current-password" />
+                <FormField type="password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} placeholder="••••••••••••" required autoComplete="current-password" />
                 <label className="rememberStation">
                   <input type="checkbox" checked={rememberStation} onChange={(event) => setRememberStation(event.target.checked)} />
                   <span>Remember this station / Keep me signed in</span>
