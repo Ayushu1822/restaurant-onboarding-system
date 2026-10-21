@@ -42,7 +42,7 @@
   border-right: 1px solid #0b3328;
 }
 
-/* Left panel centered and occupying more spacious area */
+/* Left panel content centered */
 .portalIntroContent {
   display: flex;
   flex: 1;
@@ -74,7 +74,6 @@
   font-weight: 800;
 }
 
-/* Made Foodos slightly bigger and bolder */
 .portalBrand > strong {
   font-size: clamp(36px, 4.2vw, 52px);
   font-weight: 800;
@@ -187,7 +186,7 @@
   padding: clamp(28px, 5vw, 56px);
 }
 
-/* Responsive Hover Box around the Login/Signup card container */
+/* Hover Box Card */
 .portalFormContent {
   width: min(470px, 100%);
   padding: 32px;
@@ -204,18 +203,20 @@
   transform: translateY(-3px);
 }
 
+/* Center aligned heading "Sign In" */
 .portalFormHeading {
   margin-bottom: 23px;
-  text-align: left;
+  text-align: center;
 }
 
 .portalFormHeading h2 {
   margin: 0 0 7px;
   color: #f6f8f6;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(22px, 2.2vw, 28px);
+  font-size: clamp(24px, 2.5vw, 32px);
   font-weight: 700;
   letter-spacing: -.03em;
+  text-align: center;
 }
 
 .portalFormHeading p {
@@ -223,6 +224,7 @@
   color: #82958d;
   font-size: 11px;
   line-height: 1.6;
+  text-align: center;
 }
 
 .authTabs {
@@ -552,20 +554,23 @@
 
 .signupMode .portalFormHeading {
   margin-bottom: 0;
+  text-align: center;
 }
 
 .signupMode .portalFormHeading h2 {
   margin: 0 0 3px;
   color: #f6f8f6;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 750;
   letter-spacing: -.02em;
+  text-align: center;
 }
 
 .signupMode .portalFormHeading p {
   color: #82958d;
   font-size: 9px;
+  text-align: center;
 }
 
 .signupMode .signupForm {

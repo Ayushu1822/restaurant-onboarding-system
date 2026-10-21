@@ -198,7 +198,7 @@ export default function LoginScreen({ onLoginSuccess }) {
             </div>
 
             <div className="portalPitch">
-              <h1>Good food, great<br className="desktopBreak" /> operations, better dining.</h1>
+              <h1>Good food, great<br />operations, better dining.</h1>
               <p className="portalTagline">Run smoother, serve happier. <span>•</span></p>
             </div>
 
@@ -229,8 +229,9 @@ export default function LoginScreen({ onLoginSuccess }) {
             )}
 
             <header className="portalFormHeading">
-              <h2>{currentView === 'signup' ? 'Restaurant Onboarding' : currentView === 'forgot' ? 'Reset your password' : 'Sign In to Foodos'}</h2>
-              <p>{currentView === 'signup' ? 'Register your restaurant and configure your administrative profile.' : currentView === 'forgot' ? 'We will help you get back into your restaurant portal.' : 'Log in to your restaurant portal and management console'}</p>
+              <h2>{currentView === 'signup' ? 'Restaurant Onboarding' : currentView === 'forgot' ? 'Reset your password' : 'Sign In'}</h2>
+              {currentView === 'signup' && <p>Register your restaurant and configure your administrative profile.</p>}
+              {currentView === 'forgot' && <p>We will help you get back into your restaurant portal.</p>}
             </header>
 
             {currentView === 'signin' && (
