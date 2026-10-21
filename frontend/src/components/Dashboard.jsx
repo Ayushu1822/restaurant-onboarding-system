@@ -249,7 +249,6 @@ export default function Dashboard({ user, onLogout }) {
 
   return (
     <div style={styles.container}>
-      {/* Dynamic CSS Print Styling injected to ensure ONLY receipt prints */}
       <style>{`
         @media print {
           body * {
@@ -456,23 +455,23 @@ export default function Dashboard({ user, onLogout }) {
                     <div style={{display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', marginBottom: '14px'}}>
                       <div>
                         <h3 style={{margin: '0 0 2px 0', fontSize: '18px', color: '#0f172a', fontWeight: '900'}}>{selectedOrder.customer}</h3>
-                        <div style={{fontSize: '12px', color: '#64748b', fontWeight: '700'}}>{selectedOrder.id} • {selectedOrder.time}</div>
+                        <div style={{fontSize: '12px', color: '#64748b', fontWeight: '700'}}>{selectedOrder.id} · {selectedOrder.time}</div>
                       </div>
                       <span style={styles.statusBadgeSmall(selectedOrder.status)}>{selectedOrder.status}</span>
                     </div>
 
-                    {/* COMPACT & SCROLLABLE THERMAL RECEIPT BOX WITH LARGER TEXT */}
+                    {/* COMPACT & SCROLLABLE THERMAL RECEIPT BOX */}
                     <div id="printable-thermal-receipt" style={styles.thermalReceiptBox}>
                       <div style={styles.receiptTopAccent}></div>
                       <div style={{ textAlign: 'center', fontWeight: '900', fontSize: '16px', color: '#0f172a', marginTop: '6px', letterSpacing: '0.5px' }}>{profileData.businessName}</div>
-                      <div style={{ textAlign: 'center', fontSize: '11px', color: '#64748b', marginBottom: '8px', fontWeight: '600' }}>Phone: {profileData.phone} • GSTIN: 29AAAAA0000A1Z5</div>
+                      <div style={{ textAlign: 'center', fontSize: '11px', color: '#64748b', marginBottom: '8px', fontWeight: '600' }}>Phone: {profileData.phone} | GSTIN: 29AAAAA0000A1Z5</div>
                       <div style={{ borderBottom: '1.5px dashed #cbd5e1', margin: '8px 0' }}></div>
                       
                       <div style={{ fontSize: '12px', display: 'flex', justifyContent: 'space-between', color: '#334155', fontWeight: '800' }}>
                         <span>Order: {selectedOrder.id}</span>
                         <span>{new Date().toLocaleDateString()}</span>
                       </div>
-                      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px', fontWeight: '600' }}>Type: {selectedOrder.type} • Channel: {selectedOrder.channel}</div>
+                      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px', fontWeight: '600' }}>Type: {selectedOrder.type} | Channel: {selectedOrder.channel}</div>
                       <div style={{ borderBottom: '1.5px dashed #cbd5e1', margin: '8px 0' }}></div>
 
                       <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -813,7 +812,6 @@ const styles = {
   printIconBtn: { backgroundColor: '#f1f5f9', border: '1.5px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', color: '#334155' },
   actionBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '11px 20px', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(5, 150, 105, 0.2)' },
   
-  // Compact & Scrollable Modern Thermal Receipt Styling with Larger Text
   thermalReceiptBox: { backgroundColor: '#fff', border: '2px solid #e2e8f0', borderRadius: '16px', padding: '16px', fontFamily: 'monospace', maxHeight: '310px', overflowY: 'auto', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', marginBottom: '16px', transition: 'all 0.3s ease', position: 'relative' },
   receiptTopAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: '5px', background: 'linear-gradient(90deg, #059669, #2563eb, #d97706)' },
   receiptItemRow: { backgroundColor: '#f8fafc', padding: '8px 10px', borderRadius: '8px', border: '1.5px solid #f1f5f9', transition: 'all 0.2s' },
