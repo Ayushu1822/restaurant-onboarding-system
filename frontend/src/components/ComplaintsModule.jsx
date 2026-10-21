@@ -4,15 +4,15 @@ const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
 export default function ComplaintsModule() {
   const [complaints, setComplaints] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All statuses');
   const [typeFilter, setTypeFilter] = useState('All types');
   const [channelFilter, setChannelFilter] = useState('All channels');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // New Complaint Form State
+  const [selectedOrderToLink, setSelectedOrderToLink] = useState(null);
+  const [orderSearchQuery, setOrderSearchQuery] = useState('');
   const [newComplaint, setNewComplaint] = useState({
     orderId: '',
     customerName: '',
@@ -24,6 +24,7 @@ export default function ComplaintsModule() {
 
   useEffect(() => {
     fetchComplaints();
+    fetchOrders();
   }, []);
 
   const fetchComplaints = () => {
@@ -33,6 +34,28 @@ export default function ComplaintsModule() {
         if (Array.isArray(data)) setComplaints(data);
       })
       .catch(err => console.error("Error fetching complaints:", err));
+  };
+
+  const fetchOrders = () => {
+    fetch(`${API_BASE_URL}/api/v1/orders`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setOrders(data);
+      })
+      .catch(err => console.error("Error fetching orders for linking:", err));
+  };
+
+  const handleSelectOrderForComplaint = (order) => {
+    setSelectedOrderToLink(order);
+    setNewComplaint({
+      orderId: order.displayId || order.orderId || 'N/A',
+      customerName: order.customerName || 'Valued Guest',
+      customerPhone: order.customerPhone || '',
+      complaintType: 'Missing Item',
+      channel: order.channel || 'WhatsApp Ordering',
+      notes: ''
+    });
+    setOrderSearchQuery(order.displayId || order.orderId || '');
   };
 
   const handleCreateComplaint = (e) => {
@@ -51,6 +74,16 @@ export default function ComplaintsModule() {
       .then(res => res.json())
       .then(() => {
         setIsModalOpen(false);
+        setSelectedOrderToLink(null);
+        setOrderSearchQuery('');
+        setNewComplaint({
+          orderId: '',
+          customerName: '',
+          customerPhone: '',
+          complaintType: 'Missing Item',
+          channel: 'WhatsApp Ordering',
+          notes: ''
+        });
         fetchComplaints();
       })
       .catch(err => console.error("Error creating complaint:", err));
@@ -62,7 +95,6 @@ export default function ComplaintsModule() {
     }).then(() => fetchComplaints());
   };
 
-  // Filtering Logic
   const filteredComplaints = complaints.filter(c => {
     const matchesSearch = 
       (c.orderId || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -76,28 +108,37 @@ export default function ComplaintsModule() {
     return matchesSearch && matchesStatus && matchesType && matchesChannel;
   });
 
+  const matchingOrdersForDropdown = orders.filter(o => {
+    if (!orderSearchQuery.trim()) return false;
+    const q = orderSearchQuery.toLowerCase();
+    const oId = (o.displayId || o.orderId || '').toLowerCase();
+    const cName = (o.customerName || '').toLowerCase();
+    const cPhone = (o.customerPhone || '').toLowerCase();
+    return oId.includes(q) || cName.includes(q) || cPhone.includes(q);
+  });
+
   return (
-    <div style={{ padding: '24px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ padding: '28px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'system-ui, sans-serif' }}>
       
-      {/* Top Bar with Search and + New Complaint */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '15px' }}>
+      {/* Top Bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '15px', flexWrap: 'wrap' }}>
         <input 
           type="text" 
-          placeholder="🔍 Search by Order ID, Customer Name, or Mobile Number" 
+          placeholder="🔍 Search by Order ID, Customer Name, or Mobile Number..." 
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
+          style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '14px', outline: 'none', background: '#fff' }}
         />
         <button 
           onClick={() => setIsModalOpen(true)}
-          style={{ background: '#ff4757', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '8px', fontWeight: '900', cursor: 'pointer' }}
+          style={{ background: '#ff4757', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '10px', fontWeight: '950', cursor: 'pointer', boxShadow: '0 4px 12px rgba(255,71,87,0.2)' }}
         >
           + New Complaint
         </button>
       </div>
 
       {/* Filters Bar */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap', background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap', background: '#fff', padding: '16px', borderRadius: '14px', border: '1.5px solid #e2e8f0' }}>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={styles.select}>
           <option>All statuses</option>
           <option>Open</option>
@@ -122,10 +163,8 @@ export default function ComplaintsModule() {
           <option>Web Ordering</option>
           <option>Zomato</option>
           <option>Swiggy</option>
+          <option>Counter</option>
         </select>
-
-        <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} style={styles.dateInput} />
-        <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} style={styles.dateInput} />
       </div>
 
       {/* Complaints Cards Grid */}
@@ -133,7 +172,7 @@ export default function ComplaintsModule() {
         {filteredComplaints.map((c, idx) => {
           const statusColor = c.status === 'Closed' ? '#10b981' : c.status === 'Following Up' ? '#f59e0b' : '#ef4444';
           return (
-            <div key={idx} style={{ background: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', position: 'relative' }}>
+            <div key={idx} style={{ background: '#fff', padding: '20px', borderRadius: '14px', border: '1.5px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                 <div>
                   <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '800' }}>{c.complaintId}</span>
@@ -142,7 +181,7 @@ export default function ComplaintsModule() {
                 <select 
                   value={c.status} 
                   onChange={e => updateStatus(c.id, e.target.value)}
-                  style={{ fontSize: '11px', fontWeight: '900', padding: '4px 8px', borderRadius: '6px', border: `1px solid ${statusColor}`, color: statusColor, background: '#fff', cursor: 'pointer' }}
+                  style={{ fontSize: '11px', fontWeight: '950', padding: '5px 10px', borderRadius: '8px', border: `1.5px solid ${statusColor}`, color: statusColor, background: '#fff', cursor: 'pointer' }}
                 >
                   <option value="Open">Open</option>
                   <option value="Following Up">Following Up</option>
@@ -155,13 +194,19 @@ export default function ComplaintsModule() {
               </div>
 
               <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '900' }}>{c.complaintType}</span>
-                <span style={{ background: '#f1f5f9', color: '#475569', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '800' }}>{c.channel}</span>
+                <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '950' }}>{c.complaintType}</span>
+                <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800' }}>{c.channel}</span>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#94a3b8', borderTop: '1px solid #f1f5f9', paddingTop: '10px' }}>
-                <span>🕒 Recently</span>
-                <span>💬 {c.notes ? '1 note' : 'No notes'}</span>
+              {c.notes && (
+                <div style={{ fontSize: '12px', color: '#475569', background: '#f8fafc', padding: '8px 10px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #e2e8f0' }}>
+                  💬 {c.notes}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#94a3b8', borderTop: '1px solid #f1f5f9', paddingTop: '10px', fontWeight: '800' }}>
+                <span>🕒 Logged</span>
+                <span style={{ color: statusColor }}>● {c.status}</span>
               </div>
             </div>
           );
@@ -170,36 +215,86 @@ export default function ComplaintsModule() {
 
       {/* Modal for + New Complaint */}
       {isModalOpen && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalCard}>
-            <h3>Create New Complaint</h3>
-            <form onSubmit={handleCreateComplaint} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '15px' }}>
-              <input type="text" placeholder="Order ID (e.g. KO01/002978)" required value={newComplaint.orderId} onChange={e => setNewComplaint({...newComplaint, orderId: e.target.value})} style={styles.input} />
-              <input type="text" placeholder="Customer Name" required value={newComplaint.customerName} onChange={e => setNewComplaint({...newComplaint, customerName: e.target.value})} style={styles.input} />
-              <input type="text" placeholder="Customer Phone" value={newComplaint.customerPhone} onChange={e => setNewComplaint({...newComplaint, customerPhone: e.target.value})} style={styles.input} />
+        <div style={styles.modalOverlay} onClick={() => setIsModalOpen(false)}>
+          <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h3 style={{ margin: 0, color: '#0f172a', fontWeight: '950' }}>Create New Complaint</h3>
+              <button onClick={() => setIsModalOpen(false)} style={styles.closeXBtn}>✕</button>
+            </div>
+
+            <form onSubmit={handleCreateComplaint} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               
-              <select value={newComplaint.complaintType} onChange={e => setNewComplaint({...newComplaint, complaintType: e.target.value})} style={styles.input}>
-                <option>Missing Item</option>
-                <option>Wrong Item</option>
-                <option>Late Delivery</option>
-                <option>Food Quality</option>
-                <option>Packaging</option>
-                <option>Payment Issue</option>
-                <option>Other</option>
-              </select>
+              <div style={{ position: 'relative' }}>
+                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>SEARCH & LINK ORDER (OPTIONAL)</label>
+                <input 
+                  type="text" 
+                  placeholder="Type name, phone, or order ID to auto-fill..." 
+                  value={orderSearchQuery}
+                  onChange={e => setOrderSearchQuery(e.target.value)}
+                  style={styles.input}
+                />
+                {matchingOrdersForDropdown.length > 0 && (
+                  <div style={styles.dropdownResults}>
+                    {matchingOrdersForDropdown.map((ord, oIdx) => (
+                      <div 
+                        key={oIdx} 
+                        onClick={() => handleSelectOrderForComplaint(ord)}
+                        style={styles.dropdownItem}
+                      >
+                        <strong>{ord.displayId || ord.orderId}</strong> — {ord.customerName} ({ord.customerPhone || 'No Phone'}) · ₹{ord.totalAmount}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-              <select value={newComplaint.channel} onChange={e => setNewComplaint({...newComplaint, channel: e.target.value})} style={styles.input}>
-                <option>WhatsApp Ordering</option>
-                <option>Web Ordering</option>
-                <option>Zomato</option>
-                <option>Swiggy</option>
-              </select>
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>ORDER ID</label>
+                <input type="text" placeholder="e.g. KO01/002978" required value={newComplaint.orderId} onChange={e => setNewComplaint({...newComplaint, orderId: e.target.value})} style={styles.input} />
+              </div>
 
-              <textarea placeholder="Notes / Description..." value={newComplaint.notes} onChange={e => setNewComplaint({...newComplaint, notes: e.target.value})} style={{...styles.input, height: '80px'}} />
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>CUSTOMER NAME</label>
+                <input type="text" placeholder="Customer Name" required value={newComplaint.customerName} onChange={e => setNewComplaint({...newComplaint, customerName: e.target.value})} style={styles.input} />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>PHONE NUMBER</label>
+                <input type="text" placeholder="Phone Number" value={newComplaint.customerPhone} onChange={e => setNewComplaint({...newComplaint, customerPhone: e.target.value})} style={styles.input} />
+              </div>
+              
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>COMPLAINT TYPE</label>
+                <select value={newComplaint.complaintType} onChange={e => setNewComplaint({...newComplaint, complaintType: e.target.value})} style={styles.input}>
+                  <option>Missing Item</option>
+                  <option>Wrong Item</option>
+                  <option>Late Delivery</option>
+                  <option>Food Quality</option>
+                  <option>Packaging</option>
+                  <option>Payment Issue</option>
+                  <option>Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>CHANNEL</label>
+                <select value={newComplaint.channel} onChange={e => setNewComplaint({...newComplaint, channel: e.target.value})} style={styles.input}>
+                  <option>WhatsApp Ordering</option>
+                  <option>Web Ordering</option>
+                  <option>Zomato</option>
+                  <option>Swiggy</option>
+                  <option>Counter</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>NOTES / DESCRIPTION</label>
+                <textarea placeholder="Write complaint details here..." value={newComplaint.notes} onChange={e => setNewComplaint({...newComplaint, notes: e.target.value})} style={{...styles.input, height: '70px'}} />
+              </div>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                <button type="submit" style={{ flex: 1, background: '#059669', color: '#fff', padding: '10px', border: 'none', borderRadius: '8px', fontWeight: '900', cursor: 'pointer' }}>Save Complaint</button>
-                <button type="button" onClick={() => setIsModalOpen(false)} style={{ flex: 1, background: '#cbd5e1', color: '#0f172a', padding: '10px', border: 'none', borderRadius: '8px', fontWeight: '900', cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" style={{ flex: 1, background: '#059669', color: '#fff', padding: '12px', border: 'none', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}>Save Complaint</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} style={{ flex: 1, background: '#cbd5e1', color: '#0f172a', padding: '12px', border: 'none', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}>Cancel</button>
               </div>
             </form>
           </div>
@@ -210,9 +305,11 @@ export default function ComplaintsModule() {
 }
 
 const styles = {
-  select: { padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: '800', background: '#f8fafc', outline: 'none' },
-  dateInput: { padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: '800', background: '#f8fafc' },
-  input: { padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none', background: '#f8fafc' },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-  modalCard: { width: '400px', background: '#fff', padding: '24px', borderRadius: '16px', boxShadow: '0 20px 25px rgba(0,0,0,0.1)' }
+  select: { padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '13px', fontWeight: '800', background: '#f8fafc', outline: 'none', cursor: 'pointer' },
+  input: { width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '13px', outline: 'none', background: '#f8fafc', boxSizing: 'border-box', fontWeight: '800' },
+  modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+  modalCard: { width: '440px', background: '#fff', padding: '26px', borderRadius: '20px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '1.5px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto' },
+  closeXBtn: { background: 'none', border: 'none', fontSize: '16px', fontWeight: '950', color: '#64748b', cursor: 'pointer' },
+  dropdownResults: { position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '8px', zIndex: 10, maxHeight: '150px', overflowY: 'auto', boxShadow: '0 10px 15px rgba(0,0,0,0.1)' },
+  dropdownItem: { padding: '8px 12px', fontSize: '12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontWeight: '800' }
 };
