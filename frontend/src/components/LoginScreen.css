@@ -1,17 +1,24 @@
 .authPage {
   display: grid;
-  min-height: 100vh;
+  height: 100vh;
+  width: 100vw;
   place-items: stretch;
   padding: 0;
+  margin: 0;
   background: #001e16;
   color: #edf5f1;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow: hidden;
+  box-sizing: border-box;
+  position: fixed;
+  top: 0;
+  left: 0;
 }
 
 .authPortal {
   display: grid;
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
@@ -25,6 +32,8 @@
 .portalFormPanel {
   min-width: 0;
   background: #001e16;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .portalIntro {
@@ -432,7 +441,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  height: 100vh;
+  width: 100vw;
   padding: 18px;
   background: #001e16;
 }
@@ -440,7 +450,8 @@
 .authPortal.signupMode {
   display: block;
   width: min(514px, 100%);
-  min-height: 0;
+  max-height: 92vh;
+  overflow-y: auto;
   margin: auto;
   padding: 0 29px 28px;
   border: 1px solid #0b3328;
@@ -457,6 +468,7 @@
   display: block;
   padding: 5px 0 0;
   background: transparent;
+  height: auto;
 }
 
 .signupMode .portalFormContent {
@@ -592,59 +604,47 @@
 
 @media (max-width: 760px) {
   .authPage {
-    padding: 12px;
+    padding: 0;
+    height: 100vh;
   }
 
   .authPortal {
-    width: min(520px, 100%);
-    min-height: calc(100vh - 24px);
+    width: 100%;
+    height: 100vh;
     grid-template-columns: 1fr;
     grid-template-rows: auto auto;
-    border-radius: 18px;
+    border-radius: 0;
   }
 
   .portalIntro {
     border-right: 0;
     border-bottom: 1px solid #0b3328;
+    max-height: 35vh;
+  }
+
+  .portalFormPanel {
+    height: 65vh;
   }
 
   .portalIntroContent {
     justify-content: flex-start;
-    padding: 25px 26px 22px;
+    padding: 20px 24px;
   }
 
   .portalPitch {
-    margin-top: 22px;
+    margin-top: 12px;
   }
 
   .portalPitch h1 {
-    font-size: clamp(28px, 7vw, 38px);
+    font-size: clamp(24px, 6vw, 32px);
   }
 
   .portalFeatures {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
-    margin-top: 19px;
-  }
-
-  .portalFeatures li {
-    gap: 10px;
-  }
-
-  .featureIcon {
-    width: 32px;
-    height: 32px;
-    flex-basis: 32px;
-  }
-
-  .featureIcon svg {
-    width: 16px;
-    height: 16px;
+    display: none;
   }
 
   .portalFormPanel {
-    padding: 28px 26px 30px;
+    padding: 20px 24px;
   }
 
   .portalFormContent {
@@ -652,87 +652,16 @@
   }
 
   .authPage:has(.signupMode) {
-    align-items: flex-start;
-    padding: 12px;
-  }
-
-  .authPortal.signupMode {
-    width: min(514px, 100%);
-    min-height: 0;
-    margin: auto;
-    padding: 0 22px 24px;
-    border-radius: 14px;
-  }
-}
-
-@media (max-width: 420px) {
-  .authPage {
-    padding: 0;
-    background: #001e16;
-  }
-
-  .authPortal {
-    min-height: 100vh;
-    border: 0;
-    border-radius: 0;
-  }
-
-  .portalIntroContent {
-    padding: 22px 20px 18px;
-  }
-
-  .portalPitch {
-    margin-top: 17px;
-  }
-
-  .portalPitch h1 {
-    font-size: 28px;
-  }
-
-  .portalTagline {
-    margin-top: 6px;
-    font-size: 14px;
-  }
-
-  .portalFeatures {
-    gap: 10px;
-    margin-top: 15px;
-  }
-
-  .portalFeatures small {
-    font-size: 9px;
-  }
-
-  .portalFormPanel {
-    align-items: flex-start;
-    padding: 24px 20px;
-  }
-
-  .portalFormHeading {
-    margin-bottom: 17px;
-  }
-
-  .portalFormHeading h2 {
-    font-size: 23px;
-  }
-
-  .authPage:has(.signupMode) {
+    align-items: center;
     padding: 0;
   }
 
   .authPortal.signupMode {
     width: 100%;
-    min-height: 100vh;
-    padding: 0 20px 24px;
+    height: 100vh;
+    max-height: 100vh;
+    margin: 0;
+    padding: 20px;
     border-radius: 0;
-  }
-
-  .signupMode .portalFormPanel {
-    padding-top: 5px;
-  }
-
-  .signupMode .signupFields {
-    column-gap: 10px;
-    row-gap: 12px;
   }
 }
