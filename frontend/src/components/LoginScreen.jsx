@@ -1,439 +1,317 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import './LoginScreen.css';
 
-// Automatically uses your backend URL
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
+const GOOGLE_AUTH_URL = import.meta.env.VITE_GOOGLE_AUTH_URL;
 
-export default function LoginScreen({ onLoginSuccess }) {
-  const [currentView, setCurrentView] = useState('signin'); // 'signin', 'signup', 'forgot'
-  
-  // Login States
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [showLoginPassword, setShowLoginPassword] = useState(false);
-  
-  // Forgot Password States
-  const [forgotEmail, setForgotEmail] = useState('');
+const INITIAL_FORM = {
+  businessName: '',
+  ownerName: '',
+  email: '',
+  password: '',
+  phoneNumber: '',
+  whatsappNumber: '',
+  line1: '',
+  line2: '',
+  area: '',
+  zipCode: '',
+  state: '',
+  latitude: '',
+  longitude: ''
+};
 
-  // Signup States
-  const [showSignupPassword, setShowSignupPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    businessName: '',
-    ownerName: '',
-    email: '',
-    password: '',
-    phoneNumber: '',
-    whatsappNumber: '',
-    line1: '',
-    line2: '',
-    area: '',
-    zipCode: '',
-    state: '',
-    latitude: '',
-    longitude: ''
-  });
-
-  const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
-  // Login Handler (Cleaned up so it doesn't duplicate loading text)
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage('');
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
-      });
-      const data = await response.json();
-      
-      if (response.ok) {
-        localStorage.setItem('auth_token', data.token);
-        localStorage.setItem('user_email', loginEmail);
-        onLoginSuccess();
-      } else {
-        setMessage(data.message || 'Invalid credentials or account locked.');
-      }
-    } catch (error) {
-      setMessage('Network error: Could not connect to backend.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Forgot Password Handler
-  const handleForgotPassword = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage('');
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail }),
-      });
-      const data = await response.json();
-      
-      if (response.ok) {
-        setMessage('Success! Reset token generated.');
-        console.log("Reset Token:", data.reset_token);
-      } else {
-        setMessage(data.message || 'Email not found.');
-      }
-    } catch (error) {
-      setMessage('Network error: Could not connect to backend.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Registration Handler
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage('');
-
-    if (formData.password.length < 8) {
-      setMessage('Password must be at least 8 characters long.');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          businessName: formData.businessName,
-          ownerName: formData.ownerName,
-          phoneNumber: formData.phoneNumber,
-          whatsappNumber: formData.whatsappNumber,
-          address: {
-            line1: formData.line1,
-            line2: formData.line2,
-            area: formData.area,
-            zipCode: formData.zipCode,
-            state: formData.state
-          },
-          location: {
-            latitude: parseFloat(formData.latitude),
-            longitude: parseFloat(formData.longitude)
-          }
-        }),
-      });
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage('Registration successful! Please sign in.');
-        setCurrentView('signin');
-      } else {
-        setMessage(data.message || 'Registration failed.');
-      }
-    } catch (error) {
-      setMessage('Network error during registration.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const EyeIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-      <circle cx="12" cy="12" r="3"></circle>
-    </svg>
-  );
-
-  const EyeOffIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-      <line x1="1" y1="1" x2="23" y2="23"></line>
-    </svg>
-  );
-
-  return (
-    <div style={styles.pageContainer}>
-      <div style={styles.brandContainer}>
-        <div style={styles.brandTitle}>restaurant<span style={{color: '#3b82f6'}}>portal</span></div>
-        <div style={styles.brandSubtitle}>Secure Onboarding & Management Platform</div>
-      </div>
-
-      <div style={{ 
-        ...styles.card, 
-        maxWidth: currentView === 'signup' ? '820px' : '600px',
-        padding: currentView === 'signup' ? '45px' : '50px'
-      }}>
-        
-        <div style={styles.tabContainer}>
-          <button 
-            type="button" 
-            style={{
-              ...styles.tabButton, 
-              backgroundColor: currentView === 'signin' ? '#1e293b' : 'transparent',
-              color: currentView === 'signin' ? '#ffffff' : '#94a3b8',
-              boxShadow: currentView === 'signin' ? '0 4px 12px rgba(0,0,0,0.3)' : 'none'
-            }}
-            onClick={() => { setCurrentView('signin'); setMessage(''); }}
-          >
-            Sign In
-          </button>
-          <button 
-            type="button" 
-            style={{
-              ...styles.tabButton, 
-              backgroundColor: currentView === 'signup' ? '#1e293b' : 'transparent',
-              color: currentView === 'signup' ? '#ffffff' : '#94a3b8',
-              boxShadow: currentView === 'signup' ? '0 4px 12px rgba(0,0,0,0.3)' : 'none'
-            }}
-            onClick={() => { setCurrentView('signup'); setMessage(''); }}
-          >
-            Create Account
-          </button>
-        </div>
-
-        {/* SIGN IN VIEW */}
-        {currentView === 'signin' && (
-          <form onSubmit={handleLogin} style={styles.form}>
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Email Address</label>
-              <input 
-                type="email" 
-                placeholder="owner@restaurant.com" 
-                value={loginEmail} 
-                onChange={(e) => setLoginEmail(e.target.value)} 
-                style={styles.input}
-                required 
-              />
-            </div>
-
-            <div style={styles.inputGroup}>
-              <div style={styles.labelRow}>
-                <label style={styles.label}>Password</label>
-                <a href="#forgot" onClick={(e) => { e.preventDefault(); setCurrentView('forgot'); setMessage(''); }} style={styles.forgotLink}>Forgot password?</a>
-              </div>
-              <div style={styles.passwordWrapper}>
-                <input 
-                  type={showLoginPassword ? 'text' : 'password'} 
-                  placeholder="••••••••" 
-                  value={loginPassword} 
-                  onChange={(e) => setLoginPassword(e.target.value)} 
-                  style={{ ...styles.input, paddingRight: '50px' }}
-                  required 
-                />
-                <button 
-                  type="button" 
-                  onClick={() => setShowLoginPassword(!showLoginPassword)} 
-                  style={styles.eyeButton}
-                  title={showLoginPassword ? "Hide password" : "Show password"}
-                >
-                  {showLoginPassword ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
-              </div>
-            </div>
-
-            <button type="submit" style={styles.primaryButton} disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-          </form>
-        )}
-
-        {/* FORGOT PASSWORD VIEW */}
-        {currentView === 'forgot' && (
-          <form onSubmit={handleForgotPassword} style={styles.form}>
-            <div style={styles.headerTextGroup}>
-              <h2 style={styles.cardHeaderTitle}>Reset Password</h2>
-              <p style={styles.cardHeaderSubtitle}>Enter your registered email address to generate a recovery token.</p>
-            </div>
-            
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Email Address</label>
-              <input 
-                type="email" 
-                placeholder="owner@restaurant.com" 
-                value={forgotEmail} 
-                onChange={(e) => setForgotEmail(e.target.value)} 
-                style={styles.input}
-                required 
-              />
-            </div>
-
-            <button type="submit" style={styles.primaryButton} disabled={loading}>
-              {loading ? 'Processing...' : 'Send Reset Token'}
-            </button>
-            <button type="button" onClick={() => setCurrentView('signin')} style={styles.secondaryButton}>
-              Back to Sign In
-            </button>
-          </form>
-        )}
-
-        {/* SIGN UP VIEW */}
-        {currentView === 'signup' && (
-          <form onSubmit={handleRegister} style={styles.form}>
-            <div style={styles.headerTextGroup}>
-              <h2 style={styles.cardHeaderTitle}>Restaurant Onboarding</h2>
-              <p style={styles.cardHeaderSubtitle}>Register your restaurant and configure your administrative profile.</p>
-            </div>
-            
-            <div style={styles.sectionTitle}>Business & Owner Information</div>
-            <div style={styles.row}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Business Name *</label>
-                <input type="text" name="businessName" placeholder="e.g. Spice Garden" value={formData.businessName} onChange={handleInputChange} style={styles.input} required />
-              </div>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Owner Name *</label>
-                <input type="text" name="ownerName" placeholder="e.g. John Doe" value={formData.ownerName} onChange={handleInputChange} style={styles.input} required />
-              </div>
-            </div>
-
-            <div style={styles.row}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Email Address *</label>
-                <input type="email" name="email" placeholder="owner@restaurant.com" value={formData.email} onChange={handleInputChange} style={styles.input} required />
-              </div>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Password (min 8 chars) *</label>
-                <div style={styles.passwordWrapper}>
-                  <input 
-                    type={showSignupPassword ? 'text' : 'password'} 
-                    placeholder="••••••••" 
-                    value={formData.password} 
-                    name="password"
-                    onChange={handleInputChange} 
-                    style={{ ...styles.input, paddingRight: '50px' }}
-                    required 
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowSignupPassword(!showSignupPassword)} 
-                    style={styles.eyeButton}
-                    title={showSignupPassword ? "Hide password" : "Show password"}
-                  >
-                    {showSignupPassword ? <EyeOffIcon /> : <EyeIcon />}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div style={styles.row}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Phone Number (10 digits) *</label>
-                <input type="text" name="phoneNumber" placeholder="9876543210" value={formData.phoneNumber} onChange={handleInputChange} style={styles.input} required />
-              </div>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>WhatsApp Number</label>
-                <input type="text" name="whatsappNumber" placeholder="9876543210" value={formData.whatsappNumber} onChange={handleInputChange} style={styles.input} />
-              </div>
-            </div>
-
-            <div style={styles.sectionTitle}>Address & GPS Location</div>
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Address Line 1 *</label>
-              <input type="text" name="line1" placeholder="Street address or building name" value={formData.line1} onChange={handleInputChange} style={styles.input} required />
-            </div>
-            
-            <div style={styles.row}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Address Line 2</label>
-                <input type="text" name="line2" placeholder="Suite, floor, etc. (optional)" value={formData.line2} onChange={handleInputChange} style={styles.input} />
-              </div>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Area</label>
-                <input type="text" name="area" placeholder="Locality or neighborhood" value={formData.area} onChange={handleInputChange} style={styles.input} />
-              </div>
-            </div>
-
-            <div style={styles.row}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Zip Code *</label>
-                <input type="text" name="zipCode" placeholder="6-digit postal code" value={formData.zipCode} onChange={handleInputChange} style={styles.input} required />
-              </div>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>State *</label>
-                <input type="text" name="state" placeholder="State/Province" value={formData.state} onChange={handleInputChange} style={styles.input} required />
-              </div>
-            </div>
-
-            <div style={styles.row}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Latitude *</label>
-                <input type="number" step="any" name="latitude" placeholder="e.g. 28.6139" value={formData.latitude} onChange={handleInputChange} style={styles.input} required />
-              </div>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Longitude *</label>
-                <input type="number" step="any" name="longitude" placeholder="e.g. 77.2090" value={formData.longitude} onChange={handleInputChange} style={styles.input} required />
-              </div>
-            </div>
-
-            <button type="submit" style={{ ...styles.primaryButton, marginTop: '16px' }} disabled={loading}>
-              {loading ? 'Submitting...' : 'Complete Registration'}
-            </button>
-          </form>
-        )}
-
-        {message && (
-          <div style={{
-            ...styles.messageBox, 
-            color: message.includes('Success') || message.includes('successful') ? '#4ade80' : '#f87171'
-          }}>
-            {message}
-          </div>
-        )}
-      </div>
-
-      <div style={styles.footerText}>
-        Secure Restaurant Onboarding Portal &copy; 2026. Data processed in compliance with regulatory standards.
-      </div>
-    </div>
-  );
+function GoogleIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 48 48" width="18" height="18">
+      <path fill="#FFC107" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11a9.4 9.4 0 0 1-4.1 6.2v5.1h6.6c3.9-3.6 6.1-8.8 6.1-15Z" />
+      <path fill="#34A853" d="M24 44c5.5 0 10.1-1.8 13.5-4.8l-6.6-5.1c-1.8 1.2-4 1.9-6.9 1.9-5.3 0-9.8-3.6-11.4-8.4H5.8v5.3A20 20 0 0 0 24 44Z" />
+      <path fill="#4A90E2" d="M12.6 27.6a12 12 0 0 1 0-7.2v-5.3H5.8a20 20 0 0 0 0 17.8l6.8-5.3Z" />
+      <path fill="#EA4335" d="M24 12c3 0 5.6 1 7.7 3l5.8-5.8A19.3 19.3 0 0 0 24 4 20 20 0 0 0 5.8 15.1l6.8 5.3C14.2 15.6 18.7 12 24 12Z" />
+    </svg>
+  );
 }
 
-const styles = {
-  pageContainer: { 
-    display: 'flex', 
-    flexDirection: 'column', 
-    justifyContent: 'flex-start', 
-    alignItems: 'center', 
-    width: '100vw', 
-    minHeight: '100vh', 
-    backgroundColor: '#030712', 
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', 
-    color: '#f8fafc', 
-    padding: '40px 20px', 
-    margin: 0, 
-    boxSizing: 'border-box', 
-    overflowY: 'auto'
-  },
-  brandContainer: { textAlign: 'center', marginBottom: '30px', marginTop: '20px' },
-  brandTitle: { fontSize: '38px', fontWeight: '800', letterSpacing: '-0.5px', color: '#ffffff' },
-  brandSubtitle: { fontSize: '15px', color: '#64748b', marginTop: '6px', fontWeight: '500' },
-  card: { backgroundColor: '#0b132b', border: '1px solid #1e293b', borderRadius: '24px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', boxSizing: 'border-box', transition: 'all 0.3s ease', marginBottom: '40px' },
-  headerTextGroup: { marginBottom: '20px', textAlign: 'left' },
-  cardHeaderTitle: { fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: '0 0 6px 0' },
-  cardHeaderSubtitle: { fontSize: '14px', color: '#94a3b8', margin: 0, lineHeight: '1.4' },
-  sectionTitle: { fontSize: '12px', fontWeight: '700', color: '#3b82f6', marginTop: '20px', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.8px', textAlign: 'left' },
-  tabContainer: { display: 'flex', backgroundColor: '#070d1a', borderRadius: '12px', padding: '6px', marginBottom: '28px', border: '1px solid #162032' },
-  tabButton: { flex: 1, padding: '15px', borderRadius: '9px', border: 'none', fontSize: '16px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease' },
-  form: { display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' },
-  row: { display: 'flex', gap: '20px' },
-  inputGroup: { display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, textAlign: 'left' },
-  labelRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' },
-  label: { fontSize: '14px', fontWeight: '600', color: '#cbd5e1', letterSpacing: '0.2px', textAlign: 'left' },
-  forgotLink: { fontSize: '13px', color: '#3b82f6', textDecoration: 'none', fontWeight: '500' },
-  passwordWrapper: { position: 'relative', display: 'flex', alignItems: 'center', width: '100%' },
-  input: { width: '100%', padding: '16px 20px', backgroundColor: '#070d1a', border: '1px solid #1e293b', borderRadius: '12px', color: '#ffffff', fontSize: '16px', outline: 'none', boxSizing: 'border-box', textAlign: 'left', transition: 'border-color 0.2s' },
-  eyeButton: { position: 'absolute', right: '16px', backgroundColor: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px', transition: 'color 0.2s' },
-  primaryButton: { backgroundColor: '#2563eb', color: '#ffffff', border: 'none', padding: '16px', borderRadius: '12px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', marginTop: '10px', transition: 'background-color 0.2s' },
-  secondaryButton: { backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #1e293b', padding: '14px', borderRadius: '12px', fontSize: '14px', cursor: 'pointer', fontWeight: '500' },
-  messageBox: { fontSize: '14px', textAlign: 'center', fontWeight: '500', marginTop: '14px', padding: '12px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.03)' },
-  footerText: { marginTop: '10px', marginBottom: '30px', fontSize: '12px', color: '#475569', textAlign: 'center', maxWidth: '500px', lineHeight: '1.5' }
-};
+function FeatureIcon({ type }) {
+  const iconPaths = {
+    sync: <><path d="M12 3v3m0 12v3m9-9h-3M6 12H3m15.36-6.36-2.12 2.12M7.76 16.24l-2.12 2.12m12.72 0-2.12-2.12M7.76 7.76 5.64 5.64" /><path d="m14.5 9.5-5 5m0-5 5 5" /></>,
+    kitchen: <><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V2m6 2V2m-6 9h6m-6 4h6" /></>,
+    heart: <path d="M20.8 8.8c0 5.5-8.8 11-8.8 11S3.2 14.3 3.2 8.8a4.7 4.7 0 0 1 8.8-2.3 4.7 4.7 0 0 1 8.8 2.3Z" />
+  };
+
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      {iconPaths[type]}
+    </svg>
+  );
+}
+
+function FormField({ label, name, value, onChange, type = 'text', required = false, placeholder = '', className = '', ...props }) {
+  return (
+    <label className={`authField ${className}`.trim()}>
+      <span>{label}{required && <i> *</i>}</span>
+      <input
+        name={name}
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        required={required}
+        {...props}
+      />
+    </label>
+  );
+}
+
+export default function LoginScreen({ onLoginSuccess }) {
+  const [currentView, setCurrentView] = useState('signin');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [formData, setFormData] = useState(INITIAL_FORM);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('error');
+  const [loading, setLoading] = useState(false);
+  const [rememberStation, setRememberStation] = useState(true);
+
+  const openView = (view) => {
+    setCurrentView(view);
+    setMessage('');
+    setMessageType('error');
+  };
+
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setFormData(current => ({ ...current, [name]: value }));
+  };
+
+  const handleLogin = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    setMessage('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setMessage(data.message || 'Invalid email or password.');
+        return;
+      }
+      localStorage.setItem('auth_token', data.token);
+      localStorage.setItem('user_email', loginEmail);
+      onLoginSuccess();
+    } catch {
+      setMessage('Could not connect to the server. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    setMessage('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          businessName: formData.businessName,
+          ownerName: formData.ownerName,
+          phoneNumber: formData.phoneNumber,
+          whatsappNumber: formData.whatsappNumber,
+          address: {
+            line1: formData.line1,
+            line2: formData.line2,
+            area: formData.area,
+            zipCode: formData.zipCode,
+            state: formData.state
+          },
+          location: {
+            latitude: Number.parseFloat(formData.latitude),
+            longitude: Number.parseFloat(formData.longitude)
+          }
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setMessage(data.message || 'Registration failed. Please check your details.');
+        return;
+      }
+      setMessageType('success');
+      setMessage('Your account is ready. Sign in to continue.');
+      setCurrentView('signin');
+      setLoginEmail(formData.email);
+    } catch {
+      setMessage('Could not connect to the server. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    setMessage('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setMessage(data.message || 'Unable to reset password for that email.');
+        return;
+      }
+      setMessageType('success');
+      setMessage('Reset instructions have been requested.');
+    } catch {
+      setMessage('Could not connect to the server. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = () => {
+    if (!GOOGLE_AUTH_URL) {
+      setMessage('Google sign-in is not configured yet. Set VITE_GOOGLE_AUTH_URL to your OAuth sign-in endpoint.');
+      setMessageType('error');
+      return;
+    }
+    window.location.assign(GOOGLE_AUTH_URL);
+  };
+
+  return (
+    <main className="authPage">
+      <section className={`authPortal${currentView === 'signup' ? ' signupMode' : ''}`} aria-label="Foodos restaurant portal">
+        <aside className="portalIntro">
+          <div className="portalIntroContent">
+            <div className="portalBrand">
+              <span className="portalBrandIcon">◈</span>
+              <strong>Foodos</strong>
+              <span className="portalBrandTag">POS</span>
+            </div>
+
+            <div className="portalPitch">
+              <h1>Good food, great<br className="desktopBreak" /> operations, better dining.</h1>
+              <p className="portalTagline">Run smoother, serve happier. <span>•</span></p>
+            </div>
+
+            <ul className="portalFeatures">
+              <li>
+                <span className="featureIcon"><FeatureIcon type="sync" /></span>
+                <span><strong>100% Real-Time Table Sync</strong><small>Instant order flow between floor and kitchen</small></span>
+              </li>
+              <li>
+                <span className="featureIcon"><FeatureIcon type="kitchen" /></span>
+                <span><strong>Kitchen &amp; Bar Precision</strong><small>Smart ticket routing and prep timing</small></span>
+              </li>
+              <li>
+                <span className="featureIcon"><FeatureIcon type="heart" /></span>
+                <span><strong>Intelligent Inventory</strong><small>Automated ingredient depletion and alerts</small></span>
+              </li>
+            </ul>
+          </div>
+        </aside>
+
+        <section className="portalFormPanel">
+          <div className="portalFormContent">
+            {currentView === 'signup' && (
+              <div className="authTabs" role="tablist" aria-label="Choose sign in or create account">
+                <button type="button" role="tab" aria-selected={false} onClick={() => openView('signin')}>Sign In</button>
+                <button type="button" role="tab" aria-selected className="selected" onClick={() => openView('signup')}>Create Account</button>
+              </div>
+            )}
+
+            <header className="portalFormHeading">
+              <h2>{currentView === 'signup' ? 'Restaurant Onboarding' : currentView === 'forgot' ? 'Reset your password' : 'Sign In to Foodos'}</h2>
+              <p>{currentView === 'signup' ? 'Register your restaurant and configure your administrative profile.' : currentView === 'forgot' ? 'We will help you get back into your restaurant portal.' : 'Log in to your restaurant portal and management console'}</p>
+            </header>
+
+            {currentView === 'signin' && (
+              <div className="authTabs" role="tablist" aria-label="Choose sign in or create account">
+                <button type="button" role="tab" aria-selected className="selected" onClick={() => openView('signin')}>Sign In</button>
+                <button type="button" role="tab" aria-selected={false} onClick={() => openView('signup')}>Create Account</button>
+              </div>
+            )}
+
+            {currentView === 'signin' && (
+              <form className="portalAuthForm" onSubmit={handleLogin}>
+                <FormField label="EMAIL ADDRESS" type="email" value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} placeholder="operator@restaurant.com" required autoComplete="email" />
+                <div className="passwordLabelRow">
+                  <span className="portalFieldLabel">PASSWORD</span>
+                  <button type="button" className="inlineFormLink" onClick={() => openView('forgot')}>Forgot Password?</button>
+                </div>
+                <FormField label="" type="password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} placeholder="••••••••••••" required autoComplete="current-password" />
+                <label className="rememberStation">
+                  <input type="checkbox" checked={rememberStation} onChange={(event) => setRememberStation(event.target.checked)} />
+                  <span>Remember this station / Keep me signed in</span>
+                </label>
+                <button className="portalSubmit" type="submit" disabled={loading}>{loading ? 'Signing in…' : 'SIGN IN TO PORTAL'}</button>
+              </form>
+            )}
+
+            {currentView === 'signup' && (
+              <form className="portalAuthForm signupForm" onSubmit={handleRegister}>
+                <div className="signupSection">
+                  <h3>Business &amp; Owner Information</h3>
+                  <div className="signupFields">
+                    <FormField label="Business Name" name="businessName" value={formData.businessName} onChange={handleInputChange} placeholder="e.g. Spice Garden" required />
+                    <FormField label="Owner Name" name="ownerName" value={formData.ownerName} onChange={handleInputChange} placeholder="e.g. John Doe" required />
+                    <FormField label="Email Address" name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="owner@restaurant.com" required />
+                    <FormField label="Password (min 8 chars)" name="password" type="password" value={formData.password} onChange={handleInputChange} placeholder="••••••••" minLength={8} required />
+                    <FormField label="Phone Number (10 digits)" name="phoneNumber" type="tel" value={formData.phoneNumber} onChange={handleInputChange} placeholder="9876543210" required />
+                    <FormField label="WhatsApp Number" name="whatsappNumber" type="tel" value={formData.whatsappNumber} onChange={handleInputChange} placeholder="9876543210" />
+                  </div>
+                </div>
+                <div className="signupSection">
+                  <h3>Address &amp; GPS Location</h3>
+                  <div className="signupFields">
+                    <FormField className="signupWideField" label="Address Line 1" name="line1" value={formData.line1} onChange={handleInputChange} placeholder="Street address or building name" required />
+                    <FormField label="Address Line 2" name="line2" value={formData.line2} onChange={handleInputChange} placeholder="Suite, floor, etc. (optional)" />
+                    <FormField label="Area" name="area" value={formData.area} onChange={handleInputChange} placeholder="Locality or neighborhood" />
+                    <FormField label="Zip Code" name="zipCode" value={formData.zipCode} onChange={handleInputChange} placeholder="6-digit postal code" required />
+                    <FormField label="State" name="state" value={formData.state} onChange={handleInputChange} placeholder="State/Province" required />
+                    <FormField label="Latitude" name="latitude" type="number" step="any" value={formData.latitude} onChange={handleInputChange} placeholder="e.g. 28.6139" required />
+                    <FormField label="Longitude" name="longitude" type="number" step="any" value={formData.longitude} onChange={handleInputChange} placeholder="e.g. 77.2090" required />
+                  </div>
+                </div>
+                <button className="portalSubmit" type="submit" disabled={loading}>{loading ? 'Submitting…' : 'Complete Registration'}</button>
+              </form>
+            )}
+
+            {currentView === 'forgot' && (
+              <form className="portalAuthForm" onSubmit={handleForgotPassword}>
+                <FormField label="EMAIL ADDRESS" type="email" value={forgotEmail} onChange={(event) => setForgotEmail(event.target.value)} placeholder="operator@restaurant.com" required />
+                <button className="portalSubmit" type="submit" disabled={loading}>{loading ? 'Sending…' : 'SEND RESET INSTRUCTIONS'}</button>
+                <button type="button" className="backToSignIn" onClick={() => openView('signin')}>← Back to sign in</button>
+              </form>
+            )}
+
+            {currentView !== 'signup' && (
+              <>
+                <div className="portalOr"><span>OR SIGN IN WITH</span></div>
+                <button className="portalGoogleButton" type="button" onClick={handleGoogleSignIn}><GoogleIcon />Continue with Google</button>
+              </>
+            )}
+
+            {currentView !== 'signup' && <p className="portalRegisterPrompt">
+              {currentView === 'signup' ? 'Already have a restaurant account?' : 'Don’t have a restaurant account?'}
+              {' '}
+              <button type="button" onClick={() => openView(currentView === 'signup' ? 'signin' : 'signup')}>
+                {currentView === 'signup' ? 'Sign in' : 'Register your restaurant'}
+              </button>
+            </p>}
+
+            {message && <p className={`portalMessage ${messageType}`} role="status">{message}</p>}
+          </div>
+        </section>
+      </section>
+    </main>
+  );
+}
