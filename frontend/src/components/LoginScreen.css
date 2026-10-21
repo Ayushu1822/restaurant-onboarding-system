@@ -42,22 +42,21 @@
   border-right: 1px solid #0b3328;
 }
 
-/* Fixed alignment and padding for left intro panel */
+/* Left panel content centered in its own half screen */
 .portalIntroContent {
   display: flex;
   flex: 1;
   flex-direction: column;
   justify-content: center;
-  align-items: flex-start;
-  padding: 40px 54px;
-  padding-left: 64px;
-  text-align: left;
+  align-items: center;
+  padding: 40px 40px;
+  text-align: center;
 }
 
 .portalBrand {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 12px;
   color: #f6faf8;
   width: 100%;
@@ -94,8 +93,9 @@
 
 .portalPitch {
   margin-top: 36px;
-  text-align: left;
+  text-align: center;
   width: 100%;
+  max-width: 440px;
 }
 
 .portalPitch h1 {
@@ -106,14 +106,14 @@
   font-weight: 700;
   letter-spacing: -.035em;
   line-height: 1.15;
-  text-align: left;
+  text-align: center;
 }
 
 .portalTagline {
   margin: 12px 0 0;
   color: #00c981;
   font-size: clamp(13px, 1.4vw, 16px);
-  text-align: left;
+  text-align: center;
 }
 
 .portalTagline span {
@@ -124,19 +124,20 @@
 .portalFeatures {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  margin: 32px 0 0;
+  gap: 16px;
+  margin: 32px auto 0;
   padding: 0;
   list-style: none;
   width: 100%;
-  align-items: flex-start;
+  max-width: 380px;
+  align-items: flex-start; /* Keeps feature rows internally aligned nicely */
+  text-align: left;
 }
 
 .portalFeatures li {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 14px;
-  text-align: left;
   width: 100%;
 }
 
@@ -150,7 +151,6 @@
   border-radius: 50%;
   background: #052d22;
   color: #00cb8c;
-  margin-top: 2px;
 }
 
 .featureIcon svg {
@@ -279,7 +279,6 @@
   transition: border-color .15s, box-shadow .15s;
 }
 
-/* Fix browser autofill turning inputs white */
 .authField input:-webkit-autofill,
 .authField input:-webkit-autofill:hover,
 .authField input:-webkit-autofill:focus {
@@ -659,8 +658,10 @@
   }
 
   .portalIntroContent {
-    justify-content: flex-start;
+    justify-content: center;
+    align-items: center;
     padding: 20px 24px;
+    text-align: center;
   }
 
   .portalPitch {
