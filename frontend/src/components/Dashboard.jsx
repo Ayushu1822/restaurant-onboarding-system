@@ -11,7 +11,6 @@ import CounterPOS from './CounterPOS';
 import PromotionsModule from './PromotionsModule';
 import GalleryModule from './GalleryModule';
 import SettingsModule from './SettingsModule';
-import { getOrderNote } from '../utils/orderNote';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 

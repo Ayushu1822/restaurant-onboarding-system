@@ -3,7 +3,7 @@ package com.restaurant.auth_service.service;
 import com.restaurant.auth_service.model.GalleryImage;
 import com.restaurant.auth_service.model.MenuItem;
 import com.restaurant.auth_service.repository.GalleryRepository;
-import com.restaurant.auth_service.repository.MenuItemRepository;
+import com.restaurant.auth_service.repository.MenuRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -15,17 +15,18 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class GalleryService {
 
     private final GalleryRepository galleryRepository;
-    private final MenuItemRepository menuItemRepository;
+    private final MenuRepository menuRepository;
     private final String UPLOAD_DIR = "uploads/gallery/";
 
-    public GalleryService(GalleryRepository galleryRepository, MenuItemRepository menuItemRepository) {
+    public GalleryService(GalleryRepository galleryRepository, MenuRepository menuRepository) {
         this.galleryRepository = galleryRepository;
-        this.menuItemRepository = menuItemRepository;
+        this.menuRepository = menuRepository;
     }
 
     public List<GalleryImage> getImages(String restaurantId, String search) {
@@ -68,7 +69,12 @@ public class GalleryService {
         GalleryImage image = galleryRepository.findById(imageId)
                 .orElseThrow(() -> new RuntimeException("Gallery image not found"));
 
-        List<MenuItem> menuItems = menuItemRepository.findAllById(menuItemIds);
+        // Convert string IDs from frontend to Long to match MenuRepository
+        List<Long> longIds = menuItemIds.stream()
+                .map(Long::valueOf)
+                .collect(Collectors.toList());
+
+        List<MenuItem> menuItems = menuRepository.findAllById(longIds);
         image.getMappedMenuItems().clear();
         image.getMappedMenuItems().addAll(menuItems);
 
