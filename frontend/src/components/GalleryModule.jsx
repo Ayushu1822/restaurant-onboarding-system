@@ -13,7 +13,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
   const [uploadFiles, setUploadFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
 
-  // Menu mapping state (Safely initialized as arrays)
+  // Menu mapping state
   const [menuItems, setMenuItems] = useState([]);
   const [menuSearch, setMenuSearch] = useState('');
   const [selectedMenuItemIds, setSelectedMenuItemIds] = useState([]);
@@ -24,7 +24,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
       const data = await res.json();
       setImages(Array.isArray(data) ? data : []);
     } catch (err) {
-      // Mock fallback data matching screenshots if backend is offline
+      console.error('Failed to fetch gallery images:', err);
       setImages([
         { id: '1', fileName: 'Linga_Foods.png', fileUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300', fileType: 'image/png', fileSize: '1.0 MB', uploadedAt: '2026-06-27' },
         { id: '2', fileName: 'Andhra Meals.jpg', fileUrl: 'https://images.unsplash.com/photo-1610192244261-3f33de3b55e4?w=300', fileType: 'image/jpeg', fileSize: '45 KB', uploadedAt: '2026-06-28' },
@@ -39,12 +39,12 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/menu/items?restaurantId=${restaurantId}`);
       const data = await res.json();
-      // Ensure data is always an array to prevent .filter crash
       setMenuItems(Array.isArray(data) ? data : (Array.isArray(data?.content) ? data.content : []));
     } catch (err) {
+      console.error('Failed to fetch menu items:', err);
       setMenuItems([
         { id: '1', name: 'green tea' },
-        { id: '2', name: 'Ginger tea with milkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk' },
+        { id: '2', name: 'Ginger tea with milk' },
         { id: '3', name: 'crossiant' },
         { id: '4', name: 'pineapple cake' },
         { id: '5', name: 'Avakkaya rice' },
@@ -134,6 +134,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
       alert('Images successfully mapped to menu items!');
     } catch (err) {
       console.error('Mapping failed', err);
+      alert('Error mapping images to menu items.');
     }
   };
 
@@ -187,6 +188,8 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
       <div style={styles.grid}>
         {safeImages.map((img) => {
           const isSelected = safeSelectedIds.includes(img.id);
+          const rawUrl = img.fileUrl || '';
+          const imageUrl = rawUrl.startsWith('http') ? rawUrl : `${API_BASE_URL}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
           return (
             <div
               key={img.id}
@@ -198,7 +201,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
               onClick={() => toggleSelectImage(img.id)}
             >
               <div style={styles.cardImageWrapper}>
-                <img src={img.fileUrl} alt={img.fileName} style={styles.cardImg} />
+                <img src={imageUrl} alt={img.fileName || 'Gallery Image'} style={styles.cardImg} onError={(e) => { e.target.src = 'https://placehold.co/300x180?text=Image+Not+Found'; }} />
                 <input
                   type="checkbox"
                   style={styles.cardCheckbox}
@@ -288,7 +291,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
             </div>
 
             <div style={styles.previewCard}>
-              <img src={activeImage.fileUrl} alt="preview" style={styles.previewImg} />
+              <img src={activeImage.fileUrl?.startsWith('http') ? activeImage.fileUrl : `${API_BASE_URL}${activeImage.fileUrl || ''}`} alt="preview" style={styles.previewImg} />
               <div>
                 <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{activeImage.fileName}</strong>
                 <span style={{ fontSize: '12px', color: '#6b7280' }}>
