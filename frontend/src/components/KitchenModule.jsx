@@ -100,13 +100,15 @@ export default function KitchenModule() {
         <div style={styles.kanbanGrid}>
           {activeOrders.map((o, idx) => {
             const orderId = o.id || o.orderId || o.displayId;
-            const displayId = o.displayId || `#ORD-${idx+1}`;
-            const customerName = o.customer || o.customerName || 'Walk-In Guest';
-            const orderType = o.type || o.orderType || 'Dine-In';
+            const displayId = o.displayId || o.display_id || `#ORD-${idx+1}`;
+            const customerName = o.customer || o.customerName || o.customer_name || 'Walk-In Guest';
+            const orderType = o.type || o.orderType || o.order_type || 'Dine-In';
             const channel = o.channel || 'COUNTER';
             const status = o.status || 'New';
-            const specialNote = o.customerRequest || o.specialNote || o.instruction || '';
-            const items = o.items || [];
+            
+            // Robust check for notes across all possible property names
+            const specialNote = o.customerRequest || o.customer_request || o.notes || o.specialNote || o.instruction || '';
+            const items = o.items || o.orderItems || o.order_items || [];
 
             // Universal condition: Show 'Mark Ready' for any order unless it's already 'Ready' or 'Completed'
             const currentStatus = status.toLowerCase();
@@ -124,7 +126,7 @@ export default function KitchenModule() {
 
                 <div style={styles.customerInfoBox}>
                   <div style={{fontWeight: '900', color: '#0f172a', fontSize: '14px'}}>{customerName}</div>
-                  <div style={{fontSize: '11px', color: '#64748b', fontWeight: '700'}}>{o.phone || o.customerPhone || ''}</div>
+                  <div style={{fontSize: '11px', color: '#64748b', fontWeight: '700'}}>{o.phone || o.customerPhone || o.customer_phone || ''}</div>
                 </div>
 
                 {specialNote && (
@@ -134,15 +136,20 @@ export default function KitchenModule() {
                 )}
 
                 <div style={styles.itemsList}>
-                  {items.map((it, iIdx) => (
-                    <div key={iIdx} style={styles.itemRow}>
-                      <span style={styles.itemQty}>{it.quantity || it.qty || 1}x</span>
-                      <span style={styles.itemName}>{it.itemName || it.name}</span>
-                      {it.itemDescription && (
-                        <span style={styles.itemDesc}>({it.itemDescription})</span>
-                      )}
-                    </div>
-                  ))}
+                  {items.map((it, iIdx) => {
+                    const itemName = it.itemName || it.item_name || it.name || 'Food Item';
+                    const itemQty = it.quantity || it.qty || 1;
+                    const itemDesc = it.itemDescription || it.item_description || it.description || '';
+                    return (
+                      <div key={iIdx} style={styles.itemRow}>
+                        <span style={styles.itemQty}>{itemQty}x</span>
+                        <span style={styles.itemName}>{itemName}</span>
+                        {itemDesc && (
+                          <span style={styles.itemDesc}>({itemDesc})</span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div style={styles.cardFooter}>
