@@ -36,7 +36,6 @@ public class OrderController {
 
     @PostMapping
     public Order createOrder(@RequestBody Order newOrder) {
-        // FIX: Ensure new orders start with 'New' status so they appear in online orders queue correctly
         if (newOrder.getStatus() == null || newOrder.getStatus().trim().isEmpty()) {
             newOrder.setStatus("New");
         }
@@ -57,7 +56,7 @@ public class OrderController {
         return savedOrder;
     }
 
-    // 🔄 UNIVERSAL STATUS UPDATE (Supports PUT/PATCH, /{id}/status, query-params & request body)
+    // 🔄 UNIVERSAL STATUS & NOTE UPDATE
     @RequestMapping(value = {"/{id}/status", "/{id}"}, method = {RequestMethod.PUT, RequestMethod.PATCH})
     public ResponseEntity<Order> updateOrderStatus(
             @PathVariable String id, 
@@ -72,19 +71,33 @@ public class OrderController {
             Optional<Order> orderOpt = findOrderById(id);
             if (orderOpt.isPresent()) {
                 Order order = orderOpt.get();
+                
                 if (targetStatus != null && !targetStatus.trim().isEmpty()) {
                     order.setStatus(targetStatus);
                 }
-                if (body != null && body.containsKey("customerName")) {
-                    order.setCustomerName((String) body.get("customerName"));
+                
+                if (body != null) {
+                    if (body.containsKey("customerName")) {
+                        order.setCustomerName((String) body.get("customerName"));
+                    }
+                    
+                    // ✅ FIXED: Handle customerRequest / notes updates across all modules
+                    if (body.containsKey("customerRequest")) {
+                        order.setCustomerRequest((String) body.get("customerRequest"));
+                    } else if (body.containsKey("customer_request")) {
+                        order.setCustomerRequest((String) body.get("customer_request"));
+                    } else if (body.containsKey("notes")) {
+                        order.setCustomerRequest((String) body.get("notes"));
+                    }
                 }
+
                 Order saved = orderRepository.save(order);
-                System.out.println("🔄 ORDER STATUS UPDATED — ID: " + id + " | New Status: " + saved.getStatus());
+                System.out.println("🔄 ORDER UPDATED — ID: " + id + " | Status: " + saved.getStatus());
                 return ResponseEntity.ok(saved);
             }
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            System.err.println("❌ Error updating order status: " + e.getMessage());
+            System.err.println("❌ Error updating order: " + e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }

@@ -29,6 +29,9 @@ public class Order {
     @Column(name = "delivery_address")
     private String deliveryAddress;
 
+    @Column(name = "customer_request")
+    private String customerRequest; // ✅ Added field for order notes / instructions
+
     private String channel; // 'ZOMATO', 'SWIGGY', 'WHATSAPP', 'COUNTER'
 
     @Column(name = "order_type")
@@ -87,6 +90,9 @@ public class Order {
 
     public String getDeliveryAddress() { return deliveryAddress; }
     public void setDeliveryAddress(String deliveryAddress) { this.deliveryAddress = deliveryAddress; }
+
+    public String getCustomerRequest() { return customerRequest; }
+    public void setCustomerRequest(String customerRequest) { this.customerRequest = customerRequest; }
 
     public String getChannel() { return channel; }
     public void setChannel(String channel) { this.channel = channel; }
