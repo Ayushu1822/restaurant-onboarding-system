@@ -1,94 +1,664 @@
-import React, { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
-export default function GalleryModule() {
-  const [images, setImages] = useState([
-    { id: 1, title: 'Delicious Butter Chicken', category: 'Main Course', url: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=400&q=80' },
-    { id: 2, title: 'Crispy Paneer Tikka', category: 'Starters', url: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&w=400&q=80' },
-    { id: 3, title: 'Aromatic Veg Biryani', category: 'Rice', url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=400&q=80' }
-  ]);
+const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
-  const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadCategory, setUploadCategory] = useState('Main Course');
-  const [uploadUrl, setUploadUrl] = useState('');
+export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-f67a93b8045b' }) {
+  const [images, setImages] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedImageIds, setSelectedImageIds] = useState([]);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+  
+  // Upload modal state
+  const [uploadFiles, setUploadFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
-  const handleAddImage = (e) => {
-    e.preventDefault();
-    if (!uploadTitle || !uploadUrl) return alert('Please enter a title and image URL.');
-    
-    setImages([...images, { id: Date.now(), title: uploadTitle, category: uploadCategory, url: uploadUrl }]);
-    setUploadTitle('');
-    setUploadUrl('');
-    alert('Image added to restaurant gallery!');
+  // Menu mapping state
+  const [menuItems, setMenuItems] = useState([]);
+  const [menuSearch, setMenuSearch] = useState('');
+  const [selectedMenuItemIds, setSelectedMenuItemIds] = useState([]);
+
+  const fetchImages = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/gallery?restaurantId=${restaurantId}&search=${searchQuery}`);
+      const data = await res.json();
+      setImages(data);
+    } catch (err) {
+      // Mock fallback data matching your screenshots if backend is offline
+      setImages([
+        { id: '1', fileName: 'Linga_Foods.png', fileUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300', fileType: 'image/png', fileSize: '1.0 MB', uploadedAt: '2026-06-27' },
+        { id: '2', fileName: 'Andhra Meals.jpg', fileUrl: 'https://images.unsplash.com/photo-1610192244261-3f33de3b55e4?w=300', fileType: 'image/jpeg', fileSize: '45 KB', uploadedAt: '2026-06-28' },
+        { id: '3', fileName: 'Gobi_Fried_Rice.jpeg', fileUrl: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=300', fileType: 'image/jpeg', fileSize: '45 KB', uploadedAt: '2026-06-28' },
+        { id: '4', fileName: 'chicken sushi.png', fileUrl: 'https://images.unsplash.com/photo-1611143669185-af224c5e3252?w=300', fileType: 'image/png', fileSize: '21 KB', uploadedAt: '2026-09-05' },
+        { id: '5', fileName: 'Chapathi.jpg', fileUrl: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=300', fileType: 'image/jpeg', fileSize: '21 KB', uploadedAt: '2026-09-05' }
+      ]);
+    }
+  }, [restaurantId, searchQuery]);
+
+  const fetchMenuItems = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/menu/items?restaurantId=${restaurantId}`);
+      const data = await res.json();
+      setMenuItems(data);
+    } catch (err) {
+      setMenuItems([
+        { id: '1', name: 'green tea' },
+        { id: '2', name: 'Ginger tea with milkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk' },
+        { id: '3', name: 'crossiant' },
+        { id: '4', name: 'pineapple cake' },
+        { id: '5', name: 'Avakkaya rice' },
+        { id: '6', name: 'gobi rice' }
+      ]);
+    }
+  }, [restaurantId]);
+
+  useEffect(() => {
+    fetchImages();
+    fetchMenuItems();
+  }, [fetchImages, fetchMenuItems]);
+
+  const toggleSelectImage = (id) => {
+    setSelectedImageIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
   };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedImageIds(images.map(img => img.id));
+    } else {
+      setSelectedImageIds([]);
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (!window.confirm(`Delete ${selectedImageIds.length} selected image(s)?`)) return;
+    try {
+      for (const id of selectedImageIds) {
+        await fetch(`${API_BASE_URL}/api/v1/gallery/${id}`, { method: 'DELETE' });
+      }
+      setSelectedImageIds([]);
+      fetchImages();
+    } catch (err) {
+      console.error('Failed to delete images', err);
+    }
+  };
+
+  const handleUploadSubmit = async (e) => {
+    e.preventDefault();
+    if (uploadFiles.length === 0) return;
+    setUploading(true);
+    const formData = new FormData();
+    for (let file of uploadFiles) {
+      formData.append('files', file);
+    }
+    formData.append('restaurantId', restaurantId);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/gallery/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      if (res.ok) {
+        setIsUploadModalOpen(false);
+        setUploadFiles([]);
+        fetchImages();
+      }
+    } catch (err) {
+      console.error('Upload failed', err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleMapSubmit = async () => {
+    if (selectedImageIds.length === 0) return;
+    try {
+      await fetch(`${API_BASE_URL}/api/v1/gallery/map-to-menu`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageId: selectedImageIds[0],
+          menuItemIds: selectedMenuItemIds
+        })
+      });
+      setIsMapModalOpen(false);
+      setSelectedImageIds([]);
+      alert('Images successfully mapped to menu items!');
+    } catch (err) {
+      console.error('Mapping failed', err);
+    }
+  };
+
+  const activeImage = images.find(img => img.id === selectedImageIds[0]) || images[0] || { fileName: 'chicken sushi.png', fileUrl: '' };
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.title}>Restaurant Gallery</h2>
-      <p style={styles.subtitle}>Manage promotional food photos, dish imagery, and restaurant ambiance pictures.</p>
-
-      {/* Upload Form Box */}
-      <form onSubmit={handleAddImage} style={styles.uploadCard}>
-        <h3 style={styles.cardTitle}>➕ Add New Photo</h3>
-        <div style={styles.formRow}>
-          <input 
-            style={styles.input}
-            placeholder="Photo Title (e.g. Special Thali)"
-            value={uploadTitle}
-            onChange={e => setUploadTitle(e.target.value)}
-            required
-          />
-          <select 
-            style={styles.select}
-            value={uploadCategory}
-            onChange={e => setUploadCategory(e.target.value)}
-          >
-            <option value="Main Course">Main Course</option>
-            <option value="Starters">Starters</option>
-            <option value="Rice">Rice & Breads</option>
-            <option value="Beverages">Beverages</option>
-            <option value="Ambiance">Ambiance</option>
-          </select>
-          <input 
-            style={styles.input}
-            placeholder="Image URL (e.g. https://...)"
-            value={uploadUrl}
-            onChange={e => setUploadUrl(e.target.value)}
-            required
-          />
-          <button type="submit" style={styles.uploadBtn}>Upload Photo</button>
+      {/* Header */}
+      <div style={styles.header}>
+        <div style={styles.titleArea}>
+          <h2 style={styles.title}>Gallery</h2>
+          <span style={styles.badge}>{images.length} images</span>
         </div>
-      </form>
+        <button style={styles.uploadBtn} onClick={() => setIsUploadModalOpen(true)}>
+          ↑ Upload Images
+        </button>
+      </div>
 
-      {/* Gallery Grid */}
+      {/* Search & Toolbar */}
+      <div style={styles.toolbar}>
+        <div style={styles.searchBox}>
+          <span>🔍</span>
+          <input
+            type="text"
+            placeholder="Search images by file name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={styles.searchInput}
+          />
+        </div>
+        <div style={styles.toolbarRight}>
+          <span style={styles.libraryInfo}>{images.length} images in your library</span>
+          <label style={styles.selectAllLabel}>
+            <input
+              type="checkbox"
+              onChange={handleSelectAll}
+              checked={selectedImageIds.length === images.length && images.length > 0}
+              style={styles.checkboxAccent}
+            />
+            Select all
+          </label>
+        </div>
+      </div>
+
+      {/* Image Grid */}
       <div style={styles.grid}>
-        {images.map(img => (
-          <div key={img.id} style={styles.imageCard}>
-            <img src={img.url} alt={img.title} style={styles.imgThumb} />
-            <div style={styles.imgInfo}>
-              <div style={styles.imgTitle}>{img.title}</div>
-              <span style={styles.badge}>{img.category}</span>
+        {images.map((img) => {
+          const isSelected = selectedImageIds.includes(img.id);
+          return (
+            <div
+              key={img.id}
+              style={{
+                ...styles.card,
+                borderColor: isSelected ? '#05c98a' : '#e5e7eb',
+                boxShadow: isSelected ? '0 0 0 2px rgba(5, 201, 138, 0.2)' : 'none'
+              }}
+              onClick={() => toggleSelectImage(img.id)}
+            >
+              <div style={styles.cardImageWrapper}>
+                <img src={img.fileUrl} alt={img.fileName} style={styles.cardImg} />
+                <input
+                  type="checkbox"
+                  style={styles.cardCheckbox}
+                  checked={isSelected}
+                  onChange={() => toggleSelectImage(img.id)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+              <div style={styles.cardFooter}>
+                <strong style={styles.cardTitle}>{img.fileName}</strong>
+                <small style={styles.cardSubtitle}>{img.fileType?.split('/')[1]?.toUpperCase() || 'JPEG'} · {img.fileSize || '45 KB'}</small>
+                <span style={styles.cardDate}>{img.uploadedAt ? new Date(img.uploadedAt).toLocaleDateString() : '28 Jun 2026'}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Floating Action Bar */}
+      {selectedImageIds.length > 0 && (
+        <div style={styles.floatingBar}>
+          <span style={styles.floatingText}>{selectedImageIds.length} image selected</span>
+          <div style={styles.floatingButtons}>
+            <button style={styles.clearBtn} onClick={() => setSelectedImageIds([])}>✕ Clear</button>
+            <button style={styles.mapBtn} onClick={() => setIsMapModalOpen(true)}>🔗 Map to Menu</button>
+            <button style={styles.deleteBtn} onClick={handleDeleteSelected}>🗑️ Delete</button>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Modal */}
+      {isUploadModalOpen && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalHeader}>
+              <div>
+                <h3 style={styles.modalTitle}>Upload images</h3>
+                <p style={styles.modalSubtext}>PNG or JPEG, up to 5MB each and 10 at a time. Images must be square so they fill menu tiles cleanly.</p>
+              </div>
+              <button style={styles.closeBtn} onClick={() => setIsUploadModalOpen(false)}>✕</button>
+            </div>
+            
+            <div style={styles.dropZone}>
+              <input
+                type="file"
+                multiple
+                accept="image/png, image/jpeg"
+                onChange={(e) => setUploadFiles(Array.from(e.target.files))}
+                id="fileInputHidden"
+                style={{ display: 'none' }}
+              />
+              <label htmlFor="fileInputHidden" style={styles.dropLabel}>
+                <div style={{ fontSize: '24px' }}>⬆</div>
+                <strong>Drop images here, or click to browse</strong>
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>{uploadFiles.length}/10 selected</span>
+              </label>
+            </div>
+
+            <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '24px' }}>
+              {uploadFiles.length === 0 ? 'No images selected yet.' : `${uploadFiles.length} file(s) ready for upload.`}
+            </div>
+
+            <div style={styles.modalFooter}>
+              <button style={styles.secondaryBtn} onClick={() => setIsUploadModalOpen(false)}>Cancel</button>
+              <button
+                style={{ ...styles.primaryBtn, opacity: uploadFiles.length === 0 ? 0.5 : 1 }}
+                onClick={handleUploadSubmit}
+                disabled={uploading || uploadFiles.length === 0}
+              >
+                {uploading ? 'Uploading...' : 'Upload'}
+              </button>
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+
+      {/* Map to Menu Modal */}
+      {isMapModalOpen && (
+        <div style={styles.modalOverlay}>
+          <div style={{ ...styles.modalContent, width: '640px' }}>
+            <div style={styles.modalHeader}>
+              <div>
+                <h3 style={styles.modalTitle}>Map images to menu items</h3>
+                <p style={styles.modalSubtext}>Pick an image, then choose the menu items it should appear on.</p>
+              </div>
+              <button style={styles.closeBtn} onClick={() => setIsMapModalOpen(false)}>✕</button>
+            </div>
+
+            <div style={styles.previewCard}>
+              <img src={activeImage.fileUrl} alt="preview" style={styles.previewImg} />
+              <div>
+                <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{activeImage.fileName}</strong>
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                  {selectedMenuItemIds.length === 0 ? 'No menu items selected' : `${selectedMenuItemIds.length} menu items selected`}
+                </span>
+              </div>
+            </div>
+
+            <div style={styles.menuSearchBox}>
+              <span>🔍</span>
+              <input
+                type="text"
+                placeholder="Search menu items..."
+                value={menuSearch}
+                onChange={(e) => setMenuSearch(e.target.value)}
+                style={styles.searchInput}
+              />
+            </div>
+
+            <div style={styles.checklistContainer}>
+              {menuItems
+                .filter(item => item.name.toLowerCase().includes(menuSearch.toLowerCase()))
+                .map(item => {
+                  const isChecked = selectedMenuItemIds.includes(item.id);
+                  return (
+                    <label
+                      key={item.id}
+                      style={{
+                        ...styles.checkRow,
+                        background: isChecked ? '#fdf2f2' : 'transparent'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          setSelectedMenuItemIds(prev =>
+                            prev.includes(item.id) ? prev.filter(id => id !== item.id) : [...prev, item.id]
+                          );
+                        }}
+                        style={{ width: '16px', height: 16, accentColor: '#ff5a5f' }}
+                      />
+                      <span style={{ fontSize: '13px', color: '#1f2937' }}>{item.name}</span>
+                    </label>
+                  );
+                })}
+            </div>
+
+            <div style={styles.modalFooter}>
+              <span style={{ fontSize: '13px', color: '#6b7280' }}>
+                {selectedMenuItemIds.length === 0 ? 'Nothing to map yet' : `${selectedMenuItemIds.length} mapped`}
+              </span>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button style={styles.secondaryBtn} onClick={() => setIsMapModalOpen(false)}>Cancel</button>
+                <button style={styles.primaryBtn} onClick={handleMapSubmit}>Map Images</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
+// Inline Styles Object
 const styles = {
-  container: { padding: '24px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', overflowY: 'auto' },
-  title: { fontSize: '22px', fontWeight: '800', color: '#0f172a', margin: '0 0 4px 0' },
-  subtitle: { color: '#64748b', fontSize: '13px', marginBottom: '24px' },
-  uploadCard: { background: '#fff', padding: '20px', borderRadius: '14px', border: '1.5px solid #e2e8f0', marginBottom: '24px', maxWidth: '900px', textAlign: 'left' },
-  cardTitle: { fontSize: '15px', fontWeight: '700', color: '#0f172a', marginBottom: '12px' },
-  formRow: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
-  input: { flex: 1, minWidth: '200px', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' },
-  select: { padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', fontSize: '13px' },
-  uploadBtn: { background: '#047857', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px', maxWidth: '1000px' },
-  imageCard: { background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' },
-  imgThumb: { width: '100%', height: '160px', objectFit: 'cover' },
-  imgInfo: { padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  imgTitle: { fontSize: '14px', fontWeight: '700', color: '#0f172a' },
-  badge: { background: '#ecfdf5', color: '#047857', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }
+  container: {
+    padding: '24px',
+    background: '#f8faf9',
+    minHeight: '100vh',
+    fontFamily: 'Inter, sans-serif',
+    boxSizing: 'border-box'
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '20px'
+  },
+  titleArea: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px'
+  },
+  title: {
+    margin: 0,
+    fontSize: '24px',
+    fontWeight: 700,
+    color: '#111827'
+  },
+  badge: {
+    background: '#05c98a',
+    color: '#003d2b',
+    padding: '3px 10px',
+    borderRadius: '12px',
+    fontSize: '12px',
+    fontWeight: 750
+  },
+  uploadBtn: {
+    background: '#ff5a5f',
+    color: 'white',
+    border: 'none',
+    padding: '10px 18px',
+    borderRadius: '8px',
+    fontWeight: 650,
+    cursor: 'pointer'
+  },
+  toolbar: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    background: 'white',
+    padding: '14px 20px',
+    border: '1px solid #e5e7eb',
+    borderRadius: '10px',
+    marginBottom: '20px'
+  },
+  searchBox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    width: '450px',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    padding: '8px 12px',
+    background: '#fff'
+  },
+  searchInput: {
+    border: 'none',
+    outline: 'none',
+    width: '100%',
+    fontSize: '13px'
+  },
+  toolbarRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '20px',
+    color: '#6b7280',
+    fontSize: '13px'
+  },
+  libraryInfo: {
+    color: '#6b7280'
+  },
+  selectAllLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    cursor: 'pointer',
+    fontWeight: 500
+  },
+  checkboxAccent: {
+    accentColor: '#05c98a'
+  },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+    gap: '20px',
+    paddingBottom: '80px'
+  },
+  card: {
+    background: 'white',
+    border: '1px solid #e5e7eb',
+    borderRadius: '12px',
+    overflow: 'hidden',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    position: 'relative'
+  },
+  cardImageWrapper: {
+    position: 'relative',
+    height: '180px',
+    background: '#f3f4f6'
+  },
+  cardImg: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover'
+  },
+  cardCheckbox: {
+    position: 'absolute',
+    top: '10px',
+    left: '10px',
+    width: '18px',
+    height: '18px',
+    accentColor: '#05c98a',
+    cursor: 'pointer'
+  },
+  cardFooter: {
+    padding: '12px'
+  },
+  cardTitle: {
+    display: 'block',
+    fontSize: '13px',
+    color: '#1f2937',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis'
+  },
+  cardSubtitle: {
+    display: 'block',
+    fontSize: '11px',
+    color: '#9ca3af',
+    marginTop: '2px'
+  },
+  cardDate: {
+    display: 'block',
+    fontSize: '11px',
+    color: '#9ca3af',
+    marginTop: '2px'
+  },
+  floatingBar: {
+    position: 'fixed',
+    bottom: '24px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: 'white',
+    border: '1px solid #e5e7eb',
+    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+    padding: '12px 24px',
+    borderRadius: '12px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '30px',
+    zIndex: 100
+  },
+  floatingText: {
+    fontWeight: 600,
+    color: '#111827',
+    fontSize: '14px'
+  },
+  floatingButtons: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px'
+  },
+  clearBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#4b5563',
+    cursor: 'pointer',
+    fontWeight: 500
+  },
+  mapBtn: {
+    background: 'white',
+    border: '1px solid #d1d5db',
+    color: '#1f2937',
+    padding: '8px 14px',
+    borderRadius: '8px',
+    fontWeight: 600,
+    cursor: 'pointer'
+  },
+  deleteBtn: {
+    background: '#ff5a5f',
+    border: 'none',
+    color: 'white',
+    padding: '8px 14px',
+    borderRadius: '8px',
+    fontWeight: 600,
+    cursor: 'pointer'
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    background: 'rgba(0, 0, 0, 0.5)',
+    display: 'grid',
+    placeItems: 'center',
+    zIndex: 1000
+  },
+  modalContent: {
+    background: 'white',
+    width: 'min(600px, 92%)',
+    borderRadius: '16px',
+    padding: '28px',
+    boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+    boxSizing: 'border-box'
+  },
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: '16px'
+  },
+  modalTitle: {
+    margin: '0 0 4px 0',
+    fontSize: '18px',
+    color: '#111827'
+  },
+  modalSubtext: {
+    fontSize: '13px',
+    color: '#6b7280',
+    margin: 0
+  },
+  closeBtn: {
+    background: 'none',
+    border: 'none',
+    fontSize: '18px',
+    cursor: 'pointer',
+    color: '#6b7280'
+  },
+  dropZone: {
+    border: '2px dashed #d1d5db',
+    borderRadius: '12px',
+    padding: '40px 20px',
+    textAlign: 'center',
+    background: '#fafafa',
+    cursor: 'pointer',
+    marginBottom: '16px'
+  },
+  dropLabel: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '8px',
+    cursor: 'pointer',
+    color: '#4b5563',
+    fontSize: '13px'
+  },
+  modalFooter: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTop: '1px solid #e5e7eb',
+    paddingTop: '16px'
+  },
+  secondaryBtn: {
+    background: 'white',
+    border: '1px solid #d1d5db',
+    padding: '8px 16px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontWeight: 600
+  },
+  primaryBtn: {
+    background: '#ff5a5f',
+    color: 'white',
+    border: 'none',
+    padding: '8px 20px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontWeight: 600
+  },
+  previewCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '14px',
+    border: '1px solid #e5e7eb',
+    padding: '12px',
+    borderRadius: '10px',
+    marginBottom: '16px',
+    background: '#f9fafb'
+  },
+  previewImg: {
+    width: '50px',
+    height: '50px',
+    borderRadius: '6px',
+    objectFit: 'cover'
+  },
+  menuSearchBox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    border: '1px solid #ff5a5f',
+    borderRadius: '8px',
+    padding: '8px 12px',
+    marginBottom: '16px'
+  },
+  checklistContainer: {
+    maxHeight: '240px',
+    overflowY: 'auto',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    marginBottom: '16px'
+  },
+  checkRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '12px 16px',
+    borderBottom: '1px solid #f3f4f6',
+    cursor: 'pointer'
+  }
 };
