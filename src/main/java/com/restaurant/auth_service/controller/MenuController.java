@@ -16,7 +16,7 @@ public class MenuController {
     @Autowired
     private MenuRepository menuRepository;
 
-    @GetMapping
+    @GetMapping({"", "/items"})
     public List<MenuItem> getAllMenuItems() {
         return menuRepository.findAll();
     }
