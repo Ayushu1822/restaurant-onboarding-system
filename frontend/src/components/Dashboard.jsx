@@ -350,163 +350,149 @@ export default function Dashboard({ user, onLogout }) {
   return (
     <div style={styles.container}>
       <style>{`
-        .dashboardSidebar { position: relative; transition: width .18s ease; background-color: #001e16 !important; }
-        .sidebarToggle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 34px; height: 34px; margin: 8px 0 6px 16px; padding: 0; border: 0; border-radius: 7px; background: #0b3328; cursor: pointer; flex: 0 0 auto; }
+        .dashboardSidebar { position: relative; transition: width .18s ease; background-color: #001e16 !important; border-right: 2px solid #0b3328; }
+        .sidebarToggle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 36px; height: 36px; margin: 10px 0 8px 16px; padding: 0; border: 2px solid #164535; border-radius: 8px; background: #0b3328; cursor: pointer; flex: 0 0 auto; }
         .dashboardSidebar > .sidebarToggle { align-self: flex-start; margin-left: 16px; margin-right: auto; }
-        .sidebarToggle:hover { background: #124734; }
-        .sidebarToggle span { display: block; width: 15px; height: 2px; border-radius: 2px; background: #fff; }
-        .sidebarNavLinks { display: flex; flex-direction: column; justify-content: center; align-items: stretch; gap: 3px; }
+        .sidebarToggle:hover { background: #124734; border-color: #22c55e; }
+        .sidebarToggle span { display: block; width: 16px; height: 2.5px; border-radius: 2px; background: #fff; }
+        .sidebarNavLinks { display: flex; flex-direction: column; justify-content: center; align-items: stretch; gap: 4px; }
         .dashboardSidebarExpanded .sidebarNavLinks { align-items: stretch; justify-content: center; }
         .dashboardSidebarExpanded .brandBox { display: flex !important; }
-        .navItem { position: relative; display: flex; align-items: center; justify-content: center !important; min-height: 42px; padding: 8px 0 !important; }
-        .dashboardSidebarExpanded .navItem { justify-content: flex-start !important; padding: 8px 12px !important; color: #d6e4dd !important; }
+        .navItem { position: relative; display: flex; align-items: center; justify-content: center !important; min-height: 46px; padding: 10px 0 !important; cursor: pointer; border: 2px solid transparent; border-radius: 8px; margin: 3px 6px; }
+        .dashboardSidebarExpanded .navItem { justify-content: flex-start !important; padding: 10px 14px !important; color: #d6e4dd !important; }
         .dashboardSidebarExpanded .navItem > span:first-child { width: auto !important; flex: 1; justify-content: flex-start; }
-        .dashboardSidebarExpanded .navItem > span:last-child { position: static; margin: 0 0 0 auto; font-size: 10px; }
-        .dashboardSidebarExpanded .navIcon { width: auto !important; justify-content: flex-start !important; gap: 11px !important; }
+        .dashboardSidebarExpanded .navItem > span:last-child { position: static; margin: 0 0 0 auto; font-size: 11px; }
+        .dashboardSidebarExpanded .navIcon { width: auto !important; justify-content: flex-start !important; gap: 12px !important; }
         .navIcon { display: flex; width: 100%; align-items: center; justify-content: center; gap: 0; }
-        .navGlyph { display: block; flex: 0 0 22px; width: 22px; height: 22px; color: #91aaa0; }
+        .navGlyph { display: block; flex: 0 0 24px; width: 24px; height: 24px; color: #91aaa0; }
         .navItemActive .navGlyph { color: #e8fff5; }
-        .navLabel { display: none; white-space: nowrap; line-height: 20px; font-size: 12px; }
+        .navLabel { display: none; white-space: nowrap; line-height: 22px; font-size: 13px; font-weight: 700; }
         .dashboardSidebarExpanded .navLabel { display: inline; }
-        .navBadge { position: absolute; top: 1px; right: 1px; margin: 0 !important; min-width: 15px; text-align: center; }
+        .navBadge { position: absolute; top: 2px; right: 2px; margin: 0 !important; min-width: 18px; text-align: center; }
         .dashboardSidebarExpanded .navBadge { position: static; margin-left: auto !important; }
-        .topBrand { display: flex; align-items: center; gap: 8px; min-width: 190px; text-align: left; color: #edf5f1; }
-        .topBrandMark { color: #f04f50; font-size: 25px; }
-        .topBrand strong { display: block; font-size: 14px; line-height: 1.2; letter-spacing: .02em; }
-        .topBrand small, .profileName small { display: block; color: #91aaa0; font-size: 9px; line-height: 1.4; }
-        .headerActions { display: flex; align-items: center; gap: 9px; }
-        .alertButton, .profileButton, .detailPrintButton { height: 34px; border: 1px solid #164535; border-radius: 8px; background: #052d22; color: #d6e4dd; cursor: pointer; }
-        .alertButton { padding: 0 11px; font-size: 11px; font-weight: 600; }
-        .alertButton span { margin-right: 5px; }
-        .profileButton { display: flex; align-items: center; gap: 8px; padding: 3px 9px 3px 4px; }
-        .profileInitials { display: grid; place-items: center; background: #0b4635; color: #e8fff5; border-radius: 50%; width: 26px; height: 26px; font-size: 10px; font-weight: 700; }
-        .profileName { min-width: 62px; text-align: left; font-size: 10px; }
-        .profileName strong { display: block; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .headerActions > button:last-child:not(.profileButton):not(.alertButton) { border: 0; background: transparent; color: #d6e4dd; font-size: 11px; cursor: pointer; }
-        .ordersHeading { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px 10px; border-bottom: 1px solid #ececec; }
-        .ordersHeading h1 { margin: 0; font-size: 18px; line-height: 1.3; font-weight: 650; letter-spacing: -.02em; color: #25272b; }
-        .availability { display: flex; align-items: center; gap: 8px; color: #8a8e95; font-size: 10px; }
-        .availability b { margin-left: 4px; padding: 2px 5px; border-radius: 4px; color: #0b9d70; background: #e9f7f2; font-weight: 700; }
-        .availability .pausedPill { color: #e54c50; background: #fff0f0; }
-        .orderToolbar { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-shrink: 0; }
-        .statusTabs, .orderTools { display: flex; align-items: center; gap: 6px; }
-        .statusTabs { min-width: 0; }
+        .topBrand { display: flex; align-items: center; gap: 10px; min-width: 200px; text-align: left; color: #edf5f1; }
+        .topBrandMark { color: #f04f50; font-size: 26px; }
+        .topBrand strong { display: block; font-size: 15px; line-height: 1.2; letter-spacing: .02em; }
+        .topBrand small, .profileName small { display: block; color: #91aaa0; font-size: 10px; line-height: 1.4; }
+        .headerActions { display: flex; align-items: center; gap: 10px; }
+        .alertButton, .profileButton, .detailPrintButton { height: 38px; border: 2px solid #164535; border-radius: 10px; background: #052d22; color: #d6e4dd; cursor: pointer; }
+        .alertButton { padding: 0 13px; font-size: 12px; font-weight: 700; }
+        .alertButton span { margin-right: 6px; }
+        .profileButton { display: flex; align-items: center; gap: 10px; padding: 4px 11px 4px 6px; }
+        .profileInitials { display: grid; place-items: center; background: #0b4635; color: #e8fff5; border-radius: 50%; width: 28px; height: 28px; font-size: 11px; font-weight: 800; }
+        .profileName { min-width: 68px; text-align: left; font-size: 11px; }
+        .profileName strong { display: block; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
+        .headerActions > button:last-child:not(.profileButton):not(.alertButton) { border: 2px solid #fca5a5; background: #fee2e2; color: #991b1b; font-size: 12px; font-weight: 800; padding: 8px 16px; border-radius: 10px; cursor: pointer; }
+        .ordersHeading { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px 12px; border-bottom: 2px solid #cbd5e1; background: #fff; }
+        .ordersHeading h1 { margin: 0; font-size: 20px; line-height: 1.3; font-weight: 900; letter-spacing: -.02em; color: #0f172a; }
+        .availability { display: flex; align-items: center; gap: 10px; color: #64748b; font-size: 12px; font-weight: 800; }
+        .availability b { margin-left: 4px; padding: 3px 8px; border-radius: 6px; color: #059669; background: #ecfdf5; border: 2px solid #a7f3d0; font-weight: 900; }
+        .availability .pausedPill { color: #dc2626; background: #fef2f2; border-color: #fecaca; }
+        .orderToolbar { min-height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; padding: 4px 0; }
+        .statusTabs, .orderTools { display: flex; align-items: center; gap: 8px; }
+        .statusTabs { min-width: 0; overflow-x: auto; padding: 4px 0; }
         .orderTools { flex-shrink: 0; }
-        .statusTab { white-space: nowrap; padding: 6px 10px; background: #fff; border: 1px solid #e6e6e6; border-radius: 20px; font-size: 10px; font-weight: 600; color: #3e4248; cursor: pointer; box-shadow: 0 1px 2px #0000000a; }
-        .statusTab span { margin-left: 3px; color: #777d84; }
-        .statusTab.selected { color: #fff; background: #4385e8; border-color: #4385e8; }
+        .statusTab { white-space: nowrap; padding: 8px 14px; background: #fff; border: 2px solid #cbd5e1; border-radius: 24px; font-size: 12px; font-weight: 800; color: #334155; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s; }
+        .statusTab span { margin-left: 4px; color: #64748b; font-weight: 900; }
+        .statusTab.selected { color: #fff; background: #2563eb; border-color: #1d4ed8; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25); }
         .statusTab.selected span { color: #fff; }
-        .orderTools > button, .searchOrders { height: 32px; border: 1px solid #dce3e5; border-radius: 8px; background: #fff; color: #559e99; }
-        .orderTools > button { width: 32px; font-size: 17px; cursor: pointer; }
-        .searchOrders { display: flex; align-items: center; gap: 5px; padding: 0 8px; }
-        .searchOrders span { font-size: 17px; }
-        .searchOrders input { width: 75px; border: 0; outline: 0; color: #41464c; font-size: 10px; }
-        .orderTools .managePaused { width: auto; height: 28px; flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid #cfe6e2; border-radius: 6px; background: #fff; color: #288b82; font-size: 10px; white-space: nowrap; }
-        .orderTools .managePaused b { background: #fff1d6; color: #d28b19; border-radius: 5px; padding: 2px 5px; }
-        .orderSummary { border-radius: 9px !important; padding: 12px !important; }
-        .orderSummary:hover { border-color: #4385e8 !important; }
-        .orderSummary .orderStatus { padding: 3px 8px !important; font-size: 9px !important; border-radius: 12px !important; }
-        .orderTypeTag, .channelTag { display: inline-flex; align-items: center; margin-right: 5px; padding: 3px 8px; border-radius: 12px; font-size: 9px; font-weight: 700; }
-        .orderTypeTag { color: #4385e8; background: #edf4ff; border: 1px solid #c9dcff; }
-        .channelTag { color: #0aa777; background: #e9faf3; border: 1px solid #b9ead9; }
-        .orderSummaryItems { border-top: 1px solid #f0f0f0; padding-top: 7px; color: #41464c; font-size: 11px; }
-        .orderSummaryItems div { margin: 3px 0; }
-        .orderSummaryItems div span { color: #7c8187; }
-        .orderSummaryItems small { color: #858a91; font-size: 10px; }
-        .orderSummaryFooter { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f0f0f0; margin-top: 7px; padding-top: 7px; color: #92969b; font-size: 9px; }
-        .orderSummaryFooter strong { color: #4385e8; font-size: 11px; }
-        .emptyOrders, .emptyDetail { display: grid; place-items: center; min-height: 160px; padding: 24px; color: #858a91; font-size: 12px; text-align: center; }
-        .detailPanelHeading { min-height: 52px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; padding-top: 8px; }
-        .detailPrintButton { width: 32px; font-size: 17px; }
-        .detailPanelColumn .listHeaderTitle { margin: 0; color: #464a50; font-size: 11px; }
-        .orderDetailCard { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow-y: auto; position: relative; border: 1px solid #e5e7eb; border-radius: 9px 9px 0 0; padding: 12px; text-align: left; background: #fff; }
-        .detailTopline { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-        .detailTopline h2 { margin: 0 0 6px; font-size: 15px; font-weight: 650; color: #26292e; }
-        .detailTags { display: flex; }
-        .detailOrderNumber { display: flex; align-items: center; gap: 10px; margin-top: 9px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
-        .detailOrderNumber a { color: #4385e8; font-family: inherit; text-decoration: none; font-weight: 600; }
-        .detailMeta, .detailAddress { margin-top: 7px; color: #777d84; font-size: 10px; }
-        .customerRequest { display: flex; flex-direction: column; gap: 3px; margin: 12px 0; padding: 8px 10px; border: 1px solid #f5d39b; border-radius: 8px; background: #fffaf1; color: #3d3d3d; font-size: 10px; }
-        .customerRequest strong { color: #db941c; font-size: 9px; }
-        .orderNotesEditor { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; padding: 10px; border: 1px solid #dbe3ea; border-radius: 8px; background: #f8fafc; }
-        .orderNotesEditor label { display: flex; flex-direction: column; gap: 4px; color: #475569; font-size: 9px; font-weight: 700; }
-        .orderNotesEditor textarea { width: 100%; box-sizing: border-box; padding: 7px 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #334155; font: inherit; font-size: 10px; resize: vertical; }
-        .saveOrderNotesButton { align-self: flex-end; padding: 6px 10px; border: 0; border-radius: 6px; background: #047857; color: #fff; font-size: 10px; font-weight: 700; cursor: pointer; }
+        .orderTools > button, .searchOrders { height: 38px; border: 2px solid #cbd5e1; border-radius: 10px; background: #fff; color: #0f172a; font-weight: 700; }
+        .orderTools > button { width: 38px; font-size: 18px; cursor: pointer; display: grid; place-items: center; }
+        .searchOrders { display: flex; align-items: center; gap: 8px; padding: 0 12px; box-sizing: border-box; }
+        .searchOrders span { font-size: 18px; color: #64748b; }
+        .searchOrders input { width: 110px; border: 0; outline: 0; color: #0f172a; font-size: 12px; font-weight: 700; background: transparent; }
+        .orderTools .managePaused { width: auto; height: 36px; flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 2px solid #fecaca; border-radius: 8px; background: #fff; color: #dc2626; font-size: 12px; font-weight: 800; white-space: nowrap; cursor: pointer; }
+        .orderTools .managePaused b { background: #fef2f2; color: #dc2626; border-radius: 6px; padding: 2px 6px; border: 1.5px solid #f87171; font-weight: 900; }
+        .orderSummary { border-radius: 12px !important; padding: 16px !important; border: 2px solid #cbd5e1 !important; transition: all 0.2s ease; }
+        .orderSummary:hover { border-color: #2563eb !important; box-shadow: 0 6px 15px rgba(37,99,235,0.12) !important; }
+        .orderSummary .orderStatus { padding: 4px 10px !important; font-size: 11px !important; border-radius: 8px !important; font-weight: 900 !important; border: 1.5px solid currentColor !important; }
+        .orderTypeTag, .channelTag { display: inline-flex; align-items: center; margin-right: 6px; padding: 4px 10px; border-radius: 14px; font-size: 12px; font-weight: 800; border: 2px solid; }
+        .orderTypeTag { color: #2563eb; background: #eff6ff; border-color: #bfdbfe; }
+        .channelTag { color: #059669; background: #ecfdf5; border-color: #a7f3d0; }
+        .orderSummaryItems { border-top: 2px solid #e2e8f0; padding-top: 10px; margin-top: 10px; color: #1e293b; font-size: 13px; font-weight: 800; }
+        .orderSummaryItems div { margin: 4px 0; display: flex; justify-content: space-between; }
+        .orderSummaryItems div span { color: #475569; font-weight: 700; }
+        .orderSummaryItems small { color: #64748b; font-size: 12px; font-weight: 800; }
+        .orderSummaryFooter { display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #e2e8f0; margin-top: 10px; padding-top: 10px; color: #64748b; font-size: 12px; font-weight: 800; }
+        .orderSummaryFooter strong { color: #2563eb; font-size: 15px; font-weight: 900; }
+        .emptyOrders, .emptyDetail { display: grid; place-items: center; min-height: 200px; padding: 30px; color: #64748b; font-size: 14px; font-weight: 800; text-align: center; background: #fff; border: 2px dashed #cbd5e1; border-radius: 12px; }
+        .detailPanelHeading { min-height: 56px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; padding-top: 4px; }
+        .detailPrintButton { width: 38px; height: 38px; border: 2px solid #cbd5e1; border-radius: 10px; background: #fff; font-size: 18px; cursor: pointer; display: grid; place-items: center; color: #334155; }
+        .detailPrintButton:hover { border-color: #2563eb; color: #2563eb; }
+        .detailPanelColumn .listHeaderTitle { margin: 0; color: #0f172a; font-size: 16px; font-weight: 900; }
+        .orderDetailCard { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow-y: auto; position: relative; border: 2px solid #cbd5e1; border-radius: 14px; padding: 18px; text-align: left; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        .detailTopline { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+        .detailTopline h2 { margin: 0 0 8px; font-size: 20px; font-weight: 900; color: #0f172a; }
+        .detailTags { display: flex; gap: 6px; }
+        .detailOrderNumber { display: flex; align-items: center; gap: 12px; margin-top: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; font-weight: 900; }
+        .detailOrderNumber a { color: #2563eb; font-family: inherit; text-decoration: none; font-weight: 900; border-bottom: 2px dashed #2563eb; padding-bottom: 1px; }
+        .detailMeta, .detailAddress { margin-top: 8px; color: #475569; font-size: 13px; font-weight: 800; }
+        .customerRequest { display: flex; flex-direction: column; gap: 6px; margin: 14px 0; padding: 12px 14px; border: 2px solid #fcd34d; border-radius: 10px; background: #fffbeb; color: #92400e; font-size: 13px; font-weight: 800; }
+        .customerRequest strong { color: #b45309; font-size: 12px; font-weight: 900; letter-spacing: 0.5px; }
+        .orderNotesEditor { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; padding: 12px; border: 2px solid #cbd5e1; border-radius: 10px; background: #f8fafc; }
+        .orderNotesEditor label { display: flex; flex-direction: column; gap: 6px; color: #1e293b; font-size: 12px; font-weight: 900; }
+        .orderNotesEditor textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 2px solid #94a3b8; border-radius: 8px; background: #fff; color: #0f172a; font: inherit; font-size: 13px; font-weight: 700; resize: vertical; outline: none; }
+        .orderNotesEditor textarea:focus { border-color: #2563eb; }
+        .saveOrderNotesButton { align-self: flex-end; padding: 8px 14px; border: 2px solid #047857; border-radius: 8px; background: #059669; color: #fff; font-size: 12px; font-weight: 900; cursor: pointer; box-shadow: 0 2px 5px rgba(5, 150, 105, 0.2); }
+        .saveOrderNotesButton:hover { background: #047857; }
         .saveOrderNotesButton:disabled { cursor: wait; opacity: .65; }
-        .prepTimeControl { display: flex; justify-content: space-between; align-items: center; min-height: 38px; margin: 8px 0 11px; padding: 4px 8px; border: 1px solid #e5e7eb; border-radius: 8px; color: #858a91; font-size: 9px; }
-        .prepTimeControl > div { display: flex; align-items: center; gap: 8px; color: #30343b; }
-        .prepTimeControl button { width: 24px; height: 24px; border: 1px solid #e2e5e9; border-radius: 7px; background: #fff; box-shadow: 0 1px 3px #00000012; font-size: 15px; cursor: pointer; }
-        .prepTimeControl small { font-size: 9px; font-weight: 500; }
-        .itemsHeading { color: #64696f; font-size: 10px; font-weight: 700; }
-        .menuOrigin { margin-top: 5px; padding-bottom: 7px; border-bottom: 1px solid #e8e8e8; color: #73787e; font-size: 9px; }
+        .prepTimeControl { display: flex; justify-content: space-between; align-items: center; min-height: 46px; margin: 12px 0 14px; padding: 6px 12px; border: 2px solid #cbd5e1; border-radius: 10px; color: #1e293b; font-size: 12px; font-weight: 900; background: #f8fafc; }
+        .prepTimeControl > div { display: flex; align-items: center; gap: 10px; color: #0f172a; }
+        .prepTimeControl button { width: 30px; height: 30px; border: 2px solid #94a3b8; border-radius: 8px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.08); font-size: 16px; font-weight: 900; cursor: pointer; display: grid; place-items: center; }
+        .prepTimeControl button:hover { border-color: #2563eb; color: #2563eb; }
+        .prepTimeControl small { font-size: 12px; font-weight: 800; color: #475569; }
+        .itemsHeading { color: #1e293b; font-size: 13px; font-weight: 900; letter-spacing: 0.5px; margin-top: 6px; }
+        .menuOrigin { margin-top: 6px; padding-bottom: 10px; border-bottom: 2px solid #cbd5e1; color: #475569; font-size: 12px; font-weight: 800; }
         .detailItems { display: flex; flex-direction: column; }
-        .detailItem { padding: 8px 0; border-bottom: 1px solid #f0f0f0; color: #3e4248; font-size: 11px; }
-        .detailItemLine { display: flex; justify-content: space-between; gap: 12px; }
-        .detailItemLine strong { white-space: nowrap; }
-        .detailItemLine strong small { margin-right: 5px; color: #858a91; font-weight: 500; }
-        .detailItemDescription { padding: 4px 0 0 9px; color: #8a8e95; font-size: 9px; }
-        .orderTotals { margin-top: auto; padding-top: 8px; }
-        .orderTotals > div { display: flex; justify-content: space-between; padding: 4px 0; color: #858a91; font-size: 10px; }
-        .orderTotals > div strong:last-child { color: #41464c; font-weight: 500; }
-        .orderTotals .totalLine { margin-top: 5px; padding-top: 8px; border-top: 1px solid #e8e8e8; color: #292c30; font-size: 13px; }
-        .orderTotals .totalLine strong:last-child { color: #4385e8; font-size: 14px; font-weight: 700; }
-        .detailActionBar { position: sticky; bottom: -12px; margin: 8px -12px -12px; padding: 10px 12px; border-top: 1px solid #e7e7e7; background: #fff; }
-        .prepareButton { width: 100%; min-height: 38px; border: 0; border-radius: 8px; background: #ff5553; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 4px #ff555333; }
-        .prepareButton:hover { background: #eb4847; }
-        .completedMessage { display: block; padding: 10px; color: #0a9b70; text-align: center; font-size: 11px; font-weight: 700; }
+        .detailItem { padding: 10px 0; border-bottom: 2px solid #e2e8f0; color: #0f172a; font-size: 14px; font-weight: 800; }
+        .detailItemLine { display: flex; justify-content: space-between; gap: 14px; }
+        .detailItemLine strong { white-space: nowrap; font-weight: 900; color: #0f172a; }
+        .detailItemLine strong small { margin-right: 6px; color: #475569; font-weight: 800; }
+        .detailItemDescription { padding: 4px 0 0 10px; color: #475569; font-size: 12px; font-weight: 700; }
+        .orderTotals { margin-top: auto; padding-top: 12px; }
+        .orderTotals > div { display: flex; justify-content: space-between; padding: 6px 0; color: #475569; font-size: 13px; font-weight: 800; }
+        .orderTotals > div strong:last-child { color: #0f172a; font-weight: 900; }
+        .orderTotals .totalLine { margin-top: 8px; padding-top: 10px; border-top: 2px solid #cbd5e1; color: #0f172a; font-size: 16px; font-weight: 900; }
+        .orderTotals .totalLine strong:last-child { color: #2563eb; font-size: 18px; font-weight: 900; }
+        .detailActionBar { position: sticky; bottom: -18px; margin: 12px -18px -18px; padding: 14px 18px; border-top: 2px solid #cbd5e1; background: #fff; border-radius: 0 0 14px 14px; }
+        .prepareButton { width: 100%; min-height: 46px; border: 2px solid #dc2626; border-radius: 10px; background: #ef4444; color: #fff; font-size: 14px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); transition: all 0.2s; }
+        .prepareButton:hover { background: #dc2626; box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4); }
+        .completedMessage { display: block; padding: 12px; color: #059669; text-align: center; font-size: 13px; font-weight: 900; background: #ecfdf5; border: 2px solid #a7f3d0; border-radius: 10px; }
         @media (max-width: 950px) {
-          .orderToolbar { align-items: flex-start; flex-direction: column; padding: 8px 0; }
-          .statusTabs { width: 100%; overflow-x: auto; padding-bottom: 3px; }
+          .orderToolbar { align-items: flex-start; flex-direction: column; padding: 8px 0; height: auto; }
+          .statusTabs { width: 100%; overflow-x: auto; padding-bottom: 4px; }
           .orderTools { width: 100%; }
           .searchOrders { flex: 1; }
           .searchOrders input { width: 100%; }
-          .splitViewWrapper { padding-left: 10px !important; padding-right: 10px !important; }
-          .detailPanelColumn { padding-left: 8px !important; }
+          .splitViewWrapper { padding-left: 12px !important; padding-right: 12px !important; }
+          .detailPanelColumn { padding-left: 10px !important; }
         }
         @media (max-width: 680px) {
-          .dashboardSidebar:not(.dashboardSidebarExpanded) { width: 46px !important; }
-          .dashboardSidebarExpanded { width: 220px !important; position: absolute; inset: 0 auto 0 0; z-index: 1000; box-shadow: 8px 0 24px #0003; }
-          .header { padding: 0 10px !important; }
+          .dashboardSidebar:not(.dashboardSidebarExpanded) { width: 50px !important; }
+          .dashboardSidebarExpanded { width: 230px !important; position: absolute; inset: 0 auto 0 0; z-index: 1000; box-shadow: 10px 0 30px rgba(0,0,0,0.3); }
+          .header { padding: 0 12px !important; }
           .topBrand { min-width: 0; }
           .topBrand small, .alertButton, .profileName, .profileButton > span:last-child { display: none; }
-          .headerActions { gap: 5px; }
+          .headerActions { gap: 6px; }
           .profileButton { border: 0; padding: 0; }
-          .ordersHeading { padding: 10px; }
-          .ordersHeading h1 { font-size: 16px; }
-          .availability { font-size: 9px; }
+          .ordersHeading { padding: 12px; }
+          .ordersHeading h1 { font-size: 18px; }
+          .availability { font-size: 10px; }
           .splitViewWrapper { flex-direction: column; overflow-y: auto !important; }
-          .masterListColumn { flex: 0 0 42%; min-height: 200px; }
-          .detailPanelColumn { flex: 1 0 58%; min-height: 420px; border-left: 0 !important; border-top: 1px solid #e8e8e8; padding: 0 !important; }
+          .masterListColumn { flex: 0 0 45%; min-height: 220px; }
+          .detailPanelColumn { flex: 1 0 55%; min-height: 450px; border-left: 0 !important; border-top: 2px solid #cbd5e1 !important; padding: 0 !important; }
           .orderDetailCard { min-height: 0; }
         }
         @media print {
-          body * {
-            visibility: hidden !important;
-          }
-          #printable-thermal-receipt, #printable-thermal-receipt * {
-            visibility: visible !important;
-          }
-          #printable-thermal-receipt {
-            position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            box-shadow: none !important;
-            border: none !important;
-            background: #fff !important;
-            margin: 0 !important;
-            padding: 20px !important;
-            z-index: 999999 !important;
-          }
-          #printable-thermal-receipt .orderNotesEditor {
-            display: none !important;
-          }
+          body * { visibility: hidden !important; }
+          #printable-thermal-receipt, #printable-thermal-receipt * { visibility: visible !important; }
+          #printable-thermal-receipt { position: fixed !important; left: 0 !important; top: 0 !important; width: 100% !important; max-width: 100% !important; box-shadow: none !important; border: none !important; background: #fff !important; margin: 0 !important; padding: 24px !important; z-index: 999999 !important; }
+          #printable-thermal-receipt .orderNotesEditor { display: none !important; }
         }
       `}</style>
 
       {/* Sidebar */}
-      <div className={`dashboardSidebar${isNavExpanded ? ' dashboardSidebarExpanded' : ''}`} style={{ ...styles.sidebar, width: isNavExpanded ? '220px' : '54px' }}>
+      <div className={`dashboardSidebar${isNavExpanded ? ' dashboardSidebarExpanded' : ''}`} style={{ ...styles.sidebar, width: isNavExpanded ? '230px' : '56px' }}>
         <button
           type="button"
           className="sidebarToggle"
@@ -584,21 +570,21 @@ export default function Dashboard({ user, onLogout }) {
 
         {/* Tables Status Bar */}
         <div style={styles.tablesStatusBar} onClick={() => setActiveTab('Tables')}>
-          <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700', color: '#1e293b'}}>
+          <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800', color: '#1e293b', fontSize: '12px'}}>
             <span>♜</span>
             <span>Tables</span>
             <span style={{color: '#cbd5e1'}}>·</span>
             <span style={{color: '#16a34a'}}>{tableStats.open}/{tableStats.total} open</span>
             <span style={{color: '#cbd5e1'}}>·</span>
             <span>{tableStats.occupied} occupied</span>
-            <span style={{backgroundColor: '#2563eb', color: '#fff', padding: '2px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: '800'}}>{tableStats.billing} billing</span>
+            <span style={{backgroundColor: '#2563eb', color: '#fff', padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '900'}}>{tableStats.billing} billing</span>
           </div>
-          <span style={{color: '#64748b', fontSize: '16px', fontWeight: 'bold'}}>›</span>
+          <span style={{color: '#64748b', fontSize: '16px', fontWeight: '900'}}>›</span>
         </div>
 
         {isOrdersFallback && activeTab === 'Online Orders' && (
           <div style={styles.fallbackNoticeBar}>
-            <span style={{color: '#dc2626', fontWeight: 'bold'}}>⚠️ Connection Notice:</span> Unable to reach database orders endpoint.
+            <span style={{color: '#dc2626', fontWeight: '900'}}>⚠️ Connection Notice:</span> Unable to reach database orders endpoint.
           </div>
         )}
 
@@ -644,7 +630,7 @@ export default function Dashboard({ user, onLogout }) {
                 
                 <div style={styles.scrollableCards}>
                   {loadingOrders ? (
-                    <div style={{padding: '30px', textAlign: 'center', color: '#64748b', fontWeight: '600'}}>Loading live database orders...</div>
+                    <div style={{padding: '30px', textAlign: 'center', color: '#64748b', fontWeight: '700', fontSize: '13px'}}>Loading live database orders...</div>
                   ) : filteredOrders.length === 0 ? (
                     <div className="emptyOrders">{orders.length === 0 ? 'No online orders yet. New orders will appear here.' : 'No orders match this status or search.'}</div>
                   ) : (
@@ -657,7 +643,7 @@ export default function Dashboard({ user, onLogout }) {
                           className="orderSummary"
                           style={{
                             ...styles.orderSummaryCard, 
-                            borderColor: isSelected || isHovered ? '#4385e8' : '#e5e7eb',
+                            borderColor: isSelected || isHovered ? '#2563eb' : '#cbd5e1',
                             backgroundColor: '#fff',
                             transform: 'none',
                             boxShadow: 'none'
@@ -668,19 +654,19 @@ export default function Dashboard({ user, onLogout }) {
                         >
                           <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '8px'}}>
                             <div>
-                              <strong style={{fontSize: '15px', color: '#0f172a'}}>{order.customer}</strong>
-                              <div style={{fontSize: '11px', color: '#64748b', fontWeight: '700'}}>{order.id}</div>
+                              <strong style={{fontSize: '16px', color: '#0f172a', fontWeight: '900'}}>{order.customer}</strong>
+                              <div style={{fontSize: '12px', color: '#64748b', fontWeight: '800'}}>{order.id}</div>
                             </div>
                             <span className="orderStatus" style={styles.statusBadgeSmall(order.status)}>{order.status}</span>
                           </div>
 
-                          <div style={{fontSize: '11px', color: '#64748b', marginBottom: '10px', fontWeight: '600'}}>
+                          <div style={{fontSize: '12px', color: '#64748b', marginBottom: '10px', fontWeight: '700'}}>
                             <span className="orderTypeTag">♧ {order.type}</span> <span className="channelTag">◉ {order.channel}</span>
                           </div>
 
                           <div className="orderSummaryItems">
                             {order.items.slice(0, 2).map((it, idx) => (
-                              <div key={idx}>{it.name} <span>×{it.qty}</span></div>
+                              <div key={idx}><span>{it.name}</span> <strong>×{it.qty}</strong></div>
                             ))}
                             {order.items.length > 2 && <small>+ {order.items.length - 2} more</small>}
                           </div>
@@ -1017,64 +1003,32 @@ export default function Dashboard({ user, onLogout }) {
 
 const styles = {
   container: { display: 'flex', position: 'fixed', top: 0, left: 0, height: '100vh', width: '100vw', backgroundColor: '#f8fafc', overflow: 'hidden', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', margin: 0, padding: 0 },
-  sidebar: { width: '54px', backgroundColor: '#191919', display: 'flex', flexDirection: 'column', color: '#fff', height: '100vh', flexShrink: 0 },
-  brandBox: { display: 'none', alignItems: 'center', gap: '12px', padding: '22px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)' },
-  logoIcon: { fontSize: '24px' },
-  brandName: { fontSize: '18px', fontWeight: '900', letterSpacing: '0.02em' },
-  brandSub: { fontSize: '10px', color: '#34d399', fontWeight: '700', letterSpacing: '0.05em' },
-  navLinks: { listStyle: 'none', padding: '8px 0', margin: 0, flex: 1, overflowY: 'auto' },
-  navItem: { padding: '10px 0', margin: '2px 5px', height: '40px', fontSize: '14px', color: '#d4d4d4', cursor: 'pointer', display: 'flex', justifyContent: 'center', textAlign: 'center', fontWeight: '600', transition: 'all 0.2s', borderRadius: '7px' },
+  sidebar: { width: '56px', backgroundColor: '#191919', display: 'flex', flexDirection: 'column', color: '#fff', height: '100vh', flexShrink: 0 },
+  brandBox: { display: 'none', alignItems: 'center', gap: '12px', padding: '22px 20px', borderBottom: '2px solid rgba(255,255,255,0.1)' },
+  logoIcon: { fontSize: '26px' },
+  brandName: { fontSize: '19px', fontWeight: '900', letterSpacing: '0.02em' },
+  brandSub: { fontSize: '11px', color: '#34d399', fontWeight: '800', letterSpacing: '0.05em' },
+  navLinks: { listStyle: 'none', padding: '10px 0', margin: 0, flex: 1, overflowY: 'auto' },
+  navItem: { padding: '10px 0', margin: '3px 6px', height: '44px', fontSize: '14px', color: '#d4d4d4', cursor: 'pointer', display: 'flex', justifyContent: 'center', textAlign: 'center', fontWeight: '700', transition: 'all 0.2s', borderRadius: '8px' },
   navItemHover: { backgroundColor: '#303030', color: '#fff' },
-  navItemActive: { padding: '10px 0', margin: '2px 5px', height: '40px', fontSize: '14px', color: '#003d2b', backgroundColor: '#05c98a', cursor: 'pointer', display: 'flex', justifyContent: 'center', borderLeft: 'none', fontWeight: '800', textAlign: 'center', borderRadius: '7px' },
-  badgeCount: { backgroundColor: '#34d399', color: '#022c22', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', fontWeight: '900' },
-  userInfo: { padding: '9px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#191919', cursor: 'pointer', transition: 'background 0.2s' },
-  userInfoFallbackRedLine: { borderBottom: '3px solid #ef4444', backgroundColor: '#450a0a' },
-  userAvatar: { width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', color: '#fff', position: 'relative', border: '2px solid #34d399', fontSize: '13px' },
-  onlineDot: { position: 'absolute', bottom: '0px', right: '0px', width: '10px', height: '10px', backgroundColor: '#34d399', borderRadius: '50%', border: '2px solid #01231b' },
+  navItemActive: { padding: '10px 0', margin: '3px 6px', height: '44px', fontSize: '14px', color: '#003d2b', backgroundColor: '#05c98a', cursor: 'pointer', display: 'flex', justifyContent: 'center', fontWeight: '900', textAlign: 'center', borderRadius: '8px' },
+  badgeCount: { backgroundColor: '#34d399', color: '#022c22', fontSize: '12px', padding: '2px 9px', borderRadius: '12px', fontWeight: '900' },
   mainContent: { flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', minWidth: 0, backgroundColor: '#fff' },
-  header: { height: '54px', backgroundColor: '#001e16', borderBottom: '1px solid #0b3328', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0 },
-  pageTitle: { fontSize: '20px', fontWeight: '900', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' },
-  tablesStatusBar: { backgroundColor: '#f1f5fb', border: '1px solid #d7e1f2', margin: '5px 16px', padding: '5px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', flexShrink: 0, fontSize: '11px', transition: 'background 0.2s', borderRadius: '7px' },
-  fallbackNoticeBar: { backgroundColor: '#fff8ef', border: '1px solid #f2d9b3', margin: '5px 16px', padding: '8px 12px', fontSize: '12px', color: '#8d5a14', textAlign: 'left', flexShrink: 0, borderRadius: '7px' },
-  pausedItemsBtn: { backgroundColor: '#fff', border: '1.5px solid #dc2626', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '800', color: '#dc2626', cursor: 'pointer', display: 'none', alignItems: 'center', gap: '8px', transition: 'all 0.2s' },
-  pausedCountBadge: { backgroundColor: '#dc2626', color: '#fff', fontSize: '11px', padding: '1px 6px', borderRadius: '10px', fontWeight: '900' },
-  topLogoutBtn: { backgroundColor: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', padding: '8px 16px', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', fontSize: '12px', transition: 'all 0.2s' },
+  header: { height: '65px', backgroundColor: '#001e16', borderBottom: '2px solid #0b3328', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 },
+  tablesStatusBar: { backgroundColor: '#f1f5fb', border: '2px solid #cbd5e1', margin: '8px 18px', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', flexShrink: 0, fontSize: '12px', transition: 'background 0.2s', borderRadius: '10px' },
+  fallbackNoticeBar: { backgroundColor: '#fffbe8', border: '2px solid #fcd34d', margin: '8px 18px', padding: '10px 14px', fontSize: '13px', color: '#92400e', textAlign: 'left', flexShrink: 0, borderRadius: '10px', fontWeight: '700' },
+  pausedItemsBtn: { backgroundColor: '#fff', border: '2px solid #dc2626', padding: '8px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: '800', color: '#dc2626', cursor: 'pointer', display: 'none', alignItems: 'center', gap: '8px', transition: 'all 0.2s' },
+  pausedCountBadge: { backgroundColor: '#dc2626', color: '#fff', fontSize: '11px', padding: '2px 7px', borderRadius: '10px', fontWeight: '900' },
+  topLogoutBtn: { backgroundColor: '#fee2e2', color: '#991b1b', border: '2px solid #fca5a5', padding: '8px 18px', borderRadius: '10px', fontWeight: '900', cursor: 'pointer', fontSize: '12px', transition: 'all 0.2s' },
   onlineOrdersContainer: { display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', backgroundColor: '#fff', minWidth: 0 },
-  subHeader: { padding: '12px 25px', backgroundColor: '#fff', borderBottom: '1px solid #f1f5f9', fontSize: '14px', textAlign: 'left', flexShrink: 0 },
-  splitViewWrapper: { display: 'flex', flex: 1, padding: '0 16px 12px', gap: '12px', overflow: 'hidden', minHeight: 0, minWidth: 0 },
+  splitViewWrapper: { display: 'flex', flex: 1, padding: '0 18px 14px', gap: '16px', overflow: 'hidden', minHeight: 0, minWidth: 0 },
   masterListColumn: { flex: '1 1 52%', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, minWidth: 0 },
-  detailPanelColumn: { flex: '1 1 48%', display: 'flex', flexDirection: 'column', overflowY: 'hidden', minHeight: 0, minWidth: 0, padding: '0 0 0 12px', borderLeft: '1px solid #e8e8e8' },
-  scrollableCards: { display: 'flex', flexDirection: 'column', gap: '9px', overflowY: 'auto', flex: 1, padding: '0 4px 8px 0' },
-  orderSummaryCard: { border: '1px solid #e5e7eb', borderRadius: '9px', padding: '13px', cursor: 'pointer', backgroundColor: '#fff', textAlign: 'left', flexShrink: 0, transition: 'border-color 0.15s' },
-  detailCard: { backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '14px', textAlign: 'left', boxShadow: 'none' },
-  emptyDetailPrompt: { backgroundColor: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '40px', textAlign: 'center', color: '#64748b', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600' },
+  detailPanelColumn: { flex: '1 1 48%', display: 'flex', flexDirection: 'column', overflowY: 'hidden', minHeight: 0, minWidth: 0, padding: '0 0 0 14px', borderLeft: '2px solid #cbd5e1' },
+  scrollableCards: { display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', flex: 1, padding: '0 6px 10px 0' },
+  orderSummaryCard: { border: '2px solid #cbd5e1', borderRadius: '12px', padding: '16px', cursor: 'pointer', backgroundColor: '#fff', textAlign: 'left', flexShrink: 0, transition: 'all 0.2s ease' },
   statusBadgeSmall: (status) => ({
     backgroundColor: status === 'New' ? '#e0f2fe' : status === 'Accepted' ? '#fef9c3' : status === 'Preparing' ? '#ffedd5' : status === 'Ready' ? '#ede9fe' : '#dcfce7',
     color: status === 'New' ? '#0369a1' : status === 'Accepted' ? '#854d0e' : status === 'Preparing' ? '#c2410c' : status === 'Ready' ? '#6d28d9' : '#15803d',
-    fontSize: '11px', fontWeight: '800', padding: '4px 10px', borderRadius: '6px', textTransform: 'uppercase'
-  }),
-  customerRequestBox: { backgroundColor: '#fffbeb', border: '1.5px solid #fde68a', padding: '12px 14px', borderRadius: '10px', fontSize: '13px', color: '#b45309', marginBottom: '16px', textAlign: 'left', fontWeight: '600' },
-  printIconBtn: { backgroundColor: '#f1f5f9', border: '1.5px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', color: '#334155' },
-  actionBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '11px 20px', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(5, 150, 105, 0.2)' },
-  
-  thermalReceiptBox: { backgroundColor: '#fff', border: '2px solid #e2e8f0', borderRadius: '16px', padding: '16px', fontFamily: 'monospace', maxHeight: '310px', overflowY: 'auto', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', marginBottom: '16px', transition: 'all 0.3s ease', position: 'relative' },
-  receiptTopAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: '5px', background: 'linear-gradient(90deg, #059669, #2563eb, #d97706)' },
-  receiptItemRow: { backgroundColor: '#f8fafc', padding: '8px 10px', borderRadius: '8px', border: '1.5px solid #f1f5f9', transition: 'all 0.2s' },
-  receiptItemInstructionInput: { width: '100%', marginTop: '6px', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', outline: 'none', backgroundColor: '#fff', boxSizing: 'border-box' },
-  checkoutTriggerBtn: { backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', fontWeight: '800', fontSize: '12px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(37,99,235,0.2)' },
-  
-  drawerOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
-  checkoutModalContent: { width: '480px', backgroundColor: '#fff', padding: '24px', borderRadius: '20px', textAlign: 'left', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #e2e8f0' },
-  checkoutSectionCard: { backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14px' },
-  checkoutLabel: { fontSize: '11px', fontWeight: '800', color: '#64748b', letterSpacing: '0.5px', display: 'block', marginBottom: '8px' },
-  tipGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px', alignItems: 'center' },
-  tipBtn: { padding: '8px 4px', borderRadius: '8px', border: '1.5px solid', fontWeight: '700', fontSize: '12px', cursor: 'pointer', textAlign: 'center' },
-  customTipInput: { padding: '8px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '12px', outline: 'none', textAlign: 'center', width: '100%', boxSizing: 'border-box' },
-  methodGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' },
-  methodBtn: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px', borderRadius: '10px', border: '1.5px solid', cursor: 'pointer', gap: '4px' },
-  splitAmountInput: { width: '100%', marginTop: '8px', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12px', outline: 'none', boxSizing: 'border-box' },
-  profileModal: { width: '460px', backgroundColor: '#fff', padding: '30px', borderRadius: '20px', textAlign: 'left', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1.5px solid #e2e8f0' },
-  modalRedAccentLine: { height: '3px', backgroundColor: '#059669', width: '100%', marginBottom: '16px', borderRadius: '2px' },
-  profileCardRow: { fontSize: '13px', color: '#334155', display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1.5px solid #e2e8f0' },
-  closeXBtn: { background: 'none', border: 'none', fontSize: '16px', fontWeight: 'bold', color: '#64748b', cursor: 'pointer' }
+    fontSize: '12px', fontWeight: '900', padding: '5px 12px', borderRadius: '8px', textTransform: 'uppercase', border: '1.5px solid currentColor'
+  })
 };
