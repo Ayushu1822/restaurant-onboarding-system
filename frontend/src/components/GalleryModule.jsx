@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
@@ -13,18 +13,18 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
   const [uploadFiles, setUploadFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
 
-  // Menu mapping state
+  // Menu mapping state (Safely initialized as arrays)
   const [menuItems, setMenuItems] = useState([]);
   const [menuSearch, setMenuSearch] = useState('');
   const [selectedMenuItemIds, setSelectedMenuItemIds] = useState([]);
 
   const fetchImages = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/gallery?restaurantId=${restaurantId}&search=${searchQuery}`);
+      const res = await fetch(`${API_BASE_URL}/api/v1/gallery?restaurantId=${restaurantId}&search=${encodeURIComponent(searchQuery || '')}`);
       const data = await res.json();
-      setImages(data);
+      setImages(Array.isArray(data) ? data : []);
     } catch (err) {
-      // Mock fallback data matching your screenshots if backend is offline
+      // Mock fallback data matching screenshots if backend is offline
       setImages([
         { id: '1', fileName: 'Linga_Foods.png', fileUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300', fileType: 'image/png', fileSize: '1.0 MB', uploadedAt: '2026-06-27' },
         { id: '2', fileName: 'Andhra Meals.jpg', fileUrl: 'https://images.unsplash.com/photo-1610192244261-3f33de3b55e4?w=300', fileType: 'image/jpeg', fileSize: '45 KB', uploadedAt: '2026-06-28' },
@@ -39,7 +39,8 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/menu/items?restaurantId=${restaurantId}`);
       const data = await res.json();
-      setMenuItems(data);
+      // Ensure data is always an array to prevent .filter crash
+      setMenuItems(Array.isArray(data) ? data : (Array.isArray(data?.content) ? data.content : []));
     } catch (err) {
       setMenuItems([
         { id: '1', name: 'green tea' },
@@ -59,22 +60,25 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
 
   const toggleSelectImage = (id) => {
     setSelectedImageIds(prev =>
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+      Array.isArray(prev) && prev.includes(id) ? prev.filter(item => item !== id) : [...(Array.isArray(prev) ? prev : []), id]
     );
   };
 
   const handleSelectAll = (e) => {
+    const safeImages = Array.isArray(images) ? images : [];
     if (e.target.checked) {
-      setSelectedImageIds(images.map(img => img.id));
+      setSelectedImageIds(safeImages.map(img => img.id));
     } else {
       setSelectedImageIds([]);
     }
   };
 
   const handleDeleteSelected = async () => {
-    if (!window.confirm(`Delete ${selectedImageIds.length} selected image(s)?`)) return;
+    const safeSelected = Array.isArray(selectedImageIds) ? selectedImageIds : [];
+    if (safeSelected.length === 0) return;
+    if (!window.confirm(`Delete ${safeSelected.length} selected image(s)?`)) return;
     try {
-      for (const id of selectedImageIds) {
+      for (const id of safeSelected) {
         await fetch(`${API_BASE_URL}/api/v1/gallery/${id}`, { method: 'DELETE' });
       }
       setSelectedImageIds([]);
@@ -86,10 +90,11 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
 
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
-    if (uploadFiles.length === 0) return;
+    const safeFiles = Array.isArray(uploadFiles) ? uploadFiles : [];
+    if (safeFiles.length === 0) return;
     setUploading(true);
     const formData = new FormData();
-    for (let file of uploadFiles) {
+    for (let file of safeFiles) {
       formData.append('files', file);
     }
     formData.append('restaurantId', restaurantId);
@@ -112,25 +117,32 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
   };
 
   const handleMapSubmit = async () => {
-    if (selectedImageIds.length === 0) return;
+    const safeSelected = Array.isArray(selectedImageIds) ? selectedImageIds : [];
+    if (safeSelected.length === 0) return;
     try {
       await fetch(`${API_BASE_URL}/api/v1/gallery/map-to-menu`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          imageId: selectedImageIds[0],
+          imageId: safeSelected[0],
           menuItemIds: selectedMenuItemIds
         })
       });
       setIsMapModalOpen(false);
       setSelectedImageIds([]);
+      setSelectedMenuItemIds([]);
       alert('Images successfully mapped to menu items!');
     } catch (err) {
       console.error('Mapping failed', err);
     }
   };
 
-  const activeImage = images.find(img => img.id === selectedImageIds[0]) || images[0] || { fileName: 'chicken sushi.png', fileUrl: '' };
+  const safeImages = Array.isArray(images) ? images : [];
+  const safeMenuItems = Array.isArray(menuItems) ? menuItems : [];
+  const safeSelectedIds = Array.isArray(selectedImageIds) ? selectedImageIds : [];
+  const safeSelectedMenuIds = Array.isArray(selectedMenuItemIds) ? selectedMenuItemIds : [];
+  
+  const activeImage = safeImages.find(img => img.id === safeSelectedIds[0]) || safeImages[0] || { fileName: 'chicken sushi.png', fileUrl: '' };
 
   return (
     <div style={styles.container}>
@@ -138,7 +150,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
       <div style={styles.header}>
         <div style={styles.titleArea}>
           <h2 style={styles.title}>Gallery</h2>
-          <span style={styles.badge}>{images.length} images</span>
+          <span style={styles.badge}>{safeImages.length} images</span>
         </div>
         <button style={styles.uploadBtn} onClick={() => setIsUploadModalOpen(true)}>
           ↑ Upload Images
@@ -158,12 +170,12 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
           />
         </div>
         <div style={styles.toolbarRight}>
-          <span style={styles.libraryInfo}>{images.length} images in your library</span>
+          <span style={styles.libraryInfo}>{safeImages.length} images in your library</span>
           <label style={styles.selectAllLabel}>
             <input
               type="checkbox"
               onChange={handleSelectAll}
-              checked={selectedImageIds.length === images.length && images.length > 0}
+              checked={safeSelectedIds.length === safeImages.length && safeImages.length > 0}
               style={styles.checkboxAccent}
             />
             Select all
@@ -173,8 +185,8 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
 
       {/* Image Grid */}
       <div style={styles.grid}>
-        {images.map((img) => {
-          const isSelected = selectedImageIds.includes(img.id);
+        {safeImages.map((img) => {
+          const isSelected = safeSelectedIds.includes(img.id);
           return (
             <div
               key={img.id}
@@ -206,9 +218,9 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
       </div>
 
       {/* Floating Action Bar */}
-      {selectedImageIds.length > 0 && (
+      {safeSelectedIds.length > 0 && (
         <div style={styles.floatingBar}>
-          <span style={styles.floatingText}>{selectedImageIds.length} image selected</span>
+          <span style={styles.floatingText}>{safeSelectedIds.length} image selected</span>
           <div style={styles.floatingButtons}>
             <button style={styles.clearBtn} onClick={() => setSelectedImageIds([])}>✕ Clear</button>
             <button style={styles.mapBtn} onClick={() => setIsMapModalOpen(true)}>🔗 Map to Menu</button>
@@ -234,7 +246,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
                 type="file"
                 multiple
                 accept="image/png, image/jpeg"
-                onChange={(e) => setUploadFiles(Array.from(e.target.files))}
+                onChange={(e) => setUploadFiles(Array.from(e.target.files || []))}
                 id="fileInputHidden"
                 style={{ display: 'none' }}
               />
@@ -280,7 +292,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
               <div>
                 <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{activeImage.fileName}</strong>
                 <span style={{ fontSize: '12px', color: '#6b7280' }}>
-                  {selectedMenuItemIds.length === 0 ? 'No menu items selected' : `${selectedMenuItemIds.length} menu items selected`}
+                  {safeSelectedMenuIds.length === 0 ? 'No menu items selected' : `${safeSelectedMenuIds.length} menu items selected`}
                 </span>
               </div>
             </div>
@@ -297,10 +309,10 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
             </div>
 
             <div style={styles.checklistContainer}>
-              {menuItems
-                .filter(item => item.name.toLowerCase().includes(menuSearch.toLowerCase()))
+              {safeMenuItems
+                .filter(item => (item?.name || '').toLowerCase().includes((menuSearch || '').toLowerCase()))
                 .map(item => {
-                  const isChecked = selectedMenuItemIds.includes(item.id);
+                  const isChecked = safeSelectedMenuIds.includes(item.id);
                   return (
                     <label
                       key={item.id}
@@ -313,9 +325,12 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => {
-                          setSelectedMenuItemIds(prev =>
-                            prev.includes(item.id) ? prev.filter(id => id !== item.id) : [...prev, item.id]
-                          );
+                          setSelectedMenuItemIds(prev => {
+                            const safePrev = Array.isArray(prev) ? prev : [];
+                            return safePrev.includes(item.id) 
+                              ? safePrev.filter(id => id !== item.id) 
+                              : [...safePrev, item.id];
+                          });
                         }}
                         style={{ width: '16px', height: 16, accentColor: '#ff5a5f' }}
                       />
@@ -327,7 +342,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
 
             <div style={styles.modalFooter}>
               <span style={{ fontSize: '13px', color: '#6b7280' }}>
-                {selectedMenuItemIds.length === 0 ? 'Nothing to map yet' : `${selectedMenuItemIds.length} mapped`}
+                {safeSelectedMenuIds.length === 0 ? 'Nothing to map yet' : `${safeSelectedMenuIds.length} mapped`}
               </span>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button style={styles.secondaryBtn} onClick={() => setIsMapModalOpen(false)}>Cancel</button>
