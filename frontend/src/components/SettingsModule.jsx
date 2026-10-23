@@ -1,103 +1,331 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
 export default function SettingsModule() {
-  const [restaurantName, setRestaurantName] = useState('NewWorld Restaurant');
-  const [ownerName, setOwnerName] = useState('Ayush');
-  const [phone, setPhone] = useState('8218579235');
-  const [taxRate, setTaxRate] = useState('5');
-  const [printerIP, setPrinterIP] = useState('192.168.1.100');
-  const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('business');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState({ text: '', type: '' });
 
-  const handleSaveSettings = (e) => {
-    e.preventDefault();
-    setIsSaving(true);
-    // Simulate or perform API save
-    setTimeout(() => {
-      setIsSaving(false);
-      alert('Settings updated and saved successfully!');
-    }, 600);
+  // Form State mapped to RestaurantProfile entity model
+  const [formData, setFormData] = useState({
+    restaurantId: '',
+    userId: '',
+    email: 'krishna6@yopmail.com', // Default lookup email from screenshot
+    businessName: '',
+    ownerName: '',
+    phoneNumber: '',
+    whatsappNumber: '',
+    website: '',
+    gstnNumber: '',
+    businessRegistrationNumber: '',
+    businessLicenseNumber: '',
+    addressLine1: '',
+    addressLine2: '',
+    area: '',
+    city: '',
+    state: '',
+    pinCode: '',
+    latitude: '',
+    longitude: '',
+    onlineRestaurantName: '',
+    branchDisplayName: '',
+    businessShortCode: '',
+    branchShortCode: '',
+    firstName: '',
+    lastName: '',
+    preferredLanguage: 'Telugu'
+  });
+
+  // Fetch Profile from Backend on Mount
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/email/krishna6@yopmail.com`);
+      if (!res.ok) throw new Error('Failed to fetch restaurant profile');
+      const data = await res.json();
+      setFormData(prev => ({ ...prev, ...data }));
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+      showMsg('Failed to load profile from database.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setMessage({ text: '', type: '' });
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/${formData.restaurantId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || 'Failed to update settings');
+      }
+
+      const updated = await res.json();
+      setFormData(prev => ({ ...prev, ...updated }));
+      showMsg('✅ Settings saved successfully to database!', 'success');
+    } catch (err) {
+      console.error('Error saving profile:', err);
+      showMsg(`❌ Error: ${err.message}`, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const showMsg = (text, type) => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage({ text: '', type: '' }), 4000);
+  };
+
+  const sidebarItems = [
+    { id: 'business', label: 'Business Information', icon: '🏢' },
+    { id: 'profile', label: 'Profile', icon: '👤' },
+    { id: 'hours', label: 'Service Hours', icon: '⏰' },
+    { id: 'tables', label: 'Areas & Tables', icon: '🪑' },
+    { id: 'users', label: 'Users', icon: '👥' },
+    { id: 'delivery', label: 'Delivery', icon: '🛵' },
+    { id: 'billing', label: 'Billing', icon: '💳' },
+    { id: 'printers', label: 'Printers & Receipts', icon: '🖨️' },
+    { id: 'system', label: 'System', icon: '⚙️' }
+  ];
+
+  if (loading) {
+    return <div style={styles.centerMsg}>Loading settings configuration from database...</div>;
+  }
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.title}>System Settings</h2>
-      <p style={styles.subtitle}>Configure restaurant profile, receipt printing, tax rates, and POS preferences.</p>
-
-      <div style={styles.gridContainer}>
-        
-        {/* Profile & General Settings Card */}
-        <form onSubmit={handleSaveSettings} style={styles.card}>
-          <h3 style={styles.cardTitle}>🏪 Restaurant Profile</h3>
-          
-          <label style={styles.label}>Business Name:</label>
-          <input 
-            style={styles.input}
-            value={restaurantName}
-            onChange={e => setRestaurantName(e.target.value)}
-          />
-
-          <label style={styles.label}>Owner Name:</label>
-          <input 
-            style={styles.input}
-            value={ownerName}
-            onChange={e => setOwnerName(e.target.value)}
-          />
-
-          <label style={styles.label}>Contact Phone / WhatsApp:</label>
-          <input 
-            style={styles.input}
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-          />
-
-          <label style={styles.label}>Default GST / Tax Rate (%):</label>
-          <input 
-            type="number"
-            style={styles.input}
-            value={taxRate}
-            onChange={e => setTaxRate(e.target.value)}
-          />
-
-          <button type="submit" style={styles.saveBtn}>
-            {isSaving ? 'Saving...' : 'Save Configuration'}
+      {/* Top Header */}
+      <div style={styles.header}>
+        <div>
+          <h2 style={styles.title}>Settings</h2>
+          <span style={styles.subtitle}>Manage your business and operational configurations</span>
+        </div>
+        <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+          <span style={styles.statusBadge}>🟢 Connected to DB</span>
+          <button onClick={handleSave} style={styles.saveBtn} disabled={saving}>
+            {saving ? 'Saving...' : '💾 Save Changes'}
           </button>
-        </form>
+        </div>
+      </div>
 
-        {/* Hardware & Peripheral Settings Card */}
-        <div style={styles.card}>
-          <h3 style={styles.cardTitle}>🖨️ Hardware & Peripherals</h3>
-          
-          <label style={styles.label}>Thermal Receipt Printer IP:</label>
-          <input 
-            style={styles.input}
-            value={printerIP}
-            onChange={e => setPrinterIP(e.target.value)}
-          />
-          <span style={styles.hint}>Supports 80mm & 58mm network thermal printers.</span>
+      {message.text && (
+        <div style={{...styles.alert, backgroundColor: message.type === 'error' ? '#fef2f2' : '#f0fdf4', color: message.type === 'error' ? '#991b1b' : '#166534', borderColor: message.type === 'error' ? '#f87171' : '#4ade80'}}>
+          {message.text}
+        </div>
+      )}
 
-          <div style={{marginTop: '20px', padding: '15px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0'}}>
-            <h4 style={{margin: '0 0 8px 0', fontSize: '13px', color: '#0f172a'}}>Database & Cloud Status</h4>
-            <div style={{fontSize: '12px', color: '#16a34a', fontWeight: '600', marginBottom: '4px'}}>🟢 PostgreSQL DB Connected (Render)</div>
-            <div style={{fontSize: '12px', color: '#64748b'}}>API Base: {API_BASE_URL}</div>
-          </div>
+      {/* Main Layout */}
+      <div style={styles.layout}>
+        {/* Sidebar Navigation */}
+        <div style={styles.sidebar}>
+          {sidebarItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              style={{
+                ...styles.sidebarBtn,
+                ...(activeTab === item.id ? styles.activeSidebarBtn : {})
+              }}
+            >
+              <span>{item.icon}</span> {item.label}
+            </button>
+          ))}
         </div>
 
+        {/* Content Panel */}
+        <div style={styles.contentPanel}>
+          <form onSubmit={handleSave} style={styles.formContainer}>
+
+            {/* TAB 1: BUSINESS INFORMATION */}
+            {activeTab === 'business' && (
+              <div style={styles.sectionGroup}>
+                <h3 style={styles.sectionTitle}>🏢 Business Information & Identity</h3>
+                
+                <div style={styles.grid2}>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Business Name *</label>
+                    <input type="text" name="businessName" value={formData.businessName || ''} onChange={handleChange} style={styles.input} required />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Email ID *</label>
+                    <input type="email" name="email" value={formData.email || ''} onChange={handleChange} style={styles.input} required />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>WhatsApp Business Number *</label>
+                    <input type="text" name="whatsappNumber" value={formData.whatsappNumber || ''} onChange={handleChange} style={styles.input} required />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Mobile Number *</label>
+                    <input type="text" name="phoneNumber" value={formData.phoneNumber || ''} onChange={handleChange} style={styles.input} required />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Website</label>
+                    <input type="text" name="website" value={formData.website || ''} onChange={handleChange} placeholder="https://" style={styles.input} />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>GSTN Number *</label>
+                    <input type="text" name="gstnNumber" value={formData.gstnNumber || ''} onChange={handleChange} style={styles.input} />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Business Registration Number</label>
+                    <input type="text" name="businessRegistrationNumber" value={formData.businessRegistrationNumber || ''} onChange={handleChange} style={styles.input} />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Business License Number *</label>
+                    <input type="text" name="businessLicenseNumber" value={formData.businessLicenseNumber || ''} onChange={handleChange} style={styles.input} />
+                  </div>
+                </div>
+
+                {/* Display Names & Codes */}
+                <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>🏷️ Display Names & Codes</h3>
+                <div style={styles.grid2}>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Online Restaurant Name *</label>
+                    <input type="text" name="onlineRestaurantName" value={formData.onlineRestaurantName || ''} onChange={handleChange} placeholder="e.g. FOODOS Kitchen" style={styles.input} />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Branch Display Name *</label>
+                    <input type="text" name="branchDisplayName" value={formData.branchDisplayName || ''} onChange={handleChange} placeholder="e.g. Koramangala" style={styles.input} />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Business Short Code *</label>
+                    <input type="text" name="businessShortCode" value={formData.businessShortCode || ''} onChange={handleChange} maxLength="5" placeholder="e.g. KO" style={styles.input} />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Branch Short Code *</label>
+                    <input type="text" name="branchShortCode" value={formData.branchShortCode || ''} onChange={handleChange} maxLength="2" placeholder="e.g. 01" style={styles.input} />
+                  </div>
+                </div>
+
+                {/* Address Section */}
+                <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>📍 Address & Location</h3>
+                <div style={styles.grid2}>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Address Line 1</label>
+                    <input type="text" name="addressLine1" value={formData.addressLine1 || ''} onChange={handleChange} style={styles.input} />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Address Line 2</label>
+                    <input type="text" name="addressLine2" value={formData.addressLine2 || ''} onChange={handleChange} style={styles.input} />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Area</label>
+                    <input type="text" name="area" value={formData.area || ''} onChange={handleChange} style={styles.input} />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>City</label>
+                    <input type="text" name="city" value={formData.city || ''} onChange={handleChange} style={styles.input} />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>State</label>
+                    <input type="text" name="state" value={formData.state || ''} onChange={handleChange} style={styles.input} />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>PIN Code</label>
+                    <input type="text" name="pinCode" value={formData.pinCode || ''} onChange={handleChange} style={styles.input} />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Longitude *</label>
+                    <input type="text" name="longitude" value={formData.longitude || ''} onChange={handleChange} style={styles.input} />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Latitude *</label>
+                    <input type="text" name="latitude" value={formData.latitude || ''} onChange={handleChange} style={styles.input} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: PROFILE */}
+            {activeTab === 'profile' && (
+              <div style={styles.sectionGroup}>
+                <h3 style={styles.sectionTitle}>👤 Admin & User Profile</h3>
+                <div style={styles.grid2}>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>First Name</label>
+                    <input type="text" name="firstName" value={formData.firstName || ''} onChange={handleChange} style={styles.input} />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Last Name</label>
+                    <input type="text" name="lastName" value={formData.lastName || ''} onChange={handleChange} style={styles.input} />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Email (Login ID)</label>
+                    <input type="email" name="email" value={formData.email || ''} onChange={handleChange} style={styles.input} disabled />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Mobile Number</label>
+                    <input type="text" name="phoneNumber" value={formData.phoneNumber || ''} onChange={handleChange} style={styles.input} />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Preferred Language</label>
+                    <select name="preferredLanguage" value={formData.preferredLanguage || 'Telugu'} onChange={handleChange} style={styles.input}>
+                      <option value="English">English</option>
+                      <option value="Telugu">Telugu</option>
+                      <option value="Hindi">Hindi</option>
+                      <option value="Tamil">Tamil</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* PLACEHOLDER FOR OTHER TABS */}
+            {activeTab !== 'business' && activeTab !== 'profile' && (
+              <div style={styles.placeholderTab}>
+                <h3>🚧 {sidebarItems.find(i => i.id === activeTab)?.label} Configuration</h3>
+                <p style={{color: '#64748b', fontSize: '14px', marginTop: '8px'}}>
+                  This operational sub-module is ready for implementation. You can connect it with database entities in the next iteration.
+                </p>
+              </div>
+            )}
+
+          </form>
+        </div>
       </div>
     </div>
   );
 }
 
 const styles = {
-  container: { padding: '24px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', overflowY: 'auto' },
-  title: { fontSize: '22px', fontWeight: '800', color: '#0f172a', margin: '0 0 4px 0' },
-  subtitle: { color: '#64748b', fontSize: '13px', marginBottom: '24px' },
-  gridContainer: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', maxWidth: '1000px' },
-  card: { background: '#fff', padding: '24px', borderRadius: '14px', border: '1.5px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', textAlign: 'left' },
-  cardTitle: { fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '16px', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' },
-  label: { fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '5px', color: '#334155' },
-  input: { width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', marginBottom: '15px', boxSizing: 'border-box' },
-  hint: { fontSize: '11px', color: '#94a3b8', display: 'block', marginTop: '-10px', marginBottom: '15px' },
-  saveBtn: { background: '#047857', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', width: '100%' }
+  container: { display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', backgroundColor: '#f8fafc', overflowY: 'auto', boxSizing: 'border-box', textAlign: 'left' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', backgroundColor: '#fff', padding: '16px 24px', borderRadius: '12px', border: '1.5px solid #e2e8f0' },
+  title: { margin: '0 0 4px 0', fontSize: '22px', fontWeight: '950', color: '#0f172a' },
+  subtitle: { fontSize: '12px', color: '#64748b', fontWeight: '700' },
+  statusBadge: { backgroundColor: '#dcfce7', color: '#15803d', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '900' },
+  saveBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: '900', fontSize: '13px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(5,150,105,0.2)' },
+  alert: { padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', fontWeight: '850', border: '1.5px solid' },
+  layout: { display: 'flex', gap: '24px', flex: 1, alignItems: 'flex-start' },
+  sidebar: { width: '260px', backgroundColor: '#fff', borderRadius: '12px', border: '1.5px solid #e2e8f0', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' },
+  sidebarBtn: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', backgroundColor: 'transparent', border: 'none', borderRadius: '8px', fontWeight: '850', fontSize: '13px', color: '#334155', cursor: 'pointer', textAlign: 'left', width: '100%' },
+  activeSidebarBtn: { backgroundColor: '#ecfdf5', color: '#047857', borderLeft: '4px solid #059669' },
+  contentPanel: { flex: 1, backgroundColor: '#fff', borderRadius: '12px', border: '1.5px solid #e2e8f0', padding: '24px', minHeight: '600px' },
+  formContainer: { display: 'flex', flexDirection: 'column', gap: '20px' },
+  sectionGroup: { display: 'flex', flexDirection: 'column', gap: '16px' },
+  sectionTitle: { fontSize: '16px', fontWeight: '950', color: '#0f172a', margin: '0 0 12px 0', borderBottom: '1.5px solid #f1f5f9', paddingBottom: '8px' },
+  grid2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' },
+  fieldGroup: { display: 'flex', flexDirection: 'column', gap: '6px' },
+  label: { fontSize: '12px', fontWeight: '900', color: '#334155' },
+  input: { padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', fontWeight: '700', color: '#0f172a', outline: 'none', backgroundColor: '#fff' },
+  placeholderTab: { textAlign: 'center', padding: '80px 20px', color: '#334155' }
 };
