@@ -23,6 +23,9 @@ public class MenuItem {
     @Column(name = "catalog_name")
     private String catalogName = "Default In-House Menu"; // 'Default Online Menu' or 'Default In-House Menu'
 
+    @Column(name = "restaurant_email")
+    private String restaurantEmail; // ✅ Multi-tenant isolation field
+
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -41,4 +44,7 @@ public class MenuItem {
 
     public String getCatalogName() { return catalogName; }
     public void setCatalogName(String catalogName) { this.catalogName = catalogName; }
+
+    public String getRestaurantEmail() { return restaurantEmail; }
+    public void setRestaurantEmail(String restaurantEmail) { this.restaurantEmail = restaurantEmail; }
 }

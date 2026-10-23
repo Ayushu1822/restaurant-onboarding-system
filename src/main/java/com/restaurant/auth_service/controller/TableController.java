@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping({"/api/tables", "/api/v1/tables"})
@@ -18,14 +19,28 @@ public class TableController {
     @Autowired
     private TableRepository tableRepository;
 
+    // ✅ FETCH TABLES STRICTLY FILTERED BY RESTAURANT EMAIL
     @GetMapping
-    public List<RestaurantTable> getAllTables() {
-        return tableRepository.findAll();
+    public List<RestaurantTable> getAllTables(@RequestParam(required = false) String email) {
+        List<RestaurantTable> allTables = tableRepository.findAll();
+        
+        if (email == null || email.trim().isEmpty()) {
+            return List.of(); // Safety: agar email nahi di toh empty return karo
+        }
+
+        return allTables.stream()
+            .filter(t -> t.getRestaurantEmail() != null && t.getRestaurantEmail().equalsIgnoreCase(email))
+            .collect(Collectors.toList());
     }
 
+    // ✅ CREATE TABLE TIED TO LOGGED-IN RESTAURANT EMAIL
     @PostMapping
     public ResponseEntity<RestaurantTable> createTable(@RequestBody RestaurantTable table) {
+        if (table.getRestaurantEmail() == null || table.getRestaurantEmail().trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
         RestaurantTable saved = tableRepository.save(table);
+        System.out.println("✅ TABLE CREATED for restaurant: " + saved.getRestaurantEmail());
         return ResponseEntity.ok(saved);
     }
 

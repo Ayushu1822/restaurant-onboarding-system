@@ -21,8 +21,8 @@ public class Customer {
     @Column(name = "preferred_food")
     private String preferredFood; // 'Veg', 'Non-Veg', 'Vegan', 'Eggetarian'
 
-    @Column(name = "customer_phone", unique = true, nullable = false)
-    private String customerPhone;
+    @Column(name = "customer_phone", nullable = false)
+    private String customerPhone; // Note: unique = true removed so different restaurants can have the same customer phone if needed
 
     @Column(name = "whatsapp_number")
     private String whatsappNumber;
@@ -31,6 +31,9 @@ public class Customer {
     private String customerEmail;
 
     private String address;
+
+    @Column(name = "restaurant_email")
+    private String restaurantEmail; // ✅ Multi-tenant isolation field
 
     // Getters and Setters
     public Long getId() { return id; }
@@ -59,4 +62,7 @@ public class Customer {
 
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
+
+    public String getRestaurantEmail() { return restaurantEmail; }
+    public void setRestaurantEmail(String restaurantEmail) { this.restaurantEmail = restaurantEmail; }
 }

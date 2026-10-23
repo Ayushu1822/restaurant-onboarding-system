@@ -23,6 +23,9 @@ public class Complaint {
     private String notes;
     private LocalDateTime timestamp = LocalDateTime.now();
 
+    @Column(name = "restaurant_email")
+    private String restaurantEmail; // ✅ Multi-tenant isolation field
+
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -53,4 +56,7 @@ public class Complaint {
 
     public LocalDateTime getTimestamp() { return timestamp; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+
+    public String getRestaurantEmail() { return restaurantEmail; }
+    public void setRestaurantEmail(String restaurantEmail) { this.restaurantEmail = restaurantEmail; }
 }

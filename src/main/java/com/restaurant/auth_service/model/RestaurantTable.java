@@ -29,6 +29,9 @@ public class RestaurantTable {
     @Column(name = "captain")
     private String captain; // 🧑‍✈️ Assigned Floor Captain
 
+    @Column(name = "restaurant_email")
+    private String restaurantEmail; // ✅ Multi-tenant isolation field
+
     public RestaurantTable() {}
 
     // Getters and Setters
@@ -55,4 +58,7 @@ public class RestaurantTable {
 
     public String getCaptain() { return captain; }
     public void setCaptain(String captain) { this.captain = captain; }
+
+    public String getRestaurantEmail() { return restaurantEmail; }
+    public void setRestaurantEmail(String restaurantEmail) { this.restaurantEmail = restaurantEmail; }
 }
