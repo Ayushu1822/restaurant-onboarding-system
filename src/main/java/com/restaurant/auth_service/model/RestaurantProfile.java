@@ -69,6 +69,13 @@ public class RestaurantProfile {
     @Column(name = "branch_short_code")
     private String branchShortCode;
 
+    // 🖼️ Supplementary Images
+    @Column(name = "whatsapp_banner_url")
+    private String whatsappBannerUrl;
+
+    @Column(name = "default_item_image_url")
+    private String defaultItemImageUrl;
+
     // 👤 Profile Specific Fields
     @Column(name = "first_name")
     private String firstName;
@@ -149,6 +156,12 @@ public class RestaurantProfile {
 
     public String getBranchShortCode() { return branchShortCode; }
     public void setBranchShortCode(String branchShortCode) { this.branchShortCode = branchShortCode; }
+
+    public String getWhatsappBannerUrl() { return whatsappBannerUrl; }
+    public void setWhatsappBannerUrl(String whatsappBannerUrl) { this.whatsappBannerUrl = whatsappBannerUrl; }
+
+    public String getDefaultItemImageUrl() { return defaultItemImageUrl; }
+    public void setDefaultItemImageUrl(String defaultItemImageUrl) { this.defaultItemImageUrl = defaultItemImageUrl; }
 
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }

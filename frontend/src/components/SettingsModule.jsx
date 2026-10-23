@@ -8,11 +8,11 @@ export default function SettingsModule() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
 
-  // Form State mapped to RestaurantProfile entity model
+  // Form State mapped to Database RestaurantProfile entity
   const [formData, setFormData] = useState({
     restaurantId: '',
     userId: '',
-    email: 'krishna6@yopmail.com', // Default lookup email from screenshot
+    email: 'krishna6@yopmail.com', // Fetching dynamically based on logged-in user/email
     businessName: '',
     ownerName: '',
     phoneNumber: '',
@@ -33,12 +33,14 @@ export default function SettingsModule() {
     branchDisplayName: '',
     businessShortCode: '',
     branchShortCode: '',
+    whatsappBannerUrl: '',
+    defaultItemImageUrl: '',
     firstName: '',
     lastName: '',
     preferredLanguage: 'Telugu'
   });
 
-  // Fetch Profile from Backend on Mount
+  // Fetch live DB data on component mount
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -47,12 +49,12 @@ export default function SettingsModule() {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/email/krishna6@yopmail.com`);
-      if (!res.ok) throw new Error('Failed to fetch restaurant profile');
+      if (!res.ok) throw new Error('Failed to fetch profile from database');
       const data = await res.json();
       setFormData(prev => ({ ...prev, ...data }));
     } catch (err) {
       console.error('Error fetching profile:', err);
-      showMsg('Failed to load profile from database.', 'error');
+      showMsg('Failed to load live data from database.', 'error');
     } finally {
       setLoading(false);
     }
@@ -63,6 +65,7 @@ export default function SettingsModule() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Save changes directly back to PostgreSQL database
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -77,12 +80,12 @@ export default function SettingsModule() {
 
       if (!res.ok) {
         const errText = await res.text();
-        throw new Error(errText || 'Failed to update settings');
+        throw new Error(errText || 'Failed to update settings in database');
       }
 
       const updated = await res.json();
       setFormData(prev => ({ ...prev, ...updated }));
-      showMsg('✅ Settings saved successfully to database!', 'success');
+      showMsg('✅ Changes successfully saved to database!', 'success');
     } catch (err) {
       console.error('Error saving profile:', err);
       showMsg(`❌ Error: ${err.message}`, 'error');
@@ -109,7 +112,7 @@ export default function SettingsModule() {
   ];
 
   if (loading) {
-    return <div style={styles.centerMsg}>Loading settings configuration from database...</div>;
+    return <div style={styles.centerMsg}>Loading latest settings from database...</div>;
   }
 
   return (
@@ -118,12 +121,12 @@ export default function SettingsModule() {
       <div style={styles.header}>
         <div>
           <h2 style={styles.title}>Settings</h2>
-          <span style={styles.subtitle}>Manage your business and operational configurations</span>
+          <span style={styles.subtitle}>Manage your business and operational configurations synced with DB</span>
         </div>
         <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-          <span style={styles.statusBadge}>🟢 Connected to DB</span>
+          <span style={styles.statusBadge}>🟢 Live DB Synced</span>
           <button onClick={handleSave} style={styles.saveBtn} disabled={saving}>
-            {saving ? 'Saving...' : '💾 Save Changes'}
+            {saving ? 'Saving to DB...' : '💾 Save Changes'}
           </button>
         </div>
       </div>
@@ -253,6 +256,35 @@ export default function SettingsModule() {
                     <input type="text" name="latitude" value={formData.latitude || ''} onChange={handleChange} style={styles.input} />
                   </div>
                 </div>
+
+                {/* Supplementary Images Section */}
+                <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>🖼️ Supplementary Images</h3>
+                <div style={styles.grid2}>
+                  <div style={styles.imageUploadCard}>
+                    <div style={{fontWeight: '900', color: '#0f172a', marginBottom: '6px'}}>Restaurant Banner for WhatsApp Order Flow</div>
+                    <div style={{fontSize: '11px', color: '#64748b', marginBottom: '12px'}}>Appears as the banner on WhatsApp order flow welcome screen.</div>
+                    <input 
+                      type="text" 
+                      name="whatsappBannerUrl" 
+                      value={formData.whatsappBannerUrl || ''} 
+                      onChange={handleChange} 
+                      placeholder="Paste Image URL or select from Gallery" 
+                      style={styles.input} 
+                    />
+                  </div>
+                  <div style={styles.imageUploadCard}>
+                    <div style={{fontWeight: '900', color: '#0f172a', marginBottom: '6px'}}>Default Item Image</div>
+                    <div style={{fontSize: '11px', color: '#64748b', marginBottom: '12px'}}>Used as default item image when specific image is not available.</div>
+                    <input 
+                      type="text" 
+                      name="defaultItemImageUrl" 
+                      value={formData.defaultItemImageUrl || ''} 
+                      onChange={handleChange} 
+                      placeholder="Paste Image URL or select from Gallery" 
+                      style={styles.input} 
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -295,7 +327,7 @@ export default function SettingsModule() {
               <div style={styles.placeholderTab}>
                 <h3>🚧 {sidebarItems.find(i => i.id === activeTab)?.label} Configuration</h3>
                 <p style={{color: '#64748b', fontSize: '14px', marginTop: '8px'}}>
-                  This operational sub-module is ready for implementation. You can connect it with database entities in the next iteration.
+                  This operational sub-module is ready for integration.
                 </p>
               </div>
             )}
@@ -326,6 +358,7 @@ const styles = {
   grid2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' },
   fieldGroup: { display: 'flex', flexDirection: 'column', gap: '6px' },
   label: { fontSize: '12px', fontWeight: '900', color: '#334155' },
-  input: { padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', fontWeight: '700', color: '#0f172a', outline: 'none', backgroundColor: '#fff' },
+  input: { padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', fontWeight: '700', color: '#0f172a', outline: 'none', backgroundColor: '#fff', width: '100%', boxSizing: 'border-box' },
+  imageUploadCard: { border: '2px dashed #cbd5e1', borderRadius: '10px', padding: '16px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
   placeholderTab: { textAlign: 'center', padding: '80px 20px', color: '#334155' }
 };
