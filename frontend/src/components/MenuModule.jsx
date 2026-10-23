@@ -23,13 +23,13 @@ export default function MenuModule() {
 
   useEffect(() => {
     fetchMenuItems();
-    // Expose a global listener or custom event if needed so top navbar button can trigger paused items modal
     window.openPausedItemsModal = () => setShowPausedModal(true);
     return () => { delete window.openPausedItemsModal; };
   }, []);
 
   const fetchMenuItems = () => {
-    fetch(`${API_BASE_URL}/api/v1/menu`)
+    const userEmail = localStorage.getItem('userEmail') || '';
+    fetch(`${API_BASE_URL}/api/v1/menu?email=${userEmail}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setMenuItems(data);
@@ -73,12 +73,14 @@ export default function MenuModule() {
     const finalCategory = category === 'ADD_NEW' ? customCategory.trim() : category;
     if (!itemName || !unitPrice || !finalCategory) return alert('Please enter Item Name, Price, and Category.');
 
+    const userEmail = localStorage.getItem('userEmail') || '';
     const newItem = {
       itemName,
       category: finalCategory,
       unitPrice: Number(unitPrice),
       catalogName: activeCatalog,
-      status: 'LIVE'
+      status: 'LIVE',
+      restaurantEmail: userEmail // ✅ Tied strictly to current logged-in account
     };
 
     fetch(`${API_BASE_URL}/api/v1/menu`, {
@@ -199,7 +201,7 @@ export default function MenuModule() {
 
       {/* Summary Status Strip */}
       <div style={styles.summaryStrip}>
-        <span>{activeCatalog.toUpperCase()} • <strong>{totalAvailable} AVAILABLE</strong> • <strong style={{color: '#dc2626'}}>{totalPaused} PAUSED</strong></span>
+        <span>{activeCatalog.toUpperCase()} · <strong>{totalAvailable} AVAILABLE</strong> · <strong style={{color: '#dc2626'}}>{totalPaused} PAUSED</strong></span>
         {totalPaused > 0 && (
           <button onClick={() => setShowPausedModal(true)} style={styles.viewPausedLink}>
             View Paused Items ({totalPaused}) →
@@ -212,7 +214,7 @@ export default function MenuModule() {
         <div style={{textAlign: 'center', padding: '50px', color: '#64748b'}}>Loading menu catalog from PostgreSQL...</div>
       ) : catalogFilteredItems.length === 0 ? (
         <div style={{textAlign: 'center', padding: '60px', background: '#fff', borderRadius: '12px', border: '1.5px dashed #cbd5e1', color: '#64748b'}}>
-          No items found in {activeCatalog}. Click "+ Add Dish" above!
+          No items found in {activeCatalog} for this account. Click "+ Add Dish" above!
         </div>
       ) : (
         dynamicCategories.map(cat => {
@@ -295,7 +297,7 @@ export default function MenuModule() {
                   <div key={item.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
                     <div>
                       <div style={{fontSize: '13px', fontWeight: '700', color: '#0f172a'}}>{item.itemName}</div>
-                      <div style={{fontSize: '11px', color: '#64748b'}}>{item.category} • {item.catalogName || 'Default In-House Menu'}</div>
+                      <div style={{fontSize: '11px', color: '#64748b'}}>{item.category} · {item.catalogName || 'Default In-House Menu'}</div>
                     </div>
                     <button 
                       onClick={() => handleToggleStatus(item.id, 'PAUSED')}

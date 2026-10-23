@@ -45,12 +45,16 @@ export default function CounterPOS() {
   const [lastCompletedOrder, setLastCompletedOrder] = useState(null);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/v1/menu`)
+    const userEmail = localStorage.getItem('userEmail') || '';
+
+    // Fetch Menu synced with account
+    fetch(`${API_BASE_URL}/api/v1/menu?email=${userEmail}`)
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setMenuItems(data); })
       .catch(err => console.log("Menu fetch error:", err));
 
-    fetch(`${API_BASE_URL}/api/v1/customers`)
+    // Fetch Customers strictly isolated by account email
+    fetch(`${API_BASE_URL}/api/v1/customers?email=${userEmail}`)
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setSavedCustomers(data); })
       .catch(err => console.log("Customers fetch error:", err));
@@ -91,6 +95,7 @@ export default function CounterPOS() {
     e.preventDefault();
     if (!customerPhone || !customerName) return alert('Please enter Name and Phone number.');
 
+    const userEmail = localStorage.getItem('userEmail') || '';
     const custObj = { 
       customerName, 
       gender,
@@ -99,7 +104,8 @@ export default function CounterPOS() {
       customerPhone, 
       whatsappNumber: whatsappNumber || customerPhone,
       customerEmail, 
-      address 
+      address,
+      restaurantEmail: userEmail // ✅ Tied strictly to current logged-in account
     };
 
     fetch(`${API_BASE_URL}/api/v1/customers`, {
@@ -146,13 +152,15 @@ export default function CounterPOS() {
     if (!customerPhone || !customerName) return alert('Please add Customer details using the "+ Add Customer" button.');
 
     setIsSubmitting(true);
+    const userEmail = localStorage.getItem('userEmail') || '';
 
     const finalPaymentDescription = splitPayment 
-      ? `Split: ${pay1Method} (₹${pay1Amount || (totalAmount/2).toFixed(2)}) + ${pay2Method} (₹${(totalAmount - (pay1Amount || totalAmount/2)).toFixed(2)})`
+      ? `Split: ${pay1Method} (₹${pay1Amount || (totalAmount/2).toFixed(2)}) + ${pay2Method} (₹${(totalAmount - (Number(pay1Amount) || totalAmount/2)).toFixed(2)})`
       : paymentMethod;
 
     const orderPayload = {
       displayId: `#POS-${Math.floor(1000 + Math.random() * 9000)}`,
+      restaurantEmail: userEmail, // ✅ Tied strictly to logged-in account
       customerName,
       customerPhone,
       customerEmail,
@@ -646,7 +654,7 @@ export default function CounterPOS() {
               <span style={{color: '#047857'}}>₹{Number(lastCompletedOrder.totalAmount).toFixed(2)}</span>
             </div>
 
-            {/* 💳 SPLIT PAYMENT SECTION INSIDE RECEIPT MODAL (Colorful & Responsive UX) */}
+            {/* 💳 SPLIT PAYMENT SECTION INSIDE RECEIPT MODAL */}
             <div style={styles.splitPaymentBox}>
               <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
                 <div>

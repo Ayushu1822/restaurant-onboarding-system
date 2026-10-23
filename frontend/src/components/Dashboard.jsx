@@ -171,7 +171,8 @@ export default function Dashboard({ user, onLogout }) {
   }, [loggedInEmail]);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/v1/orders`, {
+    // ✅ Strictly isolated by logged-in user email
+    fetch(`${API_BASE_URL}/api/v1/orders?email=${loggedInEmail}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     })
@@ -232,7 +233,7 @@ export default function Dashboard({ user, onLogout }) {
         setOrders([]);
         setLoadingOrders(false);
       });
-  }, [refreshTick]);
+  }, [loggedInEmail, refreshTick]);
 
   const handleSaveProfile = (e) => {
     e.preventDefault();
@@ -243,7 +244,8 @@ export default function Dashboard({ user, onLogout }) {
         businessName: editForm.businessName,
         ownerName: editForm.ownerName,
         phoneNumber: editForm.phone,
-        whatsappNumber: editForm.whatsappNumber
+        whatsappNumber: editForm.whatsappNumber,
+        email: loggedInEmail
       })
     })
       .then(res => {

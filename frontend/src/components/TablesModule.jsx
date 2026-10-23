@@ -35,7 +35,8 @@ export default function TablesModule() {
 
   const fetchTables = () => {
     setLoading(true);
-    fetch(`${API_BASE_URL}/api/v1/tables`)
+    const userEmail = localStorage.getItem('userEmail') || '';
+    fetch(`${API_BASE_URL}/api/v1/tables?email=${userEmail}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setTables(data);
@@ -48,7 +49,8 @@ export default function TablesModule() {
   };
 
   const fetchCaptains = () => {
-    fetch(`${API_BASE_URL}/api/v1/staff`)
+    const userEmail = localStorage.getItem('userEmail') || '';
+    fetch(`${API_BASE_URL}/api/v1/staff?email=${userEmail}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setCaptainsList(data);
@@ -57,7 +59,8 @@ export default function TablesModule() {
   };
 
   const fetchLiveMenu = () => {
-    fetch(`${API_BASE_URL}/api/v1/menu`)
+    const userEmail = localStorage.getItem('userEmail') || '';
+    fetch(`${API_BASE_URL}/api/v1/menu?email=${userEmail}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
@@ -115,12 +118,14 @@ export default function TablesModule() {
     e.preventDefault();
     if (!newTableForm.tableId) return alert('Enter Table ID');
 
+    const userEmail = localStorage.getItem('userEmail') || '';
     const obj = {
       tableId: newTableForm.tableId.toUpperCase(),
       section: newTableForm.section,
       seats: Number(newTableForm.seats),
       status: 'Available',
-      captain: 'Unassigned'
+      captain: 'Unassigned',
+      restaurantEmail: userEmail
     };
 
     fetch(`${API_BASE_URL}/api/v1/tables`, {
@@ -142,10 +147,16 @@ export default function TablesModule() {
     e.preventDefault();
     if (!newCaptainForm.name) return alert('Enter captain name');
 
+    const userEmail = localStorage.getItem('userEmail') || '';
     fetch(`${API_BASE_URL}/api/v1/staff`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newCaptainForm.name, role: 'CAPTAIN', phone: newCaptainForm.phone })
+      body: JSON.stringify({ 
+        name: newCaptainForm.name, 
+        role: 'CAPTAIN', 
+        phone: newCaptainForm.phone,
+        restaurantEmail: userEmail 
+      })
     })
       .then(res => {
         if (res.ok) {
@@ -168,12 +179,14 @@ export default function TablesModule() {
   const handleSendKOT = () => {
     const subtotal = cartItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
     const totalAmount = Math.round(subtotal * 1.05);
+    const userEmail = localStorage.getItem('userEmail') || '';
 
     const orderPayload = {
       displayId: `Table ${activeOrderTable.tableId}`,
+      restaurantEmail: userEmail,
       customerName: `Table ${activeOrderTable.tableId} (${activeOrderTable.captain || 'Unassigned'})`,
       channel: 'COUNTER',
-      orderType: orderType, // Dine-In or Takeaway
+      orderType: orderType,
       status: 'New',
       subtotal: subtotal,
       totalAmount: totalAmount,
@@ -221,7 +234,7 @@ export default function TablesModule() {
       <div style={styles.inlinePOSWrapper}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', background: '#0f172a', color: '#fff', borderRadius: '14px 14px 0 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '950' }}>Table {activeOrderTable.tableId} - POS & Order Terminal</h3>
+            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '950' }}>Table {activeOrderTable.tableId} POS & Order Terminal</h3>
             <span style={{ background: '#059669', color: '#fff', padding: '5px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '950' }}>🧑‍✈️ {activeOrderTable.captain || 'Unassigned'}</span>
           </div>
           <button onClick={() => setActiveOrderTable(null)} style={{ background: 'rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.3)', color: '#fff', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: '950' }}>✕ Exit POS</button>
@@ -235,7 +248,7 @@ export default function TablesModule() {
             
             {menuItems.length === 0 ? (
               <div style={{ textAlign: 'center', color: '#94a3b8', padding: '60px', background: '#fff', borderRadius: '16px', border: '2px dashed #cbd5e1', fontWeight: '800' }}>
-                No menu items found in database. Please add items via Menu Management module first.
+                No menu items found for this account. Please add items via Menu Management module first.
               </div>
             ) : (
               categories.map(category => {
@@ -435,7 +448,7 @@ export default function TablesModule() {
         <div>
           <h2 style={{ fontSize: '24px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Restaurant Floor & Captains</h2>
           <p style={{ color: '#64748b', fontSize: '13px', margin: '4px 0 0 0', fontWeight: '700' }}>
-            <strong style={{ color: '#059669' }}>{tables.filter(t => t.status === 'Available').length}/{tables.length} tables open</strong> • Live floor operations & POS
+            <strong style={{ color: '#059669' }}>{tables.filter(t => t.status === 'Available').length}/{tables.length} tables open</strong> · Live floor operations & POS
           </p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
@@ -446,9 +459,13 @@ export default function TablesModule() {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px', color: '#64748b', fontWeight: '700' }}>Loading tables from database...</div>
+      ) : tables.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px', color: '#64748b', fontWeight: '700', background: '#fff', borderRadius: '14px', border: '1.5px dashed #cbd5e1' }}>
+          No tables found for this account. Click "+ Add Table" above!
+        </div>
       ) : (
         ['MAIN', 'PATIO', 'BAR'].map(section => {
-          const sectionTables = tables.filter(t => t.section === section);
+          const sectionTables = tables.filter(t => (t.section || 'MAIN').toUpperCase() === section);
           if (sectionTables.length === 0) return null;
 
           return (

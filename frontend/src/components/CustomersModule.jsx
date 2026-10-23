@@ -33,7 +33,8 @@ export default function CustomersModule() {
   }, []);
 
   const fetchCustomers = () => {
-    fetch(`${API_BASE_URL}/api/v1/customers`)
+    const userEmail = localStorage.getItem('userEmail') || '';
+    fetch(`${API_BASE_URL}/api/v1/customers?email=${userEmail}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setCustomers(data);
@@ -51,10 +52,16 @@ export default function CustomersModule() {
       return alert('Please enter Name and Phone number.');
     }
 
+    const userEmail = localStorage.getItem('userEmail') || '';
+    const payload = {
+      ...formData,
+      restaurantEmail: userEmail // ✅ Tied strictly to current logged-in account
+    };
+
     fetch(`${API_BASE_URL}/api/v1/customers`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData)
+      body: JSON.stringify(payload)
     })
       .then(res => {
         if (res.ok) {
@@ -82,12 +89,10 @@ export default function CustomersModule() {
         if (res.ok || res.status === 204 || res.status === 200) {
           setCustomers(customers.filter(c => c.id !== id));
         } else {
-          // Fallback filtering if backend endpoint path differs
           setCustomers(customers.filter(c => c.id !== id && c.customerPhone !== id));
         }
       })
       .catch(err => {
-        // Optimistic UI removal if endpoint isn't wired yet
         setCustomers(customers.filter(c => c.id !== id));
       });
   };
@@ -160,7 +165,7 @@ export default function CustomersModule() {
         {loading ? (
           <div style={{padding: '50px', textAlign: 'center', color: '#64748b'}}>Loading customer profiles from PostgreSQL...</div>
         ) : filteredCustomers.length === 0 ? (
-          <div style={{padding: '60px', textAlign: 'center', color: '#64748b'}}>No customer profiles found.</div>
+          <div style={{padding: '60px', textAlign: 'center', color: '#64748b'}}>No customer profiles found for this account.</div>
         ) : (
           <table style={styles.table}>
             <thead>

@@ -36,14 +36,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
       setMenuItems(Array.isArray(data) ? data : (Array.isArray(data?.content) ? data.content : []));
     } catch (err) {
       console.error('Failed to fetch menu items:', err);
-      setMenuItems([
-        { id: '1', name: 'green tea' },
-        { id: '2', name: 'Ginger tea with milk' },
-        { id: '3', name: 'crossiant' },
-        { id: '4', name: 'pineapple cake' },
-        { id: '5', name: 'Avakkaya rice' },
-        { id: '6', name: 'gobi rice' }
-      ]);
+      setMenuItems([]);
     }
   }, [restaurantId]);
 
@@ -137,7 +130,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
   const safeSelectedIds = Array.isArray(selectedImageIds) ? selectedImageIds : [];
   const safeSelectedMenuIds = Array.isArray(selectedMenuItemIds) ? selectedMenuItemIds : [];
   
-  const activeImage = safeImages.find(img => img.id === safeSelectedIds[0]) || safeImages[0] || { fileName: 'chicken sushi.png', fileUrl: '' };
+  const activeImage = safeImages.find(img => img.id === safeSelectedIds[0]) || safeImages[0] || { fileName: 'image.png', fileUrl: '' };
 
   return (
     <div style={styles.container}>
@@ -207,7 +200,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
               <div style={styles.cardFooter}>
                 <strong style={styles.cardTitle}>{img.fileName || img.file_name}</strong>
                 <small style={styles.cardSubtitle}>{img.fileType?.split('/')[1]?.toUpperCase() || 'JPEG'} · {img.fileSize || '45 KB'}</small>
-                <span style={styles.cardDate}>{img.uploadedAt ? new Date(img.uploadedAt).toLocaleDateString() : '28 Jun 2026'}</span>
+                <span style={styles.cardDate}>{img.uploadedAt ? new Date(img.uploadedAt).toLocaleDateString() : ''}</span>
               </div>
             </div>
           );
@@ -233,7 +226,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
             <div style={styles.modalHeader}>
               <div>
                 <h3 style={styles.modalTitle}>Upload images</h3>
-                <p style={styles.modalSubtext}>PNG or JPEG, up to 5MB each and 10 at a time. Images must be square so they fill menu tiles cleanly.</p>
+                <p style={styles.modalSubtext}>PNG or JPEG, up to 5MB each and 10 at a time.</p>
               </div>
               <button style={styles.closeBtn} onClick={() => setIsUploadModalOpen(false)}>✕</button>
             </div>
@@ -252,10 +245,6 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
                 <strong>Drop images here, or click to browse</strong>
                 <span style={{ fontSize: '12px', color: '#6b7280' }}>{uploadFiles.length}/10 selected</span>
               </label>
-            </div>
-
-            <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '24px' }}>
-              {uploadFiles.length === 0 ? 'No images selected yet.' : `${uploadFiles.length} file(s) ready for upload.`}
             </div>
 
             <div style={styles.modalFooter}>
@@ -362,7 +351,6 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
   );
 }
 
-// Inline Styles Object
 const styles = {
   container: { padding: '24px', background: '#f8faf9', minHeight: '100vh', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
@@ -386,7 +374,7 @@ const styles = {
   cardTitle: { display: 'block', fontSize: '13px', color: '#1f2937', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   cardSubtitle: { display: 'block', fontSize: '11px', color: '#9ca3af', marginTop: '2px' },
   cardDate: { display: 'block', fontSize: '11px', color: '#9ca3af', marginTop: '2px' },
-  floatingBar: { position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', background: 'white', border: '1px solid #e5e7eb', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)', padding: '12px 24px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '30px', zIndex: 100 },
+    floatingBar: { position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', background: 'white', border: '1px solid #e5e7eb', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)', padding: '12px 24px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '30px', zIndex: 100 },
   floatingText: { fontWeight: 600, color: '#111827', fontSize: '14px' },
   floatingButtons: { display: 'flex', alignItems: 'center', gap: '12px' },
   clearBtn: { background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', fontWeight: 500 },
@@ -399,7 +387,7 @@ const styles = {
   modalSubtext: { fontSize: '13px', color: '#6b7280', margin: 0 },
   closeBtn: { background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6b7280' },
   dropZone: { border: '2px dashed #d1d5db', borderRadius: '12px', padding: '40px 20px', textAlign: 'center', background: '#fafafa', cursor: 'pointer', marginBottom: '16px' },
-  dropLabel: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#4b5563', fontSize: '13px' },
+  dropLabel: { display: 'flex', flexDirection: 'column',alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#4b5563', fontSize: '13px' },
   modalFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e5e7eb', paddingTop: '16px' },
   secondaryBtn: { background: 'white', border: '1px solid #d1d5db', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 },
   primaryBtn: { background: '#ff5a5f', color: 'white', border: 'none', padding: '8px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 },

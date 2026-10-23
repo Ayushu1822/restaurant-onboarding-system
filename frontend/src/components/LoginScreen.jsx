@@ -101,6 +101,7 @@ export default function LoginScreen({ onLoginSuccess }) {
       }
       localStorage.setItem('auth_token', data.token);
       localStorage.setItem('user_email', loginEmail);
+      localStorage.setItem('userEmail', loginEmail); // ✅ CRITICAL for multi-tenant data isolation across all modules
       onLoginSuccess();
     } catch {
       setMessage('Could not connect to the server. Please try again.');

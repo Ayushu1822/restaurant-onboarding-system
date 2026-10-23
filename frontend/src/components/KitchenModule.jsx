@@ -24,7 +24,10 @@ export default function KitchenModule() {
   const [loading, setLoading] = useState(true);
 
   const fetchKitchenOrders = () => {
-    fetch(`${API_BASE_URL}/api/v1/orders`)
+    const userEmail = localStorage.getItem('userEmail') || '';
+    
+    // ✅ Strictly fetch orders filtered by logged-in user email
+    fetch(`${API_BASE_URL}/api/v1/orders?email=${userEmail}`)
       .then(res => {
         if (!res.ok) throw new Error('Server error');
         return res.json();
@@ -33,13 +36,13 @@ export default function KitchenModule() {
         if (Array.isArray(data) && data.length > 0) {
           setOrders(data);
         } else {
-          setOrders(prev => prev.length > 0 ? prev : FALLBACK_ORDERS);
+          setOrders([]); // Set empty for new accounts instead of global fallback
         }
         setLoading(false);
       })
       .catch(err => {
-        console.warn("Backend fetch failed, using fallback:", err);
-        setOrders(prev => prev.length > 0 ? prev : FALLBACK_ORDERS);
+        console.warn("Backend fetch failed:", err);
+        setOrders([]);
         setLoading(false);
       });
   };
@@ -87,7 +90,7 @@ export default function KitchenModule() {
       <div style={styles.header}>
         <div>
           <h2 style={{margin: '0 0 4px 0', fontSize: '22px', fontWeight: '950', color: '#0f172a'}}>Kitchen Display System (KDS)</h2>
-          <span style={{fontSize: '12px', color: '#64748b', fontWeight: '700'}}>Live synchronized order preparation queue</span>
+          <span style={{fontSize: '12px', color: '#64748b', fontWeight: '700'}}>Live synchronized order preparation queue for your account</span>
         </div>
         <button onClick={fetchKitchenOrders} style={styles.refreshBtn}>🔄 Refresh Queue</button>
       </div>
@@ -106,11 +109,9 @@ export default function KitchenModule() {
             const channel = o.channel || 'COUNTER';
             const status = o.status || 'New';
             
-            // Robust check for notes across all possible property names
             const specialNote = o.customerRequest || o.customer_request || o.notes || o.specialNote || o.instruction || '';
             const items = o.items || o.orderItems || o.order_items || [];
 
-            // Universal condition: Show 'Mark Ready' for any order unless it's already 'Ready' or 'Completed'
             const currentStatus = status.toLowerCase();
             const showMarkReady = currentStatus === 'new' || currentStatus === 'preparing' || currentStatus === '';
 
