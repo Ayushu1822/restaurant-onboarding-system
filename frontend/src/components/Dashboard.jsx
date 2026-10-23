@@ -15,7 +15,6 @@ import SettingsModule from './SettingsModule';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
-// Self-contained order note helper (Fixes ReferenceError / White screen)
 const getOrderNote = (order) => {
   if (!order) return '';
   return order.customerRequest || order.customer_request || order.notes || '';
@@ -45,16 +44,7 @@ const NAVIGATION_ICONS = {
 function NavigationIcon({ tab }) {
   const icon = NAVIGATION_ICONS[tab] || NAVIGATION_ICONS['Online Orders'];
   return (
-    <svg
-      aria-hidden="true"
-      className="navGlyph"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg aria-hidden="true" className="navGlyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       {icon.paths.map(path => <path d={path} key={path} />)}
     </svg>
   );
@@ -77,16 +67,6 @@ export default function Dashboard({ user, onLogout }) {
   const [isProfileFallback, setIsProfileFallback] = useState(false);
   const [isOrdersFallback, setIsOrdersFallback] = useState(false);
   
-  // Checkout & Split Payment Modal State
-  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
-  const [tip, setTip] = useState(0);
-  const [customTip, setCustomTip] = useState('');
-  const [splitPayment, setSplitPayment] = useState(false);
-  const [pay1Method, setPay1Method] = useState('Cash');
-  const [pay1Amount, setPay1Amount] = useState('');
-  const [pay2Method, setPay2Method] = useState('UPI');
-
-  // Live Table Stats State for Header Bar
   const [tableStats, setTableStats] = useState({ open: 5, total: 10, occupied: 3, billing: 1 });
   const [pausedCount, setPausedCount] = useState(0);
 
@@ -111,9 +91,8 @@ export default function Dashboard({ user, onLogout }) {
     setOrderNote(getOrderNote(selectedOrder));
   }, [selectedOrder?.orderId]);
 
-  // Fetch live table stats & paused items count from PostgreSQL
   const fetchHeaderData = () => {
-    fetch(`${API_BASE_URL}/api/v1/tables`)
+    fetch(`${API_BASE_URL}/api/v1/tables?email=${loggedInEmail}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
@@ -125,7 +104,7 @@ export default function Dashboard({ user, onLogout }) {
       })
       .catch(err => console.log("Table stats sync note:", err));
 
-    fetch(`${API_BASE_URL}/api/v1/menu`)
+    fetch(`${API_BASE_URL}/api/v1/menu?email=${loggedInEmail}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -140,7 +119,7 @@ export default function Dashboard({ user, onLogout }) {
     fetchHeaderData();
     const interval = setInterval(fetchHeaderData, 6000);
     return () => clearInterval(interval);
-  }, []);
+  }, [loggedInEmail]);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/restaurants/email/${loggedInEmail}`)
@@ -171,7 +150,6 @@ export default function Dashboard({ user, onLogout }) {
   }, [loggedInEmail]);
 
   useEffect(() => {
-    // ✅ Strictly isolated by logged-in user email
     fetch(`${API_BASE_URL}/api/v1/orders?email=${loggedInEmail}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
@@ -495,13 +473,7 @@ export default function Dashboard({ user, onLogout }) {
 
       {/* Sidebar */}
       <div className={`dashboardSidebar${isNavExpanded ? ' dashboardSidebarExpanded' : ''}`} style={{ ...styles.sidebar, width: isNavExpanded ? '230px' : '56px' }}>
-        <button
-          type="button"
-          className="sidebarToggle"
-          aria-label={isNavExpanded ? 'Collapse navigation' : 'Expand navigation'}
-          aria-expanded={isNavExpanded}
-          onClick={() => setIsNavExpanded(expanded => !expanded)}
-        >
+        <button type="button" className="sidebarToggle" aria-label={isNavExpanded ? 'Collapse navigation' : 'Expand navigation'} aria-expanded={isNavExpanded} onClick={() => setIsNavExpanded(expanded => !expanded)}>
           <span></span><span></span><span></span>
         </button>
         <div style={styles.brandBox}>
@@ -513,21 +485,14 @@ export default function Dashboard({ user, onLogout }) {
         </div>
 
         <ul className="sidebarNavLinks" style={styles.navLinks}>
-          {[
-            'Online Orders', 'Counter POS', 'Tables', 'Kitchen', 'Menu', 
-            'Reports', 'Promotions', 'Customers', 'Complaints', 'Gallery', 'Settings'
-          ].map((tab) => {
+          {['Online Orders', 'Counter POS', 'Tables', 'Kitchen', 'Menu', 'Reports', 'Promotions', 'Customers', 'Complaints', 'Gallery', 'Settings'].map((tab) => {
             const isActive = activeTab === tab;
             const isHovered = hoveredTab === tab;
             return (
               <li 
                 key={tab}
                 className="navItem"
-                style={{
-                  ...styles.navItem,
-                  ...(isActive ? styles.navItemActive : {}),
-                  ...(isHovered && !isActive ? styles.navItemHover : {})
-                }}
+                style={{ ...styles.navItem, ...(isActive ? styles.navItemActive : {}), ...(isHovered && !isActive ? styles.navItemHover : {}) }}
                 onClick={() => setActiveTab(tab)}
                 onMouseEnter={() => setHoveredTab(tab)}
                 onMouseLeave={() => setHoveredTab(null)}
@@ -541,7 +506,6 @@ export default function Dashboard({ user, onLogout }) {
             );
           })}
         </ul>
-
       </div>
 
       {/* Main Content */}
@@ -560,10 +524,7 @@ export default function Dashboard({ user, onLogout }) {
               <span className="profileName"><strong>{profileData.ownerName || 'Admin'}</strong><small>Admin</small></span>
               <span>⌄</span>
             </button>
-            <button 
-              onClick={() => setActiveTab('Menu')} 
-              style={styles.pausedItemsBtn}
-            >
+            <button onClick={() => setActiveTab('Menu')} style={styles.pausedItemsBtn}>
               🔴 Manage Paused Items <span style={styles.pausedCountBadge}>{pausedCount}</span>
             </button>
             <button onClick={onLogout} style={styles.topLogoutBtn}>Sign Out</button>
@@ -599,10 +560,9 @@ export default function Dashboard({ user, onLogout }) {
             </div>
 
             <div style={styles.splitViewWrapper}>
-              {/* Left Column: Order Cards with Hover Effects */}
               <div style={styles.masterListColumn}>
                 <div className="orderToolbar">
-                  <div className="statusTabs" role="tablist" aria-label="Filter orders by status">
+                  <div className="statusTabs" role="tablist">
                     {orderStatusTabs.map(status => (
                       <button
                         key={status}
@@ -621,10 +581,7 @@ export default function Dashboard({ user, onLogout }) {
                     ))}
                   </div>
                   <div className="orderTools">
-                    <button title="Refresh orders" aria-label="Refresh orders" onClick={() => {
-                      setLoadingOrders(true);
-                      setRefreshTick(tick => tick + 1);
-                    }}>↻</button>
+                    <button title="Refresh orders" onClick={() => { setLoadingOrders(true); setRefreshTick(tick => tick + 1); }}>↻</button>
                     <label className="searchOrders"><span>⌕</span><input value={orderSearch} onChange={event => setOrderSearch(event.target.value)} placeholder="Search orders" /></label>
                     <button className="managePaused" onClick={() => setActiveTab('Menu')}>Manage Paused Items <b>{pausedCount}</b></button>
                   </div>
@@ -643,13 +600,7 @@ export default function Dashboard({ user, onLogout }) {
                         <div 
                           key={order.orderId || order.id} 
                           className="orderSummary"
-                          style={{
-                            ...styles.orderSummaryCard, 
-                            borderColor: isSelected || isHovered ? '#2563eb' : '#cbd5e1',
-                            backgroundColor: '#fff',
-                            transform: 'none',
-                            boxShadow: 'none'
-                          }}
+                          style={{ ...styles.orderSummaryCard, borderColor: isSelected || isHovered ? '#2563eb' : '#cbd5e1', backgroundColor: '#fff' }}
                           onClick={() => setSelectedOrder(order)}
                           onMouseEnter={() => setHoveredCardId(order.orderId)}
                           onMouseLeave={() => setHoveredCardId(null)}
@@ -683,7 +634,6 @@ export default function Dashboard({ user, onLogout }) {
                 </div>
               </div>
 
-              {/* Right Column: Order Details & Compact Modern Thermal Receipt */}
               <div style={styles.detailPanelColumn}>
                 <div className="detailPanelHeading">
                   <div style={styles.listHeaderTitle}>Selected order</div>
@@ -721,19 +671,9 @@ export default function Dashboard({ user, onLogout }) {
                     <div className="orderNotesEditor">
                       <label>
                         Order note (visible to kitchen and staff; included on the receipt)
-                        <textarea
-                          value={orderNote}
-                          onChange={event => setOrderNote(event.target.value)}
-                          rows={2}
-                          placeholder="Add a note for the kitchen, staff, or customer"
-                        />
+                        <textarea value={orderNote} onChange={event => setOrderNote(event.target.value)} rows={2} placeholder="Add a note for the kitchen, staff, or customer" />
                       </label>
-                      <button
-                        type="button"
-                        className="saveOrderNotesButton"
-                        onClick={saveOrderNotes}
-                        disabled={savingOrderNotes}
-                      >
+                      <button type="button" className="saveOrderNotesButton" onClick={saveOrderNotes} disabled={savingOrderNotes}>
                         {savingOrderNotes ? 'Saving…' : 'Save notes'}
                       </button>
                     </div>
@@ -785,138 +725,6 @@ export default function Dashboard({ user, onLogout }) {
           </div>
         )}
 
-        {/* Checkout & Split Payment Modal */}
-        {showCheckoutModal && selectedOrder && (
-          <div style={styles.drawerOverlay} onClick={() => setShowCheckoutModal(false)}>
-            <div style={styles.checkoutModalContent} onClick={e => e.stopPropagation()}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>Checkout & Split Payment</h3>
-                <button onClick={() => setShowCheckoutModal(false)} style={styles.closeXBtn}>✕</button>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '70vh', overflowY: 'auto' }}>
-                {/* Tip Section */}
-                <div style={styles.checkoutSectionCard}>
-                  <label style={styles.checkoutLabel}>TIP (OPTIONAL)</label>
-                  <div style={styles.tipGrid}>
-                    {[0, 20, 50, 100].map(val => (
-                      <button
-                        key={val}
-                        onClick={() => { setTip(val); setCustomTip(''); }}
-                        style={{
-                          ...styles.tipBtn,
-                          backgroundColor: tip === val ? '#059669' : '#fff',
-                          color: tip === val ? '#fff' : '#334155',
-                          borderColor: tip === val ? '#059669' : '#cbd5e1'
-                        }}
-                      >
-                        {val === 0 ? 'No tip' : `₹${val}`}
-                      </button>
-                    ))}
-                    <input
-                      type="number"
-                      placeholder="Custom"
-                      value={customTip}
-                      onChange={(e) => { setTip('custom'); setCustomTip(e.target.value); }}
-                      style={styles.customTipInput}
-                    />
-                  </div>
-                </div>
-
-                {/* Split Payment Toggle */}
-                <div style={styles.checkoutSectionCard}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '14px' }}>Split payment</div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>Pay with two methods (e.g. Cash + UPI)</div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={splitPayment}
-                      onChange={(e) => setSplitPayment(e.target.checked)}
-                      style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#059669' }}
-                    />
-                  </div>
-                </div>
-
-                {/* Payment 1 */}
-                <div style={styles.checkoutSectionCard}>
-                  <label style={styles.checkoutLabel}>{splitPayment ? 'PAYMENT 1' : 'PAYMENT METHOD'}</label>
-                  <div style={styles.methodGrid}>
-                    {['Cash', 'UPI', 'Card'].map(m => (
-                      <button
-                        key={m}
-                        onClick={() => setPay1Method(m)}
-                        style={{
-                          ...styles.methodBtn,
-                          borderColor: pay1Method === m ? '#059669' : '#cbd5e1',
-                          backgroundColor: pay1Method === m ? '#ecfdf5' : '#fff'
-                        }}
-                      >
-                        <span style={{ fontSize: '16px' }}>{m === 'Cash' ? '💵' : m === 'UPI' ? '📱' : '💳'}</span>
-                        <span style={{ fontWeight: '700', fontSize: '12px', color: '#0f172a' }}>{m}</span>
-                      </button>
-                    ))}
-                  </div>
-                  {splitPayment && (
-                    <input
-                      type="number"
-                      placeholder="Amount for Payment 1 (e.g. 500)"
-                      value={pay1Amount}
-                      onChange={(e) => setPay1Amount(e.target.value)}
-                      style={styles.splitAmountInput}
-                    />
-                  )}
-                </div>
-
-                {/* Payment 2 */}
-                {splitPayment && (
-                  <div style={styles.checkoutSectionCard}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <label style={styles.checkoutLabel}>PAYMENT 2</label>
-                      <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Balance • auto</span>
-                    </div>
-                    <div style={styles.methodGrid}>
-                      {['Cash', 'UPI', 'Card'].map(m => (
-                        <button
-                          key={m}
-                          onClick={() => setPay2Method(m)}
-                          style={{
-                            ...styles.methodBtn,
-                            borderColor: pay2Method === m ? '#059669' : '#cbd5e1',
-                            backgroundColor: pay2Method === m ? '#ecfdf5' : '#fff'
-                          }}
-                        >
-                          <span style={{ fontSize: '16px' }}>{m === 'Cash' ? '💵' : m === 'UPI' ? '📱' : '💳'}</span>
-                          <span style={{ fontWeight: '700', fontSize: '12px', color: '#0f172a' }}>{m}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '14px' }}>
-                <div>
-                  <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700', display: 'block' }}>Total Amount:</span>
-                  <span style={{ fontSize: '20px', fontWeight: '900', color: '#059669' }}>
-                    ₹{(selectedOrder.total + (tip === 'custom' ? Number(customTip) || 0 : tip)).toFixed(2)}
-                  </span>
-                </div>
-                <button
-                  onClick={() => {
-                    alert('Payment processed successfully and receipt recorded!');
-                    setShowCheckoutModal(false);
-                  }}
-                  style={styles.actionBtn}
-                >
-                  ✅ Complete Payment
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {activeTab === 'Counter POS' && <CounterPOS />}
         {activeTab === 'Tables' && <TablesModule />}
         {activeTab === 'Kitchen' && <KitchenModule />}
@@ -929,70 +737,73 @@ export default function Dashboard({ user, onLogout }) {
         {activeTab === 'Settings' && <SettingsModule />}
       </div>
 
-      {/* Profile Modal */}
+      {/* Modern Styled Profile Modal */}
       {showProfileModal && (
-        <div style={styles.drawerOverlay} onClick={() => setShowProfileModal(false)}>
-          <div style={styles.profileModal} onClick={(e) => e.stopPropagation()}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
-              <h3 style={{margin: 0, color: '#0f172a', fontSize: '18px', fontWeight: '900'}}>Admin Profile Settings</h3>
+        <div style={styles.modalOverlay} onClick={() => setShowProfileModal(false)}>
+          <div style={styles.modernProfileCard} onClick={(e) => e.stopPropagation()}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1.5px solid #f1f5f9', paddingBottom: '14px'}}>
+              <div>
+                <h3 style={{margin: 0, color: '#0f172a', fontSize: '18px', fontWeight: '950'}}>Admin Profile</h3>
+                <span style={{fontSize: '12px', color: '#64748b', fontWeight: '700'}}>Manage your restaurant account details</span>
+              </div>
               <button onClick={() => setShowProfileModal(false)} style={styles.closeXBtn}>✕</button>
             </div>
 
             {isProfileFallback && (
-              <div style={{fontSize: '11px', color: '#dc2626', marginBottom: '12px', fontWeight: 'bold'}}>
+              <div style={{fontSize: '11px', color: '#dc2626', marginBottom: '12px', fontWeight: 'bold', background: '#fef2f2', padding: '8px 12px', borderRadius: '8px'}}>
                 ⚠️ Running on local profile fallback (Database sync pending)
               </div>
             )}
-            <div style={styles.modalRedAccentLine}></div>
             
             {!isEditingProfile ? (
-              <div style={{marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                <div style={styles.profileCardRow}><span>Business Name:</span> <strong>{profileData.businessName}</strong></div>
-                <div style={styles.profileCardRow}><span>Owner Name:</span> <strong>{profileData.ownerName}</strong></div>
-                <div style={styles.profileCardRow}><span>Phone Number:</span> <strong>{profileData.phone}</strong></div>
-                <div style={styles.profileCardRow}><span>WhatsApp Number:</span> <strong>{profileData.whatsappNumber}</strong></div>
+              <div style={{display: 'flex', flexDirection: 'column', gap: '14px'}}>
+                <div style={styles.profileRow}><span>Business Name</span> <strong>{profileData.businessName}</strong></div>
+                <div style={styles.profileRow}><span>Owner / Admin Name</span> <strong style={{color: '#059669'}}>{profileData.ownerName}</strong></div>
+                <div style={styles.profileRow}><span>Login Email</span> <strong>{profileData.email}</strong></div>
+                <div style={styles.profileRow}><span>Phone Number</span> <strong>{profileData.phone}</strong></div>
+                <div style={styles.profileRow}><span>WhatsApp Number</span> <strong>{profileData.whatsappNumber}</strong></div>
 
-                <div style={{display: 'flex', gap: '10px', marginTop: '20px'}}>
-                  <button onClick={() => setIsEditingProfile(true)} style={styles.actionBtn}>Edit Live Profile</button>
-                  <button onClick={() => setShowProfileModal(false)} style={{...styles.actionBtn, backgroundColor: '#64748b'}}>Close</button>
+                <div style={{display: 'flex', gap: '12px', marginTop: '16px'}}>
+                  <button onClick={() => setIsEditingProfile(true)} style={styles.primaryModalBtn}>Edit Profile</button>
+                  <button onClick={() => setShowProfileModal(false)} style={styles.secondaryModalBtn}>Close</button>
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleSaveProfile} style={{display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px'}}>
-                <label style={{fontSize: '12px', fontWeight: 'bold'}}>Business Name:</label>
+              <form onSubmit={handleSaveProfile} style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                <label style={styles.modalLabel}>Business Name *</label>
                 <input 
-                  style={{padding: '10px', borderRadius: '8px', border: '1.5px solid #cbd5e1', outline: 'none'}}
+                  style={styles.modalInput}
                   value={editForm.businessName} 
                   onChange={e => setEditForm({...editForm, businessName: e.target.value})} 
                   required
                 />
                 
-                <label style={{fontSize: '12px', fontWeight: 'bold'}}>Owner Name:</label>
+                <label style={styles.modalLabel}>Owner / Admin Name *</label>
                 <input 
-                  style={{padding: '10px', borderRadius: '8px', border: '1.5px solid #cbd5e1', outline: 'none'}}
+                  style={styles.modalInput}
                   value={editForm.ownerName} 
                   onChange={e => setEditForm({...editForm, ownerName: e.target.value})} 
                   required
                 />
 
-                <label style={{fontSize: '12px', fontWeight: 'bold'}}>Phone Number (Locked / Verified):</label>
+                <label style={styles.modalLabel}>Phone Number (Verified)</label>
                 <input 
-                  style={{padding: '10px', borderRadius: '8px', border: '1.5px solid #cbd5e1', backgroundColor: '#f1f5f9', color: '#64748b', outline: 'none', cursor: 'not-allowed'}}
+                  style={{...styles.modalInput, backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed'}}
                   value={editForm.phone} 
                   disabled
                 />
 
-                <label style={{fontSize: '12px', fontWeight: 'bold'}}>WhatsApp Number:</label>
+                <label style={styles.modalLabel}>WhatsApp Number *</label>
                 <input 
-                  style={{padding: '10px', borderRadius: '8px', border: '1.5px solid #cbd5e1', outline: 'none'}}
+                  style={styles.modalInput}
                   value={editForm.whatsappNumber} 
                   onChange={e => setEditForm({...editForm, whatsappNumber: e.target.value})} 
                   required
                 />
 
-                <div style={{display: 'flex', gap: '10px', marginTop: '15px'}}>
-                  <button type="submit" style={styles.actionBtn}>Save to Database</button>
-                  <button type="button" onClick={() => setIsEditingProfile(false)} style={{...styles.actionBtn, backgroundColor: '#64748b'}}>Cancel</button>
+                <div style={{display: 'flex', gap: '10px', marginTop: '16px'}}>
+                  <button type="submit" style={styles.primaryModalBtn}>Save to Database</button>
+                  <button type="button" onClick={() => setIsEditingProfile(false)} style={styles.secondaryModalBtn}>Cancel</button>
                 </div>
               </form>
             )}
@@ -1032,5 +843,13 @@ const styles = {
     backgroundColor: status === 'New' ? '#e0f2fe' : status === 'Accepted' ? '#fef9c3' : status === 'Preparing' ? '#ffedd5' : status === 'Ready' ? '#ede9fe' : '#dcfce7',
     color: status === 'New' ? '#0369a1' : status === 'Accepted' ? '#854d0e' : status === 'Preparing' ? '#c2410c' : status === 'Ready' ? '#6d28d9' : '#15803d',
     fontSize: '12px', fontWeight: '900', padding: '5px 12px', borderRadius: '8px', textTransform: 'uppercase', border: '1.5px solid currentColor'
-  })
+  }),
+  modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 },
+  modernProfileCard: { width: '460px', backgroundColor: '#fff', padding: '28px', borderRadius: '20px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '1.5px solid #e2e8f0', textAlign: 'left' },
+  profileRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #f1f5f9', fontSize: '13px', fontWeight: '800', color: '#334155' },
+  modalLabel: { fontSize: '12px', fontWeight: '900', color: '#334155', display: 'block', marginBottom: '4px' },
+  modalInput: { width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '13px', fontWeight: '800', outline: 'none', background: '#fff', boxSizing: 'border-box' },
+  primaryModalBtn: { flex: 1, backgroundColor: '#059669', color: '#fff', border: 'none', padding: '11px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer' },
+  secondaryModalBtn: { flex: 1, backgroundColor: '#f1f5f9', color: '#334155', border: '1.5px solid #cbd5e1', padding: '11px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer' },
+  closeXBtn: { background: 'none', border: 'none', fontSize: '16px', fontWeight: '950', color: '#64748b', cursor: 'pointer' }
 };

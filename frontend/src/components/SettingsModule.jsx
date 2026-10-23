@@ -14,7 +14,7 @@ export default function SettingsModule() {
     userId: '',
     email: '', 
     businessName: '',
-    ownerName: '',
+    ownerName: '', // ✅ Editable Owner Name
     phoneNumber: '',
     whatsappNumber: '',
     website: '',
@@ -40,16 +40,13 @@ export default function SettingsModule() {
     preferredLanguage: 'Telugu'
   });
 
-  // Fetch live DB data strictly based on logged-in user's email from localStorage
   useEffect(() => {
     const loggedInEmail = localStorage.getItem('userEmail');
-    
     if (!loggedInEmail) {
       alert('No logged-in user found! Please login or sign up first.');
       setLoading(false);
       return;
     }
-
     setFormData(prev => ({ ...prev, email: loggedInEmail }));
     fetchProfile(loggedInEmail);
   }, []);
@@ -74,7 +71,6 @@ export default function SettingsModule() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Save changes back to PostgreSQL database securely
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -179,6 +175,10 @@ export default function SettingsModule() {
                     <input type="text" name="businessName" value={formData.businessName || ''} onChange={handleChange} style={styles.input} required />
                   </div>
                   <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Owner Name *</label>
+                    <input type="text" name="ownerName" value={formData.ownerName || ''} onChange={handleChange} style={styles.input} required />
+                  </div>
+                  <div style={styles.fieldGroup}>
                     <label style={styles.label}>Email ID (Login ID)</label>
                     <input type="email" name="email" value={formData.email || ''} style={{...styles.input, backgroundColor: '#f1f5f9'}} disabled />
                   </div>
@@ -197,10 +197,6 @@ export default function SettingsModule() {
                   <div style={styles.fieldGroup}>
                     <label style={styles.label}>GSTN Number *</label>
                     <input type="text" name="gstnNumber" value={formData.gstnNumber || ''} onChange={handleChange} style={styles.input} />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Business Registration Number</label>
-                    <input type="text" name="businessRegistrationNumber" value={formData.businessRegistrationNumber || ''} onChange={handleChange} style={styles.input} />
                   </div>
                   <div style={styles.fieldGroup}>
                     <label style={styles.label}>Business License Number *</label>
@@ -256,14 +252,6 @@ export default function SettingsModule() {
                     <label style={styles.label}>PIN Code</label>
                     <input type="text" name="pinCode" value={formData.pinCode || ''} onChange={handleChange} style={styles.input} />
                   </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Longitude *</label>
-                    <input type="text" name="longitude" value={formData.longitude || ''} onChange={handleChange} style={styles.input} />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Latitude *</label>
-                    <input type="text" name="latitude" value={formData.latitude || ''} onChange={handleChange} style={styles.input} />
-                  </div>
                 </div>
 
                 {/* Supplementary Images Section */}
@@ -303,6 +291,10 @@ export default function SettingsModule() {
                 <h3 style={styles.sectionTitle}>👤 Admin & User Profile</h3>
                 <div style={styles.grid2}>
                   <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Owner / Admin Name *</label>
+                    <input type="text" name="ownerName" value={formData.ownerName || ''} onChange={handleChange} style={styles.input} required />
+                  </div>
+                  <div style={styles.fieldGroup}>
                     <label style={styles.label}>First Name</label>
                     <input type="text" name="firstName" value={formData.firstName || ''} onChange={handleChange} style={styles.input} />
                   </div>
@@ -334,7 +326,7 @@ export default function SettingsModule() {
             {/* PLACEHOLDER FOR OTHER TABS */}
             {activeTab !== 'business' && activeTab !== 'profile' && (
               <div style={styles.placeholderTab}>
-                <h3>🚧 {sidebarItems.items?.find ? '' : sidebarItems.find(i => i.id === activeTab)?.label} Configuration</h3>
+                <h3>🚧 {sidebarItems.find(i => i.id === activeTab)?.label} Configuration</h3>
                 <p style={{color: '#64748b', fontSize: '14px', marginTop: '8px'}}>
                   This operational sub-module is ready for integration.
                 </p>
