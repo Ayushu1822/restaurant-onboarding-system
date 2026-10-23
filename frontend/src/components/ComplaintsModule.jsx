@@ -28,7 +28,8 @@ export default function ComplaintsModule() {
   }, []);
 
   const fetchComplaints = () => {
-    fetch(`${API_BASE_URL}/api/v1/complaints`)
+    const userEmail = localStorage.getItem('userEmail') || '';
+    fetch(`${API_BASE_URL}/api/v1/complaints?email=${userEmail}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setComplaints(data);
@@ -37,7 +38,8 @@ export default function ComplaintsModule() {
   };
 
   const fetchOrders = () => {
-    fetch(`${API_BASE_URL}/api/v1/orders`)
+    const userEmail = localStorage.getItem('userEmail') || '';
+    fetch(`${API_BASE_URL}/api/v1/orders?email=${userEmail}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setOrders(data);
@@ -60,10 +62,12 @@ export default function ComplaintsModule() {
 
   const handleCreateComplaint = (e) => {
     e.preventDefault();
+    const userEmail = localStorage.getItem('userEmail') || '';
     const payload = {
       ...newComplaint,
       complaintId: `CMP-${Math.floor(1000 + Math.random() * 9000)}`,
-      status: 'Open'
+      status: 'Open',
+      restaurantEmail: userEmail // ✅ Tied strictly to logged-in account
     };
 
     fetch(`${API_BASE_URL}/api/v1/complaints`, {
@@ -310,6 +314,6 @@ const styles = {
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
   modalCard: { width: '440px', background: '#fff', padding: '26px', borderRadius: '20px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '1.5px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto' },
   closeXBtn: { background: 'none', border: 'none', fontSize: '16px', fontWeight: '950', color: '#64748b', cursor: 'pointer' },
-  dropdownResults: { position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '8px', zIndex: 10, maxHeight: '150px', overflowY: 'auto', boxShadow: '0 10px 15px rgba(0,0,0,0.1)' },
+  dropdownResults: { position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '8px', zIndex: 10000, maxHeight: '150px', overflowY: 'auto', boxShadow: '0 10px 15px rgba(0,0,0,0.1)' },
   dropdownItem: { padding: '8px 12px', fontSize: '12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontWeight: '800' }
 };

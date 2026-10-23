@@ -12,7 +12,7 @@ export default function SettingsModule() {
   const [formData, setFormData] = useState({
     restaurantId: '',
     userId: '',
-    email: 'krishna6@yopmail.com', // Fetching dynamically based on logged-in user/email
+    email: '', 
     businessName: '',
     ownerName: '',
     phoneNumber: '',
@@ -40,21 +40,30 @@ export default function SettingsModule() {
     preferredLanguage: 'Telugu'
   });
 
-  // Fetch live DB data on component mount
+  // Fetch live DB data strictly based on logged-in user's email from localStorage
   useEffect(() => {
-    fetchProfile();
+    const loggedInEmail = localStorage.getItem('userEmail');
+    
+    if (!loggedInEmail) {
+      alert('No logged-in user found! Please login or sign up first.');
+      setLoading(false);
+      return;
+    }
+
+    setFormData(prev => ({ ...prev, email: loggedInEmail }));
+    fetchProfile(loggedInEmail);
   }, []);
 
-  const fetchProfile = async () => {
+  const fetchProfile = async (email) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/email/krishna6@yopmail.com`);
+      const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/email/${email}`);
       if (!res.ok) throw new Error('Failed to fetch profile from database');
       const data = await res.json();
-      setFormData(prev => ({ ...prev, ...data }));
+      setFormData(prev => ({ ...prev, ...data, email }));
     } catch (err) {
       console.error('Error fetching profile:', err);
-      showMsg('Failed to load live data from database.', 'error');
+      showMsg('Failed to load profile from database.', 'error');
     } finally {
       setLoading(false);
     }
@@ -65,7 +74,7 @@ export default function SettingsModule() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Save changes directly back to PostgreSQL database
+  // Save changes back to PostgreSQL database securely
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -112,7 +121,7 @@ export default function SettingsModule() {
   ];
 
   if (loading) {
-    return <div style={styles.centerMsg}>Loading latest settings from database...</div>;
+    return <div style={styles.centerMsg}>Loading latest settings from database for your account...</div>;
   }
 
   return (
@@ -121,10 +130,10 @@ export default function SettingsModule() {
       <div style={styles.header}>
         <div>
           <h2 style={styles.title}>Settings</h2>
-          <span style={styles.subtitle}>Manage your business and operational configurations synced with DB</span>
+          <span style={styles.subtitle}>Manage your business configurations (Account: {formData.email})</span>
         </div>
         <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-          <span style={styles.statusBadge}>🟢 Live DB Synced</span>
+          <span style={styles.statusBadge}>🟢 Live Account Synced</span>
           <button onClick={handleSave} style={styles.saveBtn} disabled={saving}>
             {saving ? 'Saving to DB...' : '💾 Save Changes'}
           </button>
@@ -170,8 +179,8 @@ export default function SettingsModule() {
                     <input type="text" name="businessName" value={formData.businessName || ''} onChange={handleChange} style={styles.input} required />
                   </div>
                   <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Email ID *</label>
-                    <input type="email" name="email" value={formData.email || ''} onChange={handleChange} style={styles.input} required />
+                    <label style={styles.label}>Email ID (Login ID)</label>
+                    <input type="email" name="email" value={formData.email || ''} style={{...styles.input, backgroundColor: '#f1f5f9'}} disabled />
                   </div>
                   <div style={styles.fieldGroup}>
                     <label style={styles.label}>WhatsApp Business Number *</label>
@@ -268,7 +277,7 @@ export default function SettingsModule() {
                       name="whatsappBannerUrl" 
                       value={formData.whatsappBannerUrl || ''} 
                       onChange={handleChange} 
-                      placeholder="Paste Image URL or select from Gallery" 
+                      placeholder="Paste Image URL" 
                       style={styles.input} 
                     />
                   </div>
@@ -280,7 +289,7 @@ export default function SettingsModule() {
                       name="defaultItemImageUrl" 
                       value={formData.defaultItemImageUrl || ''} 
                       onChange={handleChange} 
-                      placeholder="Paste Image URL or select from Gallery" 
+                      placeholder="Paste Image URL" 
                       style={styles.input} 
                     />
                   </div>
@@ -303,7 +312,7 @@ export default function SettingsModule() {
                   </div>
                   <div style={styles.fieldGroup}>
                     <label style={styles.label}>Email (Login ID)</label>
-                    <input type="email" name="email" value={formData.email || ''} onChange={handleChange} style={styles.input} disabled />
+                    <input type="email" name="email" value={formData.email || ''} style={{...styles.input, backgroundColor: '#f1f5f9'}} disabled />
                   </div>
                   <div style={styles.fieldGroup}>
                     <label style={styles.label}>Mobile Number</label>
@@ -325,7 +334,7 @@ export default function SettingsModule() {
             {/* PLACEHOLDER FOR OTHER TABS */}
             {activeTab !== 'business' && activeTab !== 'profile' && (
               <div style={styles.placeholderTab}>
-                <h3>🚧 {sidebarItems.find(i => i.id === activeTab)?.label} Configuration</h3>
+                <h3>🚧 {sidebarItems.items?.find ? '' : sidebarItems.find(i => i.id === activeTab)?.label} Configuration</h3>
                 <p style={{color: '#64748b', fontSize: '14px', marginTop: '8px'}}>
                   This operational sub-module is ready for integration.
                 </p>
@@ -360,5 +369,6 @@ const styles = {
   label: { fontSize: '12px', fontWeight: '900', color: '#334155' },
   input: { padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', fontWeight: '700', color: '#0f172a', outline: 'none', backgroundColor: '#fff', width: '100%', boxSizing: 'border-box' },
   imageUploadCard: { border: '2px dashed #cbd5e1', borderRadius: '10px', padding: '16px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
-  placeholderTab: { textAlign: 'center', padding: '80px 20px', color: '#334155' }
+  placeholderTab: { textAlign: 'center', padding: '80px 20px', color: '#334155' },
+  centerMsg: { padding: '40px', textAlign: 'center', fontWeight: '800', color: '#64748b' }
 };

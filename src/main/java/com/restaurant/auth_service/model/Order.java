@@ -17,6 +17,9 @@ public class Order {
     @Column(name = "display_id")
     private String displayId;
 
+    @Column(name = "restaurant_email")
+    private String restaurantEmail; // ✅ Yeh batata hai ki order kis restaurant ka hai
+
     @Column(name = "customer_name")
     private String customerName;
 
@@ -30,15 +33,12 @@ public class Order {
     private String deliveryAddress;
 
     @Column(name = "customer_request")
-    private String customerRequest; // ✅ Added field for order notes / instructions
+    private String customerRequest;
 
-    private String channel; // 'ZOMATO', 'SWIGGY', 'WHATSAPP', 'COUNTER'
-
+    private String channel; 
     @Column(name = "order_type")
-    private String orderType; // 'Dine-In', 'Takeaway', 'Delivery'
-
+    private String orderType; 
     private String status;
-
     private BigDecimal subtotal;
 
     @Column(name = "total_amount")
@@ -78,6 +78,9 @@ public class Order {
 
     public String getDisplayId() { return displayId; }
     public void setDisplayId(String displayId) { this.displayId = displayId; }
+
+    public String getRestaurantEmail() { return restaurantEmail; }
+    public void setRestaurantEmail(String restaurantEmail) { this.restaurantEmail = restaurantEmail; }
 
     public String getCustomerName() { return customerName; }
     public void setCustomerName(String customerName) { this.customerName = customerName; }

@@ -21,17 +21,28 @@ public class OrderController {
     @Autowired
     private OrderRepository orderRepository;
 
+    // ✅ FETCH ORDERS STRICTLY FILTERED BY RESTAURANT EMAIL
     @GetMapping
-    public List<Order> getAllOrders() {
+    public List<Order> getOrdersByEmail(@RequestParam(required = false) String email) {
         List<Order> allOrders = orderRepository.findAll();
         
-        List<Order> activeOrders = allOrders.stream().filter(o -> {
+        List<Order> filteredOrders = allOrders.stream().filter(o -> {
+            // Agar email di gayi hai, toh sirf usi restaurant ke orders match hone chahiye
+            if (email != null && !email.trim().isEmpty()) {
+                if (o.getRestaurantEmail() == null || !o.getRestaurantEmail().equalsIgnoreCase(email)) {
+                    return false;
+                }
+            } else {
+                // Agar email nahi bheji, toh safety ke liye koi order mat do ya empty rakho
+                return false; 
+            }
+
             String status = o.getStatus() != null ? o.getStatus().toUpperCase() : "NEW";
             return !status.equals("COMPLETED") && !status.equals("DELIVERED") && !status.equals("PICKED UP");
         }).collect(Collectors.toList());
 
-        System.out.println("📦 FETCHED ACTIVE ORDERS — Total Active: " + activeOrders.size());
-        return activeOrders;
+        System.out.println("📦 FETCHED ORDERS FOR EMAIL: " + email + " — Count: " + filteredOrders.size());
+        return filteredOrders;
     }
 
     @PostMapping
@@ -52,11 +63,10 @@ public class OrderController {
         }
         
         Order savedOrder = orderRepository.save(newOrder);
-        System.out.println("✅ NEW ORDER CREATED — ID: " + savedOrder.getDisplayId() + " | Status: " + savedOrder.getStatus());
+        System.out.println("✅ NEW ORDER CREATED for restaurant: " + savedOrder.getRestaurantEmail());
         return savedOrder;
     }
 
-    // 🔄 UNIVERSAL STATUS & NOTE UPDATE
     @RequestMapping(value = {"/{id}/status", "/{id}"}, method = {RequestMethod.PUT, RequestMethod.PATCH})
     public ResponseEntity<Order> updateOrderStatus(
             @PathVariable String id, 
@@ -80,42 +90,30 @@ public class OrderController {
                     if (body.containsKey("customerName")) {
                         order.setCustomerName((String) body.get("customerName"));
                     }
-                    
-                    // ✅ FIXED: Handle customerRequest / notes updates across all modules
                     if (body.containsKey("customerRequest")) {
                         order.setCustomerRequest((String) body.get("customerRequest"));
-                    } else if (body.containsKey("customer_request")) {
-                        order.setCustomerRequest((String) body.get("customer_request"));
                     } else if (body.containsKey("notes")) {
                         order.setCustomerRequest((String) body.get("notes"));
                     }
                 }
 
                 Order saved = orderRepository.save(order);
-                System.out.println("🔄 ORDER UPDATED — ID: " + id + " | Status: " + saved.getStatus());
                 return ResponseEntity.ok(saved);
             }
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            System.err.println("❌ Error updating order: " + e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteOrder(@PathVariable String id) {
-        try {
-            Optional<Order> orderOpt = findOrderById(id);
-            if (orderOpt.isPresent()) {
-                orderRepository.delete(orderOpt.get());
-                System.out.println("🗑️ ORDER DELETED — ID: " + id);
-                return ResponseEntity.ok().build();
-            }
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            System.err.println("❌ Error deleting order: " + e.getMessage());
-            return ResponseEntity.badRequest().build();
+        Optional<Order> orderOpt = findOrderById(id);
+        if (orderOpt.isPresent()) {
+            orderRepository.delete(orderOpt.get());
+            return ResponseEntity.ok().build();
         }
+        return ResponseEntity.notFound().build();
     }
 
     private Optional<Order> findOrderById(String id) {
@@ -126,12 +124,5 @@ public class OrderController {
                 return oid.equalsIgnoreCase(id) || dispId.equalsIgnoreCase(id);
             })
             .findFirst();
-    }
-
-    @DeleteMapping("/clear-all")
-    public String clearAllOrders() {
-        orderRepository.deleteAll();
-        System.out.println("⚠️ DATABASE WIPED.");
-        return "SUCCESS: All orders deleted!";
     }
 }
