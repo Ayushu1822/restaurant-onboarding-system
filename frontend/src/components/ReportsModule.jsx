@@ -12,7 +12,6 @@ export default function ReportsModule({ orders: parentOrders }) {
   const [orderChannelFilter, setOrderChannelFilter] = useState('ALL');
   const [selectedCaptainFilter, setSelectedCaptainFilter] = useState('ALL');
   
-  // ✅ Default history date range set to 'all' so all past orders remain permanently visible
   const [historyDateRange, setHistoryDateRange] = useState('all');
   const [historyChannelFilter, setHistoryChannelFilter] = useState('ALL');
 
@@ -25,7 +24,6 @@ export default function ReportsModule({ orders: parentOrders }) {
   const [selectedCustomerHistory, setSelectedCustomerHistory] = useState(null);
   const [selectedCaptainDetails, setSelectedCaptainDetails] = useState(null);
 
-  // Hover states for micro-interactions
   const [hoveredCard, setHoveredCard] = useState(null);
 
   useEffect(() => {
@@ -56,12 +54,15 @@ export default function ReportsModule({ orders: parentOrders }) {
       .catch(err => console.error("Error fetching complaints for reports:", err));
   };
 
+  // ✅ Robust timestamp parser handling high-precision ISO strings safely
   const getSafeTimestamp = (order, index) => {
     if (order.timestamp) {
-      const d = new Date(order.timestamp);
+      let ts = order.timestamp;
+      // Truncate fractional seconds beyond milliseconds (e.g. .205870885Z -> .205Z)
+      ts = ts.replace(/\.(\d{3})\d+/, '.$1');
+      const d = new Date(ts);
       if (!isNaN(d.getTime())) return d;
     }
-    // Stable fallback date
     const fallbackDate = new Date(2026, 9, 1);
     fallbackDate.setHours(fallbackDate.getHours() - index);
     return fallbackDate;
@@ -99,10 +100,11 @@ export default function ReportsModule({ orders: parentOrders }) {
     return true;
   };
 
-  // 1. Active Orders Filtering (Strictly Active: excludes completed, delivered, settled)
+  // 1. Active Orders Filtering (Shows all open/uncompleted orders regardless of date so kitchen queue never hides stuck orders)
   const filteredOrders = orders.filter((o, idx) => {
-    const orderDate = getSafeTimestamp(o, idx);
-    let matchesDate = checkDateMatch(orderDate, dateRange);
+    const st = (o.status || 'New').toLowerCase();
+    const isCompleted = st === 'completed' || st === 'delivered' || st === 'settled';
+    if (isCompleted) return false; // Active orders must only be open orders
 
     let matchesChannel = true;
     const channel = (o.channel || 'COUNTER').toUpperCase();
@@ -129,14 +131,10 @@ export default function ReportsModule({ orders: parentOrders }) {
       matchesSearch = cName.includes(q) || oId.includes(q);
     }
 
-    return matchesDate && matchesChannel && matchesCaptain && matchesSearch;
+    return matchesChannel && matchesCaptain && matchesSearch;
   });
 
-  const activeBreakdownOrders = filteredOrders.filter(o => {
-    const st = (o.status || 'New').toLowerCase();
-    // Active means not yet completed, delivered, or settled
-    return st !== 'completed' && st !== 'delivered' && st !== 'settled';
-  });
+  const activeBreakdownOrders = filteredOrders;
 
   // 2. Completed History Filtering (Retains all past/ready/completed orders permanently)
   const completedHistoryOrders = orders.filter((o, idx) => {
@@ -349,17 +347,9 @@ export default function ReportsModule({ orders: parentOrders }) {
           <div style={styles.sectionHeaderRow}>
             <div>
               <h3 style={styles.sectionTitle}>📋 Active Orders & Live Breakdown</h3>
-              <p style={styles.sectionDesc}>Filter and print active operational queue date-wise or day-wise</p>
+              <p style={styles.sectionDesc}>Live operational queue showing all pending & preparing orders</p>
             </div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <select value={dateRange} onChange={e => setDateRange(e.target.value)} style={styles.modernSelect}>
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="week">Last Week</option>
-                <option value="month">Last Month</option>
-                <option value="year">Year</option>
-                <option value="all">All Time</option>
-              </select>
               <button onClick={() => window.print()} style={styles.actionPillBtn}>🖨️ Print Active Orders</button>
             </div>
           </div>
