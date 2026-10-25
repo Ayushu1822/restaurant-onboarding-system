@@ -135,7 +135,6 @@ export default function LoginScreen({ onLoginSuccess }) {
       }
       await new Promise(resolve => window.setTimeout(resolve, 1000));
       
-      // ✅ Multi-tenant isolation keys
       localStorage.setItem('auth_token', data.token);
       localStorage.setItem('user_email', loginEmail);
       localStorage.setItem('userEmail', loginEmail); 
@@ -229,7 +228,7 @@ export default function LoginScreen({ onLoginSuccess }) {
     <main className="authPage">
       <section className={`authPortal${currentView === 'signup' ? ' signupMode' : ''}`} aria-label="Orders24 restaurant portal">
         
-        {/* Left Intro Banner Panel Restored */}
+        {/* Left Intro Banner Panel */}
         <aside className="portalIntro">
           <div className="portalIntroContent">
             <div className="portalBrand">
@@ -243,7 +242,7 @@ export default function LoginScreen({ onLoginSuccess }) {
             <div className="portalPitch">
               <span className="portalEyebrow">RESTAURANT MANAGEMENT SYSTEM</span>
               <h1>Good food, great<br className="desktopBreak" /> operations, <em>better dining.</em></h1>
-              <p className="portalTagline">Manage your restaurant, streamline operations,<br className="desktopBreak" /> and give your customers an exceptional dining experience.</p>
+              <p className="portalTagline">Manage your restaurant, streamline operations, and give your customers an exceptional dining experience.</p>
             </div>
 
             <ul className="portalFeatures">
