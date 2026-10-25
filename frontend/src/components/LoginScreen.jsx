@@ -31,6 +31,20 @@ function GoogleIcon() {
   );
 }
 
+function FeatureIcon({ type }) {
+  const iconPaths = {
+    sync: <path d="m13.2 2-9 11h6.1L9.8 22l9-12h-6.1L13.2 2Z" />,
+    kitchen: <><path d="M3 11 12 4l9 7v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-8Z" /><path d="M8 20v-5a4 4 0 0 1 8 0v5M9 8l3 2 3-2" /></>,
+    secure: <><path d="M12 3 20 6v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-3Z" /><path d="m8.5 12 2.2 2.2 4.8-4.8" /></>
+  };
+
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      {iconPaths[type]}
+    </svg>
+  );
+}
+
 function FormField({ label, name, value, onChange, type = 'text', required = false, placeholder = '', className = '', ...props }) {
   return (
     <label className={`authField ${className}`.trim()}>
@@ -215,21 +229,80 @@ export default function LoginScreen({ onLoginSuccess }) {
     <main className="authPage">
       <section className={`authPortal${currentView === 'signup' ? ' signupMode' : ''}`} aria-label="Orders24 restaurant portal">
         
-        <section className="portalFormPanel">
-          <div className="portalFormContent">
-            
-            {/* Top Brand Header in Full Screen */}
-            <div className="portalBrandHeader">
+        {/* Left Intro Banner Panel Restored */}
+        <aside className="portalIntro">
+          <div className="portalIntroContent">
+            <div className="portalBrand">
               <svg aria-hidden="true" viewBox="0 0 64 64" className="portalBrandMark">
                 <circle cx="31" cy="32" r="25" fill="none" stroke="currentColor" strokeWidth="7" strokeDasharray="130 30" transform="rotate(-42 31 32)" />
                 <path d="m17 32 10 10 23-27" fill="none" stroke="#ff5b12" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <div className="portalBrandInfo">
-                <span className="portalBrandName">Orders<span>24</span></span>
-                <small>BY AADVIK</small>
-              </div>
+              <span className="portalBrandName">Orders<span>24</span><small>BY AADVIK</small></span>
             </div>
 
+            <div className="portalPitch">
+              <span className="portalEyebrow">RESTAURANT MANAGEMENT SYSTEM</span>
+              <h1>Good food, great<br className="desktopBreak" /> operations, <em>better dining.</em></h1>
+              <p className="portalTagline">Manage your restaurant, streamline operations,<br className="desktopBreak" /> and give your customers an exceptional dining experience.</p>
+            </div>
+
+            <ul className="portalFeatures">
+              <li>
+                <span className="featureIcon"><FeatureIcon type="sync" /></span>
+                <span><strong>100% Real-Time Table Sync</strong><small>Instant order flow between floor and kitchen</small></span>
+              </li>
+              <li>
+                <span className="featureIcon"><FeatureIcon type="kitchen" /></span>
+                <span><strong>Kitchen &amp; Bar Precision</strong><small>Smart ticket routing and prep timing</small></span>
+              </li>
+              <li>
+                <span className="featureIcon"><FeatureIcon type="secure" /></span>
+                <span><strong>Safe &amp; Secure Payments</strong><small>Protected transactions and secure payment processing</small></span>
+              </li>
+            </ul>
+            <svg className="loginFoodArt" aria-hidden="true" viewBox="0 0 440 460">
+              <defs>
+                <radialGradient id="plate" cx="45%" cy="35%">
+                  <stop offset="0" stopColor="#334138" />
+                  <stop offset=".68" stopColor="#121a16" />
+                  <stop offset=".82" stopColor="#343b34" />
+                  <stop offset="1" stopColor="#080d0b" />
+                </radialGradient>
+                <linearGradient id="steak" x1="0" x2="1" y1="0" y2="1">
+                  <stop stopColor="#f08b43" />
+                  <stop offset=".5" stopColor="#87391e" />
+                  <stop offset="1" stopColor="#351b12" />
+                </linearGradient>
+              </defs>
+              <ellipse cx="280" cy="275" rx="205" ry="190" fill="#06100c" stroke="#576457" strokeWidth="13" />
+              <ellipse cx="280" cy="265" rx="186" ry="171" fill="url(#plate)" />
+              <path d="M188 188c48-51 132-38 154 12 22 51-6 126-69 135-65 9-127-32-118-82 4-25 13-47 33-65Z" fill="url(#steak)" stroke="#24170e" strokeWidth="8" />
+              <path d="m194 232 126-40m-135 68 143-45m-128 76 115-38" stroke="#f3ae68" strokeWidth="6" opacity=".55" />
+              <g fill="#d83e24" stroke="#f58e45" strokeWidth="3">
+                <circle cx="163" cy="246" r="15" /><circle cx="338" cy="286" r="13" /><circle cx="252" cy="345" r="12" /><circle cx="349" cy="226" r="10" />
+              </g>
+              <g fill="#3a9a4e" stroke="#a6cc54" strokeWidth="2">
+                <path d="M97 291c-1-48 27-75 69-71-7 38-29 65-69 71Z" /><path d="M348 149c13-45 46-58 81-42-20 34-47 49-81 42Z" />
+                <path d="M290 369c18-38 50-47 82-26-24 27-51 38-82 26Z" />
+              </g>
+              <path d="M126 282c13-31 22-43 39-55m187-89c-8 22-17 37-32 51m-11 167c15-22 28-34 48-40" fill="none" stroke="#cee382" strokeWidth="3" opacity=".8" />
+              <ellipse cx="79" cy="425" rx="79" ry="64" fill="#1b211c" stroke="#665943" strokeWidth="8" />
+              <g fill="#d6a74d">
+                <circle cx="43" cy="414" r="5" /><circle cx="76" cy="393" r="5" /><circle cx="103" cy="423" r="5" /><circle cx="57" cy="443" r="5" /><circle cx="92" cy="454" r="5" />
+              </g>
+            </svg>
+          </div>
+        </aside>
+
+        {/* Right Form Panel */}
+        <section className="portalFormPanel signinPanel">
+          {currentView !== 'signup' && (
+            <div className="portalPromise">
+              <span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3v8m3-8v8M5 3v5a4 4 0 0 0 8 0V3m-4 9v9m8-18v18m0-18c3 2 4 6 0 8" /></svg></span>
+              <small>Smart Restaurant.<br />Better Tomorrow.</small>
+            </div>
+          )}
+          <div className="portalFormContent">
             {currentView === 'signup' && (
               <div className="authTabs" role="tablist" aria-label="Choose sign in or create account">
                 <button type="button" role="tab" aria-selected={false} onClick={() => openView('signin')}>Sign In</button>
