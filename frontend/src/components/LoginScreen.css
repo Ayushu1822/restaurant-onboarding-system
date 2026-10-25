@@ -50,18 +50,18 @@
   box-sizing: border-box;
 }
 
-/* Header / Brand Centered */
+/* ✅ Header / Brand Left-Aligned */
 .portalBrand {
   display: flex;
   width: 100%;
   max-width: 600px;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 16px;
   color: #f7faf8;
   margin-bottom: 28px;
-  align-self: center;
-  text-align: center;
+  align-self: flex-start;
+  text-align: left;
 }
 
 .portalBrandMark {
@@ -100,7 +100,7 @@
   text-align: left;
 }
 
-/* ✅ Increased max-width so line 2 ("operations, better dining.") stays strictly on one line */
+/* Pitch & Headline left-aligned */
 .portalPitch {
   margin-top: 14px;
   text-align: left;
@@ -141,7 +141,7 @@
   letter-spacing: -.035em;
   line-height: 1.18;
   text-align: left;
-  white-space: nowrap; /* Ensures words don't awkwardly wrap except at br */
+  white-space: nowrap;
 }
 
 .portalPitch h1 em {
