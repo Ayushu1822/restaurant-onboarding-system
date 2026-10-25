@@ -24,13 +24,13 @@
   background: #00120b;
 }
 
-/* ✅ Left Intro Panel - Strictly Static & Non-Scrollable (No scrollbars) */
+/* Left Intro Panel - Strictly Static & Non-Scrollable */
 .portalIntro {
   position: relative;
   display: flex;
   flex-direction: column;
   height: 100vh;
-  overflow: hidden; /* Prevents any scrollbars on the left side */
+  overflow: hidden;
   border-right: 1px solid #087b57;
   background:
     radial-gradient(ellipse at 0% 100%, #00583c66, transparent 42%),
@@ -48,7 +48,7 @@
   padding: 40px clamp(24px, 4vw, 60px);
   width: 100%;
   box-sizing: border-box;
-  overflow: hidden; /* Ensures contents don't cause overflow */
+  overflow: hidden;
 }
 
 /* Header / Brand Left-Aligned */
@@ -157,6 +157,7 @@
   text-align: left;
 }
 
+/* ✅ Features List - Boxes/Background Removed */
 .portalFeatures {
   display: flex;
   flex-direction: column;
@@ -175,10 +176,9 @@
   gap: 16px;
   text-align: left;
   width: 100%;
-  background: rgba(0, 51, 36, 0.25);
-  padding: 12px 16px;
-  border-radius: 14px;
-  border: 1px solid #085940;
+  background: transparent; /* Box background removed */
+  padding: 6px 0;          /* Clean spacing without box padding */
+  border: none;            /* Box border removed */
 }
 
 .featureIcon {
