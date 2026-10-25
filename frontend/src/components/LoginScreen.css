@@ -24,7 +24,7 @@
   background: #00120b;
 }
 
-/* ✅ Left Intro Panel - Centered & Static */
+/* ✅ Left Intro Panel - Brand left-aligned, rest centered */
 .portalIntro {
   position: relative;
   display: flex;
@@ -44,21 +44,23 @@
   flex: 1;
   flex-direction: column;
   justify-content: center;
-  align-items: center; /* ✅ Centers everything horizontally on the left side */
-  text-align: center;   /* ✅ Centers all text */
+  align-items: center; /* Centers everything else horizontally */
+  text-align: center;   /* Centers all text */
   padding: 40px clamp(32px, 5vw, 70px);
   width: 100%;
   box-sizing: border-box;
 }
 
+/* ✅ Brand remains left-aligned as requested ("apart from orders 24 and by advik") */
 .portalBrand {
   display: flex;
-  width: fit-content;
-  max-width: 100%;
+  width: 100%;
+  max-width: 440px;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 14px;
   color: #f7faf8;
+  margin-bottom: 16px;
 }
 
 .portalBrandMark {
@@ -71,11 +73,11 @@
 
 .portalBrandName {
   color: #f7faf8;
-  font-size: clamp(34px, 4vw, 48px); /* ✅ Increased brand name size */
+  font-size: clamp(34px, 4vw, 48px);
   font-weight: 850;
   letter-spacing: -.045em;
   line-height: 1;
-  white-space: nowrap; /* ✅ Locked to a single line */
+  white-space: nowrap;
   text-align: left;
 }
 
@@ -94,11 +96,14 @@
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .2em;
+  text-align: left;
 }
 
 .portalPitch {
-  margin-top: 28px;
+  margin-top: 20px;
   text-align: center;
+  width: 100%;
+  max-width: 460px;
 }
 
 .portalEyebrow {
@@ -128,7 +133,7 @@
   margin: 0;
   color: #f7f9f6;
   font-family: Georgia, serif;
-  font-size: clamp(32px, 3.4vw, 44px); /* ✅ Increased main title size */
+  font-size: clamp(36px, 3.8vw, 50px); /* ✅ Increased size further */
   font-weight: 700;
   letter-spacing: -.035em;
   line-height: 1.15;
@@ -141,9 +146,9 @@
 }
 
 .portalTagline {
-  margin: 14px auto 0;
+  margin: 16px auto 0;
   color: #a5bbb2;
-  font-size: 15px; /* ✅ Increased tagline size */
+  font-size: 16px; /* ✅ Increased size further */
   line-height: 1.6;
   max-width: 440px;
   text-align: center;
@@ -152,28 +157,32 @@
 .portalFeatures {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin: 30px auto 0;
+  gap: 16px;
+  margin: 32px auto 0;
   padding: 0;
   list-style: none;
   width: 100%;
-  max-width: 420px;
-  align-items: flex-start; /* Keeps feature rows neat while centered as a block */
+  max-width: 440px;
+  align-items: center;
 }
 
 .portalFeatures li {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   text-align: left;
   width: 100%;
+  background: rgba(0, 51, 36, 0.25);
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #085940;
 }
 
 .featureIcon {
   display: grid;
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
   place-items: center;
   border: 1px solid #08b77e;
   border-radius: 50%;
@@ -182,8 +191,8 @@
 }
 
 .featureIcon svg {
-  width: 20px;
-  height: 20px;
+  width: 21px;
+  height: 21px;
 }
 
 .portalFeatures strong,
@@ -194,14 +203,14 @@
 
 .portalFeatures strong {
   color: #f4f7f5;
-  font-size: 13px; /* ✅ Increased feature heading size */
+  font-size: 14px; /* ✅ Increased size */
   font-weight: 800;
 }
 
 .portalFeatures small {
-  margin-top: 2px;
-  color: #81958c;
-  font-size: 10.5px; /* ✅ Increased feature detail size */
+  margin-top: 3px;
+  color: #9cb5aa;
+  font-size: 11.5px; /* ✅ Increased size */
 }
 
 .loginFoodArt {
@@ -232,17 +241,26 @@
     #00160f;
 }
 
+/* ✅ Login box with enhanced hover border size, color, and shadow effects */
 .signinPanel .portalFormContent {
   box-sizing: border-box;
   display: flex;
   width: min(500px, 100%);
   flex-direction: column;
   justify-content: center;
-  padding: 32px;
+  padding: 36px;
   border: 1.5px solid #0f4735;
   border-radius: 20px;
   background: #001a12;
   box-shadow: 0 20px 65px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.signinPanel .portalFormContent:hover {
+  border-color: #05c98a;       /* ✅ Border color changes on hover */
+  border-width: 2px;           /* ✅ Border size increases on hover */
+  box-shadow: 0 30px 80px rgba(5, 201, 138, 0.25); /* ✅ Glow effect */
+  transform: translateY(-3px); /* ✅ Slight lift effect */
 }
 
 .portalPromise {
@@ -620,6 +638,14 @@
 
 .authPortal.signupMode .portalFormContent {
   max-width: 580px;
+}
+
+/* ✅ Signup mode card hover effect too */
+.authPortal.signupMode .portalFormContent:hover {
+  border-color: #05c98a;
+  border-width: 2px;
+  box-shadow: 0 30px 80px rgba(5, 201, 138, 0.25);
+  transform: translateY(-3px);
 }
 
 .signupSection {
