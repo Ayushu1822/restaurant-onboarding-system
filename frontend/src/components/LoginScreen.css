@@ -24,7 +24,7 @@
   background: #00120b;
 }
 
-/* ✅ Left Intro Panel */
+/* ✅ Left Intro Panel - Completely Centered */
 .portalIntro {
   position: relative;
   display: flex;
@@ -44,20 +44,20 @@
   flex: 1;
   flex-direction: column;
   justify-content: center;
-  align-items: flex-start; /* Left aligned for children */
-  text-align: left;
+  align-items: center; /* ✅ Center aligned */
+  text-align: center;   /* ✅ Center aligned text */
   padding: 40px clamp(32px, 5vw, 70px);
   width: 100%;
   box-sizing: border-box;
 }
 
-/* ✅ Header / Brand Centered */
+/* ✅ Brand / Header Centered */
 .portalBrand {
   display: flex;
   width: 100%;
   max-width: 440px;
   align-items: center;
-  justify-content: center; /* Center-aligned header */
+  justify-content: center; /* ✅ Centered */
   gap: 14px;
   color: #f7faf8;
   margin-bottom: 24px;
@@ -100,12 +100,14 @@
   text-align: left;
 }
 
-/* ✅ Rest of content left-aligned with increased text sizes */
+/* ✅ Pitch & Headline constrained to fit exactly in 2 lines and centered */
 .portalPitch {
   margin-top: 10px;
-  text-align: left;
+  text-align: center;
   width: 100%;
-  max-width: 460px;
+  max-width: 400px; /* ✅ Controlled width for 2-line layout */
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .portalEyebrow {
@@ -135,11 +137,11 @@
   margin: 0;
   color: #f7f9f6;
   font-family: Georgia, serif;
-  font-size: clamp(36px, 3.8vw, 50px);
+  font-size: clamp(34px, 3.5vw, 46px);
   font-weight: 700;
   letter-spacing: -.035em;
   line-height: 1.15;
-  text-align: left;
+  text-align: center;
 }
 
 .portalPitch h1 em {
@@ -148,24 +150,24 @@
 }
 
 .portalTagline {
-  margin: 16px 0 0;
+  margin: 16px auto 0;
   color: #a5bbb2;
   font-size: 16px;
   line-height: 1.6;
-  max-width: 440px;
-  text-align: left;
+  max-width: 420px;
+  text-align: center;
 }
 
 .portalFeatures {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin: 32px 0 0;
+  margin: 32px auto 0;
   padding: 0;
   list-style: none;
   width: 100%;
   max-width: 440px;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .portalFeatures li {
@@ -174,6 +176,7 @@
   gap: 16px;
   text-align: left;
   width: 100%;
+  max-width: 420px;
   background: rgba(0, 51, 36, 0.25);
   padding: 12px 16px;
   border-radius: 12px;
