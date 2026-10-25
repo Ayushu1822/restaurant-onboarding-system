@@ -24,7 +24,7 @@
   background: #00120b;
 }
 
-/* ✅ Left Intro Panel - Everything Fully Centered */
+/* ✅ Left Intro Panel */
 .portalIntro {
   position: relative;
   display: flex;
@@ -44,23 +44,24 @@
   flex: 1;
   flex-direction: column;
   justify-content: center;
-  align-items: center; /* ✅ Centers everything horizontally */
-  text-align: center;   /* ✅ Centers all text */
+  align-items: flex-start; /* Left aligned for children */
+  text-align: left;
   padding: 40px clamp(32px, 5vw, 70px);
   width: 100%;
   box-sizing: border-box;
 }
 
-/* ✅ Orders24 and Brand now centered as well */
+/* ✅ Header / Brand Centered */
 .portalBrand {
   display: flex;
   width: 100%;
   max-width: 440px;
   align-items: center;
-  justify-content: center; /* ✅ Centered */
+  justify-content: center; /* Center-aligned header */
   gap: 14px;
   color: #f7faf8;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
+  text-align: center;
 }
 
 .portalBrandMark {
@@ -78,7 +79,7 @@
   letter-spacing: -.045em;
   line-height: 1;
   white-space: nowrap;
-  text-align: center; /* ✅ Centered */
+  text-align: left;
 }
 
 .portalBrandName > span {
@@ -96,12 +97,13 @@
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .2em;
-  text-align: center; /* ✅ Centered */
+  text-align: left;
 }
 
+/* ✅ Rest of content left-aligned with increased text sizes */
 .portalPitch {
-  margin-top: 20px;
-  text-align: center;
+  margin-top: 10px;
+  text-align: left;
   width: 100%;
   max-width: 460px;
 }
@@ -137,7 +139,7 @@
   font-weight: 700;
   letter-spacing: -.035em;
   line-height: 1.15;
-  text-align: center;
+  text-align: left;
 }
 
 .portalPitch h1 em {
@@ -146,24 +148,24 @@
 }
 
 .portalTagline {
-  margin: 16px auto 0;
+  margin: 16px 0 0;
   color: #a5bbb2;
   font-size: 16px;
   line-height: 1.6;
   max-width: 440px;
-  text-align: center;
+  text-align: left;
 }
 
 .portalFeatures {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin: 32px auto 0;
+  margin: 32px 0 0;
   padding: 0;
   list-style: none;
   width: 100%;
   max-width: 440px;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .portalFeatures li {
@@ -241,7 +243,7 @@
     #00160f;
 }
 
-/* ✅ Login box with hover effects */
+/* Login box with hover effects */
 .signinPanel .portalFormContent {
   box-sizing: border-box;
   display: flex;
