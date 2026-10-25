@@ -12,7 +12,8 @@ export default function ReportsModule({ orders: parentOrders }) {
   const [orderChannelFilter, setOrderChannelFilter] = useState('ALL');
   const [selectedCaptainFilter, setSelectedCaptainFilter] = useState('ALL');
   
-  const [historyDateRange, setHistoryDateRange] = useState('today');
+  // ✅ Default history date range set to 'all' so all past orders remain permanently visible
+  const [historyDateRange, setHistoryDateRange] = useState('all');
   const [historyChannelFilter, setHistoryChannelFilter] = useState('ALL');
 
   const [analyticsDateRange, setAnalyticsDateRange] = useState('today');
@@ -49,7 +50,7 @@ export default function ReportsModule({ orders: parentOrders }) {
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
-          setClosedComplaints(data.filter(c => c.status === 'Closed'));
+          setClosedComplaints(data.filter(c => c.status && c.status.toLowerCase() === 'closed'));
         }
       })
       .catch(err => console.error("Error fetching complaints for reports:", err));
@@ -60,7 +61,7 @@ export default function ReportsModule({ orders: parentOrders }) {
       const d = new Date(order.timestamp);
       if (!isNaN(d.getTime())) return d;
     }
-    // Stable fallback date to prevent shifting on re-render
+    // Stable fallback date
     const fallbackDate = new Date(2026, 9, 1);
     fallbackDate.setHours(fallbackDate.getHours() - index);
     return fallbackDate;
@@ -78,6 +79,7 @@ export default function ReportsModule({ orders: parentOrders }) {
   const allCaptains = ['ALL', ...new Set(orders.map(o => extractCaptain(o.customerName)).filter(Boolean))];
 
   const checkDateMatch = (orderDate, range) => {
+    if (range === 'all') return true;
     const now = new Date();
     if (range === 'today') {
       return orderDate.toDateString() === now.toDateString();
@@ -93,13 +95,11 @@ export default function ReportsModule({ orders: parentOrders }) {
       return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
     } else if (range === 'year') {
       return orderDate.getFullYear() === now.getFullYear();
-    } else if (range === 'all') {
-      return true;
     }
     return true;
   };
 
-  // 1. Active Orders Filtering
+  // 1. Active Orders Filtering (Strictly Active: excludes completed, delivered, settled)
   const filteredOrders = orders.filter((o, idx) => {
     const orderDate = getSafeTimestamp(o, idx);
     let matchesDate = checkDateMatch(orderDate, dateRange);
@@ -134,10 +134,11 @@ export default function ReportsModule({ orders: parentOrders }) {
 
   const activeBreakdownOrders = filteredOrders.filter(o => {
     const st = (o.status || 'New').toLowerCase();
-    return st !== 'completed' && st !== 'delivered' && st !== 'picked up' && st !== 'ready' && st !== 'settled';
+    // Active means not yet completed, delivered, or settled
+    return st !== 'completed' && st !== 'delivered' && st !== 'settled';
   });
 
-  // 2. Completed History Filtering
+  // 2. Completed History Filtering (Retains all past/ready/completed orders permanently)
   const completedHistoryOrders = orders.filter((o, idx) => {
     const st = (o.status || 'New').toLowerCase();
     const isCompleted = st === 'completed' || st === 'delivered' || st === 'picked up' || st === 'ready' || st === 'settled';
@@ -425,23 +426,23 @@ export default function ReportsModule({ orders: parentOrders }) {
           <div style={styles.sectionHeaderRow}>
             <div>
               <h3 style={styles.sectionTitle}>📦 Past Orders & History Archive</h3>
-              <p style={styles.sectionDesc}>Print complete bulk history ledger or individual thermal receipts</p>
+              <p style={styles.sectionDesc}>All past and completed orders are permanently retained here</p>
             </div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
               <select value={historyDateRange} onChange={e => setHistoryDateRange(e.target.value)} style={styles.modernSelect}>
+                <option value="all">All Time (Default)</option>
                 <option value="today">Today</option>
                 <option value="yesterday">Yesterday</option>
                 <option value="week">Last Week</option>
                 <option value="month">Last Month</option>
                 <option value="year">Year</option>
-                <option value="all">All Time</option>
               </select>
               <button onClick={printBulkHistory} style={styles.actionPillBtn}>🖨️ Print Whole Ledger</button>
             </div>
           </div>
 
           {completedHistoryOrders.length === 0 ? (
-            <div style={styles.emptyStateBox}>No past completed orders found for this date range.</div>
+            <div style={styles.emptyStateBox}>No past completed orders found.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '400px', overflowY: 'auto' }}>
               {completedHistoryOrders.map((o, idx) => (
@@ -458,6 +459,7 @@ export default function ReportsModule({ orders: parentOrders }) {
                     <span style={{ fontWeight: '950', color: '#0f172a', fontSize: '15px' }}>{o.displayId || o.orderId}</span>
                     <span style={styles.badge}>{o.channel || 'COUNTER'}</span>
                     <span style={{ fontSize: '13px', color: '#334155', fontWeight: '800' }}>👤 {o.customerName || 'Walk-In'}</span>
+                    <span style={{ fontSize: '12px', color: '#059669', fontWeight: '900' }}>Status: {o.status}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <span style={{ fontWeight: '950', color: '#059669', fontSize: '16px' }}>₹{o.totalAmount || 0}</span>
