@@ -8,7 +8,7 @@
   background: #00120b;
   color: #edf5f1;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  overflow-x: hidden;
+  overflow: hidden;
   box-sizing: border-box;
   position: fixed;
   top: 0;
@@ -24,13 +24,13 @@
   background: #00120b;
 }
 
-/* Left Intro Panel */
+/* ✅ Left Intro Panel - Strictly Static & Non-Scrollable (No scrollbars) */
 .portalIntro {
   position: relative;
   display: flex;
   flex-direction: column;
   height: 100vh;
-  overflow-y: auto;
+  overflow: hidden; /* Prevents any scrollbars on the left side */
   border-right: 1px solid #087b57;
   background:
     radial-gradient(ellipse at 0% 100%, #00583c66, transparent 42%),
@@ -48,7 +48,7 @@
   padding: 40px clamp(24px, 4vw, 60px);
   width: 100%;
   box-sizing: border-box;
-  min-height: fit-content;
+  overflow: hidden; /* Ensures contents don't cause overflow */
 }
 
 /* Header / Brand Left-Aligned */
@@ -60,7 +60,7 @@
   justify-content: flex-start;
   gap: 16px;
   color: #f7faf8;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
   align-self: flex-start;
   text-align: left;
 }
@@ -102,7 +102,7 @@
 
 /* Pitch & Headline left-aligned */
 .portalPitch {
-  margin-top: 14px;
+  margin-top: 12px;
   text-align: left;
   width: 100%;
   max-width: 600px;
@@ -113,7 +113,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   padding: 8px 18px;
   border: 1px solid #064d39;
   border-radius: 18px;
@@ -149,7 +149,7 @@
 }
 
 .portalTagline {
-  margin: 18px 0 0;
+  margin: 16px 0 0;
   color: #a5bbb2;
   font-size: 16px;
   line-height: 1.6;
@@ -160,8 +160,8 @@
 .portalFeatures {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin: 32px 0 0;
+  gap: 14px;
+  margin: 28px 0 0;
   padding: 0;
   list-style: none;
   width: 100%;
@@ -176,16 +176,16 @@
   text-align: left;
   width: 100%;
   background: rgba(0, 51, 36, 0.25);
-  padding: 14px 18px;
+  padding: 12px 16px;
   border-radius: 14px;
   border: 1px solid #085940;
 }
 
 .featureIcon {
   display: grid;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   place-items: center;
   border: 1px solid #08b77e;
   border-radius: 50%;
@@ -194,8 +194,8 @@
 }
 
 .featureIcon svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 
 .portalFeatures strong,
@@ -206,14 +206,14 @@
 
 .portalFeatures strong {
   color: #f4f7f5;
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 800;
 }
 
 .portalFeatures small {
-  margin-top: 4px;
+  margin-top: 3px;
   color: #9cb5aa;
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
 .loginFoodArt {
@@ -683,7 +683,6 @@
   grid-column: 1 / -1;
 }
 
-/* ✅ Improved Media Queries for Tablets and Mobile screens */
 @media (max-width: 1024px) {
   .authPortal {
     grid-template-columns: 1.1fr 1fr;
