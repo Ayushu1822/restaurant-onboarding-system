@@ -241,6 +241,7 @@ export default function LoginScreen({ onLoginSuccess }) {
 
             <div className="portalPitch">
               <span className="portalEyebrow">RESTAURANT MANAGEMENT SYSTEM</span>
+              {/* ✅ Line 1: Good food, great | Line 2: operations, better dining. */}
               <h1>Good food, great<br className="desktopBreak" /> operations, <em>better dining.</em></h1>
               <p className="portalTagline">Manage your restaurant, streamline operations, and give your customers an exceptional dining experience.</p>
             </div>
