@@ -24,7 +24,7 @@
   background: #00120b;
 }
 
-/* ✅ Left Intro Panel - Everything Left-Aligned */
+/* Left Intro Panel */
 .portalIntro {
   position: relative;
   display: flex;
@@ -44,20 +44,19 @@
   flex: 1;
   flex-direction: column;
   justify-content: center;
-  align-items: flex-start; /* ✅ Left aligned */
-  text-align: left;
+  align-items: flex-start;
   padding: 40px clamp(32px, 5vw, 70px);
   width: 100%;
   box-sizing: border-box;
 }
 
-/* ✅ Header / Brand Left-Aligned */
+/* Header / Brand Left-Aligned */
 .portalBrand {
   display: flex;
   width: 100%;
   max-width: 460px;
   align-items: center;
-  justify-content: flex-start; /* ✅ Left aligned */
+  justify-content: flex-start;
   gap: 14px;
   color: #f7faf8;
   margin-bottom: 24px;
@@ -101,12 +100,12 @@
   text-align: left;
 }
 
-/* ✅ Pitch & Headline left-aligned, restricted width for 2-line wrap */
+/* Pitch & Headline left-aligned, controlled width for 2-line wrap */
 .portalPitch {
   margin-top: 12px;
   text-align: left;
   width: 100%;
-  max-width: 420px; /* ✅ Keeps headline strictly in 2 lines */
+  max-width: 440px;
   align-self: flex-start;
 }
 
