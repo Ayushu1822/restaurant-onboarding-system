@@ -24,7 +24,7 @@ export default function ReportsModule({ orders: parentOrders }) {
   const [selectedCustomerHistory, setSelectedCustomerHistory] = useState(null);
   const [selectedCaptainDetails, setSelectedCaptainDetails] = useState(null);
 
-  // Hover states for ultra-responsive micro-interactions
+  // Hover states for micro-interactions
   const [hoveredCard, setHoveredCard] = useState(null);
 
   useEffect(() => {
@@ -60,8 +60,9 @@ export default function ReportsModule({ orders: parentOrders }) {
       const d = new Date(order.timestamp);
       if (!isNaN(d.getTime())) return d;
     }
-    const fallbackDate = new Date();
-    fallbackDate.setHours(fallbackDate.getHours() - (index + 1));
+    // Stable fallback date to prevent shifting on re-render
+    const fallbackDate = new Date(2026, 9, 1);
+    fallbackDate.setHours(fallbackDate.getHours() - index);
     return fallbackDate;
   };
 
@@ -168,7 +169,7 @@ export default function ReportsModule({ orders: parentOrders }) {
     if (analyticsCategoryFilter !== 'ALL') {
       const channel = (o.channel || 'COUNTER').toUpperCase();
       const disp = (o.displayId || '').toUpperCase();
-      if (analyticsCategoryFilter === 'TABLE') matchesCat = disp.includes('TABLE');
+      if (analyticsCategoryFilter === 'TABLE') matchesCat = disp.includes('TABLE') || (o.orderType || '').toLowerCase().includes('dine');
       if (analyticsCategoryFilter === 'COUNTER') matchesCat = channel === 'COUNTER' && !disp.includes('TABLE');
       if (analyticsCategoryFilter === 'ONLINE') matchesCat = channel === 'ZOMATO' || channel === 'SWIGGY' || channel === 'WHATSAPP';
     }
@@ -178,7 +179,32 @@ export default function ReportsModule({ orders: parentOrders }) {
   const totalRevenue = analyticsOrders.reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0);
   const totalOrdersCount = analyticsOrders.length;
 
-  // 4. Captains Mapping (Sorting unassigned/null to the very bottom)
+  // Dynamic Revenue & Percentage Calculations for Pie Chart
+  let tableRev = 0, counterRev = 0, onlineRev = 0;
+  analyticsOrders.forEach(o => {
+    const rev = Number(o.totalAmount) || 0;
+    const channel = (o.channel || 'COUNTER').toUpperCase();
+    const disp = (o.displayId || '').toUpperCase();
+    if (disp.includes('TABLE') || (o.orderType || '').toLowerCase().includes('dine')) {
+      tableRev += rev;
+    } else if (channel === 'ZOMATO' || channel === 'SWIGGY' || channel === 'WHATSAPP') {
+      onlineRev += rev;
+    } else {
+      counterRev += rev;
+    }
+  });
+
+  const tablePct = totalRevenue > 0 ? (tableRev / totalRevenue) * 100 : 0;
+  const counterPct = totalRevenue > 0 ? (counterRev / totalRevenue) * 100 : 0;
+  const onlinePct = totalRevenue > 0 ? (onlineRev / totalRevenue) * 100 : 0;
+
+  const p1 = tablePct;
+  const p2 = tablePct + counterPct;
+  const dynamicPieBackground = totalRevenue > 0 
+    ? `conic-gradient(#059669 0% ${p1}%, #2563eb ${p1}% ${p2}%, #d97706 ${p2}% 100%)`
+    : '#e2e8f0';
+
+  // 4. Captains Mapping
   const captainMap = {};
   orders.forEach((o, idx) => {
     const capName = extractCaptain(o.customerName);
@@ -242,12 +268,12 @@ export default function ReportsModule({ orders: parentOrders }) {
     setTimeout(() => { receiptWindow.print(); }, 250);
   };
 
-  // Bulk Print History (All past orders list)
+  // Bulk Print History
   const printBulkHistory = () => {
     let printWin = window.open('', '_blank', 'width=800,height=600');
     if (!printWin) return;
     
-    const rowsHtml = completedHistoryOrders.map((o, idx) => `
+    const rowsHtml = completedHistoryOrders.map((o) => `
       <tr>
         <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.displayId || o.orderId}</td>
         <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.customerName || 'Walk-In'}</td>
@@ -317,9 +343,7 @@ export default function ReportsModule({ orders: parentOrders }) {
 
       <div className="printable-report-area" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
         
-        {/* ========================================== */}
         {/* SECTION 1: ACTIVE ORDERS REPORT */}
-        {/* ========================================== */}
         <div style={styles.sectionCard}>
           <div style={styles.sectionHeaderRow}>
             <div>
@@ -396,9 +420,7 @@ export default function ReportsModule({ orders: parentOrders }) {
           )}
         </div>
 
-        {/* ========================================== */}
         {/* SECTION 2: PAST ORDERS HISTORY & RECEIPTS */}
-        {/* ========================================== */}
         <div style={styles.sectionCard}>
           <div style={styles.sectionHeaderRow}>
             <div>
@@ -447,9 +469,7 @@ export default function ReportsModule({ orders: parentOrders }) {
           )}
         </div>
 
-        {/* ========================================== */}
         {/* SECTION 3: CAPTAINS PERFORMANCE REPORT */}
-        {/* ========================================== */}
         <div style={styles.sectionCard}>
           <div style={styles.sectionHeaderRow}>
             <div>
@@ -493,9 +513,7 @@ export default function ReportsModule({ orders: parentOrders }) {
           )}
         </div>
 
-        {/* ========================================== */}
         {/* SECTION 4: PAST COMPLAINTS ARCHIVE */}
-        {/* ========================================== */}
         <div style={styles.sectionCard}>
           <div style={styles.sectionHeaderRow}>
             <div>
@@ -523,23 +541,29 @@ export default function ReportsModule({ orders: parentOrders }) {
           )}
         </div>
 
-        {/* ========================================== */}
-        {/* SECTION 5: REVENUE PIE CHART & DISTRIBUTION */}
-        {/* ========================================== */}
+        {/* SECTION 5: REVENUE DISTRIBUTION & ANALYTICS */}
         <div style={styles.sectionCard}>
           <div style={styles.sectionHeaderRow}>
             <div>
               <h3 style={styles.sectionTitle}>📊 Revenue Distribution & Analytics</h3>
               <p style={styles.sectionDesc}>Visual breakdown by dining channels and revenue generation</p>
             </div>
-            <select value={analyticsDateRange} onChange={e => setAnalyticsDateRange(e.target.value)} style={styles.modernSelect}>
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="week">Last Week</option>
-              <option value="month">Last Month</option>
-              <option value="year">Year</option>
-              <option value="all">All Time</option>
-            </select>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <select value={analyticsCategoryFilter} onChange={e => setAnalyticsCategoryFilter(e.target.value)} style={styles.modernSelect}>
+                <option value="ALL">All Categories</option>
+                <option value="TABLE">Table Orders</option>
+                <option value="COUNTER">Counter POS</option>
+                <option value="ONLINE">Online</option>
+              </select>
+              <select value={analyticsDateRange} onChange={e => setAnalyticsDateRange(e.target.value)} style={styles.modernSelect}>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="week">Last Week</option>
+                <option value="month">Last Month</option>
+                <option value="year">Year</option>
+                <option value="all">All Time</option>
+              </select>
+            </div>
           </div>
 
           <div style={styles.metricsGrid}>
@@ -559,21 +583,21 @@ export default function ReportsModule({ orders: parentOrders }) {
             </div>
           </div>
 
-          {/* Pie Chart Visual */}
+          {/* Dynamic Pie Chart Visual */}
           <div style={styles.chartContainerBox}>
             {analyticsOrders.length === 0 ? (
               <div style={styles.emptyStateBox}>No revenue distribution data available for this range.</div>
             ) : (
               <>
-                <div style={styles.pieCircle}>
+                <div style={{ ...styles.pieCircle, background: dynamicPieBackground }}>
                   <div style={styles.pieInnerCenter}>
-                    ₹{totalRevenue}
+                    ₹{totalRevenue.toFixed(0)}
                   </div>
                 </div>
                 <div style={styles.chartLegend}>
-                  <span style={{ color: '#059669' }}>■ Dine-In / Table (65%)</span>
-                  <span style={{ color: '#2563eb' }}>■ Takeaway / Counter (23%)</span>
-                  <span style={{ color: '#d97706' }}>■ Online Aggregators (12%)</span>
+                  <span style={{ color: '#059669' }}>■ Dine-In / Table ({tablePct.toFixed(1)}%)</span>
+                  <span style={{ color: '#2563eb' }}>■ Takeaway / Counter ({counterPct.toFixed(1)}%)</span>
+                  <span style={{ color: '#d97706' }}>■ Online Aggregators ({onlinePct.toFixed(1)}%)</span>
                 </div>
               </>
             )}
@@ -582,9 +606,7 @@ export default function ReportsModule({ orders: parentOrders }) {
 
       </div>
 
-      {/* ========================================== */}
       {/* CAPTAIN DETAILED ORDERS MODAL */}
-      {/* ========================================== */}
       {selectedCaptainDetails && (
         <div style={styles.modalOverlay} onClick={() => setSelectedCaptainDetails(null)}>
           <div style={styles.modalLargeCard} onClick={e => e.stopPropagation()}>
@@ -690,7 +712,7 @@ const styles = {
   metricValue: { fontSize: '30px', fontWeight: '950', color: '#059669', letterSpacing: '-0.03em' },
   
   chartContainerBox: { background: '#f8fafc', padding: '28px', borderRadius: '20px', border: '2px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center' },
-  pieCircle: { width: '180px', height: '180px', borderRadius: '50%', background: 'conic-gradient(#059669 0% 65%, #2563eb 65% 88%, #d97706 88% 100%)', boxShadow: '0 12px 30px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '18px' },
+  pieCircle: { width: '180px', height: '180px', borderRadius: '50%', boxShadow: '0 12px 30px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '18px' },
   pieInnerCenter: { width: '100px', height: '100px', background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '950', fontSize: '14px', color: '#0f172a' },
   chartLegend: { display: 'flex', gap: '20px', fontSize: '13px', fontWeight: '900', flexWrap: 'wrap', justifyContent: 'center' },
   
