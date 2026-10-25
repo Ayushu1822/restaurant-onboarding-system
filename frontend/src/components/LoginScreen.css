@@ -24,7 +24,7 @@
   background: #00120b;
 }
 
-/* ✅ Left Intro Panel - Completely static and non-scrollable */
+/* ✅ Left Intro Panel - Centered & Static */
 .portalIntro {
   position: relative;
   display: flex;
@@ -44,7 +44,8 @@
   flex: 1;
   flex-direction: column;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center; /* ✅ Centers everything horizontally on the left side */
+  text-align: center;   /* ✅ Centers all text */
   padding: 40px clamp(32px, 5vw, 70px);
   width: 100%;
   box-sizing: border-box;
@@ -55,25 +56,27 @@
   width: fit-content;
   max-width: 100%;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  gap: 14px;
   color: #f7faf8;
 }
 
 .portalBrandMark {
   display: block;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   flex: 0 0 auto;
   color: #ff5b12;
 }
 
 .portalBrandName {
   color: #f7faf8;
-  font-size: clamp(28px, 3.4vw, 42px);
+  font-size: clamp(34px, 4vw, 48px); /* ✅ Increased brand name size */
   font-weight: 850;
   letter-spacing: -.045em;
   line-height: 1;
-  white-space: nowrap; /* ✅ Locks Orders24 strictly to one line */
+  white-space: nowrap; /* ✅ Locked to a single line */
+  text-align: left;
 }
 
 .portalBrandName > span {
@@ -88,27 +91,27 @@
   display: block;
   margin: 4px 0 0 2px;
   color: #05c98a;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: .2em;
 }
 
 .portalPitch {
-  margin-top: 24px;
-  text-align: left;
+  margin-top: 28px;
+  text-align: center;
 }
 
 .portalEyebrow {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 12px;
-  padding: 6px 14px;
+  margin-bottom: 14px;
+  padding: 7px 16px;
   border: 1px solid #064d39;
   border-radius: 18px;
   background: #003324;
   color: #00d296;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 750;
   letter-spacing: .16em;
 }
@@ -125,11 +128,11 @@
   margin: 0;
   color: #f7f9f6;
   font-family: Georgia, serif;
-  font-size: clamp(26px, 2.8vw, 38px);
+  font-size: clamp(32px, 3.4vw, 44px); /* ✅ Increased main title size */
   font-weight: 700;
   letter-spacing: -.035em;
   line-height: 1.15;
-  text-align: left;
+  text-align: center;
 }
 
 .portalPitch h1 em {
@@ -138,36 +141,39 @@
 }
 
 .portalTagline {
-  margin: 12px 0 0;
+  margin: 14px auto 0;
   color: #a5bbb2;
-  font-size: 13px;
-  line-height: 1.5;
-  max-width: 400px;
-  text-align: left;
+  font-size: 15px; /* ✅ Increased tagline size */
+  line-height: 1.6;
+  max-width: 440px;
+  text-align: center;
 }
 
 .portalFeatures {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  margin: 24px 0 0;
+  margin: 30px auto 0;
   padding: 0;
   list-style: none;
   width: 100%;
+  max-width: 420px;
+  align-items: flex-start; /* Keeps feature rows neat while centered as a block */
 }
 
 .portalFeatures li {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   text-align: left;
+  width: 100%;
 }
 
 .featureIcon {
   display: grid;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   place-items: center;
   border: 1px solid #08b77e;
   border-radius: 50%;
@@ -176,8 +182,8 @@
 }
 
 .featureIcon svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
 }
 
 .portalFeatures strong,
@@ -188,14 +194,14 @@
 
 .portalFeatures strong {
   color: #f4f7f5;
-  font-size: 11.5px;
+  font-size: 13px; /* ✅ Increased feature heading size */
   font-weight: 800;
 }
 
 .portalFeatures small {
   margin-top: 2px;
   color: #81958c;
-  font-size: 9.5px;
+  font-size: 10.5px; /* ✅ Increased feature detail size */
 }
 
 .loginFoodArt {
