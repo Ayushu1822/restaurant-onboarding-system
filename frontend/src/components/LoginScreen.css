@@ -1,228 +1,300 @@
 .authPage {
   display: grid;
-  height: 100vh;
-  width: 100vw;
+  min-height: 100vh;
   place-items: stretch;
   padding: 0;
-  margin: 0;
-  background: #001e16;
+  background: #00120b;
   color: #edf5f1;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  overflow: hidden;
-  box-sizing: border-box;
-  position: fixed;
-  top: 0;
-  left: 0;
+  overflow-x: hidden;
 }
 
 .authPortal {
   display: grid;
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
   border: 0;
   border-radius: 0;
-  background: #001e16;
+  background: #00120b;
   box-shadow: none;
 }
 
 .portalIntro,
 .portalFormPanel {
   min-width: 0;
-  background: #001e16;
-  height: 100%;
-  overflow-y: auto;
+  background: #00120b;
 }
 
 .portalIntro {
+  position: relative;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #0b3328;
+  overflow: hidden;
+  border-right: 1px solid #087b57;
+  background:
+    radial-gradient(ellipse at 0% 100%, #00583c66, transparent 42%),
+    radial-gradient(ellipse at 100% 0%, #07483255, transparent 40%),
+    #00120b;
 }
 
-/* Left panel left-aligned and nicely spaced */
 .portalIntroContent {
   display: flex;
   flex: 1;
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  padding: 40px clamp(40px, 6vw, 80px);
-  text-align: left;
+  padding: clamp(32px, 5.5vh, 44px) clamp(24px, 4vw, 54px) 36px clamp(32px, 5.9vw, 96px);
 }
 
 .portalBrand {
   display: flex;
+  width: fit-content;
+  max-width: 100%;
   align-items: center;
-  justify-content: flex-start;
   gap: 12px;
-  color: #f6faf8;
-  width: 100%;
+  color: #f7faf8;
 }
 
-.portalBrandIcon {
-  display: grid;
+.portalBrandMark {
+  display: block;
   width: 52px;
   height: 52px;
-  place-items: center;
-  border-radius: 14px;
-  background: #08c989;
-  color: #003d2c;
-  font-size: 32px;
-  font-weight: 800;
+  flex: 0 0 auto;
+  color: #ff5b12;
 }
 
-.portalBrand > strong {
-  font-size: clamp(36px, 4.2vw, 52px);
-  font-weight: 800;
-  letter-spacing: -.04em;
-}
-
-.portalBrandTag {
-  margin-left: 4px;
-  padding: 6px 14px;
-  border: 1px solid #0e4637;
-  border-radius: 20px;
-  background: #062c21;
-  color: #19c98b;
-  font-size: 13px;
+.portalBrandName {
+  color: #f7faf8;
+  font-size: clamp(32px, 3.8vw, 48px);
+  font-weight: 850;
+  letter-spacing: -.045em;
   line-height: 1;
-  font-weight: 700;
+  white-space: nowrap;
+}
+
+.portalBrandName > span {
+  color: #ff5b12;
+}
+
+.portalFormHeading h2 span {
+  color: #ff5b12;
+}
+
+.portalBrandName small {
+  display: block;
+  margin: 4px 0 0 2px;
+  color: #05c98a;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .2em;
 }
 
 .portalPitch {
-  margin-top: 40px;
-  text-align: left;
-  width: 100%;
-  max-width: 500px;
+  margin-top: clamp(24px, 4vh, 36px);
+}
+
+.portalEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 7px 15px;
+  border: 1px solid #064d39;
+  border-radius: 18px;
+  background: #003324;
+  color: #00d296;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .16em;
+}
+
+.portalEyebrow::before,
+.portalEyebrow::after {
+  width: 25px;
+  height: 1px;
+  background: #00c989;
+  content: "";
 }
 
 .portalPitch h1 {
   margin: 0;
   color: #f7f9f6;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(30px, 3.4vw, 46px);
+  font-family: Georgia, serif;
+  font-size: clamp(32px, 3.2vw, 46px);
   font-weight: 700;
   letter-spacing: -.035em;
   line-height: 1.15;
-  text-align: left;
+}
+
+.portalPitch h1 em {
+  color: #00d296;
+  font-style: italic;
 }
 
 .portalTagline {
-  margin: 14px 0 0;
-  color: #00c981;
-  font-size: clamp(14px, 1.6vw, 18px);
-  text-align: left;
-  font-weight: 600;
-}
-
-.portalTagline span {
-  margin-left: 4px;
-  color: #09d79a;
+  margin: 16px 0 0;
+  color: #a5bbb2;
+  font-size: clamp(13px, 1.1vw, 15px);
+  line-height: 1.6;
+  max-width: 440px;
 }
 
 .portalFeatures {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  margin: 38px 0 0;
+  gap: 16px;
+  margin: 28px 0 0;
   padding: 0;
   list-style: none;
-  width: 100%;
-  max-width: 420px;
-  align-items: flex-start;
-  text-align: left;
 }
 
 .portalFeatures li {
   display: flex;
   align-items: center;
-  gap: 16px;
-  width: 100%;
+  gap: 13px;
 }
 
 .featureIcon {
   display: grid;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
   place-items: center;
-  border: 1px solid #104534;
+  border: 1px solid #08b77e;
   border-radius: 50%;
-  background: #052d22;
-  color: #00cb8c;
+  background: #009d6e;
+  color: #f1fff8;
 }
 
 .featureIcon svg {
-  width: 21px;
-  height: 21px;
+  width: 19px;
+  height: 19px;
 }
 
 .portalFeatures strong,
 .portalFeatures small {
   display: block;
-  text-align: left;
 }
 
 .portalFeatures strong {
   color: #f4f7f5;
-  font-size: 13px;
-  font-weight: 750;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .portalFeatures small {
   margin-top: 3px;
   color: #81958c;
-  font-size: 11px;
+  font-size: 10px;
 }
 
-/* Right Form Panel */
+.loginFoodArt {
+  position: absolute;
+  right: -80px;
+  bottom: -90px;
+  width: min(52%, 420px);
+  height: auto;
+  opacity: .5;
+  pointer-events: none;
+}
+
 .portalFormPanel {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: clamp(28px, 5vw, 56px);
 }
 
-/* Hover Box Card */
 .portalFormContent {
   width: min(470px, 100%);
-  padding: 32px;
-  border: 1px solid #0e382b;
-  border-radius: 18px;
-  background: #00180f;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.portalFormContent:hover {
-  border-color: #155c46;
-  box-shadow: 0 20px 45px rgba(0, 45, 34, 0.5), 0 0 20px rgba(5, 201, 138, 0.08);
-  transform: translateY(-3px);
+.signinPanel {
+  padding: 90px clamp(30px, 4.9vw, 80px) 42px;
+  background:
+    radial-gradient(ellipse at 100% 0%, #043a2a55, transparent 42%),
+    #00160f;
+}
+
+.signinPanel .portalFormContent {
+  box-sizing: border-box;
+  display: flex;
+  width: min(540px, 100%);
+  min-height: 580px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 36px clamp(28px, 3.5vw, 48px);
+  border: 1.5px solid #0f4735;
+  border-radius: 20px;
+  background: #001a12;
+  box-shadow: 0 20px 65px rgba(0, 0, 0, 0.4);
+}
+
+.portalPromise {
+  position: absolute;
+  top: 30px;
+  right: clamp(28px, 5vw, 80px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #a5bbb2;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.portalPromise > span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid #0f4d39;
+  border-radius: 50%;
+  background: #042d20;
+  color: #05c98a;
+  font-size: 20px;
+}
+
+.portalPromise > span svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.portalPromise > small {
+  display: block;
+  color: #ffffff;
+  font-weight: 800;
+  line-height: 1.3;
 }
 
 .portalFormHeading {
-  margin-bottom: 23px;
+  margin-bottom: 22px;
   text-align: center;
 }
 
 .portalFormHeading h2 {
-  margin: 0 0 7px;
+  margin: 0 0 6px;
   color: #f6f8f6;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(24px, 2.5vw, 32px);
-  font-weight: 700;
-  letter-spacing: -.03em;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(24px, 2.4vw, 30px);
+  font-weight: 850;
+  letter-spacing: -.035em;
   text-align: center;
 }
 
 .portalFormHeading p {
   margin: 0;
-  color: #82958d;
-  font-size: 11px;
-  line-height: 1.6;
+  color: #839b8f;
+  font-size: 12px;
+  line-height: 1.5;
   text-align: center;
 }
 
@@ -230,35 +302,36 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4px;
-  margin-bottom: 21px;
+  margin-bottom: 22px;
   padding: 4px;
-  border: 1px solid #123b2e;
-  border-radius: 11px;
+  border: 1px solid #0f4232;
+  border-radius: 12px;
   background: #00120a;
 }
 
 .authTabs button {
-  min-height: 33px;
+  min-height: 38px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 9px;
   background: transparent;
-  color: #81958c;
-  font-size: 10px;
+  color: #7c9488;
+  font-size: 12px;
+  font-weight: 750;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
 .authTabs button.selected {
   background: #05c98a;
-  color: #003d2b;
-  font-weight: 750;
-  box-shadow: 0 3px 12px #00c9811c;
+  color: #00160f;
+  font-weight: 900;
+  box-shadow: 0 4px 14px rgba(5, 201, 138, 0.3);
 }
 
 .portalAuthForm {
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  text-align: left;
+  gap: 12px;
 }
 
 .authField {
@@ -266,17 +339,15 @@
   min-width: 0;
   flex-direction: column;
   gap: 6px;
-  text-align: left;
 }
 
 .authField > span,
 .portalFieldLabel {
   min-height: 12px;
-  color: #879991;
-  font-size: 9px;
-  font-weight: 750;
+  color: #8fa69c;
+  font-size: 10px;
+  font-weight: 800;
   letter-spacing: .08em;
-  text-align: left;
 }
 
 .authField i {
@@ -286,23 +357,17 @@
 
 .authField input {
   width: 100%;
-  min-height: 41px;
-  padding: 0 13px;
-  border: 1px solid #123a2e;
-  border-radius: 9px;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1.5px solid #0f4a37;
+  border-radius: 11px;
   outline: 0;
   background: #00120a;
-  color: #edf7f1;
-  font-size: 11px;
-  transition: border-color .15s, box-shadow .15s;
-}
-
-.authField input:-webkit-autofill,
-.authField input:-webkit-autofill:hover,
-.authField input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px #00120a inset !important;
-  -webkit-text-fill-color: #edf7f1 !important;
-  caret-color: #edf7f1;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  transition: border-color .2s, box-shadow .2s;
+  box-sizing: border-box;
 }
 
 .authField input::placeholder {
@@ -310,15 +375,50 @@
 }
 
 .authField input:focus {
-  border-color: #00c989;
-  box-shadow: 0 0 0 3px #00c98920;
+  border-color: #05c98a;
+  box-shadow: 0 0 0 3px rgba(5, 201, 138, 0.15);
 }
 
 .passwordLabelRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 3px;
+  margin-top: 2px;
+}
+
+.authPasswordControl {
+  position: relative;
+  display: block;
+}
+
+.authPasswordControl input {
+  padding-right: 44px;
+}
+
+.authPasswordToggle {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: #7c9488;
+  cursor: pointer;
+}
+
+.authPasswordToggle:hover,
+.authPasswordToggle:focus-visible {
+  color: #05c98a;
+}
+
+.authPasswordToggle svg {
+  width: 18px;
+  height: 18px;
 }
 
 .inlineFormLink,
@@ -326,42 +426,59 @@
   padding: 0;
   border: 0;
   background: none;
-  color: #00c989;
-  font-size: 10px;
+  color: #05c98a;
+  font-size: 11px;
+  font-weight: 750;
   cursor: pointer;
 }
 
 .rememberStation {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 7px 0 3px;
-  color: #82958c;
-  font-size: 10px;
+  gap: 10px;
+  margin: 6px 0 2px;
+  color: #8da499;
+  font-size: 12px;
   cursor: pointer;
-  text-align: left;
+  font-weight: 600;
 }
 
 .rememberStation input {
-  width: 13px;
-  height: 13px;
+  width: 16px;
+  height: 16px;
   margin: 0;
   accent-color: #05c98a;
+  cursor: pointer;
 }
 
 .portalSubmit {
-  min-height: 43px;
-  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  margin-top: 6px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 11px;
   background: #05c98a;
-  color: #003d2b;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .02em;
+  color: #00160f;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .03em;
   cursor: pointer;
-  box-shadow: 0 6px 18px #00c98925;
-  transition: background .15s, transform .15s;
+  box-shadow: 0 6px 20px rgba(5, 201, 138, 0.3);
+  transition: all .2s;
+  width: 100%;
+}
+
+.portalSubmit svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
 }
 
 .portalSubmit:hover {
@@ -378,10 +495,12 @@
 .portalOr {
   display: flex;
   align-items: center;
-  gap: 11px;
-  margin: 15px 0;
-  color: #83968d;
-  font-size: 9px;
+  gap: 12px;
+  margin: 18px 0;
+  color: #6b8277;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .05em;
   white-space: nowrap;
 }
 
@@ -389,65 +508,67 @@
 .portalOr::after {
   height: 1px;
   flex: 1;
-  background: #10372b;
+  background: #0f4232;
   content: "";
 }
 
 .portalGoogleButton {
   display: flex;
   width: 100%;
-  min-height: 42px;
+  min-height: 46px;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  border: 1px solid #153b30;
-  border-radius: 9px;
+  gap: 12px;
+  border: 1.5px solid #0f4735;
+  border-radius: 11px;
   background: #00120a;
-  color: #e2ebe6;
-  font-size: 11px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
-  transition: border-color .15s, background .15s;
+  transition: all .2s;
 }
 
 .portalGoogleButton:hover {
-  border-color: #267359;
-  background: #04251a;
+  border-color: #05c98a;
+  background: #032b1f;
 }
 
 .portalRegisterPrompt {
-  margin: 24px 0 0;
-  color: #81948c;
-  font-size: 10px;
+  margin: 22px 0 0;
+  color: #8da499;
+  font-size: 12px;
   text-align: center;
+  font-weight: 600;
 }
 
 .portalRegisterPrompt button {
   padding: 0;
   border: 0;
   background: none;
-  color: #00cb8d;
+  color: #05c98a;
   font-size: inherit;
-  font-weight: 750;
+  font-weight: 800;
   cursor: pointer;
 }
 
 .portalMessage {
-  margin: 12px 0 0;
-  padding: 9px 11px;
-  border-radius: 7px;
-  font-size: 10px;
-  line-height: 1.5;
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .portalMessage.error {
-  border: 1px solid #63352c;
-  background: #301b17;
-  color: #ffc1ae;
+  border: 1px solid #7f2b23;
+  background: #3b1713;
+  color: #ffb8b0;
 }
 
 .portalMessage.success {
-  border: 1px solid #15573d;
-  background: #092c1e;
+  border: 1px solid #0e523b;
+  background: #042d20;
   color: #8de0b4;
 }
 
@@ -460,16 +581,16 @@
 .signupFields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .signupFields .authField > span {
-  font-size: 8px;
+  font-size: 9px;
 }
 
 .signupFields .authField input {
-  min-height: 37px;
-  font-size: 10px;
+  min-height: 40px;
+  font-size: 11px;
 }
 
 .signupForm .portalSubmit {
@@ -486,22 +607,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
-  width: 100vw;
+  min-height: 100vh;
   padding: 18px;
-  background: #001e16;
+  background: #00120b;
 }
 
 .authPortal.signupMode {
   display: block;
   width: min(540px, 100%);
-  max-height: 94vh;
-  overflow-y: auto;
+  min-height: 0;
   margin: auto;
   padding: 32px;
-  border: 1px solid #0e382b;
-  border-radius: 18px;
-  background: #00180f;
+  border: 1.5px solid #0f4735;
+  border-radius: 20px;
+  background: #001a12;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
 }
 
@@ -513,42 +632,32 @@
   display: block;
   padding: 0;
   background: transparent;
-  height: auto;
 }
 
 .signupMode .portalFormContent {
   width: 100%;
-  border: none;
-  background: transparent;
-  padding: 0;
-  box-shadow: none;
-}
-
-.signupMode .portalFormContent:hover {
-  transform: none;
-  box-shadow: none;
 }
 
 .signupMode .authTabs {
-  margin: 0 0 20px;
+  margin: 0 0 22px;
   padding: 4px;
-  border-color: #123b2e;
-  border-radius: 9px;
+  border-color: #0f4232;
+  border-radius: 11px;
   background: #00120a;
 }
 
 .signupMode .authTabs button {
-  min-height: 29px;
-  border-radius: 6px;
-  color: #81958c;
-  font-size: 9px;
-  font-weight: 600;
+  min-height: 34px;
+  border-radius: 8px;
+  color: #7c9488;
+  font-size: 11px;
+  font-weight: 750;
 }
 
 .signupMode .authTabs button.selected {
   background: #05c98a;
-  color: #003d2b;
-  box-shadow: 0 3px 12px #00c9811c;
+  color: #00160f;
+  box-shadow: 0 3px 12px rgba(5, 201, 138, 0.3);
 }
 
 .signupMode .portalFormHeading {
@@ -557,18 +666,18 @@
 }
 
 .signupMode .portalFormHeading h2 {
-  margin: 0 0 3px;
-  color: #f6f8f6;
+  margin: 0 0 4px;
+  color: #ffffff;
   font-family: inherit;
-  font-size: 16px;
-  font-weight: 750;
+  font-size: 18px;
+  font-weight: 850;
   letter-spacing: -.02em;
   text-align: center;
 }
 
 .signupMode .portalFormHeading p {
-  color: #82958d;
-  font-size: 9px;
+  color: #839b8f;
+  font-size: 11px;
   text-align: center;
 }
 
@@ -580,16 +689,16 @@
 }
 
 .signupSection {
-  margin-top: 27px;
+  margin-top: 24px;
   text-align: left;
 }
 
 .signupSection h3 {
-  margin: 0 0 16px;
-  color: #00c989;
-  font-size: 9px;
-  font-weight: 750;
-  letter-spacing: .02em;
+  margin: 0 0 14px;
+  color: #05c98a;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .05em;
   text-transform: uppercase;
   text-align: left;
 }
@@ -597,8 +706,8 @@
 .signupFields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 13px;
-  row-gap: 13px;
+  column-gap: 12px;
+  row-gap: 12px;
 }
 
 .signupFields .authField {
@@ -608,10 +717,10 @@
 
 .signupFields .authField > span {
   min-height: 12px;
-  color: #e2ebe6;
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0;
+  color: #8fa69c;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   text-align: left;
 }
 
@@ -620,13 +729,14 @@
 }
 
 .signupFields .authField input {
-  min-height: 33px;
-  padding: 0 11px;
-  border-color: #123a2e;
-  border-radius: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  border-color: #0f4a37;
+  border-radius: 9px;
   background: #00120a;
-  color: #edf7f1;
-  font-size: 9px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .signupFields .authField input::placeholder {
@@ -634,8 +744,8 @@
 }
 
 .signupFields .authField input:focus {
-  border-color: #00c989;
-  box-shadow: 0 0 0 2px #00c98920;
+  border-color: #05c98a;
+  box-shadow: 0 0 0 2px rgba(5, 201, 138, 0.15);
 }
 
 .signupFields .signupWideField {
@@ -645,13 +755,14 @@
 .signupMode .signupForm .portalSubmit {
   position: static;
   width: 100%;
-  min-height: 32px;
-  margin-top: 23px;
-  border-radius: 8px;
+  min-height: 46px;
+  margin-top: 20px;
+  border-radius: 11px;
   background: #05c98a;
-  color: #003d2b;
-  font-size: 9px;
-  box-shadow: 0 6px 18px #00c98925;
+  color: #00160f;
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 6px 18px rgba(5, 201, 138, 0.3);
   text-transform: none;
 }
 
@@ -663,7 +774,7 @@
   margin-bottom: 0;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 850px) {
   .authPage {
     padding: 0;
     height: 100vh;
@@ -679,19 +790,22 @@
 
   .portalIntro {
     border-right: 0;
-    border-bottom: 1px solid #0b3328;
-    max-height: 35vh;
+    border-bottom: 1px solid #0d382b;
+    max-height: 38vh;
   }
 
   .portalFormPanel {
-    height: 65vh;
+    height: 62vh;
   }
 
   .portalIntroContent {
     justify-content: center;
-    align-items: flex-start;
     padding: 20px 24px;
     text-align: left;
+  }
+
+  .loginFoodArt {
+    display: none;
   }
 
   .portalPitch {
@@ -712,15 +826,6 @@
 
   .portalFormContent {
     width: 100%;
-    border: none;
-    background: transparent;
-    box-shadow: none;
-    padding: 0;
-  }
-
-  .portalFormContent:hover {
-    transform: none;
-    box-shadow: none;
   }
 
   .authPage:has(.signupMode) {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './LoginScreen.css';
 
-const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
+const API_BASE_URL = 'http://localhost:8080';
 const GOOGLE_AUTH_URL = import.meta.env.VITE_GOOGLE_AUTH_URL;
 
 const INITIAL_FORM = {
@@ -33,9 +33,9 @@ function GoogleIcon() {
 
 function FeatureIcon({ type }) {
   const iconPaths = {
-    sync: <><path d="M12 3v3m0 12v3m9-9h-3M6 12H3m15.36-6.36-2.12 2.12M7.76 16.24l-2.12 2.12m12.72 0-2.12-2.12M7.76 7.76 5.64 5.64" /><path d="m14.5 9.5-5 5m0-5 5 5" /></>,
-    kitchen: <><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V2m6 2V2m-6 9h6m-6 4h6" /></>,
-    heart: <path d="M20.8 8.8c0 5.5-8.8 11-8.8 11S3.2 14.3 3.2 8.8a4.7 4.7 0 0 1 8.8-2.3 4.7 4.7 0 0 1 8.8 2.3Z" />
+    sync: <path d="m13.2 2-9 11h6.1L9.8 22l9-12h-6.1L13.2 2Z" />,
+    kitchen: <><path d="M3 11 12 4l9 7v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-8Z" /><path d="M8 20v-5a4 4 0 0 1 8 0v5M9 8l3 2 3-2" /></>,
+    secure: <><path d="M12 3 20 6v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-3Z" /><path d="m8.5 12 2.2 2.2 4.8-4.8" /></>
   };
 
   return (
@@ -48,7 +48,7 @@ function FeatureIcon({ type }) {
 function FormField({ label, name, value, onChange, type = 'text', required = false, placeholder = '', className = '', ...props }) {
   return (
     <label className={`authField ${className}`.trim()}>
-      {label && <span>{label}{required && <i> *</i>}</span>}
+      <span>{label}{required && <i> *</i>}</span>
       <input
         name={name}
         type={type}
@@ -58,6 +58,40 @@ function FormField({ label, name, value, onChange, type = 'text', required = fal
         required={required}
         {...props}
       />
+    </label>
+  );
+}
+
+function PasswordField({ label, name, value, onChange, required = false, placeholder = '', ...props }) {
+  const [isVisible, setIsVisible] = useState(false);
+
+  return (
+    <label className="authField">
+      {label && <span>{label}{required && <i> *</i>}</span>}
+      <span className="authPasswordControl">
+        <input
+          name={name}
+          type={isVisible ? 'text' : 'password'}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          required={required}
+          {...props}
+        />
+        <button
+          type="button"
+          className="authPasswordToggle"
+          aria-label={isVisible ? 'Hide password' : 'Show password'}
+          aria-pressed={isVisible}
+          onClick={() => setIsVisible(visible => !visible)}
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            {isVisible
+              ? <><path d="M3 3l18 18" /><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" /><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c5 0 8.5 4.2 9.5 7-.3.9-1 2-2 3" /><path d="M6.2 6.2C4.2 7.5 3 9.6 2.5 12c.8 2.4 3.8 7 9.5 7 1.1 0 2.1-.2 3-.5" /></>
+              : <><path d="M2.5 12s3.2-7 9.5-7 9.5 7 9.5 7-3.2 7-9.5 7-9.5-7-9.5-7Z" /><circle cx="12" cy="12" r="2.5" /></>}
+          </svg>
+        </button>
+      </span>
     </label>
   );
 }
@@ -99,9 +133,13 @@ export default function LoginScreen({ onLoginSuccess }) {
         setMessage(data.message || 'Invalid email or password.');
         return;
       }
+      await new Promise(resolve => window.setTimeout(resolve, 1000));
+      
+      // ✅ Multi-tenant isolation keys
       localStorage.setItem('auth_token', data.token);
       localStorage.setItem('user_email', loginEmail);
-      localStorage.setItem('userEmail', loginEmail); // ✅ CRITICAL for multi-tenant data isolation across all modules
+      localStorage.setItem('userEmail', loginEmail); 
+      
       onLoginSuccess();
     } catch {
       setMessage('Could not connect to the server. Please try again.');
@@ -133,8 +171,8 @@ export default function LoginScreen({ onLoginSuccess }) {
             state: formData.state
           },
           location: {
-            latitude: Number.parseFloat(formData.latitude),
-            longitude: Number.parseFloat(formData.longitude)
+            latitude: Number.parseFloat(formData.latitude) || 0,
+            longitude: Number.parseFloat(formData.longitude) || 0
           }
         })
       });
@@ -189,18 +227,21 @@ export default function LoginScreen({ onLoginSuccess }) {
 
   return (
     <main className="authPage">
-      <section className={`authPortal${currentView === 'signup' ? ' signupMode' : ''}`} aria-label="Foodos restaurant portal">
+      <section className={`authPortal${currentView === 'signup' ? ' signupMode' : ''}`} aria-label="Orders24 restaurant portal">
         <aside className="portalIntro">
           <div className="portalIntroContent">
             <div className="portalBrand">
-              <span className="portalBrandIcon">◈</span>
-              <strong>Foodos</strong>
-              <span className="portalBrandTag">POS</span>
+              <svg aria-hidden="true" viewBox="0 0 64 64" className="portalBrandMark">
+                <circle cx="31" cy="32" r="25" fill="none" stroke="currentColor" strokeWidth="7" strokeDasharray="130 30" transform="rotate(-42 31 32)" />
+                <path d="m17 32 10 10 23-27" fill="none" stroke="#ff5b12" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="portalBrandName">Orders<span>24</span><small>BY AADVIK</small></span>
             </div>
 
             <div className="portalPitch">
-              <h1>Good food, great<br />operations, better dining.</h1>
-              <p className="portalTagline">Run smoother, serve happier. <span>•</span></p>
+              <span className="portalEyebrow">RESTAURANT MANAGEMENT SYSTEM</span>
+              <h1>Good food, great<br className="desktopBreak" /> operations, <em>better dining.</em></h1>
+              <p className="portalTagline">Manage your restaurant, streamline operations,<br className="desktopBreak" /> and give your customers an exceptional dining experience.</p>
             </div>
 
             <ul className="portalFeatures">
@@ -213,14 +254,51 @@ export default function LoginScreen({ onLoginSuccess }) {
                 <span><strong>Kitchen &amp; Bar Precision</strong><small>Smart ticket routing and prep timing</small></span>
               </li>
               <li>
-                <span className="featureIcon"><FeatureIcon type="heart" /></span>
-                <span><strong>Intelligent Inventory</strong><small>Automated ingredient depletion and alerts</small></span>
+                <span className="featureIcon"><FeatureIcon type="secure" /></span>
+                <span><strong>Safe &amp; Secure Payments</strong><small>Protected transactions and secure payment processing</small></span>
               </li>
             </ul>
+            <svg className="loginFoodArt" aria-hidden="true" viewBox="0 0 440 460">
+              <defs>
+                <radialGradient id="plate" cx="45%" cy="35%">
+                  <stop offset="0" stopColor="#334138" />
+                  <stop offset=".68" stopColor="#121a16" />
+                  <stop offset=".82" stopColor="#343b34" />
+                  <stop offset="1" stopColor="#080d0b" />
+                </radialGradient>
+                <linearGradient id="steak" x1="0" x2="1" y1="0" y2="1">
+                  <stop stopColor="#f08b43" />
+                  <stop offset=".5" stopColor="#87391e" />
+                  <stop offset="1" stopColor="#351b12" />
+                </linearGradient>
+              </defs>
+              <ellipse cx="280" cy="275" rx="205" ry="190" fill="#06100c" stroke="#576457" strokeWidth="13" />
+              <ellipse cx="280" cy="265" rx="186" ry="171" fill="url(#plate)" />
+              <path d="M188 188c48-51 132-38 154 12 22 51-6 126-69 135-65 9-127-32-118-82 4-25 13-47 33-65Z" fill="url(#steak)" stroke="#24170e" strokeWidth="8" />
+              <path d="m194 232 126-40m-135 68 143-45m-128 76 115-38" stroke="#f3ae68" strokeWidth="6" opacity=".55" />
+              <g fill="#d83e24" stroke="#f58e45" strokeWidth="3">
+                <circle cx="163" cy="246" r="15" /><circle cx="338" cy="286" r="13" /><circle cx="252" cy="345" r="12" /><circle cx="349" cy="226" r="10" />
+              </g>
+              <g fill="#3a9a4e" stroke="#a6cc54" strokeWidth="2">
+                <path d="M97 291c-1-48 27-75 69-71-7 38-29 65-69 71Z" /><path d="M348 149c13-45 46-58 81-42-20 34-47 49-81 42Z" />
+                <path d="M290 369c18-38 50-47 82-26-24 27-51 38-82 26Z" />
+              </g>
+              <path d="M126 282c13-31 22-43 39-55m187-89c-8 22-17 37-32 51m-11 167c15-22 28-34 48-40" fill="none" stroke="#cee382" strokeWidth="3" opacity=".8" />
+              <ellipse cx="79" cy="425" rx="79" ry="64" fill="#1b211c" stroke="#665943" strokeWidth="8" />
+              <g fill="#d6a74d">
+                <circle cx="43" cy="414" r="5" /><circle cx="76" cy="393" r="5" /><circle cx="103" cy="423" r="5" /><circle cx="57" cy="443" r="5" /><circle cx="92" cy="454" r="5" />
+              </g>
+            </svg>
           </div>
         </aside>
 
-        <section className="portalFormPanel">
+        <section className={`portalFormPanel${currentView === 'signup' ? ' signupPanel' : ' signinPanel'}`}>
+          {currentView !== 'signup' && (
+            <div className="portalPromise">
+              <span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3v8m3-8v8M5 3v5a4 4 0 0 0 8 0V3m-4 9v9m8-18v18m0-18c3 2 4 6 0 8" /></svg></span>
+              <small>Smart Restaurant.<br />Better Tomorrow.</small>
+            </div>
+          )}
           <div className="portalFormContent">
             {currentView === 'signup' && (
               <div className="authTabs" role="tablist" aria-label="Choose sign in or create account">
@@ -230,9 +308,8 @@ export default function LoginScreen({ onLoginSuccess }) {
             )}
 
             <header className="portalFormHeading">
-              <h2>{currentView === 'signup' ? 'Restaurant Onboarding' : currentView === 'forgot' ? 'Reset your password' : 'Sign In'}</h2>
-              {currentView === 'signup' && <p>Register your restaurant and configure your administrative profile.</p>}
-              {currentView === 'forgot' && <p>We will help you get back into your restaurant portal.</p>}
+              <h2>{currentView === 'signup' ? 'Restaurant Onboarding' : currentView === 'forgot' ? 'Reset your password' : <>Sign In to Orders<span>24</span></>}</h2>
+              <p>{currentView === 'signup' ? 'Register your restaurant and configure your administrative profile.' : currentView === 'forgot' ? 'We will help you get back into your restaurant portal.' : 'Log in to your restaurant portal and management console'}</p>
             </header>
 
             {currentView === 'signin' && (
@@ -244,17 +321,17 @@ export default function LoginScreen({ onLoginSuccess }) {
 
             {currentView === 'signin' && (
               <form className="portalAuthForm" onSubmit={handleLogin}>
-                <FormField label="EMAIL ADDRESS" type="email" value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} placeholder="operator@restaurant.com" required autoComplete="email" />
+                <FormField className="signinEmailField" label="EMAIL ADDRESS" type="email" value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} placeholder="operator@restaurant.com" required autoComplete="email" />
                 <div className="passwordLabelRow">
-                  <span className="portalFieldLabel">PASSWORD</span>
+                  <span className="portalFieldLabel">PASSWORD <i>*</i></span>
                   <button type="button" className="inlineFormLink" onClick={() => openView('forgot')}>Forgot Password?</button>
                 </div>
-                <FormField type="password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} placeholder="••••••••••••" required autoComplete="current-password" />
+                <PasswordField label="" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} placeholder="••••••••••••" required autoComplete="current-password" />
                 <label className="rememberStation">
                   <input type="checkbox" checked={rememberStation} onChange={(event) => setRememberStation(event.target.checked)} />
                   <span>Remember this station / Keep me signed in</span>
                 </label>
-                <button className="portalSubmit" type="submit" disabled={loading}>{loading ? 'Signing in…' : 'SIGN IN TO PORTAL'}</button>
+                <button className="portalSubmit" type="submit" disabled={loading}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5M10 17l5-5-5-5m5 5H3" /></svg>{loading ? 'Signing in…' : 'SIGN IN TO PORTAL'}</button>
               </form>
             )}
 
@@ -266,7 +343,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                     <FormField label="Business Name" name="businessName" value={formData.businessName} onChange={handleInputChange} placeholder="e.g. Spice Garden" required />
                     <FormField label="Owner Name" name="ownerName" value={formData.ownerName} onChange={handleInputChange} placeholder="e.g. John Doe" required />
                     <FormField label="Email Address" name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="owner@restaurant.com" required />
-                    <FormField label="Password (min 8 chars)" name="password" type="password" value={formData.password} onChange={handleInputChange} placeholder="••••••••" minLength={8} required />
+                    <PasswordField label="Password (min 8 chars)" name="password" value={formData.password} onChange={handleInputChange} placeholder="••••••••" minLength={8} required />
                     <FormField label="Phone Number (10 digits)" name="phoneNumber" type="tel" value={formData.phoneNumber} onChange={handleInputChange} placeholder="9876543210" required />
                     <FormField label="WhatsApp Number" name="whatsappNumber" type="tel" value={formData.whatsappNumber} onChange={handleInputChange} placeholder="9876543210" />
                   </div>
