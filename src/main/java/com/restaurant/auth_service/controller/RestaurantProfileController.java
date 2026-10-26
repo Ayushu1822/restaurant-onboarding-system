@@ -118,13 +118,18 @@ public class RestaurantProfileController {
             profile.setServiceHours(updatedDetails.getServiceHours());
         }
 
-        // 🪑 Areas & Tables Configuration (THIS WAS MISSING!)
+        // 🪑 Areas & Tables Configuration
         if (updatedDetails.getAreasAndTables() != null) {
             profile.setAreasAndTables(updatedDetails.getAreasAndTables());
         }
 
+        // 🛵 Delivery Configuration (ADDED THIS)
+        if (updatedDetails.getDeliveryConfig() != null) {
+            profile.setDeliveryConfig(updatedDetails.getDeliveryConfig());
+        }
+
         RestaurantProfile saved = profileRepository.save(profile);
-        System.out.println("✅ PROFILE & TABLES SUCCESSFULLY SAVED — ID: " + saved.getRestaurantId());
+        System.out.println("✅ PROFILE, TABLES & DELIVERY CONFIG SUCCESSFULLY SAVED — ID: " + saved.getRestaurantId());
         return ResponseEntity.ok(saved);
     }
 }

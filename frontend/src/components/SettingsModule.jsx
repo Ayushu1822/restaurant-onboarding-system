@@ -66,6 +66,16 @@ export default function SettingsModule() {
           ]
         }
       ]
+    },
+    deliveryConfig: {
+      serviceRadius: '5',
+      contactName: '',
+      contactNumber: '',
+      deliveryPartner: 'WhatsCom',
+      deliveryFeeChargedTo: 'Customer',
+      agents: [
+        { id: 'agent-1', name: 'Ramesh Kumar', phone: '+91 98765 43210', vehicleNo: 'TS 09 AB 1234', status: 'Available' }
+      ]
     }
   });
 
@@ -99,12 +109,18 @@ export default function SettingsModule() {
         try { parsedAreas = JSON.parse(parsedAreas); } catch (e) {}
       }
 
+      let parsedDelivery = data.deliveryConfig;
+      if (typeof parsedDelivery === 'string') {
+        try { parsedDelivery = JSON.parse(parsedDelivery); } catch (e) {}
+      }
+
       setFormData(prev => ({ 
         ...prev, 
         ...data, 
         email,
         serviceHours: parsedHours || prev.serviceHours,
-        areasAndTables: parsedAreas || prev.areasAndTables
+        areasAndTables: parsedAreas || prev.areasAndTables,
+        deliveryConfig: parsedDelivery || prev.deliveryConfig
       }));
     } catch (err) {
       console.error('Error fetching profile:', err);
@@ -117,6 +133,66 @@ export default function SettingsModule() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleDeliveryChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      deliveryConfig: {
+        ...prev.deliveryConfig,
+        [field]: value
+      }
+    }));
+  };
+
+  const handleAddAgent = () => {
+    const name = prompt('Enter Delivery Agent Name:');
+    if (!name || !name.trim()) return;
+    const phone = prompt('Enter Phone Number:', '+91 ');
+    const vehicleNo = prompt('Enter Vehicle Number (e.g., TS 09 AB 1234):', '');
+
+    const newAgent = {
+      id: 'agent-' + Date.now(),
+      name: name.trim(),
+      phone: phone || '',
+      vehicleNo: vehicleNo || '',
+      status: 'Available'
+    };
+
+    setFormData(prev => ({
+      ...prev,
+      deliveryConfig: {
+        ...prev.deliveryConfig,
+        agents: [...(prev.deliveryConfig.agents || []), newAgent]
+      }
+    }));
+  };
+
+  const handleToggleAgentStatus = (agentId) => {
+    setFormData(prev => ({
+      ...prev,
+      deliveryConfig: {
+        ...prev.deliveryConfig,
+        agents: prev.deliveryConfig.agents.map(ag => {
+          if (ag.id === agentId) {
+            const nextStatus = ag.status === 'Available' ? 'Unavailable' : 'Available';
+            return { ...ag, status: nextStatus };
+          }
+          return ag;
+        })
+      }
+    }));
+  };
+
+  const handleDeleteAgent = (agentId) => {
+    if (!window.confirm('Are you sure you want to delete this delivery agent?')) return;
+    setFormData(prev => ({
+      ...prev,
+      deliveryConfig: {
+        ...prev.deliveryConfig,
+        agents: prev.deliveryConfig.agents.filter(ag => ag.id !== agentId)
+      }
+    }));
   };
 
   const handleHourChange = (day, field, value) => {
@@ -245,7 +321,6 @@ export default function SettingsModule() {
     setMessage({ text: '', type: '' });
 
     try {
-      // 1. Fetch latest from DB to prevent race condition over tables added via TablesModule
       const latestRes = await fetch(`${API_BASE_URL}/api/v1/restaurants/email/${formData.email}`);
       const latestData = latestRes.ok ? await latestRes.json() : fullProfile;
 
@@ -267,7 +342,6 @@ export default function SettingsModule() {
         }
       } catch (err) {}
 
-      // 2. Merge existing table status/captains and any tables added from Table Menu
       const mergedAreas = {
         ...latestAreasAndTables,
         autoOpenQrScan: formData.areasAndTables.autoOpenQrScan,
@@ -286,7 +360,8 @@ export default function SettingsModule() {
         ...latestData,
         ...formData,
         serviceHours: JSON.stringify(formData.serviceHours),
-        areasAndTables: JSON.stringify(mergedAreas)
+        areasAndTables: JSON.stringify(mergedAreas),
+        deliveryConfig: JSON.stringify(formData.deliveryConfig)
       };
 
       const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/${formData.restaurantId}`, {
@@ -311,12 +386,17 @@ export default function SettingsModule() {
       if (typeof parsedAreas === 'string') {
         try { parsedAreas = JSON.parse(parsedAreas); } catch (e) {}
       }
+      let parsedDelivery = updated.deliveryConfig;
+      if (typeof parsedDelivery === 'string') {
+        try { parsedDelivery = JSON.parse(parsedDelivery); } catch (e) {}
+      }
 
       setFormData(prev => ({ 
         ...prev, 
         ...updated,
         serviceHours: parsedHours || prev.serviceHours,
-        areasAndTables: parsedAreas || prev.areasAndTables
+        areasAndTables: parsedAreas || prev.areasAndTables,
+        deliveryConfig: parsedDelivery || prev.deliveryConfig
       }));
       showMsg('✅ Changes successfully saved to database!', 'success');
     } catch (err) {
@@ -337,8 +417,8 @@ export default function SettingsModule() {
     { id: 'profile', label: 'Profile', icon: '👤' },
     { id: 'hours', label: 'Service Hours', icon: '⏰' },
     { id: 'tables', label: 'Areas & Tables', icon: '🪑' },
-    { id: 'users', label: 'Users', icon: '👥' },
     { id: 'delivery', label: 'Delivery', icon: '🛵' },
+    { id: 'users', label: 'Users', icon: '👥' },
     { id: 'billing', label: 'Billing', icon: '💳' },
     { id: 'printers', label: 'Printers & Receipts', icon: '🖨️' },
     { id: 'system', label: 'System', icon: '⚙️' }
@@ -735,8 +815,129 @@ export default function SettingsModule() {
               </div>
             )}
 
+            {/* TAB 5: DELIVERY */}
+            {activeTab === 'delivery' && (
+              <div style={styles.sectionGroup}>
+                <h3 style={styles.sectionTitle}>🛵 Delivery Setup</h3>
+                <div style={styles.grid2}>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Service Radius (KM)</label>
+                    <input 
+                      type="number" 
+                      value={formData.deliveryConfig?.serviceRadius || '5'} 
+                      onChange={e => handleDeliveryChange('serviceRadius', e.target.value)} 
+                      style={styles.input} 
+                    />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Point of Contact Name</label>
+                    <input 
+                      type="text" 
+                      value={formData.deliveryConfig?.contactName || ''} 
+                      onChange={e => handleDeliveryChange('contactName', e.target.value)} 
+                      placeholder="e.g. Ramesh" 
+                      style={styles.input} 
+                    />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Point of Contact Number</label>
+                    <input 
+                      type="text" 
+                      value={formData.deliveryConfig?.contactNumber || ''} 
+                      onChange={e => handleDeliveryChange('contactNumber', e.target.value)} 
+                      placeholder="+91..." 
+                      style={styles.input} 
+                    />
+                  </div>
+                </div>
+
+                <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>📦 Delivery Method</h3>
+                <div style={styles.grid2}>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Delivery Partner</label>
+                    <select 
+                      value={formData.deliveryConfig?.deliveryPartner || 'WhatsCom'} 
+                      onChange={e => handleDeliveryChange('deliveryPartner', e.target.value)} 
+                      style={styles.input}
+                    >
+                      <option value="WhatsCom">WhatsCom</option>
+                      <option value="Dunzo">Dunzo</option>
+                      <option value="Shadowfax">Shadowfax</option>
+                      <option value="In-House">In-House Fleet</option>
+                    </select>
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Delivery Fee Charged To</label>
+                    <select 
+                      value={formData.deliveryConfig?.deliveryFeeChargedTo || 'Customer'} 
+                      onChange={e => handleDeliveryChange('deliveryFeeChargedTo', e.target.value)} 
+                      style={styles.input}
+                    >
+                      <option value="Customer">Customer</option>
+                      <option value="Restaurant">Restaurant</option>
+                      <option value="Free">Free Delivery</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '28px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px'}}>
+                  <h3 style={{fontSize: '17px', fontWeight: '950', color: '#0f172a', margin: 0}}>
+                    👥 Delivery Agents ({formData.deliveryConfig?.agents?.length || 0})
+                  </h3>
+                  <button type="button" onClick={handleAddAgent} style={styles.addAreaBtn}>
+                    + Add Agent
+                  </button>
+                </div>
+
+                <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px'}}>
+                  {formData.deliveryConfig?.agents?.map(agent => (
+                    <div key={agent.id} style={styles.agentCard}>
+                      <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                        <div style={{width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '950', fontSize: '14px'}}>
+                          {agent.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{fontWeight: '950', fontSize: '15px', color: '#0f172a'}}>{agent.name}</div>
+                          <div style={{fontSize: '12px', color: '#64748b', fontWeight: '800', marginTop: '2px'}}>
+                            📞 {agent.phone} · 🚗 {agent.vehicleNo || 'No Vehicle No.'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{display: 'flex', alignItems: 'center', gap: '14px'}}>
+                        <span style={{
+                          backgroundColor: agent.status === 'Available' ? '#dcfce7' : '#fee2e2',
+                          color: agent.status === 'Available' ? '#15803d' : '#991b1b',
+                          padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '950'
+                        }}>
+                          {agent.status || 'Available'}
+                        </span>
+                        
+                        <button 
+                          type="button" 
+                          onClick={() => handleToggleAgentStatus(agent.id)}
+                          style={styles.agentToggleBtn}
+                        >
+                          {agent.status === 'Available' ? 'Set unavailable' : 'Set available'}
+                        </button>
+
+                        <button 
+                          type="button" 
+                          onClick={() => handleDeleteAgent(agent.id)}
+                          style={{background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px'}}
+                          title="Delete Agent"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* PLACEHOLDER FOR OTHER TABS */}
-            {activeTab !== 'business' && activeTab !== 'profile' && activeTab !== 'hours' && activeTab !== 'tables' && (
+            {activeTab !== 'business' && activeTab !== 'profile' && activeTab !== 'hours' && activeTab !== 'tables' && activeTab !== 'delivery' && (
               <div style={styles.placeholderTab}>
                 <h3>🚧 {sidebarItems.find(i => i.id === activeTab)?.label} Configuration</h3>
                 <p style={{color: '#475569', fontSize: '14px', fontWeight: '800', marginTop: '8px'}}>
@@ -789,5 +990,7 @@ const styles = {
   tablesGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' },
   tableCard: { backgroundColor: '#fff', border: '2px solid #cbd5e1', borderRadius: '12px', padding: '14px', transition: 'all 0.2s ease', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' },
   iconBtn: { backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px' },
-  viewQrBtn: { backgroundColor: '#f1f5f9', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '4px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }
+  viewQrBtn: { backgroundColor: '#f1f5f9', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '4px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' },
+  agentCard: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '14px', padding: '16px' },
+  agentToggleBtn: { backgroundColor: '#fff', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '6px 14px', borderRadius: '8px', fontWeight: '950', fontSize: '11px', cursor: 'pointer' }
 };

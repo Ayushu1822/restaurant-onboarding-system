@@ -90,9 +90,13 @@ public class RestaurantProfile {
     @Column(name = "service_hours", columnDefinition = "TEXT")
     private String serviceHours;
 
-    // 🪑 Areas & Tables Configuration (Added here!)
+    // 🪑 Areas & Tables Configuration
     @Column(name = "areas_and_tables", columnDefinition = "TEXT")
     private String areasAndTables;
+
+    // 🛵 Delivery Configuration (Added here!)
+    @Column(name = "delivery_config", columnDefinition = "TEXT")
+    private String deliveryConfig;
 
     // ================= Getters and Setters =================
 
@@ -183,7 +187,9 @@ public class RestaurantProfile {
     public String getServiceHours() { return serviceHours; }
     public void setServiceHours(String serviceHours) { this.serviceHours = serviceHours; }
 
-    // Added Getters and Setters for Areas and Tables
     public String getAreasAndTables() { return areasAndTables; }
     public void setAreasAndTables(String areasAndTables) { this.areasAndTables = areasAndTables; }
+
+    public String getDeliveryConfig() { return deliveryConfig; }
+    public void setDeliveryConfig(String deliveryConfig) { this.deliveryConfig = deliveryConfig; }
 }
