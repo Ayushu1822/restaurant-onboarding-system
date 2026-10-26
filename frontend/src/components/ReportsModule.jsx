@@ -33,7 +33,9 @@ export default function ReportsModule({ orders: parentOrders }) {
   }, []);
 
   const fetchData = () => {
-    fetch(`${API_BASE_URL}/api/v1/orders`)
+    const loggedInEmail = localStorage.getItem('userEmail') || 'novio@gmail.com';
+
+    fetch(`${API_BASE_URL}/api/v1/orders?email=${loggedInEmail}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setOrders(data);
@@ -44,7 +46,7 @@ export default function ReportsModule({ orders: parentOrders }) {
         setLoading(false);
       });
 
-    fetch(`${API_BASE_URL}/api/v1/complaints`)
+    fetch(`${API_BASE_URL}/api/v1/complaints?email=${loggedInEmail}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -54,11 +56,10 @@ export default function ReportsModule({ orders: parentOrders }) {
       .catch(err => console.error("Error fetching complaints for reports:", err));
   };
 
-  // ✅ Robust timestamp parser handling high-precision ISO strings safely
+  // Robust timestamp parser handling high-precision ISO strings safely
   const getSafeTimestamp = (order, index) => {
     if (order.timestamp) {
       let ts = order.timestamp;
-      // Truncate fractional seconds beyond milliseconds (e.g. .205870885Z -> .205Z)
       ts = ts.replace(/\.(\d{3})\d+/, '.$1');
       const d = new Date(ts);
       if (!isNaN(d.getTime())) return d;
@@ -100,11 +101,11 @@ export default function ReportsModule({ orders: parentOrders }) {
     return true;
   };
 
-  // 1. Active Orders Filtering (Shows all open/uncompleted orders regardless of date so kitchen queue never hides stuck orders)
+  // 1. Active Orders Filtering
   const filteredOrders = orders.filter((o, idx) => {
     const st = (o.status || 'New').toLowerCase();
     const isCompleted = st === 'completed' || st === 'delivered' || st === 'settled';
-    if (isCompleted) return false; // Active orders must only be open orders
+    if (isCompleted) return false;
 
     let matchesChannel = true;
     const channel = (o.channel || 'COUNTER').toUpperCase();
@@ -136,7 +137,7 @@ export default function ReportsModule({ orders: parentOrders }) {
 
   const activeBreakdownOrders = filteredOrders;
 
-  // 2. Completed History Filtering (Retains all past/ready/completed orders permanently)
+  // 2. Completed History Filtering
   const completedHistoryOrders = orders.filter((o, idx) => {
     const st = (o.status || 'New').toLowerCase();
     const isCompleted = st === 'completed' || st === 'delivered' || st === 'picked up' || st === 'ready' || st === 'settled';
@@ -178,7 +179,6 @@ export default function ReportsModule({ orders: parentOrders }) {
   const totalRevenue = analyticsOrders.reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0);
   const totalOrdersCount = analyticsOrders.length;
 
-  // Dynamic Revenue & Percentage Calculations for Pie Chart
   let tableRev = 0, counterRev = 0, onlineRev = 0;
   analyticsOrders.forEach(o => {
     const rev = Number(o.totalAmount) || 0;
@@ -226,7 +226,6 @@ export default function ReportsModule({ orders: parentOrders }) {
     return a.localeCompare(b);
   });
 
-  // Print Individual Receipt
   const printSingleReceipt = (o, index) => {
     const dateStr = getSafeTimestamp(o, index).toLocaleString();
     const items = o.items || o.orderItems || [];
@@ -267,7 +266,6 @@ export default function ReportsModule({ orders: parentOrders }) {
     setTimeout(() => { receiptWindow.print(); }, 250);
   };
 
-  // Bulk Print History
   const printBulkHistory = () => {
     let printWin = window.open('', '_blank', 'width=800,height=600');
     if (!printWin) return;
