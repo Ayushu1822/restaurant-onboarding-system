@@ -245,33 +245,45 @@ export default function SettingsModule() {
     setMessage({ text: '', type: '' });
 
     try {
-      // Merge incoming areasAndTables with existing status/captain from fullProfile if available
+      // 1. Fetch latest from DB to prevent race condition over tables added via TablesModule
+      const latestRes = await fetch(`${API_BASE_URL}/api/v1/restaurants/email/${formData.email}`);
+      const latestData = latestRes.ok ? await latestRes.json() : fullProfile;
+
       let existingAreasMap = {};
+      let latestAreasAndTables = formData.areasAndTables;
+
       try {
-        const parsedOld = typeof fullProfile.areasAndTables === 'string' ? JSON.parse(fullProfile.areasAndTables) : fullProfile.areasAndTables;
-        if (parsedOld && parsedOld.areas) {
-          parsedOld.areas.forEach(a => {
+        const parsedLatestAreas = typeof latestData.areasAndTables === 'string' 
+          ? JSON.parse(latestData.areasAndTables) 
+          : latestData.areasAndTables;
+
+        if (parsedLatestAreas && parsedLatestAreas.areas) {
+          latestAreasAndTables = parsedLatestAreas;
+          parsedLatestAreas.areas.forEach(a => {
             (a.tables || []).forEach(t => {
-              existingAreasMap[t.id] = { status: t.status, captain: t.captain };
+              existingAreasMap[t.id] = { status: t.status, captain: t.captain, qrEnabled: t.qrEnabled };
             });
           });
         }
       } catch (err) {}
 
+      // 2. Merge existing table status/captains and any tables added from Table Menu
       const mergedAreas = {
-        ...formData.areasAndTables,
+        ...latestAreasAndTables,
+        autoOpenQrScan: formData.areasAndTables.autoOpenQrScan,
         areas: formData.areasAndTables.areas.map(area => ({
           ...area,
           tables: area.tables.map(t => ({
             ...t,
             status: existingAreasMap[t.id]?.status || t.status || 'Available',
-            captain: existingAreasMap[t.id]?.captain || t.captain || 'Unassigned'
+            captain: existingAreasMap[t.id]?.captain || t.captain || 'Unassigned',
+            qrEnabled: t.qrEnabled ?? true
           }))
         }))
       };
 
       const payload = {
-        ...fullProfile,
+        ...latestData,
         ...formData,
         serviceHours: JSON.stringify(formData.serviceHours),
         areasAndTables: JSON.stringify(mergedAreas)
