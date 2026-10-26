@@ -113,6 +113,11 @@ public class RestaurantProfileController {
         if (updatedDetails.getLastName() != null) profile.setLastName(updatedDetails.getLastName());
         if (updatedDetails.getPreferredLanguage() != null) profile.setPreferredLanguage(updatedDetails.getPreferredLanguage());
 
+        // ⏰ Service Hours Configuration (ADDED THIS FIX)
+        if (updatedDetails.getServiceHours() != null) {
+            profile.setServiceHours(updatedDetails.getServiceHours());
+        }
+
         RestaurantProfile saved = profileRepository.save(profile);
         System.out.println("✅ PROFILE & SETTINGS SUCCESSFULLY SAVED/UPDATED — ID: " + saved.getRestaurantId());
         return ResponseEntity.ok(saved);
