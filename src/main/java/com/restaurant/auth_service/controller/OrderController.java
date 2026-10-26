@@ -21,7 +21,7 @@ public class OrderController {
     @Autowired
     private OrderRepository orderRepository;
 
-    // ✅ FETCH ORDERS STRICTLY FILTERED BY RESTAURANT EMAIL
+    // ✅ FETCH ALL ORDERS (Active + Completed) STRICTLY FILTERED BY RESTAURANT EMAIL
     @GetMapping
     public List<Order> getOrdersByEmail(@RequestParam(required = false) String email) {
         List<Order> allOrders = orderRepository.findAll();
@@ -33,15 +33,17 @@ public class OrderController {
                     return false;
                 }
             } else {
-                // Agar email nahi bheji, toh safety ke liye koi order mat do ya empty rakho
+                // Agar email nahi bheji, toh safety ke liye empty rakho
                 return false; 
             }
 
-            String status = o.getStatus() != null ? o.getStatus().toUpperCase() : "NEW";
-            return !status.equals("COMPLETED") && !status.equals("DELIVERED") && !status.equals("PICKED UP");
+            // ✅ FIXED: Removed status check restrictions here so completed, delivered, 
+            // and picked up orders are NOT filtered out by the backend. 
+            // Frontend will handle active vs history filtering safely!
+            return true;
         }).collect(Collectors.toList());
 
-        System.out.println("📦 FETCHED ORDERS FOR EMAIL: " + email + " — Count: " + filteredOrders.size());
+        System.out.println("📦 FETCHED ALL ORDERS FOR EMAIL: " + email + " — Count: " + filteredOrders.size());
         return filteredOrders;
     }
 
