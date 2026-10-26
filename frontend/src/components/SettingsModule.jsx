@@ -8,6 +8,7 @@ export default function SettingsModule() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const [isEditingHours, setIsEditingHours] = useState(false);
+  const [hoveredCard, setHoveredCard] = useState(null);
 
   // Form State mapped to Database RestaurantProfile entity + Service Hours
   const [formData, setFormData] = useState({
@@ -68,7 +69,6 @@ export default function SettingsModule() {
       if (!res.ok) throw new Error('Failed to fetch profile from database');
       const data = await res.json();
       
-      // Parse serviceHours if stored as JSON string in backend, or use default
       let parsedHours = data.serviceHours;
       if (typeof parsedHours === 'string') {
         try { parsedHours = JSON.parse(parsedHours); } catch (e) {}
@@ -104,6 +104,23 @@ export default function SettingsModule() {
         }
       }
     }));
+  };
+
+  // Helper to dynamically calculate break duration between shift 1 end and shift 2 start
+  const calculateBreakDuration = (end1, start2) => {
+    try {
+      const [h1, m1] = (end1 || '14:00').split(':').map(Number);
+      const [h2, m2] = (start2 || '17:00').split(':').map(Number);
+      const mins1 = h1 * 60 + m1;
+      const mins2 = h2 * 60 + m2;
+      const diff = mins2 - mins1;
+      if (diff <= 0) return 'Overlapping';
+      const hours = Math.floor(diff / 60);
+      const mins = diff % 60;
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    } catch (e) {
+      return '3h';
+    }
   };
 
   const handleSave = async (e) => {
@@ -306,13 +323,13 @@ export default function SettingsModule() {
                 <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>🖼️ Supplementary Images</h3>
                 <div style={styles.grid2}>
                   <div style={styles.imageUploadCard}>
-                    <div style={{fontWeight: '900', color: '#0f172a', marginBottom: '6px'}}>Restaurant Banner for WhatsApp Order Flow</div>
-                    <div style={{fontSize: '11px', color: '#64748b', marginBottom: '12px'}}>Appears as the banner on WhatsApp order flow welcome screen.</div>
+                    <div style={{fontWeight: '950', color: '#0f172a', marginBottom: '6px'}}>Restaurant Banner for WhatsApp Order Flow</div>
+                    <div style={{fontSize: '11px', color: '#475569', fontWeight: '700', marginBottom: '12px'}}>Appears as the banner on WhatsApp order flow welcome screen.</div>
                     <input type="text" name="whatsappBannerUrl" value={formData.whatsappBannerUrl || ''} onChange={handleChange} placeholder="Paste Image URL" style={styles.input} />
                   </div>
                   <div style={styles.imageUploadCard}>
-                    <div style={{fontWeight: '900', color: '#0f172a', marginBottom: '6px'}}>Default Item Image</div>
-                    <div style={{fontSize: '11px', color: '#64748b', marginBottom: '12px'}}>Used as default item image when specific image is not available.</div>
+                    <div style={{fontWeight: '950', color: '#0f172a', marginBottom: '6px'}}>Default Item Image</div>
+                    <div style={{fontSize: '11px', color: '#475569', fontWeight: '700', marginBottom: '12px'}}>Used as default item image when specific image is not available.</div>
                     <input type="text" name="defaultItemImageUrl" value={formData.defaultItemImageUrl || ''} onChange={handleChange} placeholder="Paste Image URL" style={styles.input} />
                   </div>
                 </div>
@@ -361,11 +378,11 @@ export default function SettingsModule() {
             {activeTab === 'hours' && (
               <div style={styles.sectionGroup}>
                 <div style={styles.serviceHoursBanner}>
-                  <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                    <span style={{fontSize: '20px'}}>⏰</span>
+                  <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                    <span style={{fontSize: '22px'}}>⏰</span>
                     <div>
-                      <div style={{fontWeight: '900', color: '#0369a1', fontSize: '14px'}}>Online Ordering Hours</div>
-                      <div style={{fontSize: '12px', color: '#0369a1', marginTop: '2px', fontWeight: '700'}}>
+                      <div style={{fontWeight: '950', color: '#0369a1', fontSize: '15px'}}>Online Ordering Hours</div>
+                      <div style={{fontSize: '12px', color: '#0c4a6e', marginTop: '3px', fontWeight: '800'}}>
                         Configure working days with multiple shifts. Gaps between shifts are treated as breaks automatically — no need to define them separately.
                       </div>
                     </div>
@@ -375,36 +392,47 @@ export default function SettingsModule() {
                     onClick={() => setIsEditingHours(!isEditingHours)} 
                     style={styles.editHoursBtn}
                   >
-                    ✏️ {isEditingHours ? 'Lock Hours' : 'Edit'}
+                    ✏️ {isEditingHours ? 'Lock Hours' : 'Edit Hours'}
                   </button>
                 </div>
 
                 <div style={{display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '10px'}}>
                   {daysOfWeek.map(day => {
                     const dayData = formData.serviceHours?.[day] || { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' };
+                    const breakDuration = calculateBreakDuration(dayData.shift1End, dayData.shift2Start);
+                    const isHovered = hoveredCard === day;
+
                     return (
-                      <div key={day} style={styles.dayCard}>
+                      <div 
+                        key={day} 
+                        style={{
+                          ...styles.dayCard,
+                          ...(isHovered ? styles.dayCardHover : {})
+                        }}
+                        onMouseEnter={() => setHoveredCard(day)}
+                        onMouseLeave={() => setHoveredCard(null)}
+                      >
                         <div style={styles.dayCardHeader}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                            <span style={{fontWeight: '950', fontSize: '15px', color: '#0f172a', width: '100px'}}>{day}</span>
-                            <span style={{backgroundColor: dayData.holiday ? '#fef2f2' : '#ecfdf5', color: dayData.holiday ? '#dc2626' : '#059669', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '900'}}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '14px'}}>
+                            <span style={{fontWeight: '950', fontSize: '16px', color: '#0f172a', width: '110px'}}>{day}</span>
+                            <span style={{backgroundColor: dayData.holiday ? '#fef2f2' : '#ecfdf5', color: dayData.holiday ? '#dc2626' : '#059669', padding: '4px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '950', border: '1px solid currentColor'}}>
                               {dayData.holiday ? 'Holiday' : 'Open'}
                             </span>
                           </div>
                           <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                            <span style={{fontSize: '12px', fontWeight: '850', color: '#64748b'}}>Holiday</span>
+                            <span style={{fontSize: '12px', fontWeight: '900', color: '#0f172a'}}>Holiday</span>
                             <input 
                               type="checkbox" 
                               checked={dayData.holiday || false} 
                               onChange={e => handleHourChange(day, 'holiday', e.target.checked)}
-                              style={{width: '16px', height: '16px', cursor: 'pointer'}}
+                              style={{width: '18px', height: '18px', cursor: 'pointer', accentColor: '#059669'}}
                             />
                           </div>
                         </div>
 
                         {!dayData.holiday && (
-                          <div style={{display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px'}}>
-                            <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
+                          <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px'}}>
+                            <div style={{display: 'flex', gap: '14px', alignItems: 'center'}}>
                               <input 
                                 type="text" 
                                 value={dayData.shift1Start} 
@@ -412,7 +440,7 @@ export default function SettingsModule() {
                                 disabled={!isEditingHours}
                                 style={styles.timeInput} 
                               />
-                              <span style={{fontWeight: '800', color: '#64748b'}}>to</span>
+                              <span style={{fontWeight: '900', color: '#334155'}}>to</span>
                               <input 
                                 type="text" 
                                 value={dayData.shift1End} 
@@ -422,11 +450,11 @@ export default function SettingsModule() {
                               />
                             </div>
 
-                            <div style={{textAlign: 'center', fontSize: '11px', fontWeight: '900', color: '#d97706', backgroundColor: '#fffbeb', padding: '6px', borderRadius: '6px', border: '1px dashed #fcd34d'}}>
-                              Break {dayData.shift1End}–{dayData.shift2Start} (3h)
+                            <div style={{textAlign: 'center', fontSize: '12px', fontWeight: '950', color: '#b45309', backgroundColor: '#fef3c7', padding: '8px', borderRadius: '8px', border: '1.5px dashed #f59e0b'}}>
+                              Break {dayData.shift1End}–{dayData.shift2Start} ({breakDuration})
                             </div>
 
-                            <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
+                            <div style={{display: 'flex', gap: '14px', alignItems: 'center'}}>
                               <input 
                                 type="text" 
                                 value={dayData.shift2Start} 
@@ -434,7 +462,7 @@ export default function SettingsModule() {
                                 disabled={!isEditingHours}
                                 style={styles.timeInput} 
                               />
-                              <span style={{fontWeight: '800', color: '#64748b'}}>to</span>
+                              <span style={{fontWeight: '900', color: '#334155'}}>to</span>
                               <input 
                                 type="text" 
                                 value={dayData.shift2End} 
@@ -456,7 +484,7 @@ export default function SettingsModule() {
             {activeTab !== 'business' && activeTab !== 'profile' && activeTab !== 'hours' && (
               <div style={styles.placeholderTab}>
                 <h3>🚧 {sidebarItems.find(i => i.id === activeTab)?.label} Configuration</h3>
-                <p style={{color: '#64748b', fontSize: '14px', marginTop: '8px'}}>
+                <p style={{color: '#475569', fontSize: '14px', fontWeight: '800', marginTop: '8px'}}>
                   This operational sub-module is ready for integration.
                 </p>
               </div>
@@ -470,31 +498,32 @@ export default function SettingsModule() {
 }
 
 const styles = {
-  container: { display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', backgroundColor: '#f8fafc', overflowY: 'auto', boxSizing: 'border-box', textAlign: 'left' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', backgroundColor: '#fff', padding: '16px 24px', borderRadius: '12px', border: '1.5px solid #e2e8f0' },
+  container: { display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', backgroundColor: '#f1f5f9', overflowY: 'auto', boxSizing: 'border-box', textAlign: 'left' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', backgroundColor: '#fff', padding: '16px 24px', borderRadius: '16px', border: '2px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' },
   title: { margin: '0 0 4px 0', fontSize: '22px', fontWeight: '950', color: '#0f172a' },
-  subtitle: { fontSize: '12px', color: '#64748b', fontWeight: '700' },
-  statusBadge: { backgroundColor: '#dcfce7', color: '#15803d', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '900' },
-  saveBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: '900', fontSize: '13px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(5,150,105,0.2)' },
-  alert: { padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', fontWeight: '850', border: '1.5px solid' },
+  subtitle: { fontSize: '12px', color: '#475569', fontWeight: '800' },
+  statusBadge: { backgroundColor: '#dcfce7', color: '#15803d', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '950', border: '1.5px solid #86efac' },
+  saveBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.25)', transition: 'all 0.2s ease' },
+  alert: { padding: '12px 16px', borderRadius: '10px', marginBottom: '16px', fontSize: '13px', fontWeight: '900', border: '2px solid' },
   layout: { display: 'flex', gap: '24px', flex: 1, alignItems: 'flex-start' },
-  sidebar: { width: '260px', backgroundColor: '#fff', borderRadius: '12px', border: '1.5px solid #e2e8f0', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' },
-  sidebarBtn: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', backgroundColor: 'transparent', border: 'none', borderRadius: '8px', fontWeight: '850', fontSize: '13px', color: '#334155', cursor: 'pointer', textAlign: 'left', width: '100%' },
-  activeSidebarBtn: { backgroundColor: '#ecfdf5', color: '#047857', borderLeft: '4px solid #059669' },
-  contentPanel: { flex: 1, backgroundColor: '#fff', borderRadius: '12px', border: '1.5px solid #e2e8f0', padding: '24px', minHeight: '600px' },
+  sidebar: { width: '260px', backgroundColor: '#fff', borderRadius: '16px', border: '2px solid #cbd5e1', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' },
+  sidebarBtn: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', backgroundColor: 'transparent', border: '2px solid transparent', borderRadius: '10px', fontWeight: '900', fontSize: '13px', color: '#1e293b', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.2s ease' },
+  activeSidebarBtn: { backgroundColor: '#ecfdf5', color: '#047857', borderColor: '#10b981', boxShadow: '0 2px 8px rgba(16,185,129,0.15)' },
+  contentPanel: { flex: 1, backgroundColor: '#fff', borderRadius: '16px', border: '2px solid #cbd5e1', padding: '24px', minHeight: '600px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' },
   formContainer: { display: 'flex', flexDirection: 'column', gap: '20px' },
   sectionGroup: { display: 'flex', flexDirection: 'column', gap: '16px' },
-  sectionTitle: { fontSize: '16px', fontWeight: '950', color: '#0f172a', margin: '0 0 12px 0', borderBottom: '1.5px solid #f1f5f9', paddingBottom: '8px' },
+  sectionTitle: { fontSize: '17px', fontWeight: '950', color: '#0f172a', margin: '0 0 12px 0', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px' },
   grid2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' },
   fieldGroup: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  label: { fontSize: '12px', fontWeight: '900', color: '#334155' },
-  input: { padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', fontWeight: '700', color: '#0f172a', outline: 'none', backgroundColor: '#fff', width: '100%', boxSizing: 'border-box' },
-  imageUploadCard: { border: '2px dashed #cbd5e1', borderRadius: '10px', padding: '16px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
-  placeholderTab: { textAlign: 'center', padding: '80px 20px', color: '#334155' },
-  centerMsg: { padding: '40px', textAlign: 'center', fontWeight: '800', color: '#64748b' },
-  serviceHoursBanner: { backgroundColor: '#e0f2fe', border: '1.5px solid #bae6fd', borderRadius: '10px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  editHoursBtn: { backgroundColor: '#fff', color: '#0369a1', border: '1.5px solid #bae6fd', padding: '6px 14px', borderRadius: '8px', fontWeight: '900', fontSize: '12px', cursor: 'pointer' },
-  dayCard: { backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '16px' },
+  label: { fontSize: '12px', fontWeight: '950', color: '#0f172a' },
+  input: { padding: '10px 14px', borderRadius: '10px', border: '2px solid #94a3b8', fontSize: '13px', fontWeight: '900', color: '#0f172a', outline: 'none', backgroundColor: '#fff', width: '100%', boxSizing: 'border-box' },
+  imageUploadCard: { border: '2px dashed #94a3b8', borderRadius: '12px', padding: '16px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
+  placeholderTab: { textAlign: 'center', padding: '80px 20px', color: '#0f172a' },
+  centerMsg: { padding: '40px', textAlign: 'center', fontWeight: '900', color: '#334155' },
+  serviceHoursBanner: { backgroundColor: '#e0f2fe', border: '2px solid #7dd3fc', borderRadius: '12px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  editHoursBtn: { backgroundColor: '#fff', color: '#0369a1', border: '2px solid #38bdf8', padding: '8px 16px', borderRadius: '10px', fontWeight: '950', fontSize: '12px', cursor: 'pointer', boxShadow: '0 2px 6px rgba(56,189,248,0.2)' },
+  dayCard: { backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '14px', padding: '18px', transition: 'all 0.25s ease', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' },
+  dayCardHover: { borderColor: '#059669', backgroundColor: '#f0fdf4', transform: 'translateY(-2px)', boxShadow: '0 8px 20px rgba(5,150,105,0.12)' },
   dayCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  timeInput: { padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', fontWeight: '700', color: '#0f172a', backgroundColor: '#fff', width: '140px' }
+  timeInput: { padding: '8px 14px', borderRadius: '8px', border: '2px solid #94a3b8', fontSize: '13px', fontWeight: '900', color: '#0f172a', backgroundColor: '#fff', width: '150px', outline: 'none' }
 };
