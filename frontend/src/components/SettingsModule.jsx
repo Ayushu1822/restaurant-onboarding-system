@@ -7,14 +7,15 @@ export default function SettingsModule() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
+  const [isEditingHours, setIsEditingHours] = useState(false);
 
-  // Form State mapped to Database RestaurantProfile entity
+  // Form State mapped to Database RestaurantProfile entity + Service Hours
   const [formData, setFormData] = useState({
     restaurantId: '',
     userId: '',
     email: '', 
     businessName: '',
-    ownerName: '', // ✅ Editable Owner Name
+    ownerName: '',
     phoneNumber: '',
     whatsappNumber: '',
     website: '',
@@ -37,7 +38,16 @@ export default function SettingsModule() {
     defaultItemImageUrl: '',
     firstName: '',
     lastName: '',
-    preferredLanguage: 'Telugu'
+    preferredLanguage: 'Telugu',
+    serviceHours: {
+      Monday: { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' },
+      Tuesday: { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' },
+      Wednesday: { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' },
+      Thursday: { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' },
+      Friday: { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' },
+      Saturday: { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' },
+      Sunday: { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' }
+    }
   });
 
   useEffect(() => {
@@ -57,7 +67,19 @@ export default function SettingsModule() {
       const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/email/${email}`);
       if (!res.ok) throw new Error('Failed to fetch profile from database');
       const data = await res.json();
-      setFormData(prev => ({ ...prev, ...data, email }));
+      
+      // Parse serviceHours if stored as JSON string in backend, or use default
+      let parsedHours = data.serviceHours;
+      if (typeof parsedHours === 'string') {
+        try { parsedHours = JSON.parse(parsedHours); } catch (e) {}
+      }
+
+      setFormData(prev => ({ 
+        ...prev, 
+        ...data, 
+        email,
+        serviceHours: parsedHours || prev.serviceHours
+      }));
     } catch (err) {
       console.error('Error fetching profile:', err);
       showMsg('Failed to load profile from database.', 'error');
@@ -71,16 +93,34 @@ export default function SettingsModule() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleHourChange = (day, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      serviceHours: {
+        ...prev.serviceHours,
+        [day]: {
+          ...prev.serviceHours[day],
+          [field]: value
+        }
+      }
+    }));
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
     setMessage({ text: '', type: '' });
 
     try {
+      const payload = {
+        ...formData,
+        serviceHours: JSON.stringify(formData.serviceHours)
+      };
+
       const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/${formData.restaurantId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
@@ -89,7 +129,16 @@ export default function SettingsModule() {
       }
 
       const updated = await res.json();
-      setFormData(prev => ({ ...prev, ...updated }));
+      let parsedHours = updated.serviceHours;
+      if (typeof parsedHours === 'string') {
+        try { parsedHours = JSON.parse(parsedHours); } catch (e) {}
+      }
+
+      setFormData(prev => ({ 
+        ...prev, 
+        ...updated,
+        serviceHours: parsedHours || prev.serviceHours 
+      }));
       showMsg('✅ Changes successfully saved to database!', 'success');
     } catch (err) {
       console.error('Error saving profile:', err);
@@ -115,6 +164,8 @@ export default function SettingsModule() {
     { id: 'printers', label: 'Printers & Receipts', icon: '🖨️' },
     { id: 'system', label: 'System', icon: '⚙️' }
   ];
+
+  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   if (loading) {
     return <div style={styles.centerMsg}>Loading latest settings from database for your account...</div>;
@@ -204,7 +255,6 @@ export default function SettingsModule() {
                   </div>
                 </div>
 
-                {/* Display Names & Codes */}
                 <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>🏷️ Display Names & Codes</h3>
                 <div style={styles.grid2}>
                   <div style={styles.fieldGroup}>
@@ -225,7 +275,6 @@ export default function SettingsModule() {
                   </div>
                 </div>
 
-                {/* Address Section */}
                 <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>📍 Address & Location</h3>
                 <div style={styles.grid2}>
                   <div style={styles.fieldGroup}>
@@ -254,32 +303,17 @@ export default function SettingsModule() {
                   </div>
                 </div>
 
-                {/* Supplementary Images Section */}
                 <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>🖼️ Supplementary Images</h3>
                 <div style={styles.grid2}>
                   <div style={styles.imageUploadCard}>
                     <div style={{fontWeight: '900', color: '#0f172a', marginBottom: '6px'}}>Restaurant Banner for WhatsApp Order Flow</div>
                     <div style={{fontSize: '11px', color: '#64748b', marginBottom: '12px'}}>Appears as the banner on WhatsApp order flow welcome screen.</div>
-                    <input 
-                      type="text" 
-                      name="whatsappBannerUrl" 
-                      value={formData.whatsappBannerUrl || ''} 
-                      onChange={handleChange} 
-                      placeholder="Paste Image URL" 
-                      style={styles.input} 
-                    />
+                    <input type="text" name="whatsappBannerUrl" value={formData.whatsappBannerUrl || ''} onChange={handleChange} placeholder="Paste Image URL" style={styles.input} />
                   </div>
                   <div style={styles.imageUploadCard}>
                     <div style={{fontWeight: '900', color: '#0f172a', marginBottom: '6px'}}>Default Item Image</div>
                     <div style={{fontSize: '11px', color: '#64748b', marginBottom: '12px'}}>Used as default item image when specific image is not available.</div>
-                    <input 
-                      type="text" 
-                      name="defaultItemImageUrl" 
-                      value={formData.defaultItemImageUrl || ''} 
-                      onChange={handleChange} 
-                      placeholder="Paste Image URL" 
-                      style={styles.input} 
-                    />
+                    <input type="text" name="defaultItemImageUrl" value={formData.defaultItemImageUrl || ''} onChange={handleChange} placeholder="Paste Image URL" style={styles.input} />
                   </div>
                 </div>
               </div>
@@ -323,8 +357,103 @@ export default function SettingsModule() {
               </div>
             )}
 
+            {/* TAB 3: SERVICE HOURS */}
+            {activeTab === 'hours' && (
+              <div style={styles.sectionGroup}>
+                <div style={styles.serviceHoursBanner}>
+                  <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                    <span style={{fontSize: '20px'}}>⏰</span>
+                    <div>
+                      <div style={{fontWeight: '900', color: '#0369a1', fontSize: '14px'}}>Online Ordering Hours</div>
+                      <div style={{fontSize: '12px', color: '#0369a1', marginTop: '2px', fontWeight: '700'}}>
+                        Configure working days with multiple shifts. Gaps between shifts are treated as breaks automatically — no need to define them separately.
+                      </div>
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => setIsEditingHours(!isEditingHours)} 
+                    style={styles.editHoursBtn}
+                  >
+                    ✏️ {isEditingHours ? 'Lock Hours' : 'Edit'}
+                  </button>
+                </div>
+
+                <div style={{display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '10px'}}>
+                  {daysOfWeek.map(day => {
+                    const dayData = formData.serviceHours?.[day] || { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' };
+                    return (
+                      <div key={day} style={styles.dayCard}>
+                        <div style={styles.dayCardHeader}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                            <span style={{fontWeight: '950', fontSize: '15px', color: '#0f172a', width: '100px'}}>{day}</span>
+                            <span style={{backgroundColor: dayData.holiday ? '#fef2f2' : '#ecfdf5', color: dayData.holiday ? '#dc2626' : '#059669', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '900'}}>
+                              {dayData.holiday ? 'Holiday' : 'Open'}
+                            </span>
+                          </div>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                            <span style={{fontSize: '12px', fontWeight: '850', color: '#64748b'}}>Holiday</span>
+                            <input 
+                              type="checkbox" 
+                              checked={dayData.holiday || false} 
+                              onChange={e => handleHourChange(day, 'holiday', e.target.checked)}
+                              style={{width: '16px', height: '16px', cursor: 'pointer'}}
+                            />
+                          </div>
+                        </div>
+
+                        {!dayData.holiday && (
+                          <div style={{display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px'}}>
+                            <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
+                              <input 
+                                type="text" 
+                                value={dayData.shift1Start} 
+                                onChange={e => handleHourChange(day, 'shift1Start', e.target.value)} 
+                                disabled={!isEditingHours}
+                                style={styles.timeInput} 
+                              />
+                              <span style={{fontWeight: '800', color: '#64748b'}}>to</span>
+                              <input 
+                                type="text" 
+                                value={dayData.shift1End} 
+                                onChange={e => handleHourChange(day, 'shift1End', e.target.value)} 
+                                disabled={!isEditingHours}
+                                style={styles.timeInput} 
+                              />
+                            </div>
+
+                            <div style={{textAlign: 'center', fontSize: '11px', fontWeight: '900', color: '#d97706', backgroundColor: '#fffbeb', padding: '6px', borderRadius: '6px', border: '1px dashed #fcd34d'}}>
+                              Break {dayData.shift1End}–{dayData.shift2Start} (3h)
+                            </div>
+
+                            <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
+                              <input 
+                                type="text" 
+                                value={dayData.shift2Start} 
+                                onChange={e => handleHourChange(day, 'shift2Start', e.target.value)} 
+                                disabled={!isEditingHours}
+                                style={styles.timeInput} 
+                              />
+                              <span style={{fontWeight: '800', color: '#64748b'}}>to</span>
+                              <input 
+                                type="text" 
+                                value={dayData.shift2End} 
+                                onChange={e => handleHourChange(day, 'shift2End', e.target.value)} 
+                                disabled={!isEditingHours}
+                                style={styles.timeInput} 
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* PLACEHOLDER FOR OTHER TABS */}
-            {activeTab !== 'business' && activeTab !== 'profile' && (
+            {activeTab !== 'business' && activeTab !== 'profile' && activeTab !== 'hours' && (
               <div style={styles.placeholderTab}>
                 <h3>🚧 {sidebarItems.find(i => i.id === activeTab)?.label} Configuration</h3>
                 <p style={{color: '#64748b', fontSize: '14px', marginTop: '8px'}}>
@@ -362,5 +491,10 @@ const styles = {
   input: { padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', fontWeight: '700', color: '#0f172a', outline: 'none', backgroundColor: '#fff', width: '100%', boxSizing: 'border-box' },
   imageUploadCard: { border: '2px dashed #cbd5e1', borderRadius: '10px', padding: '16px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
   placeholderTab: { textAlign: 'center', padding: '80px 20px', color: '#334155' },
-  centerMsg: { padding: '40px', textAlign: 'center', fontWeight: '800', color: '#64748b' }
+  centerMsg: { padding: '40px', textAlign: 'center', fontWeight: '800', color: '#64748b' },
+  serviceHoursBanner: { backgroundColor: '#e0f2fe', border: '1.5px solid #bae6fd', borderRadius: '10px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  editHoursBtn: { backgroundColor: '#fff', color: '#0369a1', border: '1.5px solid #bae6fd', padding: '6px 14px', borderRadius: '8px', fontWeight: '900', fontSize: '12px', cursor: 'pointer' },
+  dayCard: { backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '16px' },
+  dayCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  timeInput: { padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', fontWeight: '700', color: '#0f172a', backgroundColor: '#fff', width: '140px' }
 };
