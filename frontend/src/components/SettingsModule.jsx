@@ -10,7 +10,9 @@ export default function SettingsModule() {
   const [isEditingHours, setIsEditingHours] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
 
-  // Form State mapped to Database RestaurantProfile entity + Service Hours
+  // Store full profile so we preserve unedited fields
+  const [fullProfile, setFullProfile] = useState({});
+
   const [formData, setFormData] = useState({
     restaurantId: '',
     userId: '',
@@ -48,13 +50,29 @@ export default function SettingsModule() {
       Friday: { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' },
       Saturday: { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' },
       Sunday: { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' }
+    },
+    areasAndTables: {
+      autoOpenQrScan: true,
+      areas: [
+        {
+          id: 'main-area',
+          name: 'Main',
+          tables: [
+            { id: 't1', name: 'T1', pax: 2, qrEnabled: true, status: 'Available', captain: 'Unassigned' },
+            { id: 't2', name: 'T2', pax: 4, qrEnabled: true, status: 'Available', captain: 'Unassigned' },
+            { id: 't3', name: 'T3', pax: 4, qrEnabled: true, status: 'Available', captain: 'Unassigned' },
+            { id: 't3b', name: 'T3B', pax: 4, qrEnabled: true, status: 'Available', captain: 'Unassigned' },
+            { id: 't4', name: 'T4', pax: 2, qrEnabled: true, status: 'Available', captain: 'Unassigned' }
+          ]
+        }
+      ]
     }
   });
 
   useEffect(() => {
     const loggedInEmail = localStorage.getItem('userEmail');
     if (!loggedInEmail) {
-      alert('No logged-in user found! Please login or sign up first.');
+      alert('No logged-in user found! Please login first.');
       setLoading(false);
       return;
     }
@@ -69,16 +87,24 @@ export default function SettingsModule() {
       if (!res.ok) throw new Error('Failed to fetch profile from database');
       const data = await res.json();
       
+      setFullProfile(data);
+
       let parsedHours = data.serviceHours;
       if (typeof parsedHours === 'string') {
         try { parsedHours = JSON.parse(parsedHours); } catch (e) {}
+      }
+
+      let parsedAreas = data.areasAndTables;
+      if (typeof parsedAreas === 'string') {
+        try { parsedAreas = JSON.parse(parsedAreas); } catch (e) {}
       }
 
       setFormData(prev => ({ 
         ...prev, 
         ...data, 
         email,
-        serviceHours: parsedHours || prev.serviceHours
+        serviceHours: parsedHours || prev.serviceHours,
+        areasAndTables: parsedAreas || prev.areasAndTables
       }));
     } catch (err) {
       console.error('Error fetching profile:', err);
@@ -106,7 +132,97 @@ export default function SettingsModule() {
     }));
   };
 
-  // Helper to dynamically calculate break duration between shift 1 end and shift 2 start
+  const handleAutoOpenToggle = (val) => {
+    setFormData(prev => ({
+      ...prev,
+      areasAndTables: { ...prev.areasAndTables, autoOpenQrScan: val }
+    }));
+  };
+
+  const handleAddArea = () => {
+    const areaName = prompt('Enter new area name (e.g., Rooftop, Balcony):');
+    if (!areaName || !areaName.trim()) return;
+
+    const newArea = {
+      id: 'area-' + Date.now(),
+      name: areaName.trim(),
+      tables: []
+    };
+
+    setFormData(prev => ({
+      ...prev,
+      areasAndTables: {
+        ...prev.areasAndTables,
+        areas: [...prev.areasAndTables.areas, newArea]
+      }
+    }));
+  };
+
+  const handleAddTable = (areaId) => {
+    const tableName = prompt('Enter table name (e.g., T5, B1):');
+    if (!tableName || !tableName.trim()) return;
+    const paxCount = prompt('Enter seating capacity (pax):', '4');
+
+    const newTable = {
+      id: 'table-' + Date.now(),
+      name: tableName.trim(),
+      pax: parseInt(paxCount) || 4,
+      qrEnabled: true,
+      status: 'Available',
+      captain: 'Unassigned'
+    };
+
+    setFormData(prev => ({
+      ...prev,
+      areasAndTables: {
+        ...prev.areasAndTables,
+        areas: prev.areasAndTables.areas.map(area => {
+          if (area.id === areaId) {
+            return { ...area, tables: [...area.tables, newTable] };
+          }
+          return area;
+        })
+      }
+    }));
+  };
+
+  const handleToggleTableQr = (areaId, tableId) => {
+    setFormData(prev => ({
+      ...prev,
+      areasAndTables: {
+        ...prev.areasAndTables,
+        areas: prev.areasAndTables.areas.map(area => {
+          if (area.id === areaId) {
+            return {
+              ...area,
+              tables: area.tables.map(t => t.id === tableId ? { ...t, qrEnabled: !t.qrEnabled } : t)
+            };
+          }
+          return area;
+        })
+      }
+    }));
+  };
+
+  const handleDeleteTable = (areaId, tableId) => {
+    if (!window.confirm('Are you sure you want to delete this table?')) return;
+    setFormData(prev => ({
+      ...prev,
+      areasAndTables: {
+        ...prev.areasAndTables,
+        areas: prev.areasAndTables.areas.map(area => {
+          if (area.id === areaId) {
+            return {
+              ...area,
+              tables: area.tables.filter(t => t.id !== tableId)
+            };
+          }
+          return area;
+        })
+      }
+    }));
+  };
+
   const calculateBreakDuration = (end1, start2) => {
     try {
       const [h1, m1] = (end1 || '14:00').split(':').map(Number);
@@ -129,9 +245,36 @@ export default function SettingsModule() {
     setMessage({ text: '', type: '' });
 
     try {
+      // Merge incoming areasAndTables with existing status/captain from fullProfile if available
+      let existingAreasMap = {};
+      try {
+        const parsedOld = typeof fullProfile.areasAndTables === 'string' ? JSON.parse(fullProfile.areasAndTables) : fullProfile.areasAndTables;
+        if (parsedOld && parsedOld.areas) {
+          parsedOld.areas.forEach(a => {
+            (a.tables || []).forEach(t => {
+              existingAreasMap[t.id] = { status: t.status, captain: t.captain };
+            });
+          });
+        }
+      } catch (err) {}
+
+      const mergedAreas = {
+        ...formData.areasAndTables,
+        areas: formData.areasAndTables.areas.map(area => ({
+          ...area,
+          tables: area.tables.map(t => ({
+            ...t,
+            status: existingAreasMap[t.id]?.status || t.status || 'Available',
+            captain: existingAreasMap[t.id]?.captain || t.captain || 'Unassigned'
+          }))
+        }))
+      };
+
       const payload = {
+        ...fullProfile,
         ...formData,
-        serviceHours: JSON.stringify(formData.serviceHours)
+        serviceHours: JSON.stringify(formData.serviceHours),
+        areasAndTables: JSON.stringify(mergedAreas)
       };
 
       const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/${formData.restaurantId}`, {
@@ -146,15 +289,22 @@ export default function SettingsModule() {
       }
 
       const updated = await res.json();
+      setFullProfile(updated);
+
       let parsedHours = updated.serviceHours;
       if (typeof parsedHours === 'string') {
         try { parsedHours = JSON.parse(parsedHours); } catch (e) {}
+      }
+      let parsedAreas = updated.areasAndTables;
+      if (typeof parsedAreas === 'string') {
+        try { parsedAreas = JSON.parse(parsedAreas); } catch (e) {}
       }
 
       setFormData(prev => ({ 
         ...prev, 
         ...updated,
-        serviceHours: parsedHours || prev.serviceHours 
+        serviceHours: parsedHours || prev.serviceHours,
+        areasAndTables: parsedAreas || prev.areasAndTables
       }));
       showMsg('✅ Changes successfully saved to database!', 'success');
     } catch (err) {
@@ -383,7 +533,7 @@ export default function SettingsModule() {
                     <div>
                       <div style={{fontWeight: '950', color: '#0369a1', fontSize: '15px'}}>Online Ordering Hours</div>
                       <div style={{fontSize: '12px', color: '#0c4a6e', marginTop: '3px', fontWeight: '800'}}>
-                        Configure working days with multiple shifts. Gaps between shifts are treated as breaks automatically — no need to define them separately.
+                        Configure working days with multiple shifts. Gaps between shifts are treated as breaks automatically.
                       </div>
                     </div>
                   </div>
@@ -480,8 +630,101 @@ export default function SettingsModule() {
               </div>
             )}
 
+            {/* TAB 4: AREAS & TABLES */}
+            {activeTab === 'tables' && (
+              <div style={styles.sectionGroup}>
+                <div style={styles.serviceHoursBanner}>
+                  <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+                    <div style={{fontWeight: '950', color: '#0369a1', fontSize: '15px'}}>Auto-Open on QR Scan</div>
+                    <div style={{fontSize: '12px', color: '#0c4a6e', fontWeight: '800'}}>
+                      Let customers open a table by scanning, without staff opening it first.
+                    </div>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    checked={formData.areasAndTables?.autoOpenQrScan ?? true} 
+                    onChange={e => handleAutoOpenToggle(e.target.checked)}
+                    style={{width: '22px', height: '22px', cursor: 'pointer', accentColor: '#0284c7'}}
+                  />
+                </div>
+
+                <div style={{display: 'flex', justifyContent: 'flex-end', marginTop: '10px'}}>
+                  <button type="button" onClick={handleAddArea} style={styles.addAreaBtn}>
+                    + Add Area
+                  </button>
+                </div>
+
+                <div style={styles.noticeBanner}>
+                  Every table can have its own QR code. Customers scan it to view the menu and add items directly to the table's order in POS.
+                </div>
+
+                <div style={{display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '10px'}}>
+                  {formData.areasAndTables?.areas?.map(area => (
+                    <div key={area.id} style={styles.areaContainer}>
+                      <div style={styles.areaHeader}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                          <span style={{fontSize: '16px'}}>🪑</span>
+                          <span style={{fontWeight: '950', fontSize: '16px', color: '#0f172a'}}>{area.name}</span>
+                          <span style={{fontSize: '12px', color: '#64748b', fontWeight: '800'}}>({area.tables?.length || 0} tables)</span>
+                        </div>
+                        <button type="button" onClick={() => handleAddTable(area.id)} style={styles.addTableBtn}>
+                          + Add Table
+                        </button>
+                      </div>
+
+                      <div style={styles.tablesGrid}>
+                        {area.tables?.map(table => (
+                          <div 
+                            key={table.id} 
+                            style={styles.tableCard}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = '#059669'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                          >
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                              <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                <span style={{fontWeight: '950', fontSize: '15px', color: '#0f172a'}}>{table.name}</span>
+                                <span style={{backgroundColor: '#f1f5f9', color: '#334155', padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '900', border: '1px solid #cbd5e1'}}>
+                                  # QR {table.qrEnabled ? 'on' : 'off'}
+                                </span>
+                              </div>
+                              <button type="button" onClick={() => handleDeleteTable(area.id, table.id)} style={styles.iconBtn} title="Delete Table">
+                                🗑️
+                              </button>
+                            </div>
+
+                            <div style={{fontSize: '12px', color: '#475569', fontWeight: '800', marginBottom: '14px'}}>
+                              {table.pax} pax · <strong style={{color: table.status === 'Occupied' ? '#dc2626' : '#059669'}}>{table.status || 'Available'}</strong>
+                            </div>
+
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1.5px solid #f1f5f9', paddingTop: '10px'}}>
+                              <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                                <input 
+                                  type="checkbox" 
+                                  checked={table.qrEnabled ?? true} 
+                                  onChange={() => handleToggleTableQr(area.id, table.id)}
+                                  style={{width: '16px', height: '16px', cursor: 'pointer', accentColor: '#059669'}}
+                                />
+                                <span style={{fontSize: '12px', fontWeight: '900', color: '#0f172a'}}>QR ordering</span>
+                              </div>
+                              <button 
+                                type="button" 
+                                onClick={() => alert(`Viewing QR Code for ${table.name} (${area.name})`)}
+                                style={styles.viewQrBtn}
+                              >
+                                📱 View QR
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* PLACEHOLDER FOR OTHER TABS */}
-            {activeTab !== 'business' && activeTab !== 'profile' && activeTab !== 'hours' && (
+            {activeTab !== 'business' && activeTab !== 'profile' && activeTab !== 'hours' && activeTab !== 'tables' && (
               <div style={styles.placeholderTab}>
                 <h3>🚧 {sidebarItems.find(i => i.id === activeTab)?.label} Configuration</h3>
                 <p style={{color: '#475569', fontSize: '14px', fontWeight: '800', marginTop: '8px'}}>
@@ -525,5 +768,14 @@ const styles = {
   dayCard: { backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '14px', padding: '18px', transition: 'all 0.25s ease', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' },
   dayCardHover: { borderColor: '#059669', backgroundColor: '#f0fdf4', transform: 'translateY(-2px)', boxShadow: '0 8px 20px rgba(5,150,105,0.12)' },
   dayCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  timeInput: { padding: '8px 14px', borderRadius: '8px', border: '2px solid #94a3b8', fontSize: '13px', fontWeight: '900', color: '#0f172a', backgroundColor: '#fff', width: '150px', outline: 'none' }
+  timeInput: { padding: '8px 14px', borderRadius: '8px', border: '2px solid #94a3b8', fontSize: '13px', fontWeight: '900', color: '#0f172a', backgroundColor: '#fff', width: '150px', outline: 'none' },
+  addAreaBtn: { backgroundColor: '#0f172a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '900', fontSize: '12px', cursor: 'pointer' },
+  noticeBanner: { backgroundColor: '#fef2f2', border: '1.5px solid #fecaca', color: '#991b1b', padding: '12px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: '800' },
+  areaContainer: { backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '14px', padding: '16px' },
+  areaHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1.5px solid #e2e8f0', paddingBottom: '10px' },
+  addTableBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' },
+  tablesGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' },
+  tableCard: { backgroundColor: '#fff', border: '2px solid #cbd5e1', borderRadius: '12px', padding: '14px', transition: 'all 0.2s ease', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' },
+  iconBtn: { backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px' },
+  viewQrBtn: { backgroundColor: '#f1f5f9', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '4px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }
 };

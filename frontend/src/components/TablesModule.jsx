@@ -3,15 +3,20 @@ import React, { useState, useEffect } from 'react';
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
 export default function TablesModule() {
-  const [tables, setTables] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState({ text: '', type: '' });
+  const [restaurantId, setRestaurantId] = useState('');
+  const [fullProfile, setFullProfile] = useState({});
+
   const [captainsList, setCaptainsList] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  
   const [hoveredId, setHoveredId] = useState(null);
   const [hoveredMenuId, setHoveredMenuId] = useState(null);
   
-  const [selectedTable, setSelectedTable] = useState(null);
-  const [activeOrderTable, setActiveOrderTable] = useState(null);
+  const [selectedTable, setSelectedTable] = useState(null); // Table selected for management/modal
+  const [activeOrderTable, setActiveOrderTable] = useState(null); // POS Terminal active table
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCaptainManageModal, setShowCaptainManageModal] = useState(false);
   
@@ -22,35 +27,78 @@ export default function TablesModule() {
   // Counter POS Order Type state (Dine-In vs Takeaway)
   const [orderType, setOrderType] = useState('Dine-In');
 
-  const [newTableForm, setNewTableForm] = useState({ tableId: '', section: 'MAIN', seats: 4 });
+  const [newTableForm, setNewTableForm] = useState({ tableName: '', areaName: 'Main', pax: 4 });
   const [newCaptainForm, setNewCaptainForm] = useState({ name: '', phone: '' });
   const [cartItems, setCartItems] = useState([]);
   const [orderNote, setOrderNote] = useState('');
 
+  // Areas & Tables Structured State (Synced with Settings)
+  const [areasAndTables, setAreasAndTables] = useState({
+    autoOpenQrScan: true,
+    areas: [
+      {
+        id: 'main-area',
+        name: 'Main',
+        tables: [
+          { id: 't1', name: 'T1', pax: 2, qrEnabled: true, status: 'Available', captain: 'Unassigned' },
+          { id: 't2', name: 'T2', pax: 4, qrEnabled: true, status: 'Available', captain: 'Unassigned' },
+          { id: 't3', name: 'T3', pax: 4, qrEnabled: true, status: 'Available', captain: 'Unassigned' },
+          { id: 't3b', name: 'T3B', pax: 4, qrEnabled: true, status: 'Available', captain: 'Unassigned' },
+          { id: 't4', name: 'T4', pax: 2, qrEnabled: true, status: 'Available', captain: 'Unassigned' }
+        ]
+      }
+    ]
+  });
+
   useEffect(() => {
-    fetchTables();
-    fetchCaptains();
-    fetchLiveMenu();
+    const userEmail = localStorage.getItem('userEmail');
+    if (!userEmail) {
+      alert('No logged-in user found! Please login first.');
+      setLoading(false);
+      return;
+    }
+    fetchProfile(userEmail);
+    fetchCaptains(userEmail);
+    fetchLiveMenu(userEmail);
   }, []);
 
-  const fetchTables = () => {
+  const fetchProfile = async (email) => {
     setLoading(true);
-    const userEmail = localStorage.getItem('userEmail') || '';
-    fetch(`${API_BASE_URL}/api/v1/tables?email=${userEmail}`)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) setTables(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Error fetching tables:", err);
-        setLoading(false);
-      });
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/email/${email}`);
+      if (!res.ok) throw new Error('Failed to fetch restaurant profile');
+      const data = await res.json();
+      
+      setFullProfile(data);
+      setRestaurantId(data.restaurantId);
+
+      let parsedAreas = data.areasAndTables;
+      if (typeof parsedAreas === 'string') {
+        try { parsedAreas = JSON.parse(parsedAreas); } catch (e) {}
+      }
+
+      if (parsedAreas && parsedAreas.areas) {
+        // Ensure every table has default status & captain fields if missing
+        parsedAreas.areas = parsedAreas.areas.map(area => ({
+          ...area,
+          tables: (area.tables || []).map(t => ({
+            ...t,
+            status: t.status || 'Available',
+            captain: t.captain || 'Unassigned'
+          }))
+        }));
+        setAreasAndTables(parsedAreas);
+      }
+    } catch (err) {
+      console.error('Error fetching tables from profile:', err);
+      showMsg('Failed to load tables from database.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const fetchCaptains = () => {
-    const userEmail = localStorage.getItem('userEmail') || '';
-    fetch(`${API_BASE_URL}/api/v1/staff?email=${userEmail}`)
+  const fetchCaptains = (email) => {
+    fetch(`${API_BASE_URL}/api/v1/staff?email=${email}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setCaptainsList(data);
@@ -58,9 +106,8 @@ export default function TablesModule() {
       .catch(err => console.log("Captains fetch error:", err));
   };
 
-  const fetchLiveMenu = () => {
-    const userEmail = localStorage.getItem('userEmail') || '';
-    fetch(`${API_BASE_URL}/api/v1/menu?email=${userEmail}`)
+  const fetchLiveMenu = (email) => {
+    fetch(`${API_BASE_URL}/api/v1/menu?email=${email}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
@@ -85,28 +132,72 @@ export default function TablesModule() {
       });
   };
 
-  const handleUpdateStatusAndCaptain = (tableId, newStatus, assignedCaptain, shouldOpenPOS = false) => {
-    const payload = { 
-      status: newStatus,
-      captain: assignedCaptain || 'Unassigned'
+  // Sync updated areasAndTables JSON structure to backend database
+  const syncToDatabase = async (updatedAreasAndTables) => {
+    setSaving(true);
+    try {
+      const payload = {
+        ...fullProfile,
+        areasAndTables: JSON.stringify(updatedAreasAndTables),
+        serviceHours: typeof fullProfile.serviceHours === 'object' ? JSON.stringify(fullProfile.serviceHours) : fullProfile.serviceHours
+      };
+
+      const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/${restaurantId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error('Failed to save changes to database');
+      const updated = await res.json();
+      setFullProfile(updated);
+      showMsg('✅ Table & floor synced with database!', 'success');
+    } catch (err) {
+      console.error('Error saving tables:', err);
+      showMsg('❌ Error saving to database.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateTableStatusAndCaptain = (targetAreaId, targetTableId, newStatus, assignedCaptain, shouldOpenPOS = false) => {
+    const updated = {
+      ...areasAndTables,
+      areas: areasAndTables.areas.map(area => {
+        if (area.id === targetAreaId) {
+          return {
+            ...area,
+            tables: area.tables.map(t => {
+              if (t.id === targetTableId) {
+                return {
+                  ...t,
+                  status: newStatus,
+                  captain: assignedCaptain || 'Unassigned'
+                };
+              }
+              return t;
+            })
+          };
+        }
+        return area;
+      })
     };
 
-    fetch(`${API_BASE_URL}/api/v1/tables/${tableId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-      .then(res => {
-        if (res.ok) fetchTables();
-      })
-      .catch(err => console.error("Update error:", err));
-
+    setAreasAndTables(updated);
+    syncToDatabase(updated);
     setSelectedTable(null);
 
     if (shouldOpenPOS) {
-      const target = tables.find(t => t.tableId === tableId);
-      if (target) {
-        setActiveOrderTable({ ...target, ...payload });
+      // Find the updated table object
+      let foundTable = null;
+      updated.areas.forEach(a => {
+        a.tables.forEach(t => {
+          if (t.id === targetTableId) foundTable = { ...t, areaName: a.name };
+        });
+      });
+
+      if (foundTable) {
+        setActiveOrderTable(foundTable);
         setCartItems([]);
         setOrderNote('');
         setOrderType('Dine-In');
@@ -116,31 +207,61 @@ export default function TablesModule() {
 
   const handleAddTable = (e) => {
     e.preventDefault();
-    if (!newTableForm.tableId) return alert('Enter Table ID');
+    if (!newTableForm.tableName) return alert('Enter Table Name/ID');
 
-    const userEmail = localStorage.getItem('userEmail') || '';
-    const obj = {
-      tableId: newTableForm.tableId.toUpperCase(),
-      section: newTableForm.section,
-      seats: Number(newTableForm.seats),
+    const newTable = {
+      id: 'table-' + Date.now(),
+      name: newTableForm.tableName.toUpperCase(),
+      pax: Number(newTableForm.pax) || 4,
+      qrEnabled: true,
       status: 'Available',
-      captain: 'Unassigned',
-      restaurantEmail: userEmail
+      captain: 'Unassigned'
     };
 
-    fetch(`${API_BASE_URL}/api/v1/tables`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(obj)
-    })
-      .then(res => {
-        if (res.ok) {
-          setShowAddModal(false);
-          setNewTableForm({ tableId: '', section: 'MAIN', seats: 4 });
-          fetchTables();
+    // Check if target area exists, if not create it
+    let areaExists = false;
+    const updatedAreas = areasAndTables.areas.map(area => {
+      if (area.name.toLowerCase() === newTableForm.areaName.toLowerCase()) {
+        areaExists = true;
+        return { ...area, tables: [...area.tables, newTable] };
+      }
+      return area;
+    });
+
+    if (!areaExists) {
+      updatedAreas.push({
+        id: 'area-' + Date.now(),
+        name: newTableForm.areaName,
+        tables: [newTable]
+      });
+    }
+
+    const updated = { ...areasAndTables, areas: updatedAreas };
+    setAreasAndTables(updated);
+    syncToDatabase(updated);
+    setShowAddModal(false);
+    setNewTableForm({ tableName: '', areaName: 'Main', pax: 4 });
+  };
+
+  const handleDeleteTable = (targetAreaId, targetTableId) => {
+    if (!window.confirm(`Delete this table?`)) return;
+
+    const updated = {
+      ...areasAndTables,
+      areas: areasAndTables.areas.map(area => {
+        if (area.id === targetAreaId) {
+          return {
+            ...area,
+            tables: area.tables.filter(t => t.id !== targetTableId)
+          };
         }
+        return area;
       })
-      .catch(err => alert('Error: ' + err.message));
+    };
+
+    setAreasAndTables(updated);
+    syncToDatabase(updated);
+    setSelectedTable(null);
   };
 
   const handleAddCaptain = (e) => {
@@ -162,18 +283,11 @@ export default function TablesModule() {
         if (res.ok) {
           setShowCaptainManageModal(false);
           setNewCaptainForm({ name: '', phone: '' });
-          fetchCaptains();
+          fetchCaptains(userEmail);
           alert('Captain added successfully!');
         }
       })
       .catch(err => alert('Error: ' + err.message));
-  };
-
-  const handleDeleteTable = (tableId) => {
-    if (!window.confirm(`Delete table ${tableId}?`)) return;
-    fetch(`${API_BASE_URL}/api/v1/tables/${tableId}`, { method: 'DELETE' })
-      .then(() => fetchTables());
-    setSelectedTable(null);
   };
 
   const handleSendKOT = () => {
@@ -182,9 +296,9 @@ export default function TablesModule() {
     const userEmail = localStorage.getItem('userEmail') || '';
 
     const orderPayload = {
-      displayId: `Table ${activeOrderTable.tableId}`,
+      displayId: `Table ${activeOrderTable.name}`,
       restaurantEmail: userEmail,
-      customerName: `Table ${activeOrderTable.tableId} (${activeOrderTable.captain || 'Unassigned'})`,
+      customerName: `Table ${activeOrderTable.name} (${activeOrderTable.captain || 'Unassigned'})`,
       channel: 'COUNTER',
       orderType: orderType,
       status: 'New',
@@ -208,17 +322,28 @@ export default function TablesModule() {
       return res.json();
     })
     .then(data => {
-      alert(`🖨️ KOT Generated & Sent to Kitchen successfully for Table ${activeOrderTable.tableId}!\nType: ${orderType}\nSaved for Reports & Kitchen.`);
+      alert(`🖨️ KOT Generated & Sent to Kitchen successfully for Table ${activeOrderTable.name}!\nType: ${orderType}`);
       setActiveOrderTable(null);
       setCartItems([]);
       setOrderNote('');
-      fetchTables();
     })
     .catch(err => {
       console.error(err);
-      alert('Error sending order to kitchen. Please verify backend connection.');
+      alert('Error sending order to kitchen.');
     });
   };
+
+  const showMsg = (text, type) => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage({ text: '', type: '' }), 4000);
+  };
+
+  // Flatten all tables to calculate counts
+  const allTablesList = [];
+  areasAndTables.areas.forEach(a => {
+    (a.tables || []).forEach(t => allTablesList.push({ ...t, areaId: a.id, areaName: a.name }));
+  });
+  const availableCount = allTablesList.filter(t => (t.status || 'Available') === 'Available').length;
 
   const categories = [...new Set(menuItems.map(item => item.category))];
 
@@ -234,7 +359,7 @@ export default function TablesModule() {
       <div style={styles.inlinePOSWrapper}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', background: '#0f172a', color: '#fff', borderRadius: '14px 14px 0 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '950' }}>Table {activeOrderTable.tableId} POS & Order Terminal</h3>
+            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '950' }}>Table {activeOrderTable.name} ({activeOrderTable.areaName}) POS Terminal</h3>
             <span style={{ background: '#059669', color: '#fff', padding: '5px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '950' }}>🧑‍✈️ {activeOrderTable.captain || 'Unassigned'}</span>
           </div>
           <button onClick={() => setActiveOrderTable(null)} style={{ background: 'rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.3)', color: '#fff', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: '950' }}>✕ Exit POS</button>
@@ -248,7 +373,7 @@ export default function TablesModule() {
             
             {menuItems.length === 0 ? (
               <div style={{ textAlign: 'center', color: '#94a3b8', padding: '60px', background: '#fff', borderRadius: '16px', border: '2px dashed #cbd5e1', fontWeight: '800' }}>
-                No menu items found for this account. Please add items via Menu Management module first.
+                No menu items found. Please add items via Menu Management module first.
               </div>
             ) : (
               categories.map(category => {
@@ -345,10 +470,10 @@ export default function TablesModule() {
             </div>
 
             <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>KITCHEN INSTRUCTION / EXTRA INFO (KOT NOTE)</label>
+              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>KITCHEN INSTRUCTION (KOT NOTE)</label>
               <input 
                 type="text" 
-                placeholder="e.g. Extra spicy, less oil..." 
+                placeholder="e.g. Extra spicy..." 
                 value={orderNote} 
                 onChange={e => setOrderNote(e.target.value)} 
                 style={styles.input}
@@ -376,9 +501,9 @@ export default function TablesModule() {
               <button 
                 onClick={handleSendKOT}
                 disabled={cartItems.length === 0}
-                style={{ padding: '14px', background: cartItems.length === 0 ? '#cbd5e1' : '#059669', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '950', cursor: cartItems.length === 0 ? 'not-allowed' : 'pointer', fontSize: '14px', boxShadow: cartItems.length === 0 ? 'none' : '0 4px 14px rgba(5,150,105,0.3)' }}
+                style={{ padding: '14px', background: cartItems.length === 0 ? '#cbd5e1' : '#059669', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '950', cursor: cartItems.length === 0 ? 'not-allowed' : 'pointer', fontSize: '14px' }}
               >
-                🖨️ Send KOT to Kitchen & Save for Reports
+                🖨️ Send KOT to Kitchen & Save
               </button>
               <button 
                 onClick={() => setShowSplitModal(true)}
@@ -397,9 +522,9 @@ export default function TablesModule() {
           <div style={styles.modalOverlay} onClick={() => setShowSplitModal(false)}>
             <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
               <h3 style={{ margin: '0 0 16px 0', color: '#0f172a', fontWeight: '950' }}>Split Payment Calculator</h3>
-              <p style={{ fontSize: '13px', color: '#64748b', fontWeight: '700', marginBottom: '14px' }}>Total Bill Amount: <strong style={{ color: '#059669' }}>₹{totalAmount}</strong></p>
+              <p style={{ fontSize: '13px', color: '#64748b', fontWeight: '700', marginBottom: '14px' }}>Total Bill: <strong style={{ color: '#059669' }}>₹{totalAmount}</strong></p>
               
-              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>SELECT NUMBER OF PEOPLES TO SPLIT:</label>
+              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>SPLIT AMONG:</label>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
                 {[2, 3, 4, 5].map(num => (
                   <button 
@@ -420,11 +545,10 @@ export default function TablesModule() {
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button 
                   onClick={() => {
-                    alert(`✅ Payment settled successfully for Table ${activeOrderTable.tableId} split among ${splitCount} people!`);
+                    alert(`✅ Payment settled for Table ${activeOrderTable.name}!`);
                     setShowSplitModal(false);
                     setActiveOrderTable(null);
                     setCartItems([]);
-                    fetchTables();
                   }}
                   style={{ flex: 1, padding: '12px', background: '#059669', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}
                 >
@@ -440,15 +564,15 @@ export default function TablesModule() {
   }
 
   // ==========================================
-  // STANDARD TABLES MODULE VIEW
+  // STANDARD TABLES & AREAS FLOOR VIEW
   // ==========================================
   return (
     <div style={styles.moduleWrapper}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
         <div>
-          <h2 style={{ fontSize: '24px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Restaurant Floor & Captains</h2>
+          <h2 style={{ fontSize: '24px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Restaurant Floor & Tables</h2>
           <p style={{ color: '#64748b', fontSize: '13px', margin: '4px 0 0 0', fontWeight: '700' }}>
-            <strong style={{ color: '#059669' }}>{tables.filter(t => t.status === 'Available').length}/{tables.length} tables open</strong> · Live floor operations & POS
+            <strong style={{ color: '#059669' }}>{availableCount}/{allTablesList.length} tables open</strong> · Synced live with Settings
           </p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
@@ -457,33 +581,41 @@ export default function TablesModule() {
         </div>
       </div>
 
+      {message.text && (
+        <div style={{...styles.alert, backgroundColor: message.type === 'error' ? '#fef2f2' : '#f0fdf4', color: message.type === 'error' ? '#991b1b' : '#166534', borderColor: message.type === 'error' ? '#f87171' : '#4ade80'}}>
+          {message.text}
+        </div>
+      )}
+
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px', color: '#64748b', fontWeight: '700' }}>Loading tables from database...</div>
-      ) : tables.length === 0 ? (
+      ) : areasAndTables.areas.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px', color: '#64748b', fontWeight: '700', background: '#fff', borderRadius: '14px', border: '1.5px dashed #cbd5e1' }}>
-          No tables found for this account. Click "+ Add Table" above!
+          No areas or tables found. Add them via Settings or click "+ Add Table" above!
         </div>
       ) : (
-        ['MAIN', 'PATIO', 'BAR'].map(section => {
-          const sectionTables = tables.filter(t => (t.section || 'MAIN').toUpperCase() === section);
-          if (sectionTables.length === 0) return null;
+        areasAndTables.areas.map(area => {
+          const areaTables = area.tables || [];
+          if (areaTables.length === 0) return null;
 
           return (
-            <div key={section} style={{ marginBottom: '28px' }}>
+            <div key={area.id} style={{ marginBottom: '28px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                <span style={{ fontSize: '11px', fontWeight: '950', color: '#047857', background: '#ecfdf5', padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #10b981', letterSpacing: '0.05em' }}>{section} SECTION</span>
+                <span style={{ fontSize: '11px', fontWeight: '950', color: '#047857', background: '#ecfdf5', padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #10b981', letterSpacing: '0.05em' }}>
+                  🪑 {area.name.toUpperCase()} SECTION
+                </span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px' }}>
-                {sectionTables.map(table => {
-                  const isHovered = hoveredId === table.tableId;
+                {areaTables.map(table => {
+                  const isHovered = hoveredId === table.id;
                   const status = table.status || 'Available';
                   const captainName = table.captain || 'Unassigned';
 
                   return (
                     <div 
-                      key={table.tableId} 
-                      onClick={() => setSelectedTable(table)}
-                      onMouseEnter={() => setHoveredId(table.tableId)}
+                      key={table.id} 
+                      onClick={() => setSelectedTable({ ...table, areaId: area.id, areaName: area.name })}
+                      onMouseEnter={() => setHoveredId(table.id)}
                       onMouseLeave={() => setHoveredId(null)}
                       style={{ 
                         background: '#fff', borderRadius: '18px', padding: '22px', 
@@ -495,10 +627,10 @@ export default function TablesModule() {
                     >
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                          <span style={{ fontSize: '22px', fontWeight: '950', color: '#0f172a' }}>{table.tableId}</span>
+                          <span style={{ fontSize: '22px', fontWeight: '950', color: '#0f172a' }}>{table.name}</span>
                           <span style={{ background: status === 'Available' ? '#d1fae5' : '#fee2e2', color: status === 'Available' ? '#065f46' : '#991b1b', padding: '5px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '950', textTransform: 'uppercase', border: `1px solid ${status === 'Available' ? '#34d399' : '#fca5a5'}` }}>{status}</span>
                         </div>
-                        <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', marginBottom: '10px' }}>👥 Capacity: {table.seats} seats</div>
+                        <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', marginBottom: '10px' }}>👥 Capacity: {table.pax} pax</div>
                         <div style={{ fontSize: '12px', color: captainName !== 'Unassigned' ? '#059669' : '#94a3b8', fontWeight: '900', background: captainName !== 'Unassigned' ? '#ecfdf5' : '#f8fafc', padding: '7px 12px', borderRadius: '10px', border: `1px solid ${captainName !== 'Unassigned' ? '#a7f3d0' : '#e2e8f0'}` }}>
                           🧑‍✈️ Captain: {captainName}
                         </div>
@@ -520,7 +652,7 @@ export default function TablesModule() {
         <div style={styles.modalOverlay} onClick={() => setSelectedTable(null)}>
           <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, color: '#0f172a', fontWeight: '950', fontSize: '18px' }}>Table {selectedTable.tableId} Control</h3>
+              <h3 style={{ margin: 0, color: '#0f172a', fontWeight: '950', fontSize: '18px' }}>Table {selectedTable.name} ({selectedTable.areaName}) Control</h3>
               <button onClick={() => setSelectedTable(null)} style={styles.closeXBtn}>✕</button>
             </div>
 
@@ -528,8 +660,8 @@ export default function TablesModule() {
               <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>ASSIGN FLOOR CAPTAIN</label>
               <select 
                 style={styles.input}
-                defaultValue={selectedTable.captain || ''}
-                onChange={(e) => handleUpdateStatusAndCaptain(selectedTable.tableId, selectedTable.status || 'Available', e.target.value, false)}
+                defaultValue={selectedTable.captain || 'Unassigned'}
+                onChange={(e) => handleUpdateTableStatusAndCaptain(selectedTable.areaId, selectedTable.id, selectedTable.status || 'Available', e.target.value, false)}
               >
                 <option value="Unassigned">-- Select Captain --</option>
                 {captainsList.map(c => (
@@ -541,21 +673,21 @@ export default function TablesModule() {
             <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>ACTIONS</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
               <button 
-                onClick={() => handleUpdateStatusAndCaptain(selectedTable.tableId, 'Available', 'Unassigned', false)} 
-                style={{ padding: '12px', background: '#d1fae5', color: '#065f46', border: '2px solid #10b981', borderRadius: '12px', fontWeight: '950', cursor: 'pointer', transition: 'all 0.2s' }}
+                onClick={() => handleUpdateTableStatusAndCaptain(selectedTable.areaId, selectedTable.id, 'Available', selectedTable.captain, false)} 
+                style={{ padding: '12px', background: '#d1fae5', color: '#065f46', border: '2px solid #10b981', borderRadius: '12px', fontWeight: '950', cursor: 'pointer' }}
               >
                 🟢 Clear Table (Make Available)
               </button>
               <button 
-                onClick={() => handleUpdateStatusAndCaptain(selectedTable.tableId, 'Occupied', selectedTable.captain, true)} 
-                style={{ padding: '12px', background: '#eff6ff', color: '#1d4ed8', border: '2px solid #38bdf8', borderRadius: '12px', fontWeight: '950', cursor: 'pointer', transition: 'all 0.2s' }}
+                onClick={() => handleUpdateTableStatusAndCaptain(selectedTable.areaId, selectedTable.id, 'Occupied', selectedTable.captain, true)} 
+                style={{ padding: '12px', background: '#eff6ff', color: '#1d4ed8', border: '2px solid #38bdf8', borderRadius: '12px', fontWeight: '950', cursor: 'pointer' }}
               >
                 🚀 Mark Occupied & Open POS Terminal
               </button>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1.5px solid #e2e8f0', paddingTop: '14px' }}>
-              <button onClick={() => handleDeleteTable(selectedTable.tableId)} style={{ background: '#fee2e2', color: '#991b1b', border: '2px solid #fca5a5', padding: '10px 16px', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}>Delete Table</button>
+              <button onClick={() => handleDeleteTable(selectedTable.areaId, selectedTable.id)} style={{ background: '#fee2e2', color: '#991b1b', border: '2px solid #fca5a5', padding: '10px 16px', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}>Delete Table</button>
               <button onClick={() => setSelectedTable(null)} style={{ background: '#f1f5f9', color: '#334155', border: '2px solid #cbd5e1', padding: '10px 18px', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}>Close</button>
             </div>
           </div>
@@ -566,16 +698,15 @@ export default function TablesModule() {
         <div style={styles.modalOverlay} onClick={() => setShowAddModal(false)}>
           <form onSubmit={handleAddTable} style={styles.modalCard} onClick={e => e.stopPropagation()}>
             <h3 style={{ margin: '0 0 16px 0', color: '#0f172a', fontWeight: '950' }}>Add New Table</h3>
-            <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>TABLE ID:</label>
-            <input style={styles.input} placeholder="e.g. T8" value={newTableForm.tableId} onChange={e => setNewTableForm({...newTableForm, tableId: e.target.value})} required />
             
-            <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>SECTION:</label>
-            <select style={{...styles.input, background: '#fff'}} value={newTableForm.section} onChange={e => setNewTableForm({...newTableForm, section: e.target.value})}>
-              <option value="MAIN">MAIN</option><option value="PATIO">PATIO</option><option value="BAR">BAR</option>
-            </select>
+            <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>TABLE NAME / ID:</label>
+            <input style={styles.input} placeholder="e.g. T5" value={newTableForm.tableName} onChange={e => setNewTableForm({...newTableForm, tableName: e.target.value})} required />
+            
+            <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>SECTION / AREA NAME:</label>
+            <input style={styles.input} placeholder="e.g. Main, Patio, Rooftop" value={newTableForm.areaName} onChange={e => setNewTableForm({...newTableForm, areaName: e.target.value})} required />
 
-            <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>SEATS:</label>
-            <input type="number" style={styles.input} value={newTableForm.seats} onChange={e => setNewTableForm({...newTableForm, seats: e.target.value})} required />
+            <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>SEATS (PAX):</label>
+            <input type="number" style={styles.input} value={newTableForm.pax} onChange={e => setNewTableForm({...newTableForm, pax: e.target.value})} required />
 
             <button type="submit" style={{ ...styles.addBtn, width: '100%', padding: '12px', marginTop: '10px' }}>Create Table</button>
           </form>
@@ -600,12 +731,13 @@ export default function TablesModule() {
 
 const styles = {
   moduleWrapper: { display: 'flex', flexDirection: 'column', flex: 1, height: '100%', padding: '24px', background: '#f8fafc', overflowY: 'auto', boxSizing: 'border-box', paddingBottom: '80px' },
-  inlinePOSWrapper: { display: 'flex', flexDirection: 'column', flex: 1, height: '100%', background: '#fff', borderRadius: '14px', border: '2px solid #cbd5e1', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', overflow: 'hidden', boxSizing: 'border-box' },
+  inlinePOSWrapper: { display: 'flex', flexDirection: 'column', flex: 1, height: '100%', background: '#fff', borderRadius: '14px', border: '2.5px solid #cbd5e1', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', overflow: 'hidden', boxSizing: 'border-box' },
   addBtn: { background: '#059669', color: '#fff', border: '2px solid #047857', padding: '11px 20px', borderRadius: '12px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(5,150,105,0.25)' },
   captainManageBtn: { background: '#2563eb', color: '#fff', border: '2px solid #1d4ed8', padding: '11px 20px', borderRadius: '12px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(37,99,235,0.25)' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-  modalCard: { width: '440px', backgroundColor: '#fff', padding: '26px', borderRadius: '22px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '2px solid #e2e8f0' },
+  modalCard: { width: '440px', backgroundColor: '#fff', padding: '26px', borderRadius: '22px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '2px solid #e2e8f0', textAlign: 'left' },
   input: { width: '100%', padding: '11px 14px', borderRadius: '10px', border: '2px solid #cbd5e1', marginBottom: '16px', boxSizing: 'border-box', fontSize: '13px', outline: 'none', fontWeight: '800' },
   qtyBtn: { width: '28px', height: '28px', background: '#e2e8f0', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontWeight: '950', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  closeXBtn: { background: 'none', border: 'none', fontSize: '18px', fontWeight: '950', color: '#64748b', cursor: 'pointer' }
+  closeXBtn: { background: 'none', border: 'none', fontSize: '18px', fontWeight: '950', color: '#64748b', cursor: 'pointer' },
+  alert: { padding: '12px 16px', borderRadius: '10px', marginBottom: '16px', fontSize: '13px', fontWeight: '900', border: '2px solid' }
 };
