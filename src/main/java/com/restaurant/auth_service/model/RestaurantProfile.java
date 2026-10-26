@@ -86,9 +86,13 @@ public class RestaurantProfile {
     @Column(name = "preferred_language")
     private String preferredLanguage;
 
-    // ⏰ Service Hours Configuration (Added)
+    // ⏰ Service Hours Configuration
     @Column(name = "service_hours", columnDefinition = "TEXT")
     private String serviceHours;
+
+    // 🪑 Areas & Tables Configuration (Added here!)
+    @Column(name = "areas_and_tables", columnDefinition = "TEXT")
+    private String areasAndTables;
 
     // ================= Getters and Setters =================
 
@@ -178,4 +182,8 @@ public class RestaurantProfile {
 
     public String getServiceHours() { return serviceHours; }
     public void setServiceHours(String serviceHours) { this.serviceHours = serviceHours; }
+
+    // Added Getters and Setters for Areas and Tables
+    public String getAreasAndTables() { return areasAndTables; }
+    public void setAreasAndTables(String areasAndTables) { this.areasAndTables = areasAndTables; }
 }
