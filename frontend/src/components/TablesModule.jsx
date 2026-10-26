@@ -15,8 +15,8 @@ export default function TablesModule() {
   const [hoveredId, setHoveredId] = useState(null);
   const [hoveredMenuId, setHoveredMenuId] = useState(null);
   
-  const [selectedTable, setSelectedTable] = useState(null); // Table selected for management/modal
-  const [activeOrderTable, setActiveOrderTable] = useState(null); // POS Terminal active table
+  const [selectedTable, setSelectedTable] = useState(null);
+  const [activeOrderTable, setActiveOrderTable] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCaptainManageModal, setShowCaptainManageModal] = useState(false);
   
@@ -32,7 +32,7 @@ export default function TablesModule() {
   const [cartItems, setCartItems] = useState([]);
   const [orderNote, setOrderNote] = useState('');
 
-  // Areas & Tables Structured State (Synced with Settings)
+  // Areas & Tables Structured State (Synced with Settings & Database)
   const [areasAndTables, setAreasAndTables] = useState({
     autoOpenQrScan: true,
     areas: [
@@ -78,7 +78,6 @@ export default function TablesModule() {
       }
 
       if (parsedAreas && parsedAreas.areas) {
-        // Ensure every table has default status & captain fields if missing
         parsedAreas.areas = parsedAreas.areas.map(area => ({
           ...area,
           tables: (area.tables || []).map(t => ({
@@ -90,7 +89,7 @@ export default function TablesModule() {
         setAreasAndTables(parsedAreas);
       }
     } catch (err) {
-      console.error('Error fetching tables from profile:', err);
+      console.error('Error fetching profile:', err);
       showMsg('Failed to load tables from database.', 'error');
     } finally {
       setLoading(false);
@@ -132,7 +131,6 @@ export default function TablesModule() {
       });
   };
 
-  // Sync updated areasAndTables JSON structure to backend database
   const syncToDatabase = async (updatedAreasAndTables) => {
     setSaving(true);
     try {
@@ -151,9 +149,9 @@ export default function TablesModule() {
       if (!res.ok) throw new Error('Failed to save changes to database');
       const updated = await res.json();
       setFullProfile(updated);
-      showMsg('✅ Table & floor synced with database!', 'success');
+      showMsg('✅ Changes synced with database!', 'success');
     } catch (err) {
-      console.error('Error saving tables:', err);
+      console.error('Error saving changes:', err);
       showMsg('❌ Error saving to database.', 'error');
     } finally {
       setSaving(false);
@@ -188,7 +186,6 @@ export default function TablesModule() {
     setSelectedTable(null);
 
     if (shouldOpenPOS) {
-      // Find the updated table object
       let foundTable = null;
       updated.areas.forEach(a => {
         a.tables.forEach(t => {
@@ -218,7 +215,6 @@ export default function TablesModule() {
       captain: 'Unassigned'
     };
 
-    // Check if target area exists, if not create it
     let areaExists = false;
     const updatedAreas = areasAndTables.areas.map(area => {
       if (area.name.toLowerCase() === newTableForm.areaName.toLowerCase()) {
@@ -244,7 +240,7 @@ export default function TablesModule() {
   };
 
   const handleDeleteTable = (targetAreaId, targetTableId) => {
-    if (!window.confirm(`Delete this table?`)) return;
+    if (!window.confirm('Are you sure you want to delete this table?')) return;
 
     const updated = {
       ...areasAndTables,
@@ -338,7 +334,6 @@ export default function TablesModule() {
     setTimeout(() => setMessage({ text: '', type: '' }), 4000);
   };
 
-  // Flatten all tables to calculate counts
   const allTablesList = [];
   areasAndTables.areas.forEach(a => {
     (a.tables || []).forEach(t => allTablesList.push({ ...t, areaId: a.id, areaName: a.name }));
@@ -367,7 +362,6 @@ export default function TablesModule() {
 
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#f8fafc', borderRadius: '0 0 14px 14px' }}>
           
-          {/* Menu Catalog */}
           <div style={{ flex: 1.4, padding: '24px', overflowY: 'auto', borderRight: '2px solid #e2e8f0' }}>
             <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '16px', letterSpacing: '0.08em' }}>LIVE RESTAURANT MENU (DATABASE)</h4>
             
@@ -421,11 +415,9 @@ export default function TablesModule() {
             )}
           </div>
 
-          {/* Receipt & KOT Summary */}
           <div style={{ width: '420px', background: '#fff', display: 'flex', flexDirection: 'column', padding: '24px', borderLeft: '2px solid #e2e8f0' }}>
             <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '14px', letterSpacing: '0.08em' }}>ORDER RECEIPT & KOT</h4>
             
-            {/* Order Type Toggle Selector */}
             <div style={{ marginBottom: '14px' }}>
               <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>ORDER TYPE</label>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -736,7 +728,7 @@ const styles = {
   captainManageBtn: { background: '#2563eb', color: '#fff', border: '2px solid #1d4ed8', padding: '11px 20px', borderRadius: '12px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(37,99,235,0.25)' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
   modalCard: { width: '440px', backgroundColor: '#fff', padding: '26px', borderRadius: '22px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '2px solid #e2e8f0', textAlign: 'left' },
-  input: { width: '100%', padding: '11px 14px', borderRadius: '10px', border: '2px solid #cbd5e1', marginBottom: '16px', boxSizing: 'border-box', fontSize: '13px', outline: 'none', fontWeight: '800' },
+  input: { width: '100%', padding: '11px 14px', borderRadius: '10px', border: '2.5px solid #cbd5e1', marginBottom: '16px', boxSizing: 'border-box', fontSize: '13px', outline: 'none', fontWeight: '800' },
   qtyBtn: { width: '28px', height: '28px', background: '#e2e8f0', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontWeight: '950', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   closeXBtn: { background: 'none', border: 'none', fontSize: '18px', fontWeight: '950', color: '#64748b', cursor: 'pointer' },
   alert: { padding: '12px 16px', borderRadius: '10px', marginBottom: '16px', fontSize: '13px', fontWeight: '900', border: '2px solid' }
