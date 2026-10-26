@@ -86,6 +86,10 @@ public class RestaurantProfile {
     @Column(name = "preferred_language")
     private String preferredLanguage;
 
+    // ⏰ Service Hours Configuration (Added)
+    @Column(name = "service_hours", columnDefinition = "TEXT")
+    private String serviceHours;
+
     // ================= Getters and Setters =================
 
     public String getRestaurantId() { return restaurantId; }
@@ -171,4 +175,7 @@ public class RestaurantProfile {
 
     public String getPreferredLanguage() { return preferredLanguage; }
     public void setPreferredLanguage(String preferredLanguage) { this.preferredLanguage = preferredLanguage; }
+
+    public String getServiceHours() { return serviceHours; }
+    public void setServiceHours(String serviceHours) { this.serviceHours = serviceHours; }
 }
