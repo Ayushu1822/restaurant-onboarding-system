@@ -76,6 +76,15 @@ export default function SettingsModule() {
       agents: [
         { id: 'agent-1', name: 'Ramesh Kumar', phone: '+91 98765 43210', vehicleNo: 'TS 09 AB 1234', status: 'Available' }
       ]
+    },
+    billingConfig: {
+      defaultTaxGroup: 'Standard Restaurant (5%)',
+      taxGroups: [
+        { id: 'tg-1', name: 'Standard Restaurant (5%)', rate: 5, cgst: 2.5, sgst: 2.5, hsnCode: '996331', status: 'Active' },
+        { id: 'tg-2', name: 'Hotel Dining (Specified Premises) (18%)', rate: 18, cgst: 9, sgst: 9, hsnCode: '996331', status: 'Active' },
+        { id: 'tg-3', name: 'Aerated/Carbonated Beverage (40%)', rate: 40, cgst: 20, sgst: 20, hsnCode: '220210', status: 'Active' },
+        { id: 'tg-4', name: 'Non-Taxable / Exempt (0%)', rate: 0, cgst: 0, sgst: 0, hsnCode: '996331', status: 'Active' }
+      ]
     }
   });
 
@@ -114,13 +123,19 @@ export default function SettingsModule() {
         try { parsedDelivery = JSON.parse(parsedDelivery); } catch (e) {}
       }
 
+      let parsedBilling = data.billingConfig;
+      if (typeof parsedBilling === 'string') {
+        try { parsedBilling = JSON.parse(parsedBilling); } catch (e) {}
+      }
+
       setFormData(prev => ({ 
         ...prev, 
         ...data, 
         email,
         serviceHours: parsedHours || prev.serviceHours,
         areasAndTables: parsedAreas || prev.areasAndTables,
-        deliveryConfig: parsedDelivery || prev.deliveryConfig
+        deliveryConfig: parsedDelivery || prev.deliveryConfig,
+        billingConfig: parsedBilling || prev.billingConfig
       }));
     } catch (err) {
       console.error('Error fetching profile:', err);
@@ -141,6 +156,70 @@ export default function SettingsModule() {
       deliveryConfig: {
         ...prev.deliveryConfig,
         [field]: value
+      }
+    }));
+  };
+
+  const handleBillingDefaultChange = (val) => {
+    setFormData(prev => ({
+      ...prev,
+      billingConfig: {
+        ...prev.billingConfig,
+        defaultTaxGroup: val
+      }
+    }));
+  };
+
+  const handleAddTaxGroup = () => {
+    const name = prompt('Enter Tax Group Name (e.g., Luxury Dining (18%)):');
+    if (!name || !name.trim()) return;
+    const rateStr = prompt('Enter Total Tax Rate % (e.g., 5, 12, 18):', '5');
+    const rate = parseFloat(rateStr) || 0;
+    const hsnCode = prompt('Enter HSN/SAC Code:', '996331');
+
+    const halfRate = rate / 2;
+    const newTg = {
+      id: 'tg-' + Date.now(),
+      name: name.trim(),
+      rate: rate,
+      cgst: halfRate,
+      sgst: halfRate,
+      hsnCode: hsnCode || '996331',
+      status: 'Active'
+    };
+
+    setFormData(prev => ({
+      ...prev,
+      billingConfig: {
+        ...prev.billingConfig,
+        taxGroups: [...(prev.billingConfig.taxGroups || []), newTg]
+      }
+    }));
+  };
+
+  const handleToggleTaxGroupStatus = (tgId) => {
+    setFormData(prev => ({
+      ...prev,
+      billingConfig: {
+        ...prev.billingConfig,
+        taxGroups: prev.billingConfig.taxGroups.map(tg => {
+          if (tg.id === tgId) {
+            const nextStatus = tg.status === 'Active' ? 'Inactive' : 'Active';
+            return { ...tg, status: nextStatus };
+          }
+          return tg;
+        })
+      }
+    }));
+  };
+
+  const handleDeleteTaxGroup = (tgId) => {
+    if (!window.confirm('Are you sure you want to delete this Tax Group?')) return;
+    setFormData(prev => ({
+      ...prev,
+      billingConfig: {
+        ...prev.billingConfig,
+        taxGroups: prev.billingConfig.taxGroups.filter(tg => tg.id !== tgId)
       }
     }));
   };
@@ -361,7 +440,8 @@ export default function SettingsModule() {
         ...formData,
         serviceHours: JSON.stringify(formData.serviceHours),
         areasAndTables: JSON.stringify(mergedAreas),
-        deliveryConfig: JSON.stringify(formData.deliveryConfig)
+        deliveryConfig: JSON.stringify(formData.deliveryConfig),
+        billingConfig: JSON.stringify(formData.billingConfig)
       };
 
       const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/${formData.restaurantId}`, {
@@ -390,13 +470,18 @@ export default function SettingsModule() {
       if (typeof parsedDelivery === 'string') {
         try { parsedDelivery = JSON.parse(parsedDelivery); } catch (e) {}
       }
+      let parsedBilling = updated.billingConfig;
+      if (typeof parsedBilling === 'string') {
+        try { parsedBilling = JSON.parse(parsedBilling); } catch (e) {}
+      }
 
       setFormData(prev => ({ 
         ...prev, 
         ...updated,
         serviceHours: parsedHours || prev.serviceHours,
         areasAndTables: parsedAreas || prev.areasAndTables,
-        deliveryConfig: parsedDelivery || prev.deliveryConfig
+        deliveryConfig: parsedDelivery || prev.deliveryConfig,
+        billingConfig: parsedBilling || prev.billingConfig
       }));
       showMsg('✅ Changes successfully saved to database!', 'success');
     } catch (err) {
@@ -418,9 +503,9 @@ export default function SettingsModule() {
     { id: 'hours', label: 'Service Hours', icon: '⏰' },
     { id: 'tables', label: 'Areas & Tables', icon: '🪑' },
     { id: 'delivery', label: 'Delivery', icon: '🛵' },
-    { id: 'users', label: 'Users', icon: '👥' },
     { id: 'billing', label: 'Billing', icon: '💳' },
     { id: 'printers', label: 'Printers & Receipts', icon: '🖨️' },
+    { id: 'users', label: 'Users', icon: '👥' },
     { id: 'system', label: 'System', icon: '⚙️' }
   ];
 
@@ -936,8 +1021,100 @@ export default function SettingsModule() {
               </div>
             )}
 
+            {/* TAB 6: BILLING & TAX */}
+            {activeTab === 'billing' && (
+              <div style={styles.sectionGroup}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+                  <div>
+                    <h3 style={{fontSize: '17px', fontWeight: '950', color: '#0f172a', margin: 0}}>Tax Groups</h3>
+                    <p style={{fontSize: '12px', color: '#64748b', fontWeight: '800', margin: '4px 0 0 0'}}>
+                      Shared GST rates assigned to menu items. CGST and SGST are each half the rate.
+                    </p>
+                  </div>
+                  <button type="button" onClick={handleAddTaxGroup} style={styles.addTaxGroupBtn}>
+                    + New Tax Group
+                  </button>
+                </div>
+
+                <div style={{marginBottom: '20px', maxWidth: '360px'}}>
+                  <label style={{fontSize: '12px', fontWeight: '950', color: '#0f172a', display: 'block', marginBottom: '6px'}}>
+                    Default Tax Group (pre-selected for new items)
+                  </label>
+                  <select 
+                    value={formData.billingConfig?.defaultTaxGroup || 'Standard Restaurant (5%)'} 
+                    onChange={e => handleBillingDefaultChange(e.target.value)}
+                    style={styles.input}
+                  >
+                    <option value="No default">No default</option>
+                    {formData.billingConfig?.taxGroups?.map(tg => (
+                      <option key={tg.id} value={tg.name}>{tg.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={styles.tableWrapper}>
+                  <table style={styles.table}>
+                    <thead>
+                      <tr style={styles.tableHeaderRow}>
+                        <th style={styles.th}>Tax Group Name</th>
+                        <th style={styles.th}>Rate</th>
+                        <th style={styles.th}>CGST</th>
+                        <th style={styles.th}>SGST</th>
+                        <th style={styles.th}>HSN/SAC Code</th>
+                        <th style={styles.th}>Status</th>
+                        <th style={{...styles.th, textAlign: 'right'}}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {formData.billingConfig?.taxGroups?.map(tg => (
+                        <tr key={tg.id} style={styles.tableRow}>
+                          <td style={styles.td}><strong style={{color: '#0f172a'}}>{tg.name}</strong></td>
+                          <td style={styles.td}>{tg.rate}%</td>
+                          <td style={styles.td}>{tg.cgst}%</td>
+                          <td style={styles.td}>{tg.sgst}%</td>
+                          <td style={styles.td}>{tg.hsnCode}</td>
+                          <td style={styles.td}>
+                            <span style={{
+                              backgroundColor: tg.status === 'Active' ? '#dcfce7' : '#fee2e2',
+                              color: tg.status === 'Active' ? '#15803d' : '#991b1b',
+                              padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '950'
+                            }}>
+                              {tg.status}
+                            </span>
+                          </td>
+                          <td style={{...styles.td, textAlign: 'right', display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center'}}>
+                            <button 
+                              type="button" 
+                              onClick={() => alert(`Editing tax group: ${tg.name}`)}
+                              style={styles.actionEditBtn}
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={() => handleToggleTaxGroupStatus(tg.id)}
+                              style={styles.actionDeactivateBtn}
+                            >
+                              {tg.status === 'Active' ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={() => handleDeleteTaxGroup(tg.id)}
+                              style={styles.actionDeleteBtn}
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {/* PLACEHOLDER FOR OTHER TABS */}
-            {activeTab !== 'business' && activeTab !== 'profile' && activeTab !== 'hours' && activeTab !== 'tables' && activeTab !== 'delivery' && (
+            {activeTab !== 'business' && activeTab !== 'profile' && activeTab !== 'hours' && activeTab !== 'tables' && activeTab !== 'delivery' && activeTab !== 'billing' && (
               <div style={styles.placeholderTab}>
                 <h3>🚧 {sidebarItems.find(i => i.id === activeTab)?.label} Configuration</h3>
                 <p style={{color: '#475569', fontSize: '14px', fontWeight: '800', marginTop: '8px'}}>
@@ -992,5 +1169,15 @@ const styles = {
   iconBtn: { backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px' },
   viewQrBtn: { backgroundColor: '#f1f5f9', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '4px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' },
   agentCard: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '14px', padding: '16px' },
-  agentToggleBtn: { backgroundColor: '#fff', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '6px 14px', borderRadius: '8px', fontWeight: '950', fontSize: '11px', cursor: 'pointer' }
+  agentToggleBtn: { backgroundColor: '#fff', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '6px 14px', borderRadius: '8px', fontWeight: '950', fontSize: '11px', cursor: 'pointer' },
+  addTaxGroupBtn: { backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '900', fontSize: '12px', cursor: 'pointer' },
+  tableWrapper: { width: '100%', overflowX: 'auto', border: '2px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#fff' },
+  table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' },
+  tableHeaderRow: { backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' },
+  th: { padding: '12px 16px', fontWeight: '950', color: '#475569' },
+  tableRow: { borderBottom: '1px solid #f1f5f9' },
+  td: { padding: '14px 16px', fontWeight: '800', color: '#334155' },
+  actionEditBtn: { background: 'none', border: 'none', color: '#2563eb', fontWeight: '900', cursor: 'pointer' },
+  actionDeactivateBtn: { background: 'none', border: 'none', color: '#d97706', fontWeight: '900', cursor: 'pointer' },
+  actionDeleteBtn: { background: 'none', border: 'none', color: '#dc2626', fontWeight: '900', cursor: 'pointer' }
 };
