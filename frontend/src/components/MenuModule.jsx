@@ -11,16 +11,19 @@ export default function MenuModule() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
 
+  const [fullProfile, setFullProfile] = useState({});
+  const [restaurantId, setRestaurantId] = useState('');
+
   // Two-tier navigation: null = menu list view, object = inside specific menu view
   const [activeMenu, setActiveMenu] = useState(null);
-  const [activeTab, setActiveTab] = useState('items'); // 'items' | 'categories' | 'variants' | 'addons'
+  const [activeTab, setActiveTab] = useState('items'); // 'items' | 'categories' | 'variants' | 'addon-groups' | 'addons'
 
   // Tax groups fetched from Settings / Restaurant Profile
   const [taxGroups, setTaxGroups] = useState([
     { name: 'Standard Restaurant (5%)', rate: 5, cgst: 2.5, sgst: 2.5 }
   ]);
 
-  // Menus list state
+  // Menus list state (synced with database profile)
   const [menus, setMenus] = useState([
     { id: 'm-online', name: 'Default Online Menu', description: 'Menu served on your website and WhatsApp ordering.', icon: '🌐', channel: 'Online' },
     { id: 'm-inhouse', name: 'Default In-House Menu', description: 'Served at tables and takeaway counter.', icon: '🍽️', channel: 'In-house' }
@@ -61,35 +64,54 @@ export default function MenuModule() {
 
   // Hover states for reactive UI
   const [hoveredCard, setHoveredCard] = useState(null);
-  const [hoveredRow, setHoveredRow] = useState(null);
   const [hoveredBtn, setHoveredBtn] = useState(null);
 
   useEffect(() => {
-    fetchData();
+    const userEmail = localStorage.getItem('userEmail');
+    if (!userEmail) {
+      alert('Please login first.');
+      setLoading(false);
+      return;
+    }
+    fetchData(userEmail);
     window.openPausedItemsModal = () => setShowPausedModal(true);
     return () => { delete window.openPausedItemsModal; };
   }, []);
 
-  const fetchData = async () => {
-    const userEmail = localStorage.getItem('userEmail') || '';
+  const fetchData = async (email) => {
     try {
-      // Fetch Restaurant Profile for Tax Groups
-      const profileRes = await fetch(`${API_BASE_URL}/api/v1/restaurants/email/${userEmail}`);
+      const profileRes = await fetch(`${API_BASE_URL}/api/v1/restaurants/email/${email}`);
       if (profileRes.ok) {
         const profileData = await profileRes.json();
-        if (profileData.billingConfig) {
-          const billing = typeof profileData.billingConfig === 'string' ? JSON.parse(profileData.billingConfig) : profileData.billingConfig;
-          if (billing && billing.taxGroups) {
-            setTaxGroups(billing.taxGroups);
-            if (billing.defaultTaxGroup && billing.defaultTaxGroup !== 'No default') {
-              setNewItemForm(prev => ({ ...prev, taxGroup: billing.defaultTaxGroup }));
+        setFullProfile(profileData);
+        setRestaurantId(profileData.restaurantId);
+
+        // Parse custom menus from database profile
+        if (profileData.customMenus) {
+          try {
+            const parsedMenus = typeof profileData.customMenus === 'string' ? JSON.parse(profileData.customMenus) : profileData.customMenus;
+            if (Array.isArray(parsedMenus) && parsedMenus.length > 0) {
+              setMenus(parsedMenus);
             }
-          }
+          } catch (e) {}
+        }
+
+        // Parse tax groups from billingConfig
+        if (profileData.billingConfig) {
+          try {
+            const billing = typeof profileData.billingConfig === 'string' ? JSON.parse(profileData.billingConfig) : profileData.billingConfig;
+            if (billing && billing.taxGroups) {
+              setTaxGroups(billing.taxGroups);
+              if (billing.defaultTaxGroup && billing.defaultTaxGroup !== 'No default') {
+                setNewItemForm(prev => ({ ...prev, taxGroup: billing.defaultTaxGroup }));
+              }
+            }
+          } catch (e) {}
         }
       }
 
       // Fetch Menu Items
-      const menuRes = await fetch(`${API_BASE_URL}/api/v1/menu?email=${userEmail}`);
+      const menuRes = await fetch(`${API_BASE_URL}/api/v1/menu?email=${email}`);
       if (menuRes.ok) {
         const data = await menuRes.json();
         if (Array.isArray(data)) setMenuItems(data);
@@ -98,6 +120,25 @@ export default function MenuModule() {
       console.error('Fetch error:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveMenusToDatabase = async (updatedMenus) => {
+    if (!restaurantId) return;
+    const userEmail = localStorage.getItem('userEmail') || '';
+    const payload = {
+      ...fullProfile,
+      customMenus: JSON.stringify(updatedMenus)
+    };
+
+    try {
+      await fetch(`${API_BASE_URL}/api/v1/restaurants/${restaurantId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (err) {
+      console.error('Error saving menus to DB:', err);
     }
   };
 
@@ -121,11 +162,17 @@ export default function MenuModule() {
       .catch(err => console.error("Delete error:", err));
   };
 
+  const handleOpenAddItemModal = () => {
+    const defaultTg = taxGroups[0]?.name || 'Standard Restaurant (5%)';
+    setNewItemForm(prev => ({ ...prev, taxGroup: prev.taxGroup || defaultTg }));
+    setShowAddItemModal(true);
+  };
+
   const handleSaveItem = (e) => {
     e.preventDefault();
     if (!newItemForm.itemName || !newItemForm.unitPrice) return alert('Please enter Item Name and Price.');
 
-const userEmail = localStorage.getItem('userEmail') || '';
+    const userEmail = localStorage.getItem('userEmail') || '';
     const payload = {
       itemName: newItemForm.itemName,
       description: newItemForm.description,
@@ -146,8 +193,8 @@ const userEmail = localStorage.getItem('userEmail') || '';
         if (res.ok) {
           setShowAddItemModal(false);
           setNewItemForm({ itemName: '', description: '', unitPrice: '', category: 'Main Course', taxGroup: taxGroups[0]?.name || 'Standard Restaurant (5%)' });
-          fetchData();
-          showMsg('✅ Item added successfully!', 'success');
+          fetchData(userEmail);
+          showMsg('✅ Item added successfully & synced with DB!', 'success');
         } else {
           alert('Failed to save menu item.');
         }
@@ -166,10 +213,13 @@ const userEmail = localStorage.getItem('userEmail') || '';
       icon: newMenuForm.icon,
       channel: newMenuForm.channel
     };
-    setMenus([...menus, created]);
+    const updatedMenus = [...menus, created];
+    setMenus(updatedMenus);
+    saveMenusToDatabase(updatedMenus);
+
     setShowNewMenuModal(false);
     setNewMenuForm({ name: '', description: '', icon: '🍽️', channel: 'In-house' });
-    showMsg('✅ New Menu created successfully!', 'success');
+    showMsg('✅ New Menu created & saved to database!', 'success');
   };
 
   const handleSaveCategory = (e) => {
@@ -254,7 +304,7 @@ const userEmail = localStorage.getItem('userEmail') || '';
 
           <div style={{display: 'flex', gap: '10px'}}>
             {activeTab === 'items' && (
-              <button onClick={() => setShowAddItemModal(true)} style={styles.primaryBtn}>+ Add Item</button>
+              <button onClick={handleOpenAddItemModal} style={styles.primaryBtn}>+ Add Item</button>
             )}
             {activeTab === 'categories' && (
               <button onClick={() => setShowAddCategoryModal(true)} style={styles.primaryBtn}>+ Add Category</button>
@@ -277,7 +327,7 @@ const userEmail = localStorage.getItem('userEmail') || '';
           </div>
         )}
 
-        {/* 5 Sub Navigation Tabs matching screenshots */}
+        {/* 5 Sub Navigation Tabs */}
         <div style={styles.subTabsRow}>
           {[
             { id: 'items', label: 'Items' },
@@ -462,7 +512,7 @@ const userEmail = localStorage.getItem('userEmail') || '';
 
         {/* ================= MODALS ================= */}
 
-        {/* Modal: Add Item (With Settings Tax Groups Dropdown) */}
+        {/* Modal: Add Item */}
         {showAddItemModal && (
           <div style={styles.modalOverlay} onClick={() => setShowAddItemModal(false)}>
             <form onSubmit={handleSaveItem} style={styles.modalCard} onClick={e => e.stopPropagation()}>
@@ -683,7 +733,7 @@ const userEmail = localStorage.getItem('userEmail') || '';
         })}
       </div>
 
-      {/* Modal: Add Menu (Matching screenshot image_d54581.png) */}
+      {/* Modal: Add Menu */}
       {showNewMenuModal && (
         <div style={styles.modalOverlay} onClick={() => setShowNewMenuModal(false)}>
           <form onSubmit={handleCreateMenu} style={styles.modalCard} onClick={e => e.stopPropagation()}>
