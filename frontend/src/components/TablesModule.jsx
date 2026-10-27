@@ -19,13 +19,16 @@ export default function TablesModule() {
   const [activeOrderTable, setActiveOrderTable] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCaptainManageModal, setShowCaptainManageModal] = useState(false);
-  
-  // Captain Edit state
   const [editingCaptain, setEditingCaptain] = useState(null);
 
-  // Split payment state
+  // 🧾 Receipt & Print Modal State
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [completedOrderReceipt, setCompletedOrderReceipt] = useState(null);
+
+  // 💳 Cash vs Online Split Payment State
   const [showSplitModal, setShowSplitModal] = useState(false);
-  const [splitCount, setSplitCount] = useState(2);
+  const [cashAmount, setCashAmount] = useState('');
+  const [onlineAmount, setOnlineAmount] = useState('');
 
   // Counter POS Order Type state (Dine-In vs Takeaway)
   const [orderType, setOrderType] = useState('Dine-In');
@@ -119,7 +122,6 @@ export default function TablesModule() {
             const parsedPrice = Number(rawPrice);
             const taxGroupName = item.taxGroup || storedTaxMap[item.id] || storedTaxMap[item.itemName] || 'Standard Restaurant (5%)';
             
-            // Extract percentage rate from tax group name (e.g. 'Standard Restaurant (18%)' -> 18)
             let taxRate = 5;
             const match = taxGroupName.match(/\((\d+)%\)/);
             if (match && match[1]) {
@@ -281,7 +283,6 @@ export default function TablesModule() {
 
     const userEmail = localStorage.getItem('userEmail') || '';
     if (editingCaptain) {
-      // Edit existing captain
       fetch(`${API_BASE_URL}/api/v1/staff/${editingCaptain.id || editingCaptain._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -304,7 +305,6 @@ export default function TablesModule() {
       })
       .catch(err => alert('Error: ' + err.message));
     } else {
-      // Add new captain
       fetch(`${API_BASE_URL}/api/v1/staff`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -344,7 +344,7 @@ export default function TablesModule() {
     .catch(err => alert('Error: ' + err.message));
   };
 
-  const handleSendKOT = () => {
+  const handleSendKOT = (paymentMode = 'Cash/Online') => {
     const subtotal = cartItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
     const totalTax = cartItems.reduce((acc, i) => acc + ((i.price * i.qty * i.taxRate) / 100), 0);
     const totalAmount = Math.round(subtotal + totalTax);
@@ -378,7 +378,23 @@ export default function TablesModule() {
       return res.json();
     })
     .then(data => {
-      alert(`🖨️ KOT Generated & Sent to Kitchen successfully for Table ${activeOrderTable.name}!\nType: ${orderType}`);
+      // Save order receipt for preview modal before clearing cart
+      const receiptData = {
+        orderId: data.orderId || `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+        tableName: activeOrderTable.name,
+        areaName: activeOrderTable.areaName,
+        captain: activeOrderTable.captain || 'Unassigned',
+        orderType: orderType,
+        items: [...cartItems],
+        subtotal: subtotal,
+        totalTax: totalTax,
+        totalAmount: totalAmount,
+        paymentMode: paymentMode,
+        timestamp: new Date().toLocaleString()
+      };
+
+      setCompletedOrderReceipt(receiptData);
+      setShowReceiptModal(true);
       setActiveOrderTable(null);
       setCartItems([]);
       setOrderNote('');
@@ -561,18 +577,22 @@ export default function TablesModule() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <button 
-                onClick={handleSendKOT}
+                onClick={() => handleSendKOT('Cash/Online')}
                 disabled={cartItems.length === 0}
                 style={{ padding: '14px', background: cartItems.length === 0 ? '#cbd5e1' : '#059669', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '950', cursor: cartItems.length === 0 ? 'not-allowed' : 'pointer', fontSize: '14px' }}
               >
-                🖨️ Send KOT to Kitchen & Save
+                🖨️ Send KOT to Kitchen & Show Receipt
               </button>
               <button 
-                onClick={() => setShowSplitModal(true)}
+                onClick={() => {
+                  setCashAmount('');
+                  setOnlineAmount(totalAmount.toString());
+                  setShowSplitModal(true);
+                }}
                 disabled={cartItems.length === 0}
                 style={{ padding: '13px', background: cartItems.length === 0 ? '#f1f5f9' : '#2563eb', color: cartItems.length === 0 ? '#94a3b8' : '#fff', border: 'none', borderRadius: '12px', fontWeight: '950', cursor: cartItems.length === 0 ? 'not-allowed' : 'pointer' }}
               >
-                💳 Split Payment & Checkout
+                💳 Split Cash & Online Checkout
               </button>
             </div>
 
@@ -580,41 +600,59 @@ export default function TablesModule() {
 
         </div>
 
+        {/* 💳 CASH VS ONLINE SPLIT PAYMENT MODAL */}
         {showSplitModal && (
           <div style={styles.modalOverlay} onClick={() => setShowSplitModal(false)}>
             <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
-              <h3 style={{ margin: '0 0 16px 0', color: '#0f172a', fontWeight: '950' }}>Split Payment Calculator</h3>
-              <p style={{ fontSize: '13px', color: '#64748b', fontWeight: '700', marginBottom: '14px' }}>Total Bill: <strong style={{ color: '#059669' }}>₹{totalAmount}</strong></p>
+              <h3 style={{ margin: '0 0 16px 0', color: '#0f172a', fontWeight: '950' }}>Split Payment (Cash & Online)</h3>
+              <p style={{ fontSize: '13px', color: '#64748b', fontWeight: '700', marginBottom: '14px' }}>Total Bill Amount: <strong style={{ color: '#059669' }}>₹{totalAmount}</strong></p>
               
-              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>SPLIT AMONG:</label>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                {[2, 3, 4, 5].map(num => (
-                  <button 
-                    key={num}
-                    onClick={() => setSplitCount(num)}
-                    style={{ flex: 1, padding: '10px', background: splitCount === num ? '#2563eb' : '#f1f5f9', color: splitCount === num ? '#fff' : '#334155', border: '2px solid #cbd5e1', borderRadius: '8px', fontWeight: '950', cursor: 'pointer' }}
-                  >
-                    {num} People
-                  </button>
-                ))}
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>CASH AMOUNT (₹):</label>
+                <input 
+                  type="number" 
+                  style={styles.input} 
+                  placeholder="0" 
+                  value={cashAmount}
+                  onChange={e => {
+                    const val = Number(e.target.value) || 0;
+                    setCashAmount(e.target.value);
+                    const remaining = Math.max(0, totalAmount - val);
+                    setOnlineAmount(remaining.toString());
+                  }}
+                />
               </div>
 
-              <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1.5px solid #e2e8f0', marginBottom: '20px', textAlign: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '800', display: 'block' }}>Each Person Pays:</span>
-                <span style={{ fontSize: '24px', fontWeight: '950', color: '#059669' }}>₹{Math.round(totalAmount / splitCount)}</span>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>ONLINE (UPI / CARD) AMOUNT (₹):</label>
+                <input 
+                  type="number" 
+                  style={styles.input} 
+                  placeholder="0" 
+                  value={onlineAmount}
+                  onChange={e => {
+                    const val = Number(e.target.value) || 0;
+                    setOnlineAmount(e.target.value);
+                    const remaining = Math.max(0, totalAmount - val);
+                    setCashAmount(remaining.toString());
+                  }}
+                />
               </div>
 
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button 
                   onClick={() => {
-                    alert(`✅ Payment settled for Table ${activeOrderTable.name}!`);
+                    const c = Number(cashAmount) || 0;
+                    const o = Number(onlineAmount) || 0;
+                    if (c + o !== totalAmount) {
+                      return alert(`Split amounts (Cash ₹${c} + Online ₹${o} = ₹${c+o}) must equal Total Bill ₹{totalAmount}!`);
+                    }
+                    handleSendKOT(`Cash: ₹${c} | Online: ₹${o}`);
                     setShowSplitModal(false);
-                    setActiveOrderTable(null);
-                    setCartItems([]);
                   }}
                   style={{ flex: 1, padding: '12px', background: '#059669', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}
                 >
-                  Confirm & Complete Settlement
+                  Confirm Split & Complete Settlement
                 </button>
                 <button onClick={() => setShowSplitModal(false)} style={{ padding: '12px 18px', background: '#f1f5f9', color: '#334155', border: '1.5px solid #cbd5e1', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}>Cancel</button>
               </div>
@@ -775,7 +813,7 @@ export default function TablesModule() {
         </div>
       )}
 
-      {/* MANAGE CAPTAINS MODAL (View, Edit, Delete, Add) */}
+      {/* MANAGE CAPTAINS MODAL */}
       {showCaptainManageModal && (
         <div style={styles.modalOverlay} onClick={() => setShowCaptainManageModal(false)}>
           <div style={{ ...styles.modalCard, width: '480px' }} onClick={e => e.stopPropagation()}>
@@ -784,7 +822,6 @@ export default function TablesModule() {
               <button onClick={() => setShowCaptainManageModal(false)} style={styles.closeXBtn}>✕</button>
             </div>
 
-            {/* Captains List View */}
             <div style={{ maxHeight: '180px', overflowY: 'auto', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {captainsList.length === 0 ? (
                 <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', padding: '20px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
@@ -822,7 +859,6 @@ export default function TablesModule() {
               )}
             </div>
 
-            {/* Add / Edit Captain Form */}
             <form onSubmit={handleAddCaptain} style={{ borderTop: '2px solid #e2e8f0', paddingTop: '14px' }}>
               <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '950', color: '#334155' }}>
                 {editingCaptain ? `✏️ Edit Captain: ${editingCaptain.name}` : '+ Add New Captain'}
@@ -848,6 +884,66 @@ export default function TablesModule() {
                 )}
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 🧾 RECEIPT & PRINT PREVIEW MODAL */}
+      {showReceiptModal && completedOrderReceipt && (
+        <div style={styles.modalOverlay} onClick={() => setShowReceiptModal(false)}>
+          <div style={{ ...styles.modalCard, width: '400px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ margin: 0, color: '#0f172a', fontWeight: '950' }}>🧾 Order Receipt & KOT</h3>
+              <button onClick={() => setShowReceiptModal(false)} style={styles.closeXBtn}>✕</button>
+            </div>
+
+            <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1.5px solid #e2e8f0', textAlign: 'left', fontSize: '12px', fontFamily: 'monospace', marginBottom: '20px' }}>
+              <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>RESTAURANT KOT & BILL</div>
+              <div style={{ textAlign: 'center', color: '#64748b', marginBottom: '10px' }}>{completedOrderReceipt.timestamp}</div>
+              <div><strong>Order ID:</strong> {completedOrderReceipt.orderId}</div>
+              <div><strong>Table:</strong> {completedOrderReceipt.tableName} ({completedOrderReceipt.areaName})</div>
+              <div><strong>Captain:</strong> {completedOrderReceipt.captain}</div>
+              <div><strong>Type:</strong> {completedOrderReceipt.orderType}</div>
+              <div><strong>Payment:</strong> {completedOrderReceipt.paymentMode}</div>
+              <div style={{ borderTop: '1px dashed #cbd5e1', margin: '10px 0' }}></div>
+              <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>ITEMS:</div>
+              {completedOrderReceipt.items.map((it, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span>{it.qty}x {it.name}</span>
+                  <span>₹{it.price * it.qty}</span>
+                </div>
+              ))}
+              <div style={{ borderTop: '1px dashed #cbd5e1', margin: '10px 0' }}></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Subtotal:</span>
+                <span>₹{completedOrderReceipt.subtotal.toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Tax:</span>
+                <span>₹{completedOrderReceipt.totalTax.toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', marginTop: '6px' }}>
+                <span>Total:</span>
+                <span>₹{completedOrderReceipt.totalAmount}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                onClick={() => {
+                  window.print();
+                }}
+                style={{ flex: 1, padding: '12px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}
+              >
+                🖨️ Print / Download Receipt
+              </button>
+              <button 
+                onClick={() => setShowReceiptModal(false)}
+                style={{ padding: '12px 18px', background: '#059669', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}
