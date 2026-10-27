@@ -378,7 +378,6 @@ export default function TablesModule() {
       return res.json();
     })
     .then(data => {
-      // Save order receipt for preview modal before clearing cart
       const receiptData = {
         orderId: data.orderId || `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
         tableName: activeOrderTable.name,
@@ -390,7 +389,7 @@ export default function TablesModule() {
         totalTax: totalTax,
         totalAmount: totalAmount,
         paymentMode: paymentMode,
-        timestamp: new Date().toLocaleString()
+        timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
       };
 
       setCompletedOrderReceipt(receiptData);
@@ -645,7 +644,7 @@ export default function TablesModule() {
                     const c = Number(cashAmount) || 0;
                     const o = Number(onlineAmount) || 0;
                     if (c + o !== totalAmount) {
-                      return alert(`Split amounts (Cash ₹${c} + Online ₹${o} = ₹${c+o}) must equal Total Bill ₹{totalAmount}!`);
+                      return alert(`Split amounts (Cash ₹${c} + Online ₹${o} = ₹${c+o}) must equal Total Bill ₹${totalAmount}!`);
                     }
                     handleSendKOT(`Cash: ₹${c} | Online: ₹${o}`);
                     setShowSplitModal(false);
@@ -931,7 +930,9 @@ export default function TablesModule() {
             <div style={{ display: 'flex', gap: '10px' }}>
               <button 
                 onClick={() => {
-                  window.print();
+                  setTimeout(() => {
+                    window.print();
+                  }, 150);
                 }}
                 style={{ flex: 1, padding: '12px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}
               >
