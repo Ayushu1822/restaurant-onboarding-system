@@ -123,13 +123,18 @@ public class RestaurantProfileController {
             profile.setAreasAndTables(updatedDetails.getAreasAndTables());
         }
 
-        // 🛵 Delivery Configuration (ADDED THIS)
+        // 🛵 Delivery Configuration
         if (updatedDetails.getDeliveryConfig() != null) {
             profile.setDeliveryConfig(updatedDetails.getDeliveryConfig());
         }
 
+        // 💳 Billing & Tax Configuration (Added here!)
+        if (updatedDetails.getBillingConfig() != null) {
+            profile.setBillingConfig(updatedDetails.getBillingConfig());
+        }
+
         RestaurantProfile saved = profileRepository.save(profile);
-        System.out.println("✅ PROFILE, TABLES & DELIVERY CONFIG SUCCESSFULLY SAVED — ID: " + saved.getRestaurantId());
+        System.out.println("✅ PROFILE, TABLES, DELIVERY & BILLING CONFIG SUCCESSFULLY SAVED — ID: " + saved.getRestaurantId());
         return ResponseEntity.ok(saved);
     }
 }

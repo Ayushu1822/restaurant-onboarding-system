@@ -94,9 +94,13 @@ public class RestaurantProfile {
     @Column(name = "areas_and_tables", columnDefinition = "TEXT")
     private String areasAndTables;
 
-    // 🛵 Delivery Configuration (Added here!)
+    // 🛵 Delivery Configuration
     @Column(name = "delivery_config", columnDefinition = "TEXT")
     private String deliveryConfig;
+
+    // 💳 Billing & Tax Configuration (Added here!)
+    @Column(name = "billing_config", columnDefinition = "TEXT")
+    private String billingConfig;
 
     // ================= Getters and Setters =================
 
@@ -192,4 +196,7 @@ public class RestaurantProfile {
 
     public String getDeliveryConfig() { return deliveryConfig; }
     public void setDeliveryConfig(String deliveryConfig) { this.deliveryConfig = deliveryConfig; }
+
+    public String getBillingConfig() { return billingConfig; }
+    public void setBillingConfig(String billingConfig) { this.billingConfig = billingConfig; }
 }
