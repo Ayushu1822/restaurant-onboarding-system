@@ -20,6 +20,9 @@ export default function TablesModule() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCaptainManageModal, setShowCaptainManageModal] = useState(false);
   
+  // Captain Edit state
+  const [editingCaptain, setEditingCaptain] = useState(null);
+
   // Split payment state
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [splitCount, setSplitCount] = useState(2);
@@ -110,14 +113,26 @@ export default function TablesModule() {
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
+          const storedTaxMap = JSON.parse(localStorage.getItem(`itemTaxMap_${email}`) || '{}');
           const normalized = data.map((item, idx) => {
             const rawPrice = item.price ?? item.itemPrice ?? item.cost ?? item.rate ?? item.amount ?? item.unitPrice ?? 0;
             const parsedPrice = Number(rawPrice);
+            const taxGroupName = item.taxGroup || storedTaxMap[item.id] || storedTaxMap[item.itemName] || 'Standard Restaurant (5%)';
+            
+            // Extract percentage rate from tax group name (e.g. 'Standard Restaurant (18%)' -> 18)
+            let taxRate = 5;
+            const match = taxGroupName.match(/\((\d+)%\)/);
+            if (match && match[1]) {
+              taxRate = Number(match[1]);
+            }
+
             return {
               id: item.id || item.menuId || idx,
               name: item.name || item.itemName || item.dishName || item.title || 'Unnamed Item',
               price: isNaN(parsedPrice) ? 0 : parsedPrice,
-              category: item.category || item.foodType || item.menuType || 'Main Course'
+              category: item.category || item.foodType || item.menuType || 'Main Course',
+              taxGroup: taxGroupName,
+              taxRate: taxRate
             };
           });
           setMenuItems(normalized);
@@ -265,30 +280,74 @@ export default function TablesModule() {
     if (!newCaptainForm.name) return alert('Enter captain name');
 
     const userEmail = localStorage.getItem('userEmail') || '';
-    fetch(`${API_BASE_URL}/api/v1/staff`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        name: newCaptainForm.name, 
-        role: 'CAPTAIN', 
-        phone: newCaptainForm.phone,
-        restaurantEmail: userEmail 
+    if (editingCaptain) {
+      // Edit existing captain
+      fetch(`${API_BASE_URL}/api/v1/staff/${editingCaptain.id || editingCaptain._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: newCaptainForm.name, 
+          role: 'CAPTAIN', 
+          phone: newCaptainForm.phone,
+          restaurantEmail: userEmail 
+        })
       })
-    })
       .then(res => {
         if (res.ok) {
-          setShowCaptainManageModal(false);
+          setEditingCaptain(null);
           setNewCaptainForm({ name: '', phone: '' });
           fetchCaptains(userEmail);
-          alert('Captain added successfully!');
+          alert('Captain updated successfully!');
+        } else {
+          alert('Failed to update captain.');
         }
       })
       .catch(err => alert('Error: ' + err.message));
+    } else {
+      // Add new captain
+      fetch(`${API_BASE_URL}/api/v1/staff`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: newCaptainForm.name, 
+          role: 'CAPTAIN', 
+          phone: newCaptainForm.phone,
+          restaurantEmail: userEmail 
+        })
+      })
+      .then(res => {
+        if (res.ok) {
+          setNewCaptainForm({ name: '', phone: '' });
+          fetchCaptains(userEmail);
+          alert('Captain added successfully!');
+        } else {
+          alert('Failed to add captain.');
+        }
+      })
+      .catch(err => alert('Error: ' + err.message));
+    }
+  };
+
+  const handleDeleteCaptain = (captainId) => {
+    if (!window.confirm('Are you sure you want to delete this captain?')) return;
+    const userEmail = localStorage.getItem('userEmail') || '';
+    fetch(`${API_BASE_URL}/api/v1/staff/${captainId}`, {
+      method: 'DELETE'
+    })
+    .then(res => {
+      if (res.ok) {
+        fetchCaptains(userEmail);
+      } else {
+        alert('Failed to delete captain.');
+      }
+    })
+    .catch(err => alert('Error: ' + err.message));
   };
 
   const handleSendKOT = () => {
     const subtotal = cartItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
-    const totalAmount = Math.round(subtotal * 1.05);
+    const totalTax = cartItems.reduce((acc, i) => acc + ((i.price * i.qty * i.taxRate) / 100), 0);
+    const totalAmount = Math.round(subtotal + totalTax);
     const userEmail = localStorage.getItem('userEmail') || '';
 
     const orderPayload = {
@@ -304,7 +363,8 @@ export default function TablesModule() {
         itemName: i.name,
         quantity: i.qty,
         unitPrice: i.price,
-        itemDescription: orderNote || ''
+        itemDescription: orderNote || '',
+        taxGroup: i.taxGroup
       }))
     };
 
@@ -347,8 +407,8 @@ export default function TablesModule() {
   // ==========================================
   if (activeOrderTable) {
     const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.qty), 0);
-    const gst = Math.round(subtotal * 0.05);
-    const totalAmount = subtotal + gst;
+    const totalTaxAmount = cartItems.reduce((acc, item) => acc + ((item.price * item.qty * item.taxRate) / 100), 0);
+    const totalAmount = Math.round(subtotal + totalTaxAmount);
 
     return (
       <div style={styles.inlinePOSWrapper}>
@@ -363,7 +423,7 @@ export default function TablesModule() {
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#f8fafc', borderRadius: '0 0 14px 14px' }}>
           
           <div style={{ flex: 1.4, padding: '24px', overflowY: 'auto', borderRight: '2px solid #e2e8f0' }}>
-            <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '16px', letterSpacing: '0.08em' }}>LIVE RESTAURANT MENU (DATABASE)</h4>
+            <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '16px', letterSpacing: '0.08em' }}>LIVE RESTAURANT MENU (DATABASE & TAX-MAPPED)</h4>
             
             {menuItems.length === 0 ? (
               <div style={{ textAlign: 'center', color: '#94a3b8', padding: '60px', background: '#fff', borderRadius: '16px', border: '2px dashed #cbd5e1', fontWeight: '800' }}>
@@ -386,9 +446,9 @@ export default function TablesModule() {
                           <div 
                             key={food.id}
                             onClick={() => {
-                              const existing = cartItems.find(i => i.name === food.name);
+                              const existing = cartItems.find(i => i.id === food.id);
                               if (existing) {
-                                setCartItems(cartItems.map(i => i.name === food.name ? {...i, qty: i.qty + 1} : i));
+                                setCartItems(cartItems.map(i => i.id === food.id ? {...i, qty: i.qty + 1} : i));
                               } else {
                                 setCartItems([...cartItems, { ...food, qty: 1 }]);
                               }
@@ -403,8 +463,11 @@ export default function TablesModule() {
                               transform: isMenuHovered ? 'translateY(-2px)' : 'translateY(0)'
                             }}
                           >
-                            <div style={{ fontSize: '14px', fontWeight: '950', color: '#1e293b', marginBottom: '8px' }}>{food.name}</div>
-                            <div style={{ fontSize: '15px', fontWeight: '950', color: '#059669' }}>₹{food.price}</div>
+                            <div style={{ fontSize: '14px', fontWeight: '950', color: '#1e293b', marginBottom: '6px' }}>{food.name}</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ fontSize: '15px', fontWeight: '950', color: '#059669' }}>₹{food.price}</div>
+                              <span style={{ fontSize: '10px', fontWeight: '900', background: '#f1f5f9', color: '#475569', padding: '2px 6px', borderRadius: '6px' }}>🏷️ {food.taxGroup}</span>
+                            </div>
                           </div>
                         );
                       })}
@@ -416,7 +479,7 @@ export default function TablesModule() {
           </div>
 
           <div style={{ width: '420px', background: '#fff', display: 'flex', flexDirection: 'column', padding: '24px', borderLeft: '2px solid #e2e8f0' }}>
-            <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '14px', letterSpacing: '0.08em' }}>ORDER RECEIPT & KOT</h4>
+            <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '14px', letterSpacing: '0.08em' }}>ORDER RECEIPT & TAX BREAKDOWN</h4>
             
             <div style={{ marginBottom: '14px' }}>
               <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>ORDER TYPE</label>
@@ -445,19 +508,26 @@ export default function TablesModule() {
                   Cart is empty. Click items from menu.
                 </div>
               ) : (
-                cartItems.map((item, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: '#f8fafc', borderRadius: '12px', border: '1.5px solid #e2e8f0' }}>
-                    <div>
-                      <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a' }}>{item.name}</div>
-                      <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800' }}>₹{item.price} x {item.qty} = <strong style={{ color: '#059669' }}>₹{item.price * item.qty}</strong></div>
+                cartItems.map((item, idx) => {
+                  const itemTotal = item.price * item.qty;
+                  const itemTax = (itemTotal * item.taxRate) / 100;
+                  return (
+                    <div key={idx} style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: '12px', border: '1.5px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a' }}>{item.name}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button onClick={() => setCartItems(cartItems.map((i, iIdx) => iIdx === idx && i.qty > 1 ? {...i, qty: i.qty - 1} : i))} style={styles.qtyBtn}>-</button>
+                          <span style={{ fontSize: '14px', fontWeight: '950', width: '22px', textAlign: 'center' }}>{item.qty}</span>
+                          <button onClick={() => setCartItems(cartItems.map((i, iIdx) => iIdx === idx ? {...i, qty: i.qty + 1} : i))} style={styles.qtyBtn}>+</button>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
+                        <span>₹{item.price} x {item.qty} = ₹{itemTotal}</span>
+                        <span style={{ color: '#059669', fontWeight: '950' }}>Tax ({item.taxGroup}): +₹{itemTax.toFixed(2)}</span>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <button onClick={() => setCartItems(cartItems.map((i, iIdx) => iIdx === idx && i.qty > 1 ? {...i, qty: i.qty - 1} : i))} style={styles.qtyBtn}>-</button>
-                      <span style={{ fontSize: '14px', fontWeight: '950', width: '26px', textAlign: 'center' }}>{item.qty}</span>
-                      <button onClick={() => setCartItems(cartItems.map((i, iIdx) => iIdx === idx ? {...i, qty: i.qty + 1} : i))} style={styles.qtyBtn}>+</button>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
@@ -476,11 +546,11 @@ export default function TablesModule() {
               <div style={{ borderTop: '2px solid #e2e8f0', paddingTop: '14px', marginBottom: '16px', fontSize: '13px', fontWeight: '900', color: '#334155' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                   <span>Subtotal:</span>
-                  <span>₹{subtotal}</span>
+                  <span>₹{subtotal.toFixed(2)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', color: '#64748b' }}>
-                  <span>GST (5%):</span>
-                  <span>₹{gst}</span>
+                  <span>Total Tax Included:</span>
+                  <span>₹{totalTaxAmount.toFixed(2)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: '950', color: '#0f172a', borderTop: '1.5px dashed #cbd5e1', paddingTop: '10px' }}>
                   <span>Total Amount:</span>
@@ -568,7 +638,7 @@ export default function TablesModule() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button onClick={() => setShowCaptainManageModal(true)} style={styles.captainManageBtn}>🧑‍✈️ Manage Captains</button>
+          <button onClick={() => { setEditingCaptain(null); setNewCaptainForm({ name: '', phone: '' }); setShowCaptainManageModal(true); }} style={styles.captainManageBtn}>🧑‍✈️ Manage Captains ({captainsList.length})</button>
           <button onClick={() => setShowAddModal(true)} style={styles.addBtn}>+ Add Table</button>
         </div>
       </div>
@@ -657,7 +727,7 @@ export default function TablesModule() {
               >
                 <option value="Unassigned">-- Select Captain --</option>
                 {captainsList.map(c => (
-                  <option key={c.id || c.name} value={c.name}>{c.name}</option>
+                  <option key={c.id || c._id || c.name} value={c.name}>{c.name}</option>
                 ))}
               </select>
             </div>
@@ -705,16 +775,80 @@ export default function TablesModule() {
         </div>
       )}
 
+      {/* MANAGE CAPTAINS MODAL (View, Edit, Delete, Add) */}
       {showCaptainManageModal && (
         <div style={styles.modalOverlay} onClick={() => setShowCaptainManageModal(false)}>
-          <form onSubmit={handleAddCaptain} style={styles.modalCard} onClick={e => e.stopPropagation()}>
-            <h3 style={{ margin: '0 0 16px 0', color: '#0f172a', fontWeight: '950' }}>Add Floor Captain</h3>
-            <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>CAPTAIN NAME:</label>
-            <input style={styles.input} placeholder="e.g. Rahul Sharma" value={newCaptainForm.name} onChange={e => setNewCaptainForm({...newCaptainForm, name: e.target.value})} required />
-            <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>PHONE:</label>
-            <input style={styles.input} placeholder="10-digit mobile" value={newCaptainForm.phone} onChange={e => setNewCaptainForm({...newCaptainForm, phone: e.target.value})} />
-            <button type="submit" style={{ ...styles.captainManageBtn, width: '100%', padding: '12px', marginTop: '10px', textAlign: 'center' }}>Save Captain</button>
-          </form>
+          <div style={{ ...styles.modalCard, width: '480px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, color: '#0f172a', fontWeight: '950' }}>🧑‍✈️ Manage Floor Captains</h3>
+              <button onClick={() => setShowCaptainManageModal(false)} style={styles.closeXBtn}>✕</button>
+            </div>
+
+            {/* Captains List View */}
+            <div style={{ maxHeight: '180px', overflowY: 'auto', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {captainsList.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', padding: '20px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
+                  No captains added yet. Add one below!
+                </div>
+              ) : (
+                captainsList.map(c => {
+                  const cId = c.id || c._id;
+                  return (
+                    <div key={cId || c.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #e2e8f0' }}>
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: '950', color: '#0f172a' }}>{c.name}</div>
+                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>📞 {c.phone || 'No phone'}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          onClick={() => {
+                            setEditingCaptain(c);
+                            setNewCaptainForm({ name: c.name || '', phone: c.phone || '' });
+                          }}
+                          style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #93c5fd', padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '950', cursor: 'pointer' }}
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteCaptain(cId)}
+                          style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '950', cursor: 'pointer' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Add / Edit Captain Form */}
+            <form onSubmit={handleAddCaptain} style={{ borderTop: '2px solid #e2e8f0', paddingTop: '14px' }}>
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '950', color: '#334155' }}>
+                {editingCaptain ? `✏️ Edit Captain: ${editingCaptain.name}` : '+ Add New Captain'}
+              </h4>
+              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>CAPTAIN NAME:</label>
+              <input style={styles.input} placeholder="e.g. Rahul Sharma" value={newCaptainForm.name} onChange={e => setNewCaptainForm({...newCaptainForm, name: e.target.value})} required />
+              
+              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>PHONE:</label>
+              <input style={styles.input} placeholder="10-digit mobile" value={newCaptainForm.phone} onChange={e => setNewCaptainForm({...newCaptainForm, phone: e.target.value})} />
+              
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button type="submit" style={{ ...styles.captainManageBtn, flex: 1, padding: '11px', textAlign: 'center' }}>
+                  {editingCaptain ? 'Update Captain' : 'Save Captain'}
+                </button>
+                {editingCaptain && (
+                  <button 
+                    type="button" 
+                    onClick={() => { setEditingCaptain(null); setNewCaptainForm({ name: '', phone: '' }); }}
+                    style={{ background: '#f1f5f9', color: '#334155', border: '1.5px solid #cbd5e1', padding: '11px 16px', borderRadius: '12px', fontWeight: '950', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
