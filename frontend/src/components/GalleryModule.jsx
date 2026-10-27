@@ -160,38 +160,40 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
   const activeImage = safeImages.find(img => img.id === safeSelectedIds[0]) || safeImages[0] || { fileName: 'image.png', fileUrl: '' };
 
   return (
-    <div style={styles.container}>
+    <div className="gl">
+      <style>{css}</style>
+
       {/* Header */}
-      <div style={styles.header}>
-        <div style={styles.titleArea}>
-          <h2 style={styles.title}>Gallery</h2>
-          <span style={styles.badge}>{safeImages.length} images</span>
+      <div className="gl-header">
+        <div className="gl-title-area">
+          <h2 className="gl-title">Gallery</h2>
+          <span className="gl-badge">{safeImages.length} images</span>
         </div>
-        <button style={styles.uploadBtn} onClick={() => setIsUploadModalOpen(true)}>
+        <button className="gl-upload-btn" onClick={() => setIsUploadModalOpen(true)}>
           ↑ Upload Images
         </button>
       </div>
 
       {/* Search & Toolbar */}
-      <div style={styles.toolbar}>
-        <div style={styles.searchBox}>
+      <div className="gl-toolbar">
+        <div className="gl-search-box">
           <span>🔍</span>
           <input
             type="text"
             placeholder="Search images by file name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={styles.searchInput}
+            className="gl-search-input"
           />
         </div>
-        <div style={styles.toolbarRight}>
-          <span style={styles.libraryInfo}>{safeImages.length} images in your library</span>
-          <label style={styles.selectAllLabel}>
+        <div className="gl-toolbar-right">
+          <span className="gl-library-info">{safeImages.length} images in your library</span>
+          <label className="gl-select-all">
             <input
               type="checkbox"
               onChange={handleSelectAll}
               checked={safeSelectedIds.length === safeImages.length && safeImages.length > 0}
-              style={styles.checkboxAccent}
+              className="gl-check-accent"
             />
             Select all
           </label>
@@ -199,7 +201,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
       </div>
 
       {/* Image Grid */}
-      <div style={styles.grid}>
+      <div className="gl-grid">
         {safeImages.map((img) => {
           const isSelected = safeSelectedIds.includes(img.id);
           const rawUrl = img.fileUrl || img.file_url || '';
@@ -214,37 +216,33 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
           return (
             <div
               key={img.id}
-              style={{
-                ...styles.card,
-                borderColor: isSelected ? '#05c98a' : '#e5e7eb',
-                boxShadow: isSelected ? '0 0 0 2px rgba(5, 201, 138, 0.2)' : 'none'
-              }}
+              className={`gl-card ${isSelected ? 'is-selected' : ''}`}
               onClick={() => toggleSelectImage(img.id)}
             >
-              <div style={styles.cardImageWrapper}>
-                <img src={imageUrl} alt={img.fileName || img.file_name || 'Gallery Image'} style={styles.cardImg} onError={(e) => { e.target.src = 'https://placehold.co/300x180?text=Image+Not+Found'; }} />
+              <div className="gl-card-img-wrap">
+                <img src={imageUrl} alt={img.fileName || img.file_name || 'Gallery Image'} className="gl-card-img" onError={(e) => { e.target.src = 'https://placehold.co/300x180?text=Image+Not+Found'; }} />
                 <input
                   type="checkbox"
-                  style={styles.cardCheckbox}
+                  className="gl-card-checkbox"
                   checked={isSelected}
                   onChange={() => toggleSelectImage(img.id)}
                   onClick={(e) => e.stopPropagation()}
                 />
               </div>
-              <div style={styles.cardFooter}>
-                <strong style={styles.cardTitle}>{img.fileName || img.file_name}</strong>
-                <small style={styles.cardSubtitle}>{img.fileType?.split('/')[1]?.toUpperCase() || 'JPEG'} · {img.fileSize || '45 KB'}</small>
+              <div className="gl-card-footer">
+                <strong className="gl-card-title">{img.fileName || img.file_name}</strong>
+                <small className="gl-card-subtitle">{img.fileType?.split('/')[1]?.toUpperCase() || 'JPEG'} · {img.fileSize || '45 KB'}</small>
                 
                 {/* 🏷️ Mapped Menu Item Badges */}
                 {displayNames.length > 0 && (
-                  <div style={styles.mappedBadgeContainer}>
+                  <div className="gl-mapped-wrap">
                     {displayNames.map((name, i) => (
-                      <span key={i} style={styles.mappedBadge}>🍽️ {name}</span>
+                      <span key={i} className="gl-mapped-badge">🍽️ {name}</span>
                     ))}
                   </div>
                 )}
 
-                <span style={styles.cardDate}>{img.uploadedAt ? new Date(img.uploadedAt).toLocaleDateString() : ''}</span>
+                <span className="gl-card-date">{img.uploadedAt ? new Date(img.uploadedAt).toLocaleDateString() : ''}</span>
               </div>
             </div>
           );
@@ -253,48 +251,48 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
 
       {/* Floating Action Bar */}
       {safeSelectedIds.length > 0 && (
-        <div style={styles.floatingBar}>
-          <span style={styles.floatingText}>{safeSelectedIds.length} image selected</span>
-          <div style={styles.floatingButtons}>
-            <button style={styles.clearBtn} onClick={() => setSelectedImageIds([])}>✕ Clear</button>
-            <button style={styles.mapBtn} onClick={() => setIsMapModalOpen(true)}>🔗 Map to Menu</button>
-            <button style={styles.deleteBtn} onClick={handleDeleteSelected}>🗑️ Delete</button>
+        <div className="gl-floating">
+          <span className="gl-floating-text">{safeSelectedIds.length} image selected</span>
+          <div className="gl-floating-buttons">
+            <button className="gl-clear-btn" onClick={() => setSelectedImageIds([])}>✕ Clear</button>
+            <button className="gl-map-btn" onClick={() => setIsMapModalOpen(true)}>🔗 Map to Menu</button>
+            <button className="gl-delete-btn" onClick={handleDeleteSelected}>🗑️ Delete</button>
           </div>
         </div>
       )}
 
       {/* Upload Modal */}
       {isUploadModalOpen && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
-            <div style={styles.modalHeader}>
+        <div className="gl-overlay">
+          <div className="gl-modal">
+            <div className="gl-modal-header">
               <div>
-                <h3 style={styles.modalTitle}>Upload images</h3>
-                <p style={styles.modalSubtext}>PNG or JPEG, up to 5MB each and 10 at a time.</p>
+                <h3 className="gl-modal-title">Upload images</h3>
+                <p className="gl-modal-sub">PNG or JPEG, up to 5MB each and 10 at a time.</p>
               </div>
-              <button style={styles.closeBtn} onClick={() => setIsUploadModalOpen(false)}>✕</button>
+              <button className="gl-close-btn" onClick={() => setIsUploadModalOpen(false)}>✕</button>
             </div>
             
-            <div style={styles.dropZone}>
+            <div className="gl-dropzone">
               <input
                 type="file"
                 multiple
                 accept="image/png, image/jpeg"
                 onChange={(e) => setUploadFiles(Array.from(e.target.files || []))}
                 id="fileInputHidden"
-                style={{ display: 'none' }}
+                className="gl-hidden-input"
               />
-              <label htmlFor="fileInputHidden" style={styles.dropLabel}>
-                <div style={{ fontSize: '24px' }}>⬆</div>
+              <label htmlFor="fileInputHidden" className="gl-drop-label">
+                <div className="gl-drop-icon">⬆</div>
                 <strong>Drop images here, or click to browse</strong>
-                <span style={{ fontSize: '12px', color: '#6b7280' }}>{uploadFiles.length}/10 selected</span>
+                <span className="gl-drop-count">{uploadFiles.length}/10 selected</span>
               </label>
             </div>
 
-            <div style={styles.modalFooter}>
-              <button style={styles.secondaryBtn} onClick={() => setIsUploadModalOpen(false)}>Cancel</button>
+            <div className="gl-modal-footer">
+              <button className="gl-secondary-btn" onClick={() => setIsUploadModalOpen(false)}>Cancel</button>
               <button
-                style={{ ...styles.primaryBtn, opacity: uploadFiles.length === 0 ? 0.5 : 1 }}
+                className="gl-primary-btn"
                 onClick={handleUploadSubmit}
                 disabled={uploading || uploadFiles.length === 0}
               >
@@ -307,42 +305,42 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
 
       {/* Map to Menu Modal */}
       {isMapModalOpen && (
-        <div style={styles.modalOverlay}>
-          <div style={{ ...styles.modalContent, width: '640px' }}>
-            <div style={styles.modalHeader}>
+        <div className="gl-overlay">
+          <div className="gl-modal gl-modal-wide">
+            <div className="gl-modal-header">
               <div>
-                <h3 style={styles.modalTitle}>Map images to menu items</h3>
-                <p style={styles.modalSubtext}>Pick an image, then choose the menu items it should appear on.</p>
+                <h3 className="gl-modal-title">Map images to menu items</h3>
+                <p className="gl-modal-sub">Pick an image, then choose the menu items it should appear on.</p>
               </div>
-              <button style={styles.closeBtn} onClick={() => setIsMapModalOpen(false)}>✕</button>
+              <button className="gl-close-btn" onClick={() => setIsMapModalOpen(false)}>✕</button>
             </div>
 
-            <div style={styles.previewCard}>
+            <div className="gl-preview">
               {(() => {
                 const rawPrevUrl = activeImage.fileUrl || activeImage.file_url || '';
                 const prevUrl = rawPrevUrl.startsWith('http') ? rawPrevUrl : `${API_BASE_URL}${rawPrevUrl.startsWith('/') ? '' : '/'}${rawPrevUrl}`;
-                return <img src={prevUrl} alt="preview" style={styles.previewImg} onError={(e) => { e.target.src = 'https://placehold.co/50x50?text=Img'; }} />;
+                return <img src={prevUrl} alt="preview" className="gl-preview-img" onError={(e) => { e.target.src = 'https://placehold.co/50x50?text=Img'; }} />;
               })()}
-              <div>
-                <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{activeImage.fileName || activeImage.file_name}</strong>
-                <span style={{ fontSize: '12px', color: '#6b7280' }}>
+              <div className="gl-preview-text">
+                <strong className="gl-preview-name">{activeImage.fileName || activeImage.file_name}</strong>
+                <span className="gl-preview-meta">
                   {safeSelectedMenuIds.length === 0 ? 'No menu items selected' : `${safeSelectedMenuIds.length} menu items selected`}
                 </span>
               </div>
             </div>
 
-            <div style={styles.menuSearchBox}>
+            <div className="gl-menu-search">
               <span>🔍</span>
               <input
                 type="text"
                 placeholder="Search menu items..."
                 value={menuSearch}
                 onChange={(e) => setMenuSearch(e.target.value)}
-                style={styles.searchInput}
+                className="gl-search-input"
               />
             </div>
 
-            <div style={styles.checklistContainer}>
+            <div className="gl-checklist">
               {safeMenuItems
                 .filter(item => {
                   const itemName = item?.itemName || item?.name || item?.dishName || item?.dish_name || '';
@@ -355,10 +353,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
                   return (
                     <label
                       key={itemId}
-                      style={{
-                        ...styles.checkRow,
-                        background: isChecked ? '#fdf2f2' : 'transparent'
-                      }}
+                      className={`gl-check-row ${isChecked ? 'is-checked' : ''}`}
                     >
                       <input
                         type="checkbox"
@@ -371,21 +366,21 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
                               : [...safePrev, itemId];
                           });
                         }}
-                        style={{ width: '16px', height: 16, accentColor: '#ff5a5f' }}
+                        className="gl-check-box"
                       />
-                      <span style={{ fontSize: '13px', color: '#1f2937' }}>{itemName}</span>
+                      <span className="gl-check-name">{itemName}</span>
                     </label>
                   );
                 })}
             </div>
 
-            <div style={styles.modalFooter}>
-              <span style={{ fontSize: '13px', color: '#6b7280' }}>
+            <div className="gl-modal-footer">
+              <span className="gl-footer-note">
                 {safeSelectedMenuIds.length === 0 ? 'Nothing to map yet' : `${safeSelectedMenuIds.length} mapped`}
               </span>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button style={styles.secondaryBtn} onClick={() => setIsMapModalOpen(false)}>Cancel</button>
-                <button style={styles.primaryBtn} onClick={handleMapSubmit}>Map Images</button>
+              <div className="gl-footer-btns">
+                <button className="gl-secondary-btn" onClick={() => setIsMapModalOpen(false)}>Cancel</button>
+                <button className="gl-primary-btn" onClick={handleMapSubmit}>Map Images</button>
               </div>
             </div>
           </div>
@@ -395,51 +390,509 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
   );
 }
 
-const styles = {
-  container: { padding: '24px', background: '#f8faf9', minHeight: '100vh', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
-  titleArea: { display: 'flex', alignItems: 'center', gap: '12px' },
-  title: { margin: 0, fontSize: '24px', fontWeight: 700, color: '#111827' },
-  badge: { background: '#05c98a', color: '#003d2b', padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 750 },
-  uploadBtn: { background: '#ff5a5f', color: 'white', border: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: 650, cursor: 'pointer' },
-  toolbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '14px 20px', border: '1px solid #e5e7eb', borderRadius: '10px', marginBottom: '20px' },
-  searchBox: { display: 'flex', alignItems: 'center', gap: '10px', width: '450px', border: '1px solid #d1d5db', borderRadius: '8px', padding: '8px 12px', background: '#fff' },
-  searchInput: { border: 'none', outline: 'none', width: '100%', fontSize: '13px' },
-  toolbarRight: { display: 'flex', alignItems: 'center', gap: '20px', color: '#6b7280', fontSize: '13px' },
-  libraryInfo: { color: '#6b7280' },
-  selectAllLabel: { display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 500 },
-  checkboxAccent: { accentColor: '#05c98a' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px', paddingBottom: '80px' },
-  card: { background: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.15s ease', position: 'relative' },
-  cardImageWrapper: { position: 'relative', height: '180px', background: '#f3f4f6' },
-  cardImg: { width: '100%', height: '100%', objectFit: 'cover' },
-  cardCheckbox: { position: 'absolute', top: '10px', left: '10px', width: '18px', height: '18px', accentColor: '#05c98a', cursor: 'pointer' },
-  cardFooter: { padding: '12px' },
-  cardTitle: { display: 'block', fontSize: '13px', color: '#1f2937', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  cardSubtitle: { display: 'block', fontSize: '11px', color: '#9ca3af', marginTop: '2px' },
-  mappedBadgeContainer: { display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px', marginBottom: '4px' },
-  mappedBadge: { background: '#ecfdf5', color: '#047857', border: '1px solid #10b981', padding: '2px 6px', borderRadius: '6px', fontSize: '10px', fontWeight: '800' },
-  cardDate: { display: 'block', fontSize: '11px', color: '#9ca3af', marginTop: '2px' },
-  floatingBar: { position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', background: 'white', border: '1px solid #e5e7eb', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)', padding: '12px 24px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '30px', zIndex: 100 },
-  floatingText: { fontWeight: 600, color: '#111827', fontSize: '14px' },
-  floatingButtons: { display: 'flex', alignItems: 'center', gap: '12px' },
-  clearBtn: { background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', fontWeight: 500 },
-  mapBtn: { background: 'white', border: '1px solid #d1d5db', color: '#1f2937', padding: '8px 14px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
-  deleteBtn: { background: '#ff5a5f', border: 'none', color: 'white', padding: '8px 14px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0, 0, 0, 0.5)', display: 'grid', placeItems: 'center', zIndex: 1000 },
-  modalContent: { background: 'white', width: 'min(600px, 92%)', borderRadius: '16px', padding: '28px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', boxSizing: 'border-box' },
-  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' },
-  modalTitle: { margin: '0 0 4px 0', fontSize: '18px', color: '#111827' },
-  modalSubtext: { fontSize: '13px', color: '#6b7280', margin: 0 },
-  closeBtn: { background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6b7280' },
-  dropZone: { border: '2px dashed #d1d5db', borderRadius: '12px', padding: '40px 20px', textAlign: 'center', background: '#fafafa', cursor: 'pointer', marginBottom: '16px' },
-  dropLabel: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#4b5563', fontSize: '13px' },
-  modalFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e5e7eb', paddingTop: '16px' },
-  secondaryBtn: { background: 'white', border: '1px solid #d1d5db', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 },
-  primaryBtn: { background: '#ff5a5f', color: 'white', border: 'none', padding: '8px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 },
-  previewCard: { display: 'flex', alignItems: 'center', gap: '14px', border: '1px solid #e5e7eb', padding: '12px', borderRadius: '10px', marginBottom: '16px', background: '#f9fafb' },
-  previewImg: { width: '50px', height: '50px', borderRadius: '6px', objectFit: 'cover' },
-  menuSearchBox: { display: 'flex', alignItems: 'center', gap: '10px', border: '1px solid #ff5a5f', borderRadius: '8px', padding: '8px 12px', marginBottom: '16px' },
-  checklistContainer: { maxHeight: '240px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '16px' },
-  checkRow: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }
-};
+/* ---------- Styles (frontend only) ---------- */
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap');
+
+.gl {
+  --ink: #111827;
+  --ink-soft: #374151;
+  --ink-faint: #6b7280;
+  --line: #e5e7eb;
+  --surface: #ffffff;
+  --canvas: #f3f6f5;
+  --green: #05c98a;
+  --green-dark: #047857;
+  --coral: #ff5a5f;
+  --coral-dark: #e8434a;
+
+  padding: clamp(16px, 3vw, 32px);
+  min-height: 100vh;
+  box-sizing: border-box;
+  font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px;
+  color: var(--ink);
+  background:
+    radial-gradient(900px 420px at 100% -10%, rgba(5, 201, 138, 0.1), transparent 60%),
+    radial-gradient(700px 380px at -10% 0%, rgba(255, 90, 95, 0.07), transparent 60%),
+    var(--canvas);
+}
+.gl *, .gl *::before, .gl *::after { box-sizing: border-box; }
+
+/* ---------- Header ---------- */
+.gl-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+  animation: gl-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.gl-title-area { display: flex; align-items: center; gap: 14px; }
+.gl-title { margin: 0; font-size: clamp(26px, 3.4vw, 34px); font-weight: 800; letter-spacing: -0.03em; color: var(--ink); }
+.gl-badge {
+  background: var(--green);
+  color: #003d2b;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(5, 201, 138, 0.3);
+}
+
+.gl-upload-btn {
+  font-family: inherit;
+  background: linear-gradient(135deg, #ff6b6f, #f0434a);
+  color: #fff;
+  border: none;
+  padding: 14px 24px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(255, 90, 95, 0.32);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.gl-upload-btn:hover { transform: translateY(-3px); filter: brightness(1.06); box-shadow: 0 14px 28px rgba(255, 90, 95, 0.4); }
+.gl-upload-btn:active { transform: translateY(0) scale(0.97); }
+
+/* ---------- Toolbar ---------- */
+.gl-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: var(--surface);
+  padding: 16px 22px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  margin-bottom: 26px;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 10px 26px -14px rgba(17, 24, 39, 0.12);
+  animation: gl-rise 0.5s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.gl-search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  max-width: 460px;
+  min-width: 240px;
+  border: 2px solid #d5dbe3;
+  border-radius: 12px;
+  padding: 11px 16px;
+  background: #f9fafb;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.gl-search-box:hover { border-color: #b8c1cd; }
+.gl-search-box:focus-within { border-color: var(--green); background: #fff; box-shadow: 0 0 0 4px rgba(5, 201, 138, 0.18); }
+.gl-search-input {
+  font-family: inherit;
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  background: transparent;
+}
+.gl-search-input::placeholder { color: #9ca3af; font-weight: 600; }
+
+.gl-toolbar-right { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; color: var(--ink-faint); font-size: 14px; font-weight: 700; }
+.gl-select-all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 800;
+  color: var(--ink-soft);
+  padding: 8px 14px;
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+.gl-select-all:hover { background: #ecfdf5; }
+.gl-check-accent { width: 18px; height: 18px; accent-color: var(--green); cursor: pointer; }
+
+/* ---------- Grid ---------- */
+.gl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 24px;
+  padding-bottom: 110px;
+}
+
+.gl-card {
+  position: relative;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 10px 24px -14px rgba(17, 24, 39, 0.16);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  animation: gl-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.gl-card:nth-child(2) { animation-delay: 0.04s; }
+.gl-card:nth-child(3) { animation-delay: 0.08s; }
+.gl-card:nth-child(4) { animation-delay: 0.12s; }
+.gl-card:nth-child(5) { animation-delay: 0.16s; }
+.gl-card:nth-child(6) { animation-delay: 0.2s; }
+.gl-card:nth-child(n+7) { animation-delay: 0.24s; }
+
+.gl-card:hover {
+  transform: translateY(-6px);
+  border-color: #c9d3de;
+  box-shadow: 0 2px 4px rgba(17, 24, 39, 0.05), 0 22px 40px -16px rgba(17, 24, 39, 0.26);
+}
+.gl-card.is-selected {
+  border-color: var(--green);
+  box-shadow: 0 0 0 4px rgba(5, 201, 138, 0.22), 0 18px 36px -16px rgba(5, 201, 138, 0.45);
+}
+
+.gl-card-img-wrap { position: relative; height: 190px; background: #eef1f4; overflow: hidden; }
+.gl-card-img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.5s ease; }
+.gl-card:hover .gl-card-img { transform: scale(1.08); }
+.gl-card-img-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(17, 24, 39, 0.35), transparent 45%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+.gl-card:hover .gl-card-img-wrap::after,
+.gl-card.is-selected .gl-card-img-wrap::after { opacity: 1; }
+
+.gl-card-checkbox {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  accent-color: var(--green);
+  cursor: pointer;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  transition: transform 0.2s ease;
+}
+.gl-card-checkbox:hover { transform: scale(1.15); }
+
+.gl-card-footer { padding: 16px; }
+.gl-card-title { display: block; font-size: 15px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gl-card-subtitle { display: block; font-size: 13px; font-weight: 600; color: #8b95a3; margin-top: 4px; }
+.gl-card-date { display: block; font-size: 13px; font-weight: 600; color: #8b95a3; margin-top: 4px; }
+.gl-card-date:empty { display: none; }
+
+.gl-mapped-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 6px; }
+.gl-mapped-badge {
+  background: #ecfdf5;
+  color: var(--green-dark);
+  border: 1.5px solid #10b981;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+.gl-mapped-badge:hover { background: #10b981; color: #fff; transform: translateY(-1px); }
+
+/* ---------- Floating action bar ---------- */
+.gl-floating {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  box-shadow: 0 18px 44px rgba(17, 24, 39, 0.22);
+  padding: 14px 24px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  z-index: 100;
+  max-width: calc(100vw - 24px);
+  animation: gl-bar-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes gl-bar-in {
+  from { opacity: 0; transform: translate(-50%, 24px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+.gl-floating-text { font-weight: 800; color: var(--ink); font-size: 16px; white-space: nowrap; }
+.gl-floating-buttons { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.gl-clear-btn {
+  font-family: inherit;
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.gl-clear-btn:hover { background: #f3f4f6; color: var(--ink); }
+
+.gl-map-btn {
+  font-family: inherit;
+  background: #fff;
+  border: 2px solid #d5dbe3;
+  color: var(--ink);
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.gl-map-btn:hover { transform: translateY(-2px); border-color: var(--green); background: #ecfdf5; box-shadow: 0 8px 18px rgba(5, 201, 138, 0.22); }
+.gl-map-btn:active { transform: translateY(0) scale(0.97); }
+
+.gl-delete-btn {
+  font-family: inherit;
+  background: linear-gradient(135deg, #ff6b6f, #f0434a);
+  border: none;
+  color: #fff;
+  padding: 11px 18px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(255, 90, 95, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.gl-delete-btn:hover { transform: translateY(-2px); filter: brightness(1.07); box-shadow: 0 12px 22px rgba(255, 90, 95, 0.4); }
+.gl-delete-btn:active { transform: translateY(0) scale(0.97); }
+
+/* ---------- Modals ---------- */
+.gl-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 1000;
+  animation: gl-fade 0.25s ease both;
+}
+.gl-modal {
+  background: #fff;
+  width: min(600px, 100%);
+  max-height: 92vh;
+  overflow-y: auto;
+  border-radius: 24px;
+  padding: clamp(20px, 3vw, 32px);
+  box-shadow: 0 30px 64px rgba(0, 0, 0, 0.3);
+  animation: gl-pop 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.gl-modal-wide { width: min(680px, 100%); }
+
+.gl-modal-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+.gl-modal-title { margin: 0 0 6px 0; font-size: 22px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+.gl-modal-sub { font-size: 14px; font-weight: 600; color: var(--ink-faint); margin: 0; line-height: 1.45; }
+
+.gl-close-btn {
+  font-family: inherit;
+  background: #f3f4f6;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+  color: var(--ink-faint);
+  flex-shrink: 0;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.25s ease;
+}
+.gl-close-btn:hover { background: #fee2e2; color: #dc2626; transform: rotate(90deg); }
+
+/* Upload dropzone */
+.gl-dropzone {
+  border: 2.5px dashed #c5cdd8;
+  border-radius: 18px;
+  background: #f9fafb;
+  cursor: pointer;
+  margin-bottom: 20px;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+.gl-dropzone:hover { border-color: var(--green); background: #f0fdf9; transform: scale(1.01); }
+.gl-hidden-input { display: none; }
+.gl-drop-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: 16px;
+  padding: 48px 20px;
+  text-align: center;
+}
+.gl-drop-icon {
+  font-size: 30px;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #d1fae5;
+  color: var(--green-dark);
+  animation: gl-float 2.4s ease-in-out infinite;
+}
+.gl-drop-count { font-size: 14px; color: var(--ink-faint); font-weight: 700; }
+
+@keyframes gl-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+.gl-modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+.gl-footer-note { font-size: 14px; color: var(--ink-faint); font-weight: 700; }
+.gl-footer-btns { display: flex; gap: 10px; }
+
+.gl-secondary-btn {
+  font-family: inherit;
+  background: #fff;
+  border: 2px solid #d5dbe3;
+  padding: 11px 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--ink-soft);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.gl-secondary-btn:hover { transform: translateY(-2px); border-color: #aab4c1; background: #f9fafb; }
+.gl-secondary-btn:active { transform: translateY(0) scale(0.97); }
+
+.gl-primary-btn {
+  font-family: inherit;
+  background: linear-gradient(135deg, #ff6b6f, #f0434a);
+  color: #fff;
+  border: none;
+  padding: 12px 26px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 15px;
+  box-shadow: 0 6px 16px rgba(255, 90, 95, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease, opacity 0.2s ease;
+}
+.gl-primary-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.07); box-shadow: 0 12px 24px rgba(255, 90, 95, 0.4); }
+.gl-primary-btn:active:not(:disabled) { transform: translateY(0) scale(0.97); }
+.gl-primary-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+
+/* Map modal */
+.gl-preview {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1.5px solid var(--line);
+  padding: 14px;
+  border-radius: 16px;
+  margin-bottom: 18px;
+  background: #f9fafb;
+}
+.gl-preview-img { width: 64px; height: 64px; border-radius: 12px; object-fit: cover; box-shadow: 0 4px 12px rgba(17, 24, 39, 0.15); flex-shrink: 0; }
+.gl-preview-text { min-width: 0; }
+.gl-preview-name { display: block; font-size: 16px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gl-preview-meta { font-size: 14px; font-weight: 600; color: var(--ink-faint); }
+
+.gl-menu-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 2px solid var(--coral);
+  border-radius: 12px;
+  padding: 11px 16px;
+  margin-bottom: 18px;
+  transition: box-shadow 0.2s ease;
+}
+.gl-menu-search:focus-within { box-shadow: 0 0 0 4px rgba(255, 90, 95, 0.18); }
+
+.gl-checklist {
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  margin-bottom: 20px;
+}
+.gl-check-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #f1f3f5;
+  cursor: pointer;
+  background: transparent;
+  transition: background 0.18s ease, padding-left 0.18s ease;
+}
+.gl-check-row:last-child { border-bottom: none; }
+.gl-check-row:hover { background: #f9fafb; padding-left: 24px; }
+.gl-check-row.is-checked { background: #fff1f1; box-shadow: inset 4px 0 0 var(--coral); }
+.gl-check-box { width: 18px; height: 18px; accent-color: var(--coral); cursor: pointer; flex-shrink: 0; }
+.gl-check-name { font-size: 15px; font-weight: 700; color: #1f2937; }
+
+/* ---------- Animations ---------- */
+@keyframes gl-rise {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes gl-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes gl-pop {
+  from { opacity: 0; transform: translateY(18px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---------- Keyboard focus ---------- */
+.gl-upload-btn:focus-visible,
+.gl-clear-btn:focus-visible,
+.gl-map-btn:focus-visible,
+.gl-delete-btn:focus-visible,
+.gl-close-btn:focus-visible,
+.gl-secondary-btn:focus-visible,
+.gl-primary-btn:focus-visible {
+  outline: 3px solid rgba(5, 201, 138, 0.55);
+  outline-offset: 2px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 720px) {
+  .gl-upload-btn { width: 100%; }
+  .gl-search-box { max-width: none; width: 100%; }
+  .gl-toolbar-right { width: 100%; justify-content: space-between; }
+  .gl-grid { gap: 16px; }
+  .gl-card-img-wrap { height: 170px; }
+  .gl-floating { flex-direction: column; gap: 10px; width: calc(100vw - 24px); padding: 14px 16px; }
+  .gl-floating-buttons { width: 100%; justify-content: space-between; }
+  .gl-modal-footer { flex-direction: column; align-items: stretch; }
+  .gl-footer-btns { justify-content: flex-end; }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .gl *, .gl *::before, .gl *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+`;
