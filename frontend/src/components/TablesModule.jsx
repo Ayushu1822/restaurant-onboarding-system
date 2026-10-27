@@ -404,6 +404,62 @@ export default function TablesModule() {
     });
   };
 
+  // 🖨️ Bulletproof Print / Download Handler using Isolated Print Window
+  const handlePrintReceipt = () => {
+    if (!completedOrderReceipt) return;
+    
+    const printWindow = window.open('', '_blank', 'width=450,height=600');
+    if (!printWindow) {
+      alert('Popup blocked! Please allow popups for printing.');
+      return;
+    }
+
+    const itemsHtml = completedOrderReceipt.items.map(it => `
+      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+        <span>${it.qty}x ${it.name}</span>
+        <span>₹${(it.price * it.qty).toFixed(2)}</span>
+      </div>
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Receipt - ${completedOrderReceipt.orderId}</title>
+          <style>
+            body { font-family: monospace; padding: 20px; color: #000; background: #fff; }
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+            .line { border-top: 1px dashed #000; margin: 10px 0; }
+            .flex { display: flex; justify-content: space-between; }
+          </style>
+        </head>
+        <body>
+          <div class="center bold" style="font-size: 16px;">RESTAURANT KOT & BILL</div>
+          <div class="center" style="font-size: 11px; color: #555; margin-bottom: 10px;">${completedOrderReceipt.timestamp}</div>
+          <div><strong>Order ID:</strong> ${completedOrderReceipt.orderId}</div>
+          <div><strong>Table:</strong> ${completedOrderReceipt.tableName} (${completedOrderReceipt.areaName})</div>
+          <div><strong>Captain:</strong> ${completedOrderReceipt.captain}</div>
+          <div><strong>Type:</strong> ${completedOrderReceipt.orderType}</div>
+          <div><strong>Payment:</strong> ${completedOrderReceipt.paymentMode}</div>
+          <div class="line"></div>
+          <div class="bold" style="margin-bottom: 6px;">ITEMS:</div>
+          ${itemsHtml}
+          <div class="line"></div>
+          <div class="flex"><span>Subtotal:</span><span>₹${completedOrderReceipt.subtotal.toFixed(2)}</span></div>
+          <div class="flex"><span>Tax:</span><span>₹${completedOrderReceipt.totalTax.toFixed(2)}</span></div>
+          <div class="flex bold" style="font-size: 14px; margin-top: 6px;"><span>Total:</span><span>₹${completedOrderReceipt.totalAmount}</span></div>
+          <script>
+            window.onload = function() {
+              window.print();
+              window.close();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const showMsg = (text, type) => {
     setMessage({ text, type });
     setTimeout(() => setMessage({ text: '', type: '' }), 4000);
@@ -929,11 +985,7 @@ export default function TablesModule() {
 
             <div style={{ display: 'flex', gap: '10px' }}>
               <button 
-                onClick={() => {
-                  setTimeout(() => {
-                    window.print();
-                  }, 150);
-                }}
+                onClick={handlePrintReceipt}
                 style={{ flex: 1, padding: '12px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}
               >
                 🖨️ Print / Download Receipt
