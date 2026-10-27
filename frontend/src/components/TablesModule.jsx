@@ -482,22 +482,24 @@ export default function TablesModule() {
     const totalAmount = Math.round(subtotal + totalTaxAmount);
 
     return (
-      <div style={styles.inlinePOSWrapper}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', background: '#0f172a', color: '#fff', borderRadius: '14px 14px 0 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '950' }}>Table {activeOrderTable.name} ({activeOrderTable.areaName}) POS Terminal</h3>
-            <span style={{ background: '#059669', color: '#fff', padding: '5px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '950' }}>🧑‍✈️ {activeOrderTable.captain || 'Unassigned'}</span>
+      <div className="tb-pos">
+        <style>{css}</style>
+
+        <div className="tb-pos-header">
+          <div className="tb-pos-header-left">
+            <h3 className="tb-pos-title">Table {activeOrderTable.name} ({activeOrderTable.areaName}) POS Terminal</h3>
+            <span className="tb-pos-captain">🧑‍✈️ {activeOrderTable.captain || 'Unassigned'}</span>
           </div>
-          <button onClick={() => setActiveOrderTable(null)} style={{ background: 'rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.3)', color: '#fff', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: '950' }}>✕ Exit POS</button>
+          <button onClick={() => setActiveOrderTable(null)} className="tb-exit-btn">✕ Exit POS</button>
         </div>
 
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#f8fafc', borderRadius: '0 0 14px 14px' }}>
+        <div className="tb-pos-body">
           
-          <div style={{ flex: 1.4, padding: '24px', overflowY: 'auto', borderRight: '2px solid #e2e8f0' }}>
-            <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '16px', letterSpacing: '0.08em' }}>LIVE RESTAURANT MENU (DATABASE & TAX-MAPPED)</h4>
+          <div className="tb-menu-panel">
+            <h4 className="tb-panel-title">LIVE RESTAURANT MENU (DATABASE & TAX-MAPPED)</h4>
             
             {menuItems.length === 0 ? (
-              <div style={{ textAlign: 'center', color: '#94a3b8', padding: '60px', background: '#fff', borderRadius: '16px', border: '2px dashed #cbd5e1', fontWeight: '800' }}>
+              <div className="tb-empty">
                 No menu items found. Please add items via Menu Management module first.
               </div>
             ) : (
@@ -506,13 +508,12 @@ export default function TablesModule() {
                 if (catItems.length === 0) return null;
 
                 return (
-                  <div key={category} style={{ marginBottom: '24px' }}>
-                    <div style={{ fontSize: '13px', fontWeight: '950', color: '#047857', marginBottom: '12px', background: '#ecfdf5', padding: '6px 12px', borderRadius: '8px', display: 'inline-block', border: '1.5px solid #10b981' }}>
+                  <div key={category} className="tb-cat-block">
+                    <div className="tb-cat">
                       📁 {category.toUpperCase()}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '14px' }}>
+                    <div className="tb-food-grid">
                       {catItems.map(food => {
-                        const isMenuHovered = hoveredMenuId === food.id;
                         return (
                           <div 
                             key={food.id}
@@ -526,18 +527,12 @@ export default function TablesModule() {
                             }}
                             onMouseEnter={() => setHoveredMenuId(food.id)}
                             onMouseLeave={() => setHoveredMenuId(null)}
-                            style={{ 
-                              background: '#fff', padding: '16px', borderRadius: '16px', 
-                              border: `2px solid ${isMenuHovered ? '#059669' : '#e2e8f0'}`, 
-                              cursor: 'pointer', transition: 'all 0.2s ease', 
-                              boxShadow: isMenuHovered ? '0 10px 20px -5px rgba(5,150,105,0.15)' : '0 2px 4px rgba(0,0,0,0.02)',
-                              transform: isMenuHovered ? 'translateY(-2px)' : 'translateY(0)'
-                            }}
+                            className="tb-food"
                           >
-                            <div style={{ fontSize: '14px', fontWeight: '950', color: '#1e293b', marginBottom: '6px' }}>{food.name}</div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div style={{ fontSize: '15px', fontWeight: '950', color: '#059669' }}>₹{food.price}</div>
-                              <span style={{ fontSize: '10px', fontWeight: '900', background: '#f1f5f9', color: '#475569', padding: '2px 6px', borderRadius: '6px' }}>🏷️ {food.taxGroup}</span>
+                            <div className="tb-food-name">{food.name}</div>
+                            <div className="tb-food-row">
+                              <div className="tb-food-price">₹{food.price}</div>
+                              <span className="tb-food-tax">🏷️ {food.taxGroup}</span>
                             </div>
                           </div>
                         );
@@ -549,23 +544,18 @@ export default function TablesModule() {
             )}
           </div>
 
-          <div style={{ width: '420px', background: '#fff', display: 'flex', flexDirection: 'column', padding: '24px', borderLeft: '2px solid #e2e8f0' }}>
-            <h4 style={{ fontSize: '12px', fontWeight: '950', color: '#64748b', marginBottom: '14px', letterSpacing: '0.08em' }}>ORDER RECEIPT & TAX BREAKDOWN</h4>
+          <div className="tb-cart-panel">
+            <h4 className="tb-panel-title">ORDER RECEIPT & TAX BREAKDOWN</h4>
             
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>ORDER TYPE</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="tb-block">
+              <label className="tb-label">ORDER TYPE</label>
+              <div className="tb-type-row">
                 {['Dine-In', 'Takeaway'].map(type => (
                   <button
                     key={type}
                     type="button"
                     onClick={() => setOrderType(type)}
-                    style={{
-                      flex: 1, padding: '10px',
-                      background: orderType === type ? '#059669' : '#f1f5f9',
-                      color: orderType === type ? '#fff' : '#334155',
-                      border: '2px solid #cbd5e1', borderRadius: '10px', fontWeight: '950', cursor: 'pointer'
-                    }}
+                    className={`tb-type-btn ${orderType === type ? 'is-active' : ''}`}
                   >
                     {type === 'Dine-In' ? '🍽️ Dine-In' : '🛍️ Takeaway'}
                   </button>
@@ -573,9 +563,9 @@ export default function TablesModule() {
               </div>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
+            <div className="tb-cart-list">
               {cartItems.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', padding: '40px 20px', background: '#f8fafc', borderRadius: '16px', border: '2px dashed #cbd5e1', fontWeight: '800' }}>
+                <div className="tb-cart-empty">
                   Cart is empty. Click items from menu.
                 </div>
               ) : (
@@ -583,18 +573,18 @@ export default function TablesModule() {
                   const itemTotal = item.price * item.qty;
                   const itemTax = (itemTotal * item.taxRate) / 100;
                   return (
-                    <div key={idx} style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: '12px', border: '1.5px solid #e2e8f0' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a' }}>{item.name}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <button onClick={() => setCartItems(cartItems.map((i, iIdx) => iIdx === idx && i.qty > 1 ? {...i, qty: i.qty - 1} : i))} style={styles.qtyBtn}>-</button>
-                          <span style={{ fontSize: '14px', fontWeight: '950', width: '22px', textAlign: 'center' }}>{item.qty}</span>
-                          <button onClick={() => setCartItems(cartItems.map((i, iIdx) => iIdx === idx ? {...i, qty: i.qty + 1} : i))} style={styles.qtyBtn}>+</button>
+                    <div key={idx} className="tb-cart-item">
+                      <div className="tb-cart-top">
+                        <div className="tb-cart-name">{item.name}</div>
+                        <div className="tb-qty-wrap">
+                          <button onClick={() => setCartItems(cartItems.map((i, iIdx) => iIdx === idx && i.qty > 1 ? {...i, qty: i.qty - 1} : i))} className="tb-qty-btn">-</button>
+                          <span className="tb-qty-num">{item.qty}</span>
+                          <button onClick={() => setCartItems(cartItems.map((i, iIdx) => iIdx === idx ? {...i, qty: i.qty + 1} : i))} className="tb-qty-btn">+</button>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
+                      <div className="tb-cart-bottom">
                         <span>₹{item.price} x {item.qty} = ₹{itemTotal}</span>
-                        <span style={{ color: '#059669', fontWeight: '950' }}>Tax ({item.taxGroup}): +₹{itemTax.toFixed(2)}</span>
+                        <span className="tb-cart-tax">Tax ({item.taxGroup}): +₹{itemTax.toFixed(2)}</span>
                       </div>
                     </div>
                   );
@@ -602,39 +592,39 @@ export default function TablesModule() {
               )}
             </div>
 
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>KITCHEN INSTRUCTION (KOT NOTE)</label>
+            <div className="tb-block">
+              <label className="tb-label">KITCHEN INSTRUCTION (KOT NOTE)</label>
               <input 
                 type="text" 
                 placeholder="e.g. Extra spicy..." 
                 value={orderNote} 
                 onChange={e => setOrderNote(e.target.value)} 
-                style={styles.input}
+                className="tb-input"
               />
             </div>
 
             {cartItems.length > 0 && (
-              <div style={{ borderTop: '2px solid #e2e8f0', paddingTop: '14px', marginBottom: '16px', fontSize: '13px', fontWeight: '900', color: '#334155' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <div className="tb-totals">
+                <div className="tb-totals-row">
                   <span>Subtotal:</span>
                   <span>₹{subtotal.toFixed(2)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', color: '#64748b' }}>
+                <div className="tb-totals-row is-faint">
                   <span>Total Tax Included:</span>
                   <span>₹{totalTaxAmount.toFixed(2)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: '950', color: '#0f172a', borderTop: '1.5px dashed #cbd5e1', paddingTop: '10px' }}>
+                <div className="tb-totals-grand">
                   <span>Total Amount:</span>
-                  <span style={{ color: '#059669' }}>₹{totalAmount}</span>
+                  <span className="tb-green">₹{totalAmount}</span>
                 </div>
               </div>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className="tb-pay-col">
               <button 
                 onClick={() => handleSendKOT('Cash/Online')}
                 disabled={cartItems.length === 0}
-                style={{ padding: '14px', background: cartItems.length === 0 ? '#cbd5e1' : '#059669', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '950', cursor: cartItems.length === 0 ? 'not-allowed' : 'pointer', fontSize: '14px' }}
+                className="tb-kot-btn"
               >
                 🖨️ Send KOT to Kitchen & Show Receipt
               </button>
@@ -645,7 +635,7 @@ export default function TablesModule() {
                   setShowSplitModal(true);
                 }}
                 disabled={cartItems.length === 0}
-                style={{ padding: '13px', background: cartItems.length === 0 ? '#f1f5f9' : '#2563eb', color: cartItems.length === 0 ? '#94a3b8' : '#fff', border: 'none', borderRadius: '12px', fontWeight: '950', cursor: cartItems.length === 0 ? 'not-allowed' : 'pointer' }}
+                className="tb-split-btn"
               >
                 💳 Split Cash & Online Checkout
               </button>
@@ -657,16 +647,16 @@ export default function TablesModule() {
 
         {/* 💳 CASH VS ONLINE SPLIT PAYMENT MODAL */}
         {showSplitModal && (
-          <div style={styles.modalOverlay} onClick={() => setShowSplitModal(false)}>
-            <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
-              <h3 style={{ margin: '0 0 16px 0', color: '#0f172a', fontWeight: '950' }}>Split Payment (Cash & Online)</h3>
-              <p style={{ fontSize: '13px', color: '#64748b', fontWeight: '700', marginBottom: '14px' }}>Total Bill Amount: <strong style={{ color: '#059669' }}>₹{totalAmount}</strong></p>
+          <div className="tb-overlay" onClick={() => setShowSplitModal(false)}>
+            <div className="tb-modal" onClick={e => e.stopPropagation()}>
+              <h3 className="tb-modal-title tb-mb">Split Payment (Cash & Online)</h3>
+              <p className="tb-split-total">Total Bill Amount: <strong className="tb-green">₹{totalAmount}</strong></p>
               
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>CASH AMOUNT (₹):</label>
+              <div className="tb-block">
+                <label className="tb-label">CASH AMOUNT (₹):</label>
                 <input 
                   type="number" 
-                  style={styles.input} 
+                  className="tb-input" 
                   placeholder="0" 
                   value={cashAmount}
                   onChange={e => {
@@ -678,11 +668,11 @@ export default function TablesModule() {
                 />
               </div>
 
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>ONLINE (UPI / CARD) AMOUNT (₹):</label>
+              <div className="tb-block tb-block-lg">
+                <label className="tb-label">ONLINE (UPI / CARD) AMOUNT (₹):</label>
                 <input 
                   type="number" 
-                  style={styles.input} 
+                  className="tb-input" 
                   placeholder="0" 
                   value={onlineAmount}
                   onChange={e => {
@@ -694,7 +684,7 @@ export default function TablesModule() {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div className="tb-btn-row">
                 <button 
                   onClick={() => {
                     const c = Number(cashAmount) || 0;
@@ -705,11 +695,11 @@ export default function TablesModule() {
                     handleSendKOT(`Cash: ₹${c} | Online: ₹${o}`);
                     setShowSplitModal(false);
                   }}
-                  style={{ flex: 1, padding: '12px', background: '#059669', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}
+                  className="tb-confirm-btn"
                 >
                   Confirm Split & Complete Settlement
                 </button>
-                <button onClick={() => setShowSplitModal(false)} style={{ padding: '12px 18px', background: '#f1f5f9', color: '#334155', border: '1.5px solid #cbd5e1', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}>Cancel</button>
+                <button onClick={() => setShowSplitModal(false)} className="tb-light-btn">Cancel</button>
               </div>
             </div>
           </div>
@@ -722,30 +712,35 @@ export default function TablesModule() {
   // STANDARD TABLES & AREAS FLOOR VIEW
   // ==========================================
   return (
-    <div style={styles.moduleWrapper}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
+    <div className="tb">
+      <style>{css}</style>
+
+      <div className="tb-header">
         <div>
-          <h2 style={{ fontSize: '24px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Restaurant Floor & Tables</h2>
-          <p style={{ color: '#64748b', fontSize: '13px', margin: '4px 0 0 0', fontWeight: '700' }}>
-            <strong style={{ color: '#059669' }}>{availableCount}/{allTablesList.length} tables open</strong> · Synced live with Settings
+          <h2 className="tb-title">Restaurant Floor & Tables</h2>
+          <p className="tb-subtitle">
+            <strong className="tb-green">{availableCount}/{allTablesList.length} tables open</strong> · Synced live with Settings
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button onClick={() => { setEditingCaptain(null); setNewCaptainForm({ name: '', phone: '' }); setShowCaptainManageModal(true); }} style={styles.captainManageBtn}>🧑‍✈️ Manage Captains ({captainsList.length})</button>
-          <button onClick={() => setShowAddModal(true)} style={styles.addBtn}>+ Add Table</button>
+        <div className="tb-header-btns">
+          <button onClick={() => { setEditingCaptain(null); setNewCaptainForm({ name: '', phone: '' }); setShowCaptainManageModal(true); }} className="tb-captain-btn">🧑‍✈️ Manage Captains ({captainsList.length})</button>
+          <button onClick={() => setShowAddModal(true)} className="tb-add-btn">+ Add Table</button>
         </div>
       </div>
 
       {message.text && (
-        <div style={{...styles.alert, backgroundColor: message.type === 'error' ? '#fef2f2' : '#f0fdf4', color: message.type === 'error' ? '#991b1b' : '#166534', borderColor: message.type === 'error' ? '#f87171' : '#4ade80'}}>
+        <div className={`tb-alert ${message.type === 'error' ? 'is-error' : 'is-success'}`}>
           {message.text}
         </div>
       )}
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: '#64748b', fontWeight: '700' }}>Loading tables from database...</div>
+        <div className="tb-center">
+          <span className="tb-spinner" aria-hidden="true" />
+          Loading tables from database...
+        </div>
       ) : areasAndTables.areas.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: '#64748b', fontWeight: '700', background: '#fff', borderRadius: '14px', border: '1.5px dashed #cbd5e1' }}>
+        <div className="tb-empty">
           No areas or tables found. Add them via Settings or click "+ Add Table" above!
         </div>
       ) : (
@@ -754,15 +749,14 @@ export default function TablesModule() {
           if (areaTables.length === 0) return null;
 
           return (
-            <div key={area.id} style={{ marginBottom: '28px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                <span style={{ fontSize: '11px', fontWeight: '950', color: '#047857', background: '#ecfdf5', padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #10b981', letterSpacing: '0.05em' }}>
+            <div key={area.id} className="tb-area">
+              <div className="tb-area-head">
+                <span className="tb-area-chip">
                   🪑 {area.name.toUpperCase()} SECTION
                 </span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px' }}>
+              <div className="tb-grid">
                 {areaTables.map(table => {
-                  const isHovered = hoveredId === table.id;
                   const status = table.status || 'Available';
                   const captainName = table.captain || 'Unassigned';
 
@@ -772,26 +766,20 @@ export default function TablesModule() {
                       onClick={() => setSelectedTable({ ...table, areaId: area.id, areaName: area.name })}
                       onMouseEnter={() => setHoveredId(table.id)}
                       onMouseLeave={() => setHoveredId(null)}
-                      style={{ 
-                        background: '#fff', borderRadius: '18px', padding: '22px', 
-                        border: `2.5px solid ${isHovered ? '#059669' : '#e2e8f0'}`, 
-                        boxShadow: isHovered ? '0 20px 30px -10px rgba(5, 150, 105, 0.2)' : '0 4px 6px -1px rgba(0,0,0,0.02)',
-                        transform: isHovered ? 'translateY(-4px)' : 'translateY(0)',
-                        cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '150px', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-                      }}
+                      className={`tb-table ${status === 'Available' ? 'is-available' : 'is-occupied'}`}
                     >
                       <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                          <span style={{ fontSize: '22px', fontWeight: '950', color: '#0f172a' }}>{table.name}</span>
-                          <span style={{ background: status === 'Available' ? '#d1fae5' : '#fee2e2', color: status === 'Available' ? '#065f46' : '#991b1b', padding: '5px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '950', textTransform: 'uppercase', border: `1px solid ${status === 'Available' ? '#34d399' : '#fca5a5'}` }}>{status}</span>
+                        <div className="tb-table-top">
+                          <span className="tb-table-name">{table.name}</span>
+                          <span className="tb-status">{status}</span>
                         </div>
-                        <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800', marginBottom: '10px' }}>👥 Capacity: {table.pax} pax</div>
-                        <div style={{ fontSize: '12px', color: captainName !== 'Unassigned' ? '#059669' : '#94a3b8', fontWeight: '900', background: captainName !== 'Unassigned' ? '#ecfdf5' : '#f8fafc', padding: '7px 12px', borderRadius: '10px', border: `1px solid ${captainName !== 'Unassigned' ? '#a7f3d0' : '#e2e8f0'}` }}>
+                        <div className="tb-capacity">👥 Capacity: {table.pax} pax</div>
+                        <div className={`tb-captain-pill ${captainName !== 'Unassigned' ? 'is-assigned' : ''}`}>
                           🧑‍✈️ Captain: {captainName}
                         </div>
                       </div>
                       
-                      <div style={{ width: '100%', textAlign: 'center', padding: '9px 0', background: isHovered ? '#059669' : '#f1f5f9', color: isHovered ? '#fff' : '#334155', borderRadius: '10px', fontWeight: '900', fontSize: '12px', marginTop: '14px', transition: 'all 0.2s' }}>
+                      <div className="tb-table-cta">
                         Manage Table ›
                       </div>
                     </div>
@@ -804,17 +792,17 @@ export default function TablesModule() {
       )}
 
       {selectedTable && (
-        <div style={styles.modalOverlay} onClick={() => setSelectedTable(null)}>
-          <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, color: '#0f172a', fontWeight: '950', fontSize: '18px' }}>Table {selectedTable.name} ({selectedTable.areaName}) Control</h3>
-              <button onClick={() => setSelectedTable(null)} style={styles.closeXBtn}>✕</button>
+        <div className="tb-overlay" onClick={() => setSelectedTable(null)}>
+          <div className="tb-modal" onClick={e => e.stopPropagation()}>
+            <div className="tb-modal-head">
+              <h3 className="tb-modal-title">Table {selectedTable.name} ({selectedTable.areaName}) Control</h3>
+              <button onClick={() => setSelectedTable(null)} className="tb-close-x">✕</button>
             </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>ASSIGN FLOOR CAPTAIN</label>
+            <div className="tb-block tb-block-lg">
+              <label className="tb-label">ASSIGN FLOOR CAPTAIN</label>
               <select 
-                style={styles.input}
+                className="tb-input tb-input-flush"
                 defaultValue={selectedTable.captain || 'Unassigned'}
                 onChange={(e) => handleUpdateTableStatusAndCaptain(selectedTable.areaId, selectedTable.id, selectedTable.status || 'Available', e.target.value, false)}
               >
@@ -825,85 +813,85 @@ export default function TablesModule() {
               </select>
             </div>
 
-            <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>ACTIONS</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+            <label className="tb-label">ACTIONS</label>
+            <div className="tb-action-col">
               <button 
                 onClick={() => handleUpdateTableStatusAndCaptain(selectedTable.areaId, selectedTable.id, 'Available', selectedTable.captain, false)} 
-                style={{ padding: '12px', background: '#d1fae5', color: '#065f46', border: '2px solid #10b981', borderRadius: '12px', fontWeight: '950', cursor: 'pointer' }}
+                className="tb-action-clear"
               >
                 🟢 Clear Table (Make Available)
               </button>
               <button 
                 onClick={() => handleUpdateTableStatusAndCaptain(selectedTable.areaId, selectedTable.id, 'Occupied', selectedTable.captain, true)} 
-                style={{ padding: '12px', background: '#eff6ff', color: '#1d4ed8', border: '2px solid #38bdf8', borderRadius: '12px', fontWeight: '950', cursor: 'pointer' }}
+                className="tb-action-open"
               >
                 🚀 Mark Occupied & Open POS Terminal
               </button>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1.5px solid #e2e8f0', paddingTop: '14px' }}>
-              <button onClick={() => handleDeleteTable(selectedTable.areaId, selectedTable.id)} style={{ background: '#fee2e2', color: '#991b1b', border: '2px solid #fca5a5', padding: '10px 16px', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}>Delete Table</button>
-              <button onClick={() => setSelectedTable(null)} style={{ background: '#f1f5f9', color: '#334155', border: '2px solid #cbd5e1', padding: '10px 18px', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}>Close</button>
+            <div className="tb-modal-foot">
+              <button onClick={() => handleDeleteTable(selectedTable.areaId, selectedTable.id)} className="tb-delete-btn">Delete Table</button>
+              <button onClick={() => setSelectedTable(null)} className="tb-close-btn">Close</button>
             </div>
           </div>
         </div>
       )}
 
       {showAddModal && (
-        <div style={styles.modalOverlay} onClick={() => setShowAddModal(false)}>
-          <form onSubmit={handleAddTable} style={styles.modalCard} onClick={e => e.stopPropagation()}>
-            <h3 style={{ margin: '0 0 16px 0', color: '#0f172a', fontWeight: '950' }}>Add New Table</h3>
+        <div className="tb-overlay" onClick={() => setShowAddModal(false)}>
+          <form onSubmit={handleAddTable} className="tb-modal" onClick={e => e.stopPropagation()}>
+            <h3 className="tb-modal-title tb-mb">Add New Table</h3>
             
-            <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>TABLE NAME / ID:</label>
-            <input style={styles.input} placeholder="e.g. T5" value={newTableForm.tableName} onChange={e => setNewTableForm({...newTableForm, tableName: e.target.value})} required />
+            <label className="tb-label">TABLE NAME / ID:</label>
+            <input className="tb-input" placeholder="e.g. T5" value={newTableForm.tableName} onChange={e => setNewTableForm({...newTableForm, tableName: e.target.value})} required />
             
-            <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>SECTION / AREA NAME:</label>
-            <input style={styles.input} placeholder="e.g. Main, Patio, Rooftop" value={newTableForm.areaName} onChange={e => setNewTableForm({...newTableForm, areaName: e.target.value})} required />
+            <label className="tb-label">SECTION / AREA NAME:</label>
+            <input className="tb-input" placeholder="e.g. Main, Patio, Rooftop" value={newTableForm.areaName} onChange={e => setNewTableForm({...newTableForm, areaName: e.target.value})} required />
 
-            <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '6px' }}>SEATS (PAX):</label>
-            <input type="number" style={styles.input} value={newTableForm.pax} onChange={e => setNewTableForm({...newTableForm, pax: e.target.value})} required />
+            <label className="tb-label">SEATS (PAX):</label>
+            <input type="number" className="tb-input" value={newTableForm.pax} onChange={e => setNewTableForm({...newTableForm, pax: e.target.value})} required />
 
-            <button type="submit" style={{ ...styles.addBtn, width: '100%', padding: '12px', marginTop: '10px' }}>Create Table</button>
+            <button type="submit" className="tb-add-btn tb-add-btn-full">Create Table</button>
           </form>
         </div>
       )}
 
       {/* MANAGE CAPTAINS MODAL */}
       {showCaptainManageModal && (
-        <div style={styles.modalOverlay} onClick={() => setShowCaptainManageModal(false)}>
-          <div style={{ ...styles.modalCard, width: '480px' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, color: '#0f172a', fontWeight: '950' }}>🧑‍✈️ Manage Floor Captains</h3>
-              <button onClick={() => setShowCaptainManageModal(false)} style={styles.closeXBtn}>✕</button>
+        <div className="tb-overlay" onClick={() => setShowCaptainManageModal(false)}>
+          <div className="tb-modal tb-modal-md" onClick={e => e.stopPropagation()}>
+            <div className="tb-modal-head">
+              <h3 className="tb-modal-title">🧑‍✈️ Manage Floor Captains</h3>
+              <button onClick={() => setShowCaptainManageModal(false)} className="tb-close-x">✕</button>
             </div>
 
-            <div style={{ maxHeight: '180px', overflowY: 'auto', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="tb-cap-list">
               {captainsList.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', padding: '20px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
+                <div className="tb-cap-empty">
                   No captains added yet. Add one below!
                 </div>
               ) : (
                 captainsList.map(c => {
                   const cId = c.id || c._id;
                   return (
-                    <div key={cId || c.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #e2e8f0' }}>
+                    <div key={cId || c.name} className="tb-cap-row">
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: '950', color: '#0f172a' }}>{c.name}</div>
-                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>📞 {c.phone || 'No phone'}</div>
+                        <div className="tb-cap-name">{c.name}</div>
+                        <div className="tb-cap-phone">📞 {c.phone || 'No phone'}</div>
                       </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div className="tb-cap-btns">
                         <button 
                           onClick={() => {
                             setEditingCaptain(c);
                             setNewCaptainForm({ name: c.name || '', phone: c.phone || '' });
                           }}
-                          style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #93c5fd', padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '950', cursor: 'pointer' }}
+                          className="tb-edit-btn"
                         >
                           Edit
                         </button>
                         <button 
                           onClick={() => handleDeleteCaptain(cId)}
-                          style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '950', cursor: 'pointer' }}
+                          className="tb-del-btn"
                         >
                           Delete
                         </button>
@@ -914,25 +902,25 @@ export default function TablesModule() {
               )}
             </div>
 
-            <form onSubmit={handleAddCaptain} style={{ borderTop: '2px solid #e2e8f0', paddingTop: '14px' }}>
-              <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '950', color: '#334155' }}>
+            <form onSubmit={handleAddCaptain} className="tb-cap-form">
+              <h4 className="tb-cap-form-title">
                 {editingCaptain ? `✏️ Edit Captain: ${editingCaptain.name}` : '+ Add New Captain'}
               </h4>
-              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>CAPTAIN NAME:</label>
-              <input style={styles.input} placeholder="e.g. Rahul Sharma" value={newCaptainForm.name} onChange={e => setNewCaptainForm({...newCaptainForm, name: e.target.value})} required />
+              <label className="tb-label">CAPTAIN NAME:</label>
+              <input className="tb-input" placeholder="e.g. Rahul Sharma" value={newCaptainForm.name} onChange={e => setNewCaptainForm({...newCaptainForm, name: e.target.value})} required />
               
-              <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>PHONE:</label>
-              <input style={styles.input} placeholder="10-digit mobile" value={newCaptainForm.phone} onChange={e => setNewCaptainForm({...newCaptainForm, phone: e.target.value})} />
+              <label className="tb-label">PHONE:</label>
+              <input className="tb-input" placeholder="10-digit mobile" value={newCaptainForm.phone} onChange={e => setNewCaptainForm({...newCaptainForm, phone: e.target.value})} />
               
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button type="submit" style={{ ...styles.captainManageBtn, flex: 1, padding: '11px', textAlign: 'center' }}>
+              <div className="tb-btn-row">
+                <button type="submit" className="tb-captain-btn tb-captain-save">
                   {editingCaptain ? 'Update Captain' : 'Save Captain'}
                 </button>
                 {editingCaptain && (
                   <button 
                     type="button" 
                     onClick={() => { setEditingCaptain(null); setNewCaptainForm({ name: '', phone: '' }); }}
-                    style={{ background: '#f1f5f9', color: '#334155', border: '1.5px solid #cbd5e1', padding: '11px 16px', borderRadius: '12px', fontWeight: '950', cursor: 'pointer' }}
+                    className="tb-light-btn"
                   >
                     Cancel
                   </button>
@@ -945,54 +933,54 @@ export default function TablesModule() {
 
       {/* 🧾 RECEIPT & PRINT PREVIEW MODAL */}
       {showReceiptModal && completedOrderReceipt && (
-        <div style={styles.modalOverlay} onClick={() => setShowReceiptModal(false)}>
-          <div style={{ ...styles.modalCard, width: '400px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ margin: 0, color: '#0f172a', fontWeight: '950' }}>🧾 Order Receipt & KOT</h3>
-              <button onClick={() => setShowReceiptModal(false)} style={styles.closeXBtn}>✕</button>
+        <div className="tb-overlay" onClick={() => setShowReceiptModal(false)}>
+          <div className="tb-modal tb-modal-sm" onClick={e => e.stopPropagation()}>
+            <div className="tb-modal-head">
+              <h3 className="tb-modal-title">🧾 Order Receipt & KOT</h3>
+              <button onClick={() => setShowReceiptModal(false)} className="tb-close-x">✕</button>
             </div>
 
-            <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1.5px solid #e2e8f0', textAlign: 'left', fontSize: '12px', fontFamily: 'monospace', marginBottom: '20px' }}>
-              <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>RESTAURANT KOT & BILL</div>
-              <div style={{ textAlign: 'center', color: '#64748b', marginBottom: '10px' }}>{completedOrderReceipt.timestamp}</div>
+            <div className="tb-receipt">
+              <div className="tb-receipt-title">RESTAURANT KOT & BILL</div>
+              <div className="tb-receipt-time">{completedOrderReceipt.timestamp}</div>
               <div><strong>Order ID:</strong> {completedOrderReceipt.orderId}</div>
               <div><strong>Table:</strong> {completedOrderReceipt.tableName} ({completedOrderReceipt.areaName})</div>
               <div><strong>Captain:</strong> {completedOrderReceipt.captain}</div>
               <div><strong>Type:</strong> {completedOrderReceipt.orderType}</div>
               <div><strong>Payment:</strong> {completedOrderReceipt.paymentMode}</div>
-              <div style={{ borderTop: '1px dashed #cbd5e1', margin: '10px 0' }}></div>
-              <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>ITEMS:</div>
+              <div className="tb-receipt-line"></div>
+              <div className="tb-receipt-bold">ITEMS:</div>
               {completedOrderReceipt.items.map((it, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <div key={idx} className="tb-receipt-row">
                   <span>{it.qty}x {it.name}</span>
                   <span>₹{it.price * it.qty}</span>
                 </div>
               ))}
-              <div style={{ borderTop: '1px dashed #cbd5e1', margin: '10px 0' }}></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div className="tb-receipt-line"></div>
+              <div className="tb-receipt-row">
                 <span>Subtotal:</span>
                 <span>₹{completedOrderReceipt.subtotal.toFixed(2)}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div className="tb-receipt-row">
                 <span>Tax:</span>
                 <span>₹{completedOrderReceipt.totalTax.toFixed(2)}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', marginTop: '6px' }}>
+              <div className="tb-receipt-row tb-receipt-total">
                 <span>Total:</span>
                 <span>₹{completedOrderReceipt.totalAmount}</span>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div className="tb-btn-row">
               <button 
                 onClick={handlePrintReceipt}
-                style={{ flex: 1, padding: '12px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}
+                className="tb-print-btn"
               >
                 🖨️ Print / Download Receipt
               </button>
               <button 
                 onClick={() => setShowReceiptModal(false)}
-                style={{ padding: '12px 18px', background: '#059669', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}
+                className="tb-done-btn"
               >
                 Done
               </button>
@@ -1004,15 +992,684 @@ export default function TablesModule() {
   );
 }
 
-const styles = {
-  moduleWrapper: { display: 'flex', flexDirection: 'column', flex: 1, height: '100%', padding: '24px', background: '#f8fafc', overflowY: 'auto', boxSizing: 'border-box', paddingBottom: '80px' },
-  inlinePOSWrapper: { display: 'flex', flexDirection: 'column', flex: 1, height: '100%', background: '#fff', borderRadius: '14px', border: '2.5px solid #cbd5e1', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', overflow: 'hidden', boxSizing: 'border-box' },
-  addBtn: { background: '#059669', color: '#fff', border: '2px solid #047857', padding: '11px 20px', borderRadius: '12px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(5,150,105,0.25)' },
-  captainManageBtn: { background: '#2563eb', color: '#fff', border: '2px solid #1d4ed8', padding: '11px 20px', borderRadius: '12px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(37,99,235,0.25)' },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-  modalCard: { width: '440px', backgroundColor: '#fff', padding: '26px', borderRadius: '22px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '2px solid #e2e8f0', textAlign: 'left' },
-  input: { width: '100%', padding: '11px 14px', borderRadius: '10px', border: '2.5px solid #cbd5e1', marginBottom: '16px', boxSizing: 'border-box', fontSize: '13px', outline: 'none', fontWeight: '800' },
-  qtyBtn: { width: '28px', height: '28px', background: '#e2e8f0', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontWeight: '950', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  closeXBtn: { background: 'none', border: 'none', fontSize: '18px', fontWeight: '950', color: '#64748b', cursor: 'pointer' },
-  alert: { padding: '12px 16px', borderRadius: '10px', marginBottom: '16px', fontSize: '13px', fontWeight: '900', border: '2px solid' }
-};
+/* ---------- Styles (frontend only) ---------- */
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap');
+
+.tb, .tb-pos {
+  --ink: #0f172a;
+  --ink-soft: #334155;
+  --ink-faint: #64748b;
+  --line: #e2e8f0;
+  --surface: #ffffff;
+  --canvas: #f3f5f9;
+  --green: #059669;
+  --green-dark: #047857;
+  --blue: #2563eb;
+  --red: #dc2626;
+
+  font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  color: var(--ink);
+  box-sizing: border-box;
+}
+.tb *, .tb *::before, .tb *::after,
+.tb-pos *, .tb-pos *::before, .tb-pos *::after { box-sizing: border-box; }
+
+.tb {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  padding: clamp(16px, 3vw, 32px);
+  padding-bottom: 80px;
+  overflow-y: auto;
+  background:
+    radial-gradient(900px 420px at 100% -10%, rgba(37, 99, 235, 0.08), transparent 60%),
+    radial-gradient(700px 380px at -10% 0%, rgba(5, 150, 105, 0.08), transparent 60%),
+    var(--canvas);
+}
+
+.tb-green { color: var(--green); }
+.tb-mb { margin-bottom: 16px !important; }
+
+/* ---------- Floor header ---------- */
+.tb-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 26px;
+  animation: tb-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.tb-title { margin: 0; font-size: clamp(26px, 3.4vw, 34px); font-weight: 800; letter-spacing: -0.03em; color: var(--ink); }
+.tb-subtitle { margin: 6px 0 0 0; color: var(--ink-faint); font-size: 15px; font-weight: 600; }
+.tb-header-btns { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.tb-add-btn,
+.tb-captain-btn {
+  font-family: inherit;
+  color: #fff;
+  border: none;
+  padding: 14px 24px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.tb-add-btn { background: linear-gradient(135deg, #10b981, #047857); box-shadow: 0 8px 20px rgba(5, 150, 105, 0.28); }
+.tb-captain-btn { background: linear-gradient(135deg, #3b82f6, #1d4ed8); box-shadow: 0 8px 20px rgba(37, 99, 235, 0.28); }
+.tb-add-btn:hover { transform: translateY(-3px); filter: brightness(1.06); box-shadow: 0 14px 28px rgba(5, 150, 105, 0.38); }
+.tb-captain-btn:hover { transform: translateY(-3px); filter: brightness(1.06); box-shadow: 0 14px 28px rgba(37, 99, 235, 0.38); }
+.tb-add-btn:active, .tb-captain-btn:active { transform: translateY(0) scale(0.97); }
+.tb-add-btn-full { width: 100%; padding: 15px; margin-top: 10px; font-size: 16px; }
+.tb-captain-save { flex: 1; padding: 14px; text-align: center; }
+
+/* Alerts */
+.tb-alert {
+  padding: 14px 18px;
+  border-radius: 14px;
+  margin-bottom: 20px;
+  font-size: 15px;
+  font-weight: 800;
+  border: 2px solid;
+  animation: tb-slide 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.tb-alert.is-success { background: #f0fdf4; color: #166534; border-color: #4ade80; }
+.tb-alert.is-error { background: #fef2f2; color: #991b1b; border-color: #f87171; }
+
+/* Loading / empty */
+.tb-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--ink-faint);
+  font-weight: 700;
+  font-size: 16px;
+}
+.tb-spinner {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid var(--line);
+  border-top-color: var(--blue);
+  animation: tb-spin 0.8s linear infinite;
+}
+.tb-empty {
+  text-align: center;
+  padding: 56px 24px;
+  color: var(--ink-faint);
+  font-weight: 700;
+  font-size: 16px;
+  background: #fff;
+  border-radius: 20px;
+  border: 2px dashed #cbd5e1;
+}
+
+/* ---------- Areas & tables ---------- */
+.tb-area { margin-bottom: 32px; animation: tb-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.tb-area-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.tb-area-chip {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--green-dark);
+  background: #ecfdf5;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1.5px solid #10b981;
+  letter-spacing: 0.03em;
+}
+
+.tb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 22px; }
+
+.tb-table {
+  --accent: #10b981;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 190px;
+  background: var(--surface);
+  border-radius: 22px;
+  padding: 24px 24px 22px 30px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 26px -14px rgba(15, 23, 42, 0.14);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  animation: tb-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.tb-table:nth-child(2) { animation-delay: 0.05s; }
+.tb-table:nth-child(3) { animation-delay: 0.1s; }
+.tb-table:nth-child(4) { animation-delay: 0.15s; }
+.tb-table:nth-child(5) { animation-delay: 0.2s; }
+.tb-table:nth-child(n+6) { animation-delay: 0.25s; }
+
+.tb-table.is-occupied { --accent: #ef4444; }
+.tb-table::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 7px;
+  background: var(--accent);
+  transition: width 0.25s ease;
+}
+.tb-table:hover {
+  transform: translateY(-6px);
+  border-color: var(--green);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05), 0 24px 44px -16px rgba(5, 150, 105, 0.35);
+}
+.tb-table:hover::before { width: 11px; }
+
+.tb-table-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+.tb-table-name { font-size: 28px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+.tb-status {
+  background: #d1fae5;
+  color: #065f46;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  border: 1.5px solid #34d399;
+}
+.tb-table.is-occupied .tb-status { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+
+.tb-capacity { font-size: 15px; color: var(--ink-faint); font-weight: 700; margin-bottom: 12px; }
+.tb-captain-pill {
+  font-size: 14px;
+  color: #94a3b8;
+  font-weight: 800;
+  background: #f8fafc;
+  padding: 9px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+.tb-captain-pill.is-assigned { color: var(--green); background: #ecfdf5; border-color: #a7f3d0; }
+
+.tb-table-cta {
+  width: 100%;
+  text-align: center;
+  padding: 12px 0;
+  background: #f1f5f9;
+  color: var(--ink-soft);
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 14px;
+  margin-top: 18px;
+  transition: background 0.2s ease, color 0.2s ease, letter-spacing 0.2s ease;
+}
+.tb-table:hover .tb-table-cta { background: var(--green); color: #fff; letter-spacing: 0.02em; }
+
+/* ---------- Modals ---------- */
+.tb-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  z-index: 1000;
+  animation: tb-fade 0.25s ease both;
+}
+.tb-modal {
+  width: min(480px, 100%);
+  max-height: 92vh;
+  overflow-y: auto;
+  background: #fff;
+  padding: clamp(20px, 3vw, 32px);
+  border-radius: 26px;
+  box-shadow: 0 30px 64px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--line);
+  text-align: left;
+  animation: tb-pop 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.tb-modal-md { width: min(540px, 100%); }
+.tb-modal-sm { width: min(440px, 100%); }
+
+.tb-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.tb-modal-title { margin: 0; color: var(--ink); font-weight: 800; font-size: 21px; letter-spacing: -0.02em; line-height: 1.3; }
+
+.tb-close-x {
+  font-family: inherit;
+  background: #f1f5f9;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ink-faint);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.25s ease;
+}
+.tb-close-x:hover { background: #fee2e2; color: var(--red); transform: rotate(90deg); }
+
+.tb-label { font-size: 12px; font-weight: 800; color: var(--ink-faint); display: block; margin-bottom: 7px; letter-spacing: 0.02em; }
+.tb-block { margin-bottom: 16px; }
+.tb-block-lg { margin-bottom: 22px; }
+
+.tb-input {
+  width: 100%;
+  font-family: inherit;
+  padding: 13px 16px;
+  border-radius: 12px;
+  border: 2px solid #d5dde8;
+  margin-bottom: 16px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  background: #f8fafc;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.tb-input-flush { margin-bottom: 0; }
+.tb-block .tb-input { margin-bottom: 0; }
+.tb-input::placeholder { color: #94a3b8; font-weight: 600; }
+.tb-input:hover { border-color: #b6c3d4; }
+.tb-input:focus { border-color: var(--green); background: #fff; box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.18); }
+
+/* Table control actions */
+.tb-action-col { display: flex; flex-direction: column; gap: 12px; margin-bottom: 22px; }
+.tb-action-clear,
+.tb-action-open {
+  font-family: inherit;
+  padding: 15px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.tb-action-clear { background: #d1fae5; color: #065f46; border: 2px solid #10b981; }
+.tb-action-open { background: #eff6ff; color: #1d4ed8; border: 2px solid #38bdf8; }
+.tb-action-clear:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(16, 185, 129, 0.25); filter: brightness(0.98); }
+.tb-action-open:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(56, 189, 248, 0.3); filter: brightness(0.98); }
+.tb-action-clear:active, .tb-action-open:active { transform: translateY(0) scale(0.98); }
+
+.tb-modal-foot { display: flex; justify-content: space-between; gap: 10px; border-top: 1.5px solid var(--line); padding-top: 16px; }
+.tb-delete-btn,
+.tb-close-btn {
+  font-family: inherit;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.tb-delete-btn { background: #fee2e2; color: #991b1b; border: 2px solid #fca5a5; }
+.tb-delete-btn:hover { background: #ef4444; color: #fff; border-color: #ef4444; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(239, 68, 68, 0.3); }
+.tb-close-btn { background: #f1f5f9; color: var(--ink-soft); border: 2px solid #cbd5e1; }
+.tb-close-btn:hover { background: #e2e8f0; transform: translateY(-2px); }
+
+/* Shared button row */
+.tb-btn-row { display: flex; gap: 12px; }
+.tb-light-btn {
+  font-family: inherit;
+  padding: 13px 20px;
+  background: #f1f5f9;
+  color: var(--ink-soft);
+  border: 2px solid #cbd5e1;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.tb-light-btn:hover { background: #e2e8f0; transform: translateY(-2px); }
+
+/* Captains modal */
+.tb-cap-list { max-height: 230px; overflow-y: auto; margin-bottom: 18px; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
+.tb-cap-empty { text-align: center; color: #94a3b8; font-size: 14px; font-weight: 700; padding: 24px; background: #f8fafc; border-radius: 14px; border: 2px dashed #cbd5e1; }
+.tb-cap-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: #f8fafc;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1.5px solid var(--line);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.tb-cap-row:hover { border-color: var(--green); background: #f0fdf4; transform: translateX(4px); box-shadow: 0 8px 18px rgba(5, 150, 105, 0.12); }
+.tb-cap-name { font-size: 16px; font-weight: 800; color: var(--ink); }
+.tb-cap-phone { font-size: 13px; color: var(--ink-faint); font-weight: 700; margin-top: 2px; }
+.tb-cap-btns { display: flex; gap: 8px; }
+.tb-edit-btn,
+.tb-del-btn {
+  font-family: inherit;
+  padding: 8px 14px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+.tb-edit-btn { background: #eff6ff; color: #1d4ed8; border: 1.5px solid #93c5fd; }
+.tb-edit-btn:hover { background: #2563eb; color: #fff; border-color: #2563eb; transform: translateY(-2px); }
+.tb-del-btn { background: #fee2e2; color: #991b1b; border: 1.5px solid #fca5a5; }
+.tb-del-btn:hover { background: #ef4444; color: #fff; border-color: #ef4444; transform: translateY(-2px); }
+
+.tb-cap-form { border-top: 2px solid var(--line); padding-top: 18px; }
+.tb-cap-form-title { margin: 0 0 14px 0; font-size: 16px; font-weight: 800; color: var(--ink-soft); }
+
+/* Receipt modal */
+.tb-receipt {
+  background: #f8fafc;
+  padding: 18px;
+  border-radius: 14px;
+  border: 1.5px solid var(--line);
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.55;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  margin-bottom: 22px;
+  animation: tb-rise 0.4s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.tb-receipt-title { text-align: center; font-weight: 800; font-size: 16px; margin-bottom: 4px; }
+.tb-receipt-time { text-align: center; color: var(--ink-faint); margin-bottom: 10px; }
+.tb-receipt-line { border-top: 1px dashed #94a3b8; margin: 12px 0; }
+.tb-receipt-bold { font-weight: 800; margin-bottom: 6px; }
+.tb-receipt-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 3px; }
+.tb-receipt-total { font-weight: 800; font-size: 16px; margin-top: 8px; }
+
+.tb-print-btn {
+  flex: 1;
+  font-family: inherit;
+  padding: 14px;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.tb-print-btn:hover { transform: translateY(-2px); filter: brightness(1.07); box-shadow: 0 12px 24px rgba(37, 99, 235, 0.38); }
+.tb-done-btn {
+  font-family: inherit;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #10b981, #047857);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(5, 150, 105, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.tb-done-btn:hover { transform: translateY(-2px); filter: brightness(1.07); box-shadow: 0 12px 24px rgba(5, 150, 105, 0.38); }
+.tb-print-btn:active, .tb-done-btn:active { transform: translateY(0) scale(0.97); }
+
+/* ======================== POS TERMINAL ======================== */
+.tb-pos {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  background: #fff;
+  border-radius: 22px;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.1);
+  overflow: hidden;
+  animation: tb-fade 0.3s ease both;
+}
+
+.tb-pos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 18px 26px;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: #fff;
+}
+.tb-pos-header-left { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.tb-pos-title { margin: 0; font-size: clamp(18px, 2.2vw, 22px); font-weight: 800; letter-spacing: -0.01em; }
+.tb-pos-captain {
+  background: var(--green);
+  color: #fff;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
+}
+.tb-exit-btn {
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.14);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 15px;
+  transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+.tb-exit-btn:hover { background: #ef4444; border-color: #ef4444; transform: translateY(-2px); }
+
+.tb-pos-body { display: flex; flex: 1; min-height: 0; overflow: hidden; background: #f8fafc; }
+
+.tb-menu-panel { flex: 1.4; min-width: 0; padding: 26px; overflow-y: auto; border-right: 2px solid var(--line); }
+.tb-cart-panel { flex: 0 0 min(430px, 100%); background: #fff; display: flex; flex-direction: column; padding: 26px; overflow-y: auto; }
+
+.tb-panel-title { margin: 0 0 16px 0; font-size: 13px; font-weight: 800; color: var(--ink-faint); letter-spacing: 0.06em; }
+
+.tb-cat-block { margin-bottom: 26px; }
+.tb-cat {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--green-dark);
+  margin-bottom: 14px;
+  background: #ecfdf5;
+  padding: 8px 14px;
+  border-radius: 10px;
+  display: inline-block;
+  border: 1.5px solid #10b981;
+}
+
+.tb-food-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); gap: 16px; }
+.tb-food {
+  background: #fff;
+  padding: 18px;
+  border-radius: 18px;
+  border: 2px solid var(--line);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  animation: tb-rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.tb-food:hover { border-color: var(--green); background: #f0fdf9; transform: translateY(-4px); box-shadow: 0 16px 28px -10px rgba(5, 150, 105, 0.28); }
+.tb-food:active { transform: translateY(0) scale(0.97); }
+.tb-food-name { font-size: 16px; font-weight: 800; color: #1e293b; margin-bottom: 10px; }
+.tb-food-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tb-food-price { font-size: 18px; font-weight: 800; color: var(--green); }
+.tb-food-tax { font-size: 11px; font-weight: 800; background: #f1f5f9; color: #475569; padding: 4px 8px; border-radius: 8px; }
+
+/* Order type */
+.tb-type-row { display: flex; gap: 10px; }
+.tb-type-btn {
+  flex: 1;
+  font-family: inherit;
+  padding: 13px;
+  background: #f1f5f9;
+  color: var(--ink-soft);
+  border: 2px solid #cbd5e1;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.tb-type-btn:hover { transform: translateY(-2px); border-color: var(--green); }
+.tb-type-btn.is-active { background: var(--green); color: #fff; border-color: var(--green); box-shadow: 0 8px 18px rgba(5, 150, 105, 0.3); }
+
+/* Cart */
+.tb-cart-list { flex: 1; min-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; padding-right: 2px; }
+.tb-cart-empty {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 15px;
+  padding: 44px 20px;
+  background: #f8fafc;
+  border-radius: 18px;
+  border: 2px dashed #cbd5e1;
+  font-weight: 700;
+}
+.tb-cart-item {
+  padding: 14px 16px;
+  background: #f8fafc;
+  border-radius: 14px;
+  border: 1.5px solid var(--line);
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  animation: tb-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.tb-cart-item:hover { border-color: #a7f3d0; background: #f0fdf9; box-shadow: 0 8px 18px rgba(5, 150, 105, 0.1); }
+.tb-cart-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+.tb-cart-name { font-size: 16px; font-weight: 800; color: var(--ink); }
+.tb-qty-wrap { display: flex; align-items: center; gap: 10px; }
+.tb-qty-btn {
+  width: 34px;
+  height: 34px;
+  font-family: inherit;
+  font-size: 17px;
+  background: #e2e8f0;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+.tb-qty-btn:hover { background: var(--green); color: #fff; border-color: var(--green); transform: scale(1.1); }
+.tb-qty-btn:active { transform: scale(0.92); }
+.tb-qty-num { font-size: 16px; font-weight: 800; width: 26px; text-align: center; }
+.tb-cart-bottom { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--ink-faint); font-weight: 700; }
+.tb-cart-tax { color: var(--green); font-weight: 800; }
+
+/* Totals */
+.tb-totals { border-top: 2px solid var(--line); padding-top: 16px; margin-bottom: 18px; font-size: 15px; font-weight: 800; color: var(--ink-soft); }
+.tb-totals-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.tb-totals-row.is-faint { color: var(--ink-faint); margin-bottom: 12px; }
+.tb-totals-grand {
+  display: flex;
+  justify-content: space-between;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ink);
+  border-top: 2px dashed #cbd5e1;
+  padding-top: 12px;
+}
+
+.tb-pay-col { display: flex; flex-direction: column; gap: 12px; }
+.tb-kot-btn,
+.tb-split-btn {
+  font-family: inherit;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease, background 0.2s ease;
+}
+.tb-kot-btn { padding: 16px; font-size: 16px; background: linear-gradient(135deg, #10b981, #047857); box-shadow: 0 8px 20px rgba(5, 150, 105, 0.3); }
+.tb-split-btn { padding: 15px; font-size: 15px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); box-shadow: 0 8px 20px rgba(37, 99, 235, 0.28); }
+.tb-kot-btn:hover:not(:disabled) { transform: translateY(-3px); filter: brightness(1.06); box-shadow: 0 14px 28px rgba(5, 150, 105, 0.4); }
+.tb-split-btn:hover:not(:disabled) { transform: translateY(-3px); filter: brightness(1.06); box-shadow: 0 14px 28px rgba(37, 99, 235, 0.4); }
+.tb-kot-btn:active:not(:disabled), .tb-split-btn:active:not(:disabled) { transform: translateY(0) scale(0.97); }
+.tb-kot-btn:disabled { background: #cbd5e1; box-shadow: none; cursor: not-allowed; }
+.tb-split-btn:disabled { background: #f1f5f9; color: #94a3b8; box-shadow: none; cursor: not-allowed; }
+
+/* Split modal */
+.tb-split-total { font-size: 15px; color: var(--ink-faint); font-weight: 700; margin: 0 0 16px 0; }
+.tb-split-total strong { font-size: 20px; }
+.tb-confirm-btn {
+  flex: 1;
+  font-family: inherit;
+  padding: 14px;
+  background: linear-gradient(135deg, #10b981, #047857);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(5, 150, 105, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.tb-confirm-btn:hover { transform: translateY(-2px); filter: brightness(1.07); box-shadow: 0 12px 24px rgba(5, 150, 105, 0.38); }
+.tb-confirm-btn:active { transform: translateY(0) scale(0.97); }
+
+/* ---------- Animations ---------- */
+@keyframes tb-rise {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes tb-slide {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes tb-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tb-pop {
+  from { opacity: 0; transform: translateY(14px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes tb-spin { to { transform: rotate(360deg); } }
+
+/* ---------- Keyboard focus ---------- */
+.tb button:focus-visible,
+.tb-pos button:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.5);
+  outline-offset: 2px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 980px) {
+  .tb-pos { height: auto; min-height: 100%; overflow-y: auto; }
+  .tb-pos-body { flex-direction: column; overflow: visible; }
+  .tb-menu-panel { border-right: none; border-bottom: 2px solid var(--line); overflow: visible; }
+  .tb-cart-panel { flex: 1 1 auto; overflow: visible; }
+}
+@media (max-width: 640px) {
+  .tb-header-btns { width: 100%; }
+  .tb-header-btns .tb-add-btn, .tb-header-btns .tb-captain-btn { flex: 1; }
+  .tb-pos-header { padding: 14px 16px; }
+  .tb-menu-panel, .tb-cart-panel { padding: 18px; }
+  .tb-btn-row { flex-direction: column; }
+  .tb-cap-row { flex-wrap: wrap; }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .tb *, .tb *::before, .tb *::after,
+  .tb-pos *, .tb-pos *::before, .tb-pos *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+`;
