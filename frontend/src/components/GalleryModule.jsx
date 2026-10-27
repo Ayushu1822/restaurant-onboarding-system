@@ -29,16 +29,18 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
     }
   }, [restaurantId, searchQuery]);
 
+  // ✅ Fixed: Fetching menu items using the correct backend endpoint with email from localStorage
   const fetchMenuItems = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/menu/items?restaurantId=${restaurantId}`);
+      const userEmail = localStorage.getItem('userEmail') || '';
+      const res = await fetch(`${API_BASE_URL}/api/v1/menu?email=${userEmail}`);
       const data = await res.json();
       setMenuItems(Array.isArray(data) ? data : (Array.isArray(data?.content) ? data.content : []));
     } catch (err) {
       console.error('Failed to fetch menu items:', err);
       setMenuItems([]);
     }
-  }, [restaurantId]);
+  }, []);
 
   useEffect(() => {
     fetchImages();
@@ -301,12 +303,12 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
             <div style={styles.checklistContainer}>
               {safeMenuItems
                 .filter(item => {
-                  const itemName = item?.name || item?.itemName || item?.dishName || item?.dish_name || '';
+                  const itemName = item?.itemName || item?.name || item?.dishName || item?.dish_name || '';
                   return itemName.toLowerCase().includes((menuSearch || '').toLowerCase());
                 })
                 .map(item => {
                   const itemId = item.id || item.menuItemId;
-                  const itemName = item.name || item.itemName || item.dishName || item.dish_name || 'Unnamed Dish';
+                  const itemName = item.itemName || item.name || item.dishName || item.dish_name || 'Unnamed Dish';
                   const isChecked = safeSelectedMenuIds.includes(itemId);
                   return (
                     <label
@@ -374,7 +376,7 @@ const styles = {
   cardTitle: { display: 'block', fontSize: '13px', color: '#1f2937', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   cardSubtitle: { display: 'block', fontSize: '11px', color: '#9ca3af', marginTop: '2px' },
   cardDate: { display: 'block', fontSize: '11px', color: '#9ca3af', marginTop: '2px' },
-    floatingBar: { position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', background: 'white', border: '1px solid #e5e7eb', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)', padding: '12px 24px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '30px', zIndex: 100 },
+  floatingBar: { position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', background: 'white', border: '1px solid #e5e7eb', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)', padding: '12px 24px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '30px', zIndex: 100 },
   floatingText: { fontWeight: 600, color: '#111827', fontSize: '14px' },
   floatingButtons: { display: 'flex', alignItems: 'center', gap: '12px' },
   clearBtn: { background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', fontWeight: 500 },
@@ -387,7 +389,7 @@ const styles = {
   modalSubtext: { fontSize: '13px', color: '#6b7280', margin: 0 },
   closeBtn: { background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6b7280' },
   dropZone: { border: '2px dashed #d1d5db', borderRadius: '12px', padding: '40px 20px', textAlign: 'center', background: '#fafafa', cursor: 'pointer', marginBottom: '16px' },
-  dropLabel: { display: 'flex', flexDirection: 'column',alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#4b5563', fontSize: '13px' },
+  dropLabel: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#4b5563', fontSize: '13px' },
   modalFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e5e7eb', paddingTop: '16px' },
   secondaryBtn: { background: 'white', border: '1px solid #d1d5db', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 },
   primaryBtn: { background: '#ff5a5f', color: 'white', border: 'none', padding: '8px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 },
