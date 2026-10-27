@@ -11,9 +11,6 @@ export default function MenuModule() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
 
-  const [fullProfile, setFullProfile] = useState({});
-  const [restaurantId, setRestaurantId] = useState('');
-
   // Two-tier navigation: null = menu list view, object = inside specific menu view
   const [activeMenu, setActiveMenu] = useState(null);
   const [activeTab, setActiveTab] = useState('items'); // 'items' | 'categories' | 'variants' | 'addon-groups' | 'addons'
@@ -23,8 +20,11 @@ export default function MenuModule() {
     { name: 'Standard Restaurant (5%)', rate: 5, cgst: 2.5, sgst: 2.5 }
   ]);
 
-  // Menus list state (synced with database profile)
-  const [menus, setMenus] = useState([
+  // Menus list state with localStorage persistence
+  const userEmail = localStorage.getItem('userEmail') || 'default_user';
+  const storedCustomMenus = localStorage.getItem(`customMenus_${userEmail}`);
+
+  const [menus, setMenus] = useState(storedCustomMenus ? JSON.parse(storedCustomMenus) : [
     { id: 'm-online', name: 'Default Online Menu', description: 'Menu served on your website and WhatsApp ordering.', icon: '🌐', channel: 'Online' },
     { id: 'm-inhouse', name: 'Default In-House Menu', description: 'Served at tables and takeaway counter.', icon: '🍽️', channel: 'In-house' }
   ]);
@@ -67,7 +67,6 @@ export default function MenuModule() {
   const [hoveredBtn, setHoveredBtn] = useState(null);
 
   useEffect(() => {
-    const userEmail = localStorage.getItem('userEmail');
     if (!userEmail) {
       alert('Please login first.');
       setLoading(false);
@@ -78,25 +77,18 @@ export default function MenuModule() {
     return () => { delete window.openPausedItemsModal; };
   }, []);
 
+  useEffect(() => {
+    if (userEmail) {
+      localStorage.setItem(`customMenus_${userEmail}`, JSON.stringify(menus));
+    }
+  }, [menus, userEmail]);
+
   const fetchData = async (email) => {
     try {
+      // Fetch Restaurant Profile for Tax Groups
       const profileRes = await fetch(`${API_BASE_URL}/api/v1/restaurants/email/${email}`);
       if (profileRes.ok) {
         const profileData = await profileRes.json();
-        setFullProfile(profileData);
-        setRestaurantId(profileData.restaurantId);
-
-        // Parse custom menus from database profile
-        if (profileData.customMenus) {
-          try {
-            const parsedMenus = typeof profileData.customMenus === 'string' ? JSON.parse(profileData.customMenus) : profileData.customMenus;
-            if (Array.isArray(parsedMenus) && parsedMenus.length > 0) {
-              setMenus(parsedMenus);
-            }
-          } catch (e) {}
-        }
-
-        // Parse tax groups from billingConfig
         if (profileData.billingConfig) {
           try {
             const billing = typeof profileData.billingConfig === 'string' ? JSON.parse(profileData.billingConfig) : profileData.billingConfig;
@@ -110,35 +102,23 @@ export default function MenuModule() {
         }
       }
 
-      // Fetch Menu Items
+      // Fetch Menu Items and enrich with stored tax group map
       const menuRes = await fetch(`${API_BASE_URL}/api/v1/menu?email=${email}`);
       if (menuRes.ok) {
         const data = await menuRes.json();
-        if (Array.isArray(data)) setMenuItems(data);
+        if (Array.isArray(data)) {
+          const storedTaxMap = JSON.parse(localStorage.getItem(`itemTaxMap_${email}`) || '{}');
+          const enriched = data.map(item => ({
+            ...item,
+            taxGroup: item.taxGroup || storedTaxMap[item.id] || storedTaxMap[item.itemName] || 'Standard Restaurant (5%)'
+          }));
+          setMenuItems(enriched);
+        }
       }
     } catch (err) {
       console.error('Fetch error:', err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const saveMenusToDatabase = async (updatedMenus) => {
-    if (!restaurantId) return;
-    const userEmail = localStorage.getItem('userEmail') || '';
-    const payload = {
-      ...fullProfile,
-      customMenus: JSON.stringify(updatedMenus)
-    };
-
-    try {
-      await fetch(`${API_BASE_URL}/api/v1/restaurants/${restaurantId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-    } catch (err) {
-      console.error('Error saving menus to DB:', err);
     }
   };
 
@@ -172,7 +152,6 @@ export default function MenuModule() {
     e.preventDefault();
     if (!newItemForm.itemName || !newItemForm.unitPrice) return alert('Please enter Item Name and Price.');
 
-    const userEmail = localStorage.getItem('userEmail') || '';
     const payload = {
       itemName: newItemForm.itemName,
       description: newItemForm.description,
@@ -189,12 +168,19 @@ export default function MenuModule() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
-      .then(res => {
+      .then(async res => {
         if (res.ok) {
+          const savedItem = await res.json().catch(() => ({}));
+          // Save selected tax group mapping in localStorage so it persists across refreshes
+          const storedTaxMap = JSON.parse(localStorage.getItem(`itemTaxMap_${userEmail}`) || '{}');
+          if (savedItem.id) storedTaxMap[savedItem.id] = newItemForm.taxGroup;
+          storedTaxMap[newItemForm.itemName] = newItemForm.taxGroup;
+          localStorage.setItem(`itemTaxMap_${userEmail}`, JSON.stringify(storedTaxMap));
+
           setShowAddItemModal(false);
           setNewItemForm({ itemName: '', description: '', unitPrice: '', category: 'Main Course', taxGroup: taxGroups[0]?.name || 'Standard Restaurant (5%)' });
           fetchData(userEmail);
-          showMsg('✅ Item added successfully & synced with DB!', 'success');
+          showMsg('✅ Item added successfully with correct tax group!', 'success');
         } else {
           alert('Failed to save menu item.');
         }
@@ -213,13 +199,10 @@ export default function MenuModule() {
       icon: newMenuForm.icon,
       channel: newMenuForm.channel
     };
-    const updatedMenus = [...menus, created];
-    setMenus(updatedMenus);
-    saveMenusToDatabase(updatedMenus);
-
+    setMenus([...menus, created]);
     setShowNewMenuModal(false);
     setNewMenuForm({ name: '', description: '', icon: '🍽️', channel: 'In-house' });
-    showMsg('✅ New Menu created & saved to database!', 'success');
+    showMsg('✅ New Menu created successfully!', 'success');
   };
 
   const handleSaveCategory = (e) => {
@@ -384,7 +367,7 @@ export default function MenuModule() {
                               </div>
                             </div>
                             <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-                              <span style={{fontSize: '12px', fontWeight: '900', color: '#059669', background: '#ecfdf5', padding: '3px 8px', borderRadius: '6px'}}>🏷️ {item.taxGroup || 'Standard (5%)'}</span>
+                              <span style={{fontSize: '12px', fontWeight: '900', color: '#059669', background: '#ecfdf5', padding: '3px 8px', borderRadius: '6px'}}>🏷️ {item.taxGroup}</span>
                               <span style={{fontSize: '14px', fontWeight: '950', color: '#0f172a'}}>₹{Number(item.unitPrice || 0).toFixed(2)}</span>
                               <button onClick={() => handleToggleStatus(item.id, item.status)} style={{
                                 background: isLive ? '#ecfdf5' : '#fef2f2',
