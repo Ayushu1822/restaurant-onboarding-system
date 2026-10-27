@@ -316,57 +316,51 @@ export default function ReportsModule({ orders: parentOrders }) {
   });
 
   return (
-    <div style={styles.container}>
-      <style>{`
-        @media print {
-          body * { visibility: hidden !important; }
-          .printable-report-area, .printable-report-area * { visibility: visible !important; }
-          .printable-report-area { position: absolute; left: 0; top: 0; width: 100%; background: #fff !important; }
-        }
-      `}</style>
+    <div className="rp">
+      <style>{css}</style>
 
       {/* Top Header */}
-      <div style={styles.headerRow}>
+      <div className="rp-header">
         <div>
-          <h2 style={styles.mainTitle}>Reports & Analytics Hub</h2>
-          <p style={styles.subTitle}>
+          <h2 className="rp-title">Reports & Analytics Hub</h2>
+          <p className="rp-subtitle">
             Enterprise-grade kitchen synchronized operational metrics, audits, and real-time ledger
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button onClick={() => window.print()} style={styles.exportBtn}>🖨️ Print Full Dashboard</button>
+        <div className="rp-header-tools">
+          <button onClick={() => window.print()} className="rp-export-btn">🖨️ Print Full Dashboard</button>
         </div>
       </div>
 
-      <div className="printable-report-area" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+      <div className="printable-report-area rp-stack">
         
         {/* SECTION 1: ACTIVE ORDERS REPORT */}
-        <div style={styles.sectionCard}>
-          <div style={styles.sectionHeaderRow}>
+        <div className="rp-section">
+          <div className="rp-section-head">
             <div>
-              <h3 style={styles.sectionTitle}>📋 Active Orders & Live Breakdown</h3>
-              <p style={styles.sectionDesc}>Live operational queue showing all pending & preparing orders</p>
+              <h3 className="rp-section-title">📋 Active Orders & Live Breakdown</h3>
+              <p className="rp-section-desc">Live operational queue showing all pending & preparing orders</p>
             </div>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button onClick={() => window.print()} style={styles.actionPillBtn}>🖨️ Print Active Orders</button>
+            <div className="rp-tools">
+              <button onClick={() => window.print()} className="rp-pill-btn">🖨️ Print Active Orders</button>
             </div>
           </div>
 
-          <div style={styles.filterSubBar}>
+          <div className="rp-filters">
             <input 
               type="text" 
               placeholder="🔍 Search customer name or order ID..." 
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              style={styles.searchInput}
+              className="rp-search"
             />
-            <select value={orderChannelFilter} onChange={e => setOrderChannelFilter(e.target.value)} style={styles.modernSelect}>
+            <select value={orderChannelFilter} onChange={e => setOrderChannelFilter(e.target.value)} className="rp-select">
               <option value="ALL">All Channels</option>
               <option value="TABLE">Table Orders</option>
               <option value="COUNTER">Counter POS</option>
               <option value="ONLINE">Online (Zomato/Swiggy)</option>
             </select>
-            <select value={selectedCaptainFilter} onChange={e => setSelectedCaptainFilter(e.target.value)} style={styles.modernSelect}>
+            <select value={selectedCaptainFilter} onChange={e => setSelectedCaptainFilter(e.target.value)} className="rp-select">
               {allCaptains.map((cap, cIdx) => (
                 <option key={cIdx} value={cap}>{cap === 'ALL' ? 'All Captains' : cap}</option>
               ))}
@@ -374,32 +368,36 @@ export default function ReportsModule({ orders: parentOrders }) {
           </div>
 
           {activeBreakdownOrders.length === 0 ? (
-            <div style={styles.emptyStateBox}>No active orders matching your filter criteria.</div>
+            <div className="rp-empty">No active orders matching your filter criteria.</div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={styles.table}>
+            <div className="rp-table-wrap">
+              <table className="rp-table">
                 <thead>
-                  <tr style={styles.thRow}>
-                    <th style={styles.th}>Order ID</th>
-                    <th style={styles.th}>Customer</th>
-                    <th style={styles.th}>Channel / Type</th>
-                    <th style={styles.th}>Captain</th>
-                    <th style={styles.th}>Status</th>
-                    <th style={styles.th}>Total Amount</th>
-                    <th style={styles.th}>Action</th>
+                  <tr>
+                    <th>Order ID</th>
+                    <th>Customer</th>
+                    <th>Channel / Type</th>
+                    <th>Captain</th>
+                    <th>Status</th>
+                    <th>Total Amount</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {activeBreakdownOrders.map((o, idx) => (
-                    <tr key={idx} style={styles.tr}>
-                      <td style={styles.td}><strong style={{ color: '#0f172a' }}>{o.displayId || o.orderId}</strong></td>
-                      <td style={styles.td}>{o.customerName || 'Walk-In'}</td>
-                      <td style={styles.td}><span style={styles.badge}>{o.channel || 'COUNTER'}</span></td>
-                      <td style={{ ...styles.td, color: '#2563eb', fontWeight: '900' }}>{extractCaptain(o.customerName) || 'Unassigned'}</td>
-                      <td style={{ ...styles.td, color: '#059669', fontWeight: '900' }}>{o.status || 'New'}</td>
-                      <td style={{ ...styles.td, fontWeight: '950', color: '#059669' }}>₹{o.totalAmount || 0}</td>
-                      <td style={styles.td}>
-                        <button onClick={() => setSelectedCustomerHistory(o.customerName)} style={styles.historyBtn}>🔍 History</button>
+                    <tr key={idx}>
+                      <td><strong className="rp-strong">{o.displayId || o.orderId}</strong></td>
+                      <td>{o.customerName || 'Walk-In'}</td>
+                      <td><span className="rp-badge">{o.channel || 'COUNTER'}</span></td>
+                      <td className="rp-captain-cell">{extractCaptain(o.customerName) || 'Unassigned'}</td>
+                      <td>
+                        <span className={`rp-status ${(o.status || 'New').toLowerCase() === 'ready' ? 'is-ready' : ''}`}>
+                          {o.status || 'New'}
+                        </span>
+                      </td>
+                      <td className="rp-amount">₹{o.totalAmount || 0}</td>
+                      <td>
+                        <button onClick={() => setSelectedCustomerHistory(o.customerName)} className="rp-history-btn">🔍 History</button>
                       </td>
                     </tr>
                   ))}
@@ -410,14 +408,14 @@ export default function ReportsModule({ orders: parentOrders }) {
         </div>
 
         {/* SECTION 2: PAST ORDERS HISTORY & RECEIPTS */}
-        <div style={styles.sectionCard}>
-          <div style={styles.sectionHeaderRow}>
+        <div className="rp-section">
+          <div className="rp-section-head">
             <div>
-              <h3 style={styles.sectionTitle}>📦 Past Orders & History Archive</h3>
-              <p style={styles.sectionDesc}>All past and completed orders are permanently retained here</p>
+              <h3 className="rp-section-title">📦 Past Orders & History Archive</h3>
+              <p className="rp-section-desc">All past and completed orders are permanently retained here</p>
             </div>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <select value={historyDateRange} onChange={e => setHistoryDateRange(e.target.value)} style={styles.modernSelect}>
+            <div className="rp-tools">
+              <select value={historyDateRange} onChange={e => setHistoryDateRange(e.target.value)} className="rp-select">
                 <option value="all">All Time (Default)</option>
                 <option value="today">Today</option>
                 <option value="yesterday">Yesterday</option>
@@ -425,33 +423,30 @@ export default function ReportsModule({ orders: parentOrders }) {
                 <option value="month">Last Month</option>
                 <option value="year">Year</option>
               </select>
-              <button onClick={printBulkHistory} style={styles.actionPillBtn}>🖨️ Print Whole Ledger</button>
+              <button onClick={printBulkHistory} className="rp-pill-btn">🖨️ Print Whole Ledger</button>
             </div>
           </div>
 
           {completedHistoryOrders.length === 0 ? (
-            <div style={styles.emptyStateBox}>No past completed orders found.</div>
+            <div className="rp-empty">No past completed orders found.</div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '400px', overflowY: 'auto' }}>
+            <div className="rp-list rp-list-400">
               {completedHistoryOrders.map((o, idx) => (
                 <div 
                   key={idx} 
-                  style={{
-                    ...styles.historyRowCard,
-                    ...(hoveredCard === `hist-${idx}` ? styles.historyRowCardHover : {})
-                  }}
+                  className="rp-hist-row"
                   onMouseEnter={() => setHoveredCard(`hist-${idx}`)}
                   onMouseLeave={() => setHoveredCard(null)}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: '950', color: '#0f172a', fontSize: '15px' }}>{o.displayId || o.orderId}</span>
-                    <span style={styles.badge}>{o.channel || 'COUNTER'}</span>
-                    <span style={{ fontSize: '13px', color: '#334155', fontWeight: '800' }}>👤 {o.customerName || 'Walk-In'}</span>
-                    <span style={{ fontSize: '12px', color: '#059669', fontWeight: '900' }}>Status: {o.status}</span>
+                  <div className="rp-row-left">
+                    <span className="rp-hist-id">{o.displayId || o.orderId}</span>
+                    <span className="rp-badge">{o.channel || 'COUNTER'}</span>
+                    <span className="rp-hist-customer">👤 {o.customerName || 'Walk-In'}</span>
+                    <span className="rp-hist-status">Status: {o.status}</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <span style={{ fontWeight: '950', color: '#059669', fontSize: '16px' }}>₹{o.totalAmount || 0}</span>
-                    <button onClick={() => printSingleReceipt(o, idx)} style={styles.receiptPrintBtn}>🖨️ Receipt</button>
+                  <div className="rp-row-right">
+                    <span className="rp-hist-amount">₹{o.totalAmount || 0}</span>
+                    <button onClick={() => printSingleReceipt(o, idx)} className="rp-receipt-btn">🖨️ Receipt</button>
                   </div>
                 </div>
               ))}
@@ -460,13 +455,13 @@ export default function ReportsModule({ orders: parentOrders }) {
         </div>
 
         {/* SECTION 3: CAPTAINS PERFORMANCE REPORT */}
-        <div style={styles.sectionCard}>
-          <div style={styles.sectionHeaderRow}>
+        <div className="rp-section">
+          <div className="rp-section-head">
             <div>
-              <h3 style={styles.sectionTitle}>🧑‍✈️ Captains Performance & Analytics</h3>
-              <p style={styles.sectionDesc}>Click any captain card to inspect complete past & present assigned orders</p>
+              <h3 className="rp-section-title">🧑‍✈️ Captains Performance & Analytics</h3>
+              <p className="rp-section-desc">Click any captain card to inspect complete past & present assigned orders</p>
             </div>
-            <select value={captainDateRange} onChange={e => setCaptainDateRange(e.target.value)} style={styles.modernSelect}>
+            <select value={captainDateRange} onChange={e => setCaptainDateRange(e.target.value)} className="rp-select">
               <option value="today">Today</option>
               <option value="yesterday">Yesterday</option>
               <option value="week">Last Week</option>
@@ -477,26 +472,23 @@ export default function ReportsModule({ orders: parentOrders }) {
           </div>
 
           {sortedCaptainKeys.length === 0 ? (
-            <div style={styles.emptyStateBox}>No captain assignments recorded for this period.</div>
+            <div className="rp-empty">No captain assignments recorded for this period.</div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+            <div className="rp-cap-grid">
               {sortedCaptainKeys.map((capName, cIdx) => (
                 <div 
                   key={cIdx} 
                   onClick={() => setSelectedCaptainDetails({ name: capName, orders: captainMap[capName].orders })}
-                  style={{
-                    ...styles.captainBoxCard,
-                    ...(hoveredCard === `cap-${cIdx}` ? styles.captainBoxCardHover : {})
-                  }}
+                  className="rp-cap-card"
                   onMouseEnter={() => setHoveredCard(`cap-${cIdx}`)}
                   onMouseLeave={() => setHoveredCard(null)}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <span style={{ fontSize: '16px', fontWeight: '950', color: '#0f172a' }}>🧑‍✈️ {capName}</span>
-                    <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: '900' }}>Inspect ›</span>
+                  <div className="rp-cap-top">
+                    <span className="rp-cap-name">🧑‍✈️ {capName}</span>
+                    <span className="rp-cap-inspect">Inspect ›</span>
                   </div>
-                  <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '800' }}>Orders Managed: <strong style={{ color: '#2563eb' }}>{captainMap[capName].orderCount}</strong></div>
-                  <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '800', marginTop: '4px' }}>Revenue Generated: <strong style={{ color: '#059669' }}>₹{captainMap[capName].revenue}</strong></div>
+                  <div className="rp-cap-line">Orders Managed: <strong className="rp-blue">{captainMap[capName].orderCount}</strong></div>
+                  <div className="rp-cap-line">Revenue Generated: <strong className="rp-green">₹{captainMap[capName].revenue}</strong></div>
                 </div>
               ))}
             </div>
@@ -504,27 +496,27 @@ export default function ReportsModule({ orders: parentOrders }) {
         </div>
 
         {/* SECTION 4: PAST COMPLAINTS ARCHIVE */}
-        <div style={styles.sectionCard}>
-          <div style={styles.sectionHeaderRow}>
+        <div className="rp-section">
+          <div className="rp-section-head">
             <div>
-              <h3 style={styles.sectionTitle}>✅ Closed & Resolved Complaints Archive</h3>
-              <p style={styles.sectionDesc}>Synced historical log of all successfully closed customer complaints</p>
+              <h3 className="rp-section-title">✅ Closed & Resolved Complaints Archive</h3>
+              <p className="rp-section-desc">Synced historical log of all successfully closed customer complaints</p>
             </div>
           </div>
 
           {closedComplaints.length === 0 ? (
-            <div style={styles.emptyStateBox}>No closed complaints archived yet.</div>
+            <div className="rp-empty">No closed complaints archived yet.</div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '350px', overflowY: 'auto' }}>
+            <div className="rp-list rp-list-350">
               {closedComplaints.map((c, idx) => (
-                <div key={idx} style={styles.complaintRowCard}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: '950', color: '#0f172a' }}>{c.complaintId}</span>
-                    <span style={styles.badge}>{c.orderId}</span>
-                    <span style={{ fontSize: '13px', fontWeight: '800', color: '#334155' }}>👤 {c.customerName || 'Guest'}</span>
-                    <span style={{ background: '#d1fae5', color: '#065f46', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '950' }}>{c.complaintType}</span>
+                <div key={idx} className="rp-complaint-row">
+                  <div className="rp-row-left">
+                    <span className="rp-hist-id">{c.complaintId}</span>
+                    <span className="rp-badge">{c.orderId}</span>
+                    <span className="rp-hist-customer">👤 {c.customerName || 'Guest'}</span>
+                    <span className="rp-complaint-type">{c.complaintType}</span>
                   </div>
-                  <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '950', textTransform: 'uppercase' }}>● Closed</span>
+                  <span className="rp-closed">● Closed</span>
                 </div>
               ))}
             </div>
@@ -532,20 +524,20 @@ export default function ReportsModule({ orders: parentOrders }) {
         </div>
 
         {/* SECTION 5: REVENUE DISTRIBUTION & ANALYTICS */}
-        <div style={styles.sectionCard}>
-          <div style={styles.sectionHeaderRow}>
+        <div className="rp-section">
+          <div className="rp-section-head">
             <div>
-              <h3 style={styles.sectionTitle}>📊 Revenue Distribution & Analytics</h3>
-              <p style={styles.sectionDesc}>Visual breakdown by dining channels and revenue generation</p>
+              <h3 className="rp-section-title">📊 Revenue Distribution & Analytics</h3>
+              <p className="rp-section-desc">Visual breakdown by dining channels and revenue generation</p>
             </div>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <select value={analyticsCategoryFilter} onChange={e => setAnalyticsCategoryFilter(e.target.value)} style={styles.modernSelect}>
+            <div className="rp-tools">
+              <select value={analyticsCategoryFilter} onChange={e => setAnalyticsCategoryFilter(e.target.value)} className="rp-select">
                 <option value="ALL">All Categories</option>
                 <option value="TABLE">Table Orders</option>
                 <option value="COUNTER">Counter POS</option>
                 <option value="ONLINE">Online</option>
               </select>
-              <select value={analyticsDateRange} onChange={e => setAnalyticsDateRange(e.target.value)} style={styles.modernSelect}>
+              <select value={analyticsDateRange} onChange={e => setAnalyticsDateRange(e.target.value)} className="rp-select">
                 <option value="today">Today</option>
                 <option value="yesterday">Yesterday</option>
                 <option value="week">Last Week</option>
@@ -556,38 +548,38 @@ export default function ReportsModule({ orders: parentOrders }) {
             </div>
           </div>
 
-          <div style={styles.metricsGrid}>
-            <div style={styles.metricCard}>
-              <div style={styles.metricTitle}>Total Revenue</div>
-              <div style={styles.metricValue}>₹{totalRevenue.toFixed(2)}</div>
+          <div className="rp-metrics">
+            <div className="rp-metric">
+              <div className="rp-metric-title">Total Revenue</div>
+              <div className="rp-metric-value">₹{totalRevenue.toFixed(2)}</div>
             </div>
-            <div style={styles.metricCard}>
-              <div style={styles.metricTitle}>Total Orders Count</div>
-              <div style={{ ...styles.metricValue, color: '#2563eb' }}>{totalOrdersCount}</div>
+            <div className="rp-metric">
+              <div className="rp-metric-title">Total Orders Count</div>
+              <div className="rp-metric-value is-blue">{totalOrdersCount}</div>
             </div>
-            <div style={styles.metricCard}>
-              <div style={styles.metricTitle}>Avg Order Value</div>
-              <div style={{ ...styles.metricValue, color: '#d97706' }}>
+            <div className="rp-metric">
+              <div className="rp-metric-title">Avg Order Value</div>
+              <div className="rp-metric-value is-amber">
                 ₹{totalOrdersCount > 0 ? (totalRevenue / totalOrdersCount).toFixed(2) : '0.00'}
               </div>
             </div>
           </div>
 
           {/* Dynamic Pie Chart Visual */}
-          <div style={styles.chartContainerBox}>
+          <div className="rp-chart">
             {analyticsOrders.length === 0 ? (
-              <div style={styles.emptyStateBox}>No revenue distribution data available for this range.</div>
+              <div className="rp-empty">No revenue distribution data available for this range.</div>
             ) : (
               <>
-                <div style={{ ...styles.pieCircle, background: dynamicPieBackground }}>
-                  <div style={styles.pieInnerCenter}>
+                <div className="rp-pie" style={{ background: dynamicPieBackground }}>
+                  <div className="rp-pie-center">
                     ₹{totalRevenue.toFixed(0)}
                   </div>
                 </div>
-                <div style={styles.chartLegend}>
-                  <span style={{ color: '#059669' }}>■ Dine-In / Table ({tablePct.toFixed(1)}%)</span>
-                  <span style={{ color: '#2563eb' }}>■ Takeaway / Counter ({counterPct.toFixed(1)}%)</span>
-                  <span style={{ color: '#d97706' }}>■ Online Aggregators ({onlinePct.toFixed(1)}%)</span>
+                <div className="rp-legend">
+                  <span className="rp-legend-item is-dine">■ Dine-In / Table ({tablePct.toFixed(1)}%)</span>
+                  <span className="rp-legend-item is-counter">■ Takeaway / Counter ({counterPct.toFixed(1)}%)</span>
+                  <span className="rp-legend-item is-online">■ Online Aggregators ({onlinePct.toFixed(1)}%)</span>
                 </div>
               </>
             )}
@@ -598,62 +590,62 @@ export default function ReportsModule({ orders: parentOrders }) {
 
       {/* CAPTAIN DETAILED ORDERS MODAL */}
       {selectedCaptainDetails && (
-        <div style={styles.modalOverlay} onClick={() => setSelectedCaptainDetails(null)}>
-          <div style={styles.modalLargeCard} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', borderBottom: '2px solid #e2e8f0', paddingBottom: '14px' }}>
-              <h3 style={{ margin: 0, color: '#0f172a', fontWeight: '950', fontSize: '18px' }}>
+        <div className="rp-overlay" onClick={() => setSelectedCaptainDetails(null)}>
+          <div className="rp-modal rp-modal-lg" onClick={e => e.stopPropagation()}>
+            <div className="rp-modal-head">
+              <h3 className="rp-modal-title">
                 🧑‍✈️ Captain Ledger: {selectedCaptainDetails.name} ({selectedCaptainDetails.orders.length} Orders)
               </h3>
-              <button onClick={() => setSelectedCaptainDetails(null)} style={styles.closeXBtn}>✕</button>
+              <button onClick={() => setSelectedCaptainDetails(null)} className="rp-close-x">✕</button>
             </div>
 
-            <div style={{ maxHeight: '420px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+            <div className="rp-modal-list rp-modal-list-420">
               {selectedCaptainDetails.orders.map((ord, oIdx) => (
-                <div key={oIdx} style={styles.modalOrderRow}>
+                <div key={oIdx} className="rp-modal-row">
                   <div>
-                    <div style={{ fontWeight: '950', color: '#0f172a', fontSize: '15px' }}>{ord.displayId || ord.orderId || 'Order'}</div>
-                    <div style={{ fontSize: '13px', color: '#334155', fontWeight: '800', marginTop: '4px' }}>
+                    <div className="rp-mr-id">{ord.displayId || ord.orderId || 'Order'}</div>
+                    <div className="rp-mr-customer">
                       👤 {ord.customerName || 'Walk-In'} {ord.customerPhone ? `• 📞 ${ord.customerPhone}` : ''}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700', marginTop: '3px' }}>
-                      Status: <span style={{ color: '#059669', fontWeight: '900' }}>{ord.status || 'Completed'}</span> · Channel: {ord.channel || 'COUNTER'}
+                    <div className="rp-mr-meta">
+                      Status: <span className="rp-green">{ord.status || 'Completed'}</span> · Channel: {ord.channel || 'COUNTER'}
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: '950', color: '#059669', fontSize: '18px' }}>₹{ord.totalAmount || 0}</div>
-                    <button onClick={() => printSingleReceipt(ord, oIdx)} style={{ ...styles.receiptPrintBtn, marginTop: '8px' }}>🖨️ Receipt</button>
+                  <div className="rp-mr-right">
+                    <div className="rp-mr-amount">₹{ord.totalAmount || 0}</div>
+                    <button onClick={() => printSingleReceipt(ord, oIdx)} className="rp-receipt-btn rp-mt">🖨️ Receipt</button>
                   </div>
                 </div>
               ))}
             </div>
 
-            <button onClick={() => setSelectedCaptainDetails(null)} style={styles.modalCloseBtn}>Close Captain Ledger</button>
+            <button onClick={() => setSelectedCaptainDetails(null)} className="rp-modal-close">Close Captain Ledger</button>
           </div>
         </div>
       )}
 
       {/* CUSTOMER HISTORY MODAL */}
       {selectedCustomerHistory && (
-        <div style={styles.modalOverlay} onClick={() => setSelectedCustomerHistory(null)}>
-          <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, color: '#0f172a', fontWeight: '950' }}>👤 Customer History: {selectedCustomerHistory}</h3>
-              <button onClick={() => setSelectedCustomerHistory(null)} style={styles.closeXBtn}>✕</button>
+        <div className="rp-overlay" onClick={() => setSelectedCustomerHistory(null)}>
+          <div className="rp-modal" onClick={e => e.stopPropagation()}>
+            <div className="rp-modal-head">
+              <h3 className="rp-modal-title">👤 Customer History: {selectedCustomerHistory}</h3>
+              <button onClick={() => setSelectedCustomerHistory(null)} className="rp-close-x">✕</button>
             </div>
-            <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+            <div className="rp-modal-list rp-modal-list-300">
               {(customerHistoryMap[selectedCustomerHistory] || []).map((pastOrder, pIdx) => (
-                <div key={pIdx} style={styles.modalOrderRow}>
+                <div key={pIdx} className="rp-modal-row">
                   <div>
-                    <div style={{ fontWeight: '950', color: '#0f172a' }}>{pastOrder.displayId || 'Order'}</div>
-                    <div style={{ fontSize: '12px', color: '#64748b' }}>{pastOrder.status}</div>
+                    <div className="rp-mr-id">{pastOrder.displayId || 'Order'}</div>
+                    <div className="rp-mr-status">{pastOrder.status}</div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: '950', color: '#059669' }}>₹{pastOrder.totalAmount}</div>
+                  <div className="rp-mr-right">
+                    <div className="rp-mr-amount is-small">₹{pastOrder.totalAmount}</div>
                   </div>
                 </div>
               ))}
             </div>
-            <button onClick={() => setSelectedCustomerHistory(null)} style={styles.modalCloseBtn}>Close</button>
+            <button onClick={() => setSelectedCustomerHistory(null)} className="rp-modal-close">Close</button>
           </div>
         </div>
       )}
@@ -661,57 +653,517 @@ export default function ReportsModule({ orders: parentOrders }) {
   );
 }
 
-const styles = {
-  container: { display: 'flex', flexDirection: 'column', flex: 1, padding: '32px', background: '#f8fafc', overflowY: 'auto', boxSizing: 'border-box', paddingBottom: '100px', fontFamily: 'Inter, system-ui, sans-serif' },
-  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'wrap', gap: '20px' },
-  mainTitle: { fontSize: '28px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.03em' },
-  subTitle: { color: '#64748b', fontSize: '13px', margin: '6px 0 0 0', fontWeight: '700' },
-  exportBtn: { background: 'linear-gradient(135deg, #059669, #047857)', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '12px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', boxShadow: '0 6px 16px rgba(5,150,105,0.25)', transition: 'all 0.2s ease' },
-  
-  sectionCard: { background: '#ffffff', padding: '28px', borderRadius: '24px', border: '2px solid #e2e8f0', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.04)', transition: 'all 0.2s ease' },
-  sectionHeaderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' },
-  sectionTitle: { fontSize: '19px', fontWeight: '950', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' },
-  sectionDesc: { fontSize: '12px', color: '#64748b', fontWeight: '700', marginTop: '3px' },
-  
-  filterSubBar: { display: 'flex', gap: '14px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' },
-  searchInput: { flex: 1, minWidth: '240px', padding: '12px 16px', borderRadius: '12px', border: '2px solid #cbd5e1', fontSize: '13px', fontWeight: '800', background: '#f8fafc', outline: 'none' },
-  modernSelect: { padding: '12px 16px', borderRadius: '12px', border: '2px solid #cbd5e1', fontSize: '13px', fontWeight: '800', background: '#f8fafc', outline: 'none', cursor: 'pointer', color: '#334155' },
-  
-  actionPillBtn: { background: '#0f172a', color: '#fff', border: 'none', padding: '12px 18px', borderRadius: '12px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(15,23,42,0.2)', transition: 'all 0.2s ease' },
-  receiptPrintBtn: { background: '#059669', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: '950', cursor: 'pointer', boxShadow: '0 3px 8px rgba(5,150,105,0.2)' },
-  historyBtn: { background: '#ecfdf5', color: '#047857', border: '1.5px solid #10b981', padding: '8px 14px', borderRadius: '10px', fontWeight: '900', cursor: 'pointer', fontSize: '12px' },
-  
-  table: { width: '100%', borderCollapse: 'collapse', fontSize: '13px' },
-  thRow: { background: '#f8fafc', borderBottom: '2px solid #e2e8f0' },
-  th: { padding: '14px 16px', fontWeight: '950', color: '#475569', letterSpacing: '0.03em' },
-  tr: { borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' },
-  td: { padding: '16px', color: '#334155', fontWeight: '800' },
-  badge: { background: '#e0f2fe', color: '#0369a1', padding: '6px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: '950', border: '1.5px solid #bae6fd' },
-  
-  historyRowCard: { background: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: '14px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', transition: 'all 0.2s ease', cursor: 'pointer' },
-  historyRowCardHover: { borderColor: '#059669', background: '#f0fdf4', transform: 'translateY(-2px)', boxShadow: '0 8px 20px rgba(5,150,105,0.1)' },
-  
-  captainBoxCard: { background: '#f8fafc', padding: '20px', borderRadius: '16px', border: '2px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' },
-  captainBoxCardHover: { borderColor: '#2563eb', background: '#eff6ff', transform: 'translateY(-3px)', boxShadow: '0 10px 25px rgba(37,99,235,0.12)' },
-  
-  complaintRowCard: { background: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: '14px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' },
-  
-  metricsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '20px', marginBottom: '24px' },
-  metricCard: { background: 'linear-gradient(145deg, #f8fafc, #f1f5f9)', padding: '22px', borderRadius: '18px', border: '2px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' },
-  metricTitle: { fontSize: '11px', fontWeight: '950', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.05em' },
-  metricValue: { fontSize: '30px', fontWeight: '950', color: '#059669', letterSpacing: '-0.03em' },
-  
-  chartContainerBox: { background: '#f8fafc', padding: '28px', borderRadius: '20px', border: '2px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center' },
-  pieCircle: { width: '180px', height: '180px', borderRadius: '50%', boxShadow: '0 12px 30px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '18px' },
-  pieInnerCenter: { width: '100px', height: '100px', background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '950', fontSize: '14px', color: '#0f172a' },
-  chartLegend: { display: 'flex', gap: '20px', fontSize: '13px', fontWeight: '900', flexWrap: 'wrap', justifyContent: 'center' },
-  
-  emptyStateBox: { textAlign: 'center', padding: '40px', color: '#94a3b8', fontSize: '14px', fontWeight: '800' },
-  
-  modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-  modalCard: { width: '480px', backgroundColor: '#fff', padding: '30px', borderRadius: '24px', border: '2px solid #e2e8f0', boxShadow: '0 25px 50px rgba(0,0,0,0.25)' },
-  modalLargeCard: { width: '640px', backgroundColor: '#fff', padding: '30px', borderRadius: '24px', border: '2px solid #e2e8f0', boxShadow: '0 25px 50px rgba(0,0,0,0.25)' },
-  modalOrderRow: { background: '#f8fafc', padding: '16px 18px', borderRadius: '14px', border: '2px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' },
-  closeXBtn: { background: 'none', border: 'none', fontSize: '18px', fontWeight: '950', color: '#64748b', cursor: 'pointer' },
-  modalCloseBtn: { width: '100%', padding: '14px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '950', cursor: 'pointer', fontSize: '14px' }
-};
+/* ---------- Styles (frontend only) ---------- */
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap');
+
+.rp {
+  --ink: #0f172a;
+  --ink-soft: #334155;
+  --ink-faint: #64748b;
+  --line: #e2e8f0;
+  --surface: #ffffff;
+  --canvas: #f3f5f9;
+  --green: #059669;
+  --green-dark: #047857;
+  --blue: #2563eb;
+  --amber: #d97706;
+
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: clamp(16px, 3vw, 36px);
+  padding-bottom: 100px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  color: var(--ink);
+  background:
+    radial-gradient(900px 420px at 100% -10%, rgba(37, 99, 235, 0.08), transparent 60%),
+    radial-gradient(700px 380px at -10% 0%, rgba(5, 150, 105, 0.07), transparent 60%),
+    var(--canvas);
+}
+.rp *, .rp *::before, .rp *::after { box-sizing: border-box; }
+
+/* ---------- Header ---------- */
+.rp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+.rp-title {
+  margin: 0;
+  font-size: clamp(26px, 3.4vw, 34px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+.rp-subtitle { margin: 8px 0 0 0; color: var(--ink-faint); font-size: 15px; font-weight: 600; }
+.rp-header-tools { display: flex; gap: 12px; }
+
+.rp-export-btn {
+  font-family: inherit;
+  background: linear-gradient(135deg, #10b981, #047857);
+  color: #fff;
+  border: none;
+  padding: 14px 24px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.rp-export-btn:hover { transform: translateY(-3px); filter: brightness(1.06); box-shadow: 0 14px 28px rgba(5, 150, 105, 0.36); }
+.rp-export-btn:active { transform: translateY(0) scale(0.97); }
+
+/* ---------- Sections ---------- */
+.rp-stack { display: flex; flex-direction: column; gap: 30px; }
+
+.rp-section {
+  background: var(--surface);
+  padding: clamp(18px, 2.4vw, 32px);
+  border-radius: 24px;
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 14px 34px -16px rgba(15, 23, 42, 0.14);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+  animation: rp-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.rp-section:nth-child(2) { animation-delay: 0.08s; }
+.rp-section:nth-child(3) { animation-delay: 0.16s; }
+.rp-section:nth-child(4) { animation-delay: 0.24s; }
+.rp-section:nth-child(5) { animation-delay: 0.32s; }
+.rp-section:hover { border-color: #d3dcea; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05), 0 22px 44px -18px rgba(15, 23, 42, 0.2); }
+
+@keyframes rp-rise {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.rp-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.rp-section-title { margin: 0; font-size: clamp(19px, 2.2vw, 23px); font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+.rp-section-desc { margin: 5px 0 0 0; font-size: 14px; color: var(--ink-faint); font-weight: 600; }
+.rp-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* ---------- Buttons ---------- */
+.rp-pill-btn {
+  font-family: inherit;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  padding: 13px 20px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.22);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.rp-pill-btn:hover { transform: translateY(-2px); background: #1e293b; box-shadow: 0 12px 24px rgba(15, 23, 42, 0.3); }
+.rp-pill-btn:active { transform: translateY(0) scale(0.97); }
+
+.rp-receipt-btn {
+  font-family: inherit;
+  background: linear-gradient(135deg, #10b981, #047857);
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.rp-receipt-btn:hover { transform: translateY(-2px); filter: brightness(1.07); box-shadow: 0 10px 20px rgba(5, 150, 105, 0.35); }
+.rp-receipt-btn:active { transform: translateY(0) scale(0.96); }
+.rp-receipt-btn.rp-mt { margin-top: 10px; }
+
+.rp-history-btn {
+  font-family: inherit;
+  background: #ecfdf5;
+  color: var(--green-dark);
+  border: 1.5px solid #10b981;
+  padding: 9px 15px;
+  border-radius: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.rp-history-btn:hover { background: #10b981; color: #fff; transform: translateY(-2px); box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3); }
+.rp-history-btn:active { transform: translateY(0) scale(0.96); }
+
+/* ---------- Filters ---------- */
+.rp-filters { display: flex; gap: 14px; margin-bottom: 22px; flex-wrap: wrap; align-items: center; }
+.rp-search {
+  flex: 1;
+  min-width: 240px;
+  font-family: inherit;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 2px solid #d5dde8;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  background: #f8fafc;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.rp-search::placeholder { color: #94a3b8; font-weight: 600; }
+.rp-search:hover { border-color: #b6c3d4; }
+.rp-search:focus { border-color: var(--blue); background: #fff; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15); }
+
+.rp-select {
+  font-family: inherit;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 2px solid #d5dde8;
+  font-size: 15px;
+  font-weight: 700;
+  background: #f8fafc;
+  outline: none;
+  cursor: pointer;
+  color: var(--ink-soft);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.rp-select:hover { border-color: #b6c3d4; background: #fff; }
+.rp-select:focus { border-color: var(--blue); background: #fff; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15); }
+
+/* ---------- Table ---------- */
+.rp-table-wrap { overflow-x: auto; border-radius: 16px; border: 1px solid var(--line); }
+.rp-table { width: 100%; border-collapse: collapse; font-size: 15px; min-width: 760px; }
+.rp-table thead tr { background: #f1f5f9; }
+.rp-table th {
+  padding: 16px 18px;
+  font-weight: 800;
+  font-size: 14px;
+  color: #475569;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 2px solid var(--line);
+}
+.rp-table td { padding: 17px 18px; color: var(--ink-soft); font-weight: 700; border-bottom: 1px solid #eef2f7; }
+.rp-table tbody tr { transition: background 0.18s ease, box-shadow 0.18s ease; animation: rp-fade 0.4s ease both; }
+.rp-table tbody tr:hover { background: #eff6ff; box-shadow: inset 4px 0 0 var(--blue); }
+.rp-table tbody tr:last-child td { border-bottom: none; }
+
+@keyframes rp-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.rp-strong { color: var(--ink); font-weight: 800; }
+.rp-captain-cell { color: var(--blue) !important; font-weight: 800 !important; }
+.rp-amount { color: var(--green) !important; font-weight: 800 !important; font-size: 16px; }
+
+.rp-status {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #b45309;
+  background: #fef3c7;
+}
+.rp-status.is-ready { color: var(--blue); background: #dbeafe; }
+
+.rp-badge {
+  display: inline-block;
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  border: 1.5px solid #bae6fd;
+}
+
+/* ---------- Lists (history + complaints) ---------- */
+.rp-list { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding: 4px 6px 4px 2px; }
+.rp-list-400 { max-height: 440px; }
+.rp-list-350 { max-height: 390px; }
+
+.rp-hist-row,
+.rp-complaint-row {
+  background: #f8fafc;
+  border: 1.5px solid var(--line);
+  border-radius: 16px;
+  padding: 18px 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  transition: transform 0.22s ease, border-color 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
+  animation: rp-fade 0.4s ease both;
+}
+.rp-hist-row { cursor: pointer; }
+.rp-hist-row:hover {
+  border-color: var(--green);
+  background: #f0fdf4;
+  transform: translateY(-3px);
+  box-shadow: 0 12px 26px rgba(5, 150, 105, 0.14);
+}
+.rp-complaint-row:hover { border-color: #a7f3d0; background: #f0fdf9; transform: translateY(-2px); box-shadow: 0 10px 22px rgba(16, 185, 129, 0.12); }
+
+.rp-row-left { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.rp-row-right { display: flex; align-items: center; gap: 18px; }
+.rp-hist-id { font-weight: 800; color: var(--ink); font-size: 17px; }
+.rp-hist-customer { font-size: 15px; color: var(--ink-soft); font-weight: 700; }
+.rp-hist-status { font-size: 14px; color: var(--green); font-weight: 800; }
+.rp-hist-amount { font-weight: 800; color: var(--green); font-size: 19px; }
+
+.rp-complaint-type { background: #d1fae5; color: #065f46; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 800; }
+.rp-closed { font-size: 13px; color: #10b981; font-weight: 800; }
+
+/* ---------- Captain cards ---------- */
+.rp-cap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 18px; }
+.rp-cap-card {
+  background: #f8fafc;
+  padding: 22px;
+  border-radius: 18px;
+  border: 1.5px solid var(--line);
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+  transition: transform 0.22s ease, border-color 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
+  animation: rp-fade 0.4s ease both;
+}
+.rp-cap-card:hover {
+  border-color: var(--blue);
+  background: #eff6ff;
+  transform: translateY(-5px);
+  box-shadow: 0 16px 32px rgba(37, 99, 235, 0.16);
+}
+.rp-cap-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
+.rp-cap-name { font-size: 18px; font-weight: 800; color: var(--ink); }
+.rp-cap-inspect { font-size: 14px; color: var(--blue); font-weight: 800; transition: transform 0.2s ease; white-space: nowrap; }
+.rp-cap-card:hover .rp-cap-inspect { transform: translateX(5px); }
+.rp-cap-line { font-size: 15px; color: var(--ink-faint); font-weight: 700; margin-top: 5px; }
+.rp-blue { color: var(--blue); font-size: 17px; }
+.rp-green { color: var(--green); font-weight: 800; }
+.rp-cap-line .rp-green { font-size: 17px; }
+
+/* ---------- Metrics ---------- */
+.rp-metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 20px; margin-bottom: 26px; }
+.rp-metric {
+  background: linear-gradient(145deg, #f8fafc, #eef2f7);
+  padding: 26px;
+  border-radius: 20px;
+  border: 1.5px solid var(--line);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.rp-metric:hover { transform: translateY(-5px); border-color: #cbd5e1; box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12); }
+.rp-metric-title { font-size: 14px; font-weight: 800; color: var(--ink-faint); margin-bottom: 10px; }
+.rp-metric-value { font-size: clamp(30px, 3.4vw, 40px); font-weight: 800; color: var(--green); letter-spacing: -0.03em; }
+.rp-metric-value.is-blue { color: var(--blue); }
+.rp-metric-value.is-amber { color: var(--amber); }
+
+/* ---------- Chart ---------- */
+.rp-chart {
+  background: #f8fafc;
+  padding: 32px 24px;
+  border-radius: 22px;
+  border: 1.5px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.rp-pie {
+  width: 210px;
+  height: 210px;
+  border-radius: 50%;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 22px;
+  animation: rp-pie-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.rp-pie:hover { transform: scale(1.05) rotate(4deg); box-shadow: 0 22px 44px rgba(15, 23, 42, 0.22); }
+@keyframes rp-pie-in {
+  from { opacity: 0; transform: scale(0.6) rotate(-120deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0); }
+}
+.rp-pie-center {
+  width: 118px;
+  height: 118px;
+  background: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 19px;
+  color: var(--ink);
+  box-shadow: inset 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+.rp-legend { display: flex; gap: 14px 24px; font-size: 15px; font-weight: 800; flex-wrap: wrap; justify-content: center; }
+.rp-legend-item { padding: 8px 14px; border-radius: 999px; background: #fff; border: 1.5px solid var(--line); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.rp-legend-item:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(15, 23, 42, 0.1); }
+.rp-legend-item.is-dine { color: #059669; }
+.rp-legend-item.is-counter { color: #2563eb; }
+.rp-legend-item.is-online { color: #d97706; }
+
+/* ---------- Empty state ---------- */
+.rp-empty {
+  text-align: center;
+  padding: 44px 24px;
+  color: #64748b;
+  font-size: 16px;
+  font-weight: 700;
+  background: #f8fafc;
+  border: 2px dashed #cbd5e1;
+  border-radius: 18px;
+}
+.rp-chart .rp-empty { width: 100%; }
+
+/* ---------- Modals ---------- */
+.rp-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  z-index: 1000;
+  animation: rp-fade 0.25s ease both;
+}
+.rp-modal {
+  width: min(500px, 100%);
+  max-height: 92vh;
+  overflow-y: auto;
+  background: #fff;
+  padding: clamp(18px, 3vw, 32px);
+  border-radius: 24px;
+  border: 1px solid var(--line);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+  animation: rp-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.rp-modal-lg { width: min(680px, 100%); }
+@keyframes rp-pop {
+  from { opacity: 0; transform: translateY(18px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.rp-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--line);
+}
+.rp-modal-title { margin: 0; color: var(--ink); font-weight: 800; font-size: 20px; line-height: 1.3; }
+.rp-close-x {
+  font-family: inherit;
+  background: #f1f5f9;
+  border: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-size: 17px;
+  font-weight: 800;
+  color: #64748b;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.25s ease;
+}
+.rp-close-x:hover { background: #fee2e2; color: #dc2626; transform: rotate(90deg); }
+
+.rp-modal-list { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; margin-bottom: 22px; padding-right: 4px; }
+.rp-modal-list-420 { max-height: 420px; }
+.rp-modal-list-300 { max-height: 300px; }
+
+.rp-modal-row {
+  background: #f8fafc;
+  padding: 18px 20px;
+  border-radius: 16px;
+  border: 1.5px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.rp-modal-row:hover { border-color: var(--green); background: #f0fdf4; transform: translateX(4px); box-shadow: 0 8px 18px rgba(5, 150, 105, 0.12); }
+.rp-mr-id { font-weight: 800; color: var(--ink); font-size: 17px; }
+.rp-mr-customer { font-size: 15px; color: var(--ink-soft); font-weight: 700; margin-top: 5px; }
+.rp-mr-meta { font-size: 14px; color: var(--ink-faint); font-weight: 600; margin-top: 4px; }
+.rp-mr-status { font-size: 14px; color: var(--ink-faint); font-weight: 600; margin-top: 2px; }
+.rp-mr-right { text-align: right; }
+.rp-mr-amount { font-weight: 800; color: var(--green); font-size: 21px; }
+.rp-mr-amount.is-small { font-size: 18px; }
+
+.rp-modal-close {
+  width: 100%;
+  font-family: inherit;
+  padding: 15px;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  font-size: 16px;
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.rp-modal-close:hover { background: #1e293b; transform: translateY(-2px); box-shadow: 0 12px 24px rgba(15, 23, 42, 0.3); }
+.rp-modal-close:active { transform: translateY(0) scale(0.98); }
+
+/* ---------- Keyboard focus ---------- */
+.rp-export-btn:focus-visible,
+.rp-pill-btn:focus-visible,
+.rp-receipt-btn:focus-visible,
+.rp-history-btn:focus-visible,
+.rp-close-x:focus-visible,
+.rp-modal-close:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.5);
+  outline-offset: 2px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 720px) {
+  .rp-header-tools, .rp-export-btn { width: 100%; }
+  .rp-tools { width: 100%; }
+  .rp-tools .rp-select, .rp-tools .rp-pill-btn { flex: 1; min-width: 140px; }
+  .rp-select, .rp-search { width: 100%; }
+  .rp-hist-row, .rp-complaint-row { padding: 16px; }
+  .rp-row-right { width: 100%; justify-content: space-between; }
+  .rp-pie { width: 180px; height: 180px; }
+  .rp-pie-center { width: 100px; height: 100px; font-size: 17px; }
+}
+
+/* ---------- Print ---------- */
+@media print {
+  body * { visibility: hidden !important; }
+  .printable-report-area, .printable-report-area * { visibility: visible !important; }
+  .printable-report-area { position: absolute; left: 0; top: 0; width: 100%; background: #fff !important; }
+  .rp-section, .rp-pie, .rp-table tbody tr { animation: none !important; }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .rp *, .rp *::before, .rp *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+`;
