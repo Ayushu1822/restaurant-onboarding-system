@@ -18,6 +18,19 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
   const [menuSearch, setMenuSearch] = useState('');
   const [selectedMenuItemIds, setSelectedMenuItemIds] = useState([]);
 
+  // Local state to store mapped menu item names per image for instant UI reflection
+  const [imageMenuMap, setImageMenuMap] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(`imageMenuMap_${restaurantId}`) || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem(`imageMenuMap_${restaurantId}`, JSON.stringify(imageMenuMap));
+  }, [imageMenuMap, restaurantId]);
+
   const fetchImages = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/gallery?restaurantId=${restaurantId}&search=${encodeURIComponent(searchQuery || '')}`);
@@ -29,7 +42,6 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
     }
   }, [restaurantId, searchQuery]);
 
-  // ✅ Fixed: Fetching menu items using the correct backend endpoint with email from localStorage
   const fetchMenuItems = useCallback(async () => {
     try {
       const userEmail = localStorage.getItem('userEmail') || '';
@@ -117,9 +129,22 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
           menuItemIds: selectedMenuItemIds
         })
       });
+
+      // Extract names of selected menu items to display instantly on the card
+      const selectedNames = menuItems
+        .filter(m => selectedMenuItemIds.includes(m.id || m.menuItemId))
+        .map(m => m.itemName || m.name || m.dishName || m.dish_name)
+        .filter(Boolean);
+
+      setImageMenuMap(prev => ({
+        ...prev,
+        [safeSelected[0]]: selectedNames
+      }));
+
       setIsMapModalOpen(false);
       setSelectedImageIds([]);
       setSelectedMenuItemIds([]);
+      fetchImages();
       alert('Images successfully mapped to menu items!');
     } catch (err) {
       console.error('Mapping failed', err);
@@ -179,6 +204,13 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
           const isSelected = safeSelectedIds.includes(img.id);
           const rawUrl = img.fileUrl || img.file_url || '';
           const imageUrl = rawUrl.startsWith('http') ? rawUrl : `${API_BASE_URL}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
+          
+          // Get mapped menu items for this image
+          const mappedNames = img.menuItemNames || img.menuItems || imageMenuMap[img.id] || [];
+          const displayNames = Array.isArray(mappedNames)
+            ? mappedNames.map(m => typeof m === 'object' ? (m.itemName || m.name || m.dishName) : m).filter(Boolean)
+            : [];
+
           return (
             <div
               key={img.id}
@@ -202,6 +234,16 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
               <div style={styles.cardFooter}>
                 <strong style={styles.cardTitle}>{img.fileName || img.file_name}</strong>
                 <small style={styles.cardSubtitle}>{img.fileType?.split('/')[1]?.toUpperCase() || 'JPEG'} · {img.fileSize || '45 KB'}</small>
+                
+                {/* 🏷️ Mapped Menu Item Badges */}
+                {displayNames.length > 0 && (
+                  <div style={styles.mappedBadgeContainer}>
+                    {displayNames.map((name, i) => (
+                      <span key={i} style={styles.mappedBadge}>🍽️ {name}</span>
+                    ))}
+                  </div>
+                )}
+
                 <span style={styles.cardDate}>{img.uploadedAt ? new Date(img.uploadedAt).toLocaleDateString() : ''}</span>
               </div>
             </div>
@@ -375,6 +417,8 @@ const styles = {
   cardFooter: { padding: '12px' },
   cardTitle: { display: 'block', fontSize: '13px', color: '#1f2937', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   cardSubtitle: { display: 'block', fontSize: '11px', color: '#9ca3af', marginTop: '2px' },
+  mappedBadgeContainer: { display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px', marginBottom: '4px' },
+  mappedBadge: { background: '#ecfdf5', color: '#047857', border: '1px solid #10b981', padding: '2px 6px', borderRadius: '6px', fontSize: '10px', fontWeight: '800' },
   cardDate: { display: 'block', fontSize: '11px', color: '#9ca3af', marginTop: '2px' },
   floatingBar: { position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', background: 'white', border: '1px solid #e5e7eb', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)', padding: '12px 24px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '30px', zIndex: 100 },
   floatingText: { fontWeight: 600, color: '#111827', fontSize: '14px' },
