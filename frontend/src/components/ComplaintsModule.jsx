@@ -13,6 +13,8 @@ export default function ComplaintsModule() {
 
   const [selectedOrderToLink, setSelectedOrderToLink] = useState(null);
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
+  const [showOrderDropdown, setShowOrderDropdown] = useState(false);
+
   const [newComplaint, setNewComplaint] = useState({
     orderId: '',
     customerName: '',
@@ -49,15 +51,20 @@ export default function ComplaintsModule() {
 
   const handleSelectOrderForComplaint = (order) => {
     setSelectedOrderToLink(order);
-    setNewComplaint({
-      orderId: order.displayId || order.orderId || 'N/A',
-      customerName: order.customerName || 'Valued Guest',
-      customerPhone: order.customerPhone || '',
-      complaintType: 'Missing Item',
-      channel: order.channel || 'WhatsApp Ordering',
-      notes: ''
-    });
-    setOrderSearchQuery(order.displayId || order.orderId || '');
+    const resolvedOrderId = order.displayId || order.orderId || 'N/A';
+    const resolvedName = order.customerName || 'Valued Guest';
+    const resolvedPhone = order.customerPhone || '';
+    const resolvedChannel = order.channel || 'WhatsApp Ordering';
+
+    setNewComplaint(prev => ({
+      ...prev,
+      orderId: resolvedOrderId,
+      customerName: resolvedName,
+      customerPhone: resolvedPhone,
+      channel: resolvedChannel
+    }));
+    setOrderSearchQuery(`${resolvedOrderId} — ${resolvedName} (${resolvedPhone || 'No Phone'})`);
+    setShowOrderDropdown(false);
   };
 
   const handleCreateComplaint = (e) => {
@@ -112,12 +119,14 @@ export default function ComplaintsModule() {
     return matchesSearch && matchesStatus && matchesType && matchesChannel;
   });
 
+  // Filter orders based on user typing in the search/select box
   const matchingOrdersForDropdown = orders.filter(o => {
-    if (!orderSearchQuery.trim()) return false;
-    const q = orderSearchQuery.toLowerCase();
+    const q = orderSearchQuery.toLowerCase().trim();
     const oId = (o.displayId || o.orderId || '').toLowerCase();
     const cName = (o.customerName || '').toLowerCase();
     const cPhone = (o.customerPhone || '').toLowerCase();
+    // If query is empty, show top recent orders, otherwise filter by match
+    if (!q) return true;
     return oId.includes(q) || cName.includes(q) || cPhone.includes(q);
   });
 
@@ -219,33 +228,44 @@ export default function ComplaintsModule() {
 
       {/* Modal for + New Complaint */}
       {isModalOpen && (
-        <div style={styles.modalOverlay} onClick={() => setIsModalOpen(false)}>
+        <div style={styles.modalOverlay} onClick={() => { setIsModalOpen(false); setShowOrderDropdown(false); }}>
           <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h3 style={{ margin: 0, color: '#0f172a', fontWeight: '950' }}>Create New Complaint</h3>
-              <button onClick={() => setIsModalOpen(false)} style={styles.closeXBtn}>✕</button>
+              <button onClick={() => { setIsModalOpen(false); setShowOrderDropdown(false); }} style={styles.closeXBtn}>✕</button>
             </div>
 
             <form onSubmit={handleCreateComplaint} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               
+              {/* Order Search & Select Dropdown + Manual Fallback */}
               <div style={{ position: 'relative' }}>
-                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>SEARCH & LINK ORDER (OPTIONAL)</label>
+                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>SEARCH ORDER FROM DB OR TYPE MANUALLY</label>
                 <input 
                   type="text" 
-                  placeholder="Type name, phone, or order ID to auto-fill..." 
+                  placeholder="Select from dropdown or type Order ID / Name..." 
                   value={orderSearchQuery}
-                  onChange={e => setOrderSearchQuery(e.target.value)}
+                  onFocus={() => setShowOrderDropdown(true)}
+                  onChange={e => {
+                    setOrderSearchQuery(e.target.value);
+                    setShowOrderDropdown(true);
+                    // Allow manual typing fallback into orderId
+                    setNewComplaint(prev => ({ ...prev, orderId: e.target.value }));
+                  }}
                   style={styles.input}
                 />
-                {matchingOrdersForDropdown.length > 0 && (
+                
+                {showOrderDropdown && matchingOrdersForDropdown.length > 0 && (
                   <div style={styles.dropdownResults}>
+                    <div style={{ padding: '6px 10px', fontSize: '10px', fontWeight: '900', color: '#94a3b8', background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+                      RECENT ORDERS FROM DATABASE (CLICK TO AUTO-FILL)
+                    </div>
                     {matchingOrdersForDropdown.map((ord, oIdx) => (
                       <div 
                         key={oIdx} 
                         onClick={() => handleSelectOrderForComplaint(ord)}
                         style={styles.dropdownItem}
                       >
-                        <strong>{ord.displayId || ord.orderId}</strong> — {ord.customerName} ({ord.customerPhone || 'No Phone'}) · ₹{ord.totalAmount}
+                        <strong>{ord.displayId || ord.orderId}</strong> — {ord.customerName} ({ord.customerPhone || 'No Phone'}) · ₹{ord.totalAmount || 0}
                       </div>
                     ))}
                   </div>
@@ -253,12 +273,12 @@ export default function ComplaintsModule() {
               </div>
 
               <div>
-                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>ORDER ID</label>
+                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>ORDER ID *</label>
                 <input type="text" placeholder="e.g. KO01/002978" required value={newComplaint.orderId} onChange={e => setNewComplaint({...newComplaint, orderId: e.target.value})} style={styles.input} />
               </div>
 
               <div>
-                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>CUSTOMER NAME</label>
+                <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>CUSTOMER NAME *</label>
                 <input type="text" placeholder="Customer Name" required value={newComplaint.customerName} onChange={e => setNewComplaint({...newComplaint, customerName: e.target.value})} style={styles.input} />
               </div>
 
@@ -298,7 +318,7 @@ export default function ComplaintsModule() {
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button type="submit" style={{ flex: 1, background: '#059669', color: '#fff', padding: '12px', border: 'none', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}>Save Complaint</button>
-                <button type="button" onClick={() => setIsModalOpen(false)} style={{ flex: 1, background: '#cbd5e1', color: '#0f172a', padding: '12px', border: 'none', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}>Cancel</button>
+                <button type="button" onClick={() => { setIsModalOpen(false); setShowOrderDropdown(false); }} style={{ flex: 1, background: '#cbd5e1', color: '#0f172a', padding: '12px', border: 'none', borderRadius: '10px', fontWeight: '950', cursor: 'pointer' }}>Cancel</button>
               </div>
             </form>
           </div>
@@ -314,6 +334,6 @@ const styles = {
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
   modalCard: { width: '440px', background: '#fff', padding: '26px', borderRadius: '20px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '1.5px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto' },
   closeXBtn: { background: 'none', border: 'none', fontSize: '16px', fontWeight: '950', color: '#64748b', cursor: 'pointer' },
-  dropdownResults: { position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '8px', zIndex: 10000, maxHeight: '150px', overflowY: 'auto', boxShadow: '0 10px 15px rgba(0,0,0,0.1)' },
-  dropdownItem: { padding: '8px 12px', fontSize: '12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontWeight: '800' }
+  dropdownResults: { position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '8px', zIndex: 10000, maxHeight: '180px', overflowY: 'auto', boxShadow: '0 10px 15px rgba(0,0,0,0.1)' },
+  dropdownItem: { padding: '9px 12px', fontSize: '12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontWeight: '800', color: '#1e293b' }
 };
