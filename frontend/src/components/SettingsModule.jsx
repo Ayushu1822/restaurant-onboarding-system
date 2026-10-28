@@ -4,7 +4,6 @@ const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
 export default function SettingsModule() {
   const [activeTab, setActiveTab] = useState('business');
-  const [receiptSubTab, setReceiptSubTab] = useState('printers'); // 'printers' | 'receipt' | 'rules'
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
@@ -14,7 +13,7 @@ export default function SettingsModule() {
   // Store full profile so we preserve unedited fields
   const [fullProfile, setFullProfile] = useState({});
 
-  // Inline Form States
+  // Inline Form States (Replacing browser prompts)
   const [showAddAreaBox, setShowAddAreaBox] = useState(false);
   const [newAreaNameInput, setNewAreaNameInput] = useState('');
 
@@ -108,30 +107,6 @@ export default function SettingsModule() {
         { id: 'tg-3', name: 'Aerated/Carbonated Beverage (40%)', rate: 40, cgst: 20, sgst: 20, hsnCode: '220210', itcEligible: false, status: 'Active' },
         { id: 'tg-4', name: 'Non-Taxable / Exempt (0%)', rate: 0, cgst: 0, sgst: 0, hsnCode: '996331', itcEligible: false, status: 'Active' }
       ]
-    },
-    // 🖨️ Receipt & Printer Settings State
-    receiptConfig: {
-      restaurantName: 'LINGA FOODS',
-      headerText: 'Linga Foods - Wonghikal',
-      address: 'LINGA FOODS, No. 1540, Vellore Main Road, Wonghikal, Tiruvannamalai, Tamil Nadu 606604',
-      phone: '91234400635',
-      gstin: '37AAFP4128L1ZI',
-      fssai: 'FSSAI: 22426260001195',
-      footerNote: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***',
-      paperSize: '80mm'
-    },
-    printRules: {
-      counterReceiptTrigger: 'auto',
-      counterKotTrigger: 'auto',
-      tableReceiptTrigger: 'manual',
-      tableKotTrigger: 'auto',
-      takeawayReceiptTrigger: 'auto',
-      takeawayKotTrigger: 'auto'
-    },
-    printerInfo: {
-      printerName: '',
-      printReceiptDoc: true,
-      printKotDoc: false
     }
   });
 
@@ -175,16 +150,6 @@ export default function SettingsModule() {
         try { parsedBilling = JSON.parse(parsedBilling); } catch (e) {}
       }
 
-      let parsedReceipt = data.receiptConfig;
-      if (typeof parsedReceipt === 'string') {
-        try { parsedReceipt = JSON.parse(parsedReceipt); } catch (e) {}
-      }
-
-      let parsedRules = data.printRules;
-      if (typeof parsedRules === 'string') {
-        try { parsedRules = JSON.parse(parsedRules); } catch (e) {}
-      }
-
       setFormData(prev => ({ 
         ...prev, 
         ...data, 
@@ -192,9 +157,7 @@ export default function SettingsModule() {
         serviceHours: parsedHours || prev.serviceHours,
         areasAndTables: parsedAreas || prev.areasAndTables,
         deliveryConfig: parsedDelivery || prev.deliveryConfig,
-        billingConfig: parsedBilling || prev.billingConfig,
-        receiptConfig: parsedReceipt || prev.receiptConfig,
-        printRules: parsedRules || prev.printRules
+        billingConfig: parsedBilling || prev.billingConfig
       }));
     } catch (err) {
       console.error('Error fetching profile:', err);
@@ -229,7 +192,7 @@ export default function SettingsModule() {
     }));
   };
 
-  // --- Inline Area & Table Handlers ---
+  // --- Inline Area & Table Handlers (No Prompts) ---
   const handleSaveNewArea = (e) => {
     e.preventDefault();
     if (!newAreaNameInput.trim()) return;
@@ -317,7 +280,7 @@ export default function SettingsModule() {
     }));
   };
 
-  // --- Inline Delivery Agent Handlers ---
+  // --- Inline Delivery Agent Handlers (No Prompts) ---
   const handleSaveNewAgent = (e) => {
     e.preventDefault();
     if (!newAgentForm.name.trim()) return;
@@ -368,7 +331,7 @@ export default function SettingsModule() {
     }));
   };
 
-  // --- Inline Tax Group Handlers ---
+  // --- Inline Tax Group Handlers (Screenshot UI Form) ---
   const handleTaxRateChange = (val) => {
     const rateNum = parseFloat(val) || 0;
     const half = (rateNum / 2).toFixed(1).replace(/\.0$/, '');
@@ -549,9 +512,7 @@ export default function SettingsModule() {
         serviceHours: JSON.stringify(formData.serviceHours),
         areasAndTables: JSON.stringify(mergedAreas),
         deliveryConfig: JSON.stringify(formData.deliveryConfig),
-        billingConfig: JSON.stringify(formData.billingConfig),
-        receiptConfig: JSON.stringify(formData.receiptConfig),
-        printRules: JSON.stringify(formData.printRules)
+        billingConfig: JSON.stringify(formData.billingConfig)
       };
 
       const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/${formData.restaurantId}`, {
@@ -584,14 +545,6 @@ export default function SettingsModule() {
       if (typeof parsedBilling === 'string') {
         try { parsedBilling = JSON.parse(parsedBilling); } catch (e) {}
       }
-      let parsedReceipt = updated.receiptConfig;
-      if (typeof parsedReceipt === 'string') {
-        try { parsedReceipt = JSON.parse(parsedReceipt); } catch (e) {}
-      }
-      let parsedRules = updated.printRules;
-      if (typeof parsedRules === 'string') {
-        try { parsedRules = JSON.parse(parsedRules); } catch (e) {}
-      }
 
       setFormData(prev => ({ 
         ...prev, 
@@ -599,11 +552,9 @@ export default function SettingsModule() {
         serviceHours: parsedHours || prev.serviceHours,
         areasAndTables: parsedAreas || prev.areasAndTables,
         deliveryConfig: parsedDelivery || prev.deliveryConfig,
-        billingConfig: parsedBilling || prev.billingConfig,
-        receiptConfig: parsedReceipt || prev.receiptConfig,
-        printRules: parsedRules || prev.printRules
+        billingConfig: parsedBilling || prev.billingConfig
       }));
-      showMsg('✅ Printer, Receipt & Business settings successfully saved to database!', 'success');
+      showMsg('✅ Changes successfully saved to database & mapped to Menu!', 'success');
     } catch (err) {
       console.error('Error saving profile:', err);
       showMsg(`❌ Error: ${err.message}`, 'error');
@@ -641,7 +592,7 @@ export default function SettingsModule() {
       <div style={styles.header}>
         <div>
           <h2 style={styles.title}>Settings</h2>
-          <span style={styles.subtitle}>Manage your business configurations, printers & receipt templates (Account: {formData.email})</span>
+          <span style={styles.subtitle}>Manage your business configurations & Tax mappings (Account: {formData.email})</span>
         </div>
         <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
           <span style={styles.statusBadge}>🟢 Live Account Synced</span>
@@ -910,7 +861,7 @@ export default function SettingsModule() {
               </div>
             )}
 
-            {/* TAB 4: AREAS & TABLES */}
+            {/* TAB 4: AREAS & TABLES (Inline form instead of prompt) */}
             {activeTab === 'tables' && (
               <div style={styles.sectionGroup}>
                 <div style={styles.serviceHoursBanner}>
@@ -934,6 +885,7 @@ export default function SettingsModule() {
                   </button>
                 </div>
 
+                {/* Inline Form Box for Area */}
                 {showAddAreaBox && (
                   <div style={styles.inlineCardForm}>
                     <h4 style={{margin: '0 0 10px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Add New Area</h4>
@@ -970,6 +922,7 @@ export default function SettingsModule() {
                         </button>
                       </div>
 
+                      {/* Inline Form Box for Table */}
                       {activeAreaForTableBox === area.id && (
                         <div style={{...styles.inlineCardForm, marginBottom: '16px'}}>
                           <h4 style={{margin: '0 0 10px 0', fontSize: '14px', fontWeight: '950', color: '#0f172a'}}>Add Table in {area.name}</h4>
@@ -1031,7 +984,7 @@ export default function SettingsModule() {
               </div>
             )}
 
-            {/* TAB 5: DELIVERY */}
+            {/* TAB 5: DELIVERY (Inline form instead of prompt) */}
             {activeTab === 'delivery' && (
               <div style={styles.sectionGroup}>
                 <h3 style={styles.sectionTitle}>🛵 Delivery Setup</h3>
@@ -1080,6 +1033,7 @@ export default function SettingsModule() {
                   </button>
                 </div>
 
+                {/* Inline Form Box for Delivery Agent */}
                 {showAddAgentBox && (
                   <div style={styles.inlineCardForm}>
                     <h4 style={{margin: '0 0 10px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Add New Delivery Agent</h4>
@@ -1147,7 +1101,7 @@ export default function SettingsModule() {
               </div>
             )}
 
-            {/* TAB 6: BILLING */}
+            {/* TAB 6: BILLING & TAX (With full inline screen form matching screenshot for Add/Edit Tax Group) */}
             {activeTab === 'billing' && (
               <div style={styles.sectionGroup}>
                 {taxFormMode === 'list' ? (
@@ -1224,6 +1178,7 @@ export default function SettingsModule() {
                     </div>
                   </>
                 ) : (
+                  /* Screen Form Card matching screenshot */
                   <div style={styles.screenCardForm}>
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '2px solid #e2e8f0', paddingBottom: '12px'}}>
                       <div>
@@ -1328,289 +1283,8 @@ export default function SettingsModule() {
               </div>
             )}
 
-            {/* TAB 7: PRINTERS & RECEIPTS (WITH 3 NESTED SUB-TABS EXACTLY LIKE SCREENSHOTS) */}
-            {activeTab === 'printers' && (
-              <div style={styles.sectionGroup}>
-                <h3 style={styles.sectionTitle}>🖨️ Printers & Receipts</h3>
-                <p style={{fontSize: '13px', color: '#64748b', fontWeight: '800', marginTop: '-4px', marginBottom: '16px'}}>
-                  Manage your business receipt templates, thermal printers and print automation rules.
-                </p>
-
-                {/* 3 Nested Sub-Tabs Bar */}
-                <div style={{display: 'flex', gap: '16px', borderBottom: '2px solid #e2e8f0', marginBottom: '20px'}}>
-                  <button 
-                    type="button"
-                    onClick={() => setReceiptSubTab('printers')} 
-                    style={{...styles.subTabBtn, borderBottom: receiptSubTab === 'printers' ? '3px solid #059669' : '3px solid transparent', color: receiptSubTab === 'printers' ? '#059669' : '#64748b'}}
-                  >
-                    Printers
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setReceiptSubTab('receipt')} 
-                    style={{...styles.subTabBtn, borderBottom: receiptSubTab === 'receipt' ? '3px solid #059669' : '3px solid transparent', color: receiptSubTab === 'receipt' ? '#059669' : '#64748b'}}
-                  >
-                    Receipt Configuration
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setReceiptSubTab('rules')} 
-                    style={{...styles.subTabBtn, borderBottom: receiptSubTab === 'rules' ? '3px solid #059669' : '3px solid transparent', color: receiptSubTab === 'rules' ? '#059669' : '#64748b'}}
-                  >
-                    Print Rules
-                  </button>
-                </div>
-
-                {/* Sub-Tab 1: Printers */}
-                {receiptSubTab === 'printers' && (
-                  <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                    <div style={styles.serviceHoursBanner}>
-                      🖨️ <strong>Printing from this device:</strong> Direct thermal printing supported via browser print dialog. Connect a printer or use system default.
-                    </div>
-                    <div style={styles.grid2}>
-                      <div style={{backgroundColor: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0'}}>
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px'}}>
-                          <h4 style={{margin: 0, fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Counter Printer</h4>
-                          <span style={{backgroundColor: '#d1fae5', color: '#065f46', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '900'}}>Active</span>
-                        </div>
-                        <p style={{fontSize: '12px', color: '#64748b', fontWeight: '700', marginBottom: '14px'}}>Used for customer receipts and optionally KOT printing.</p>
-                        
-                        <label style={styles.label}>SELECT PRINTER / BROWSER TARGET</label>
-                        <select 
-                          style={styles.input} 
-                          value={formData.printerInfo?.printerName || ''}
-                          onChange={e => setFormData({...formData, printerInfo: {...formData.printerInfo, printerName: e.target.value}})}
-                        >
-                          <option value="">Default Browser Print Dialog (Recommended)</option>
-                          <option value="Thermal-58mm">Thermal Printer 58mm USB</option>
-                          <option value="Thermal-80mm">Thermal Printer 80mm USB</option>
-                        </select>
-
-                        <div style={{marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                          <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '800', cursor: 'pointer'}}>
-                            <input 
-                              type="checkbox" 
-                              checked={formData.printerInfo?.printReceiptDoc ?? true} 
-                              onChange={e => setFormData({...formData, printerInfo: {...formData.printerInfo, printReceiptDoc: e.target.checked}})} 
-                            />
-                            Print Customer Receipt
-                          </label>
-                          <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '800', cursor: 'pointer'}}>
-                            <input 
-                              type="checkbox" 
-                              checked={formData.printerInfo?.printKotDoc ?? false} 
-                              onChange={e => setFormData({...formData, printerInfo: {...formData.printerInfo, printKotDoc: e.target.checked}})} 
-                            />
-                            Print Kitchen KOT on this Counter Printer
-                          </label>
-                        </div>
-                      </div>
-
-                      <div style={{backgroundColor: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0'}}>
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px'}}>
-                          <h4 style={{margin: 0, fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Kitchen Printer</h4>
-                          <span style={{backgroundColor: '#f1f5f9', color: '#475569', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '900'}}>Optional</span>
-                        </div>
-                        <p style={{fontSize: '12px', color: '#64748b', fontWeight: '700', marginBottom: '20px'}}>Dedicated kitchen printer for food preparation orders.</p>
-                        <button 
-                          type="button"
-                          onClick={() => alert('Kitchen printer routing is synced with Counter Printer.')}
-                          style={{backgroundColor: '#fff', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '10px 16px', borderRadius: '10px', fontWeight: '950', fontSize: '12px', cursor: 'pointer'}}
-                        >
-                          + Configure Kitchen Printer
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Sub-Tab 2: Receipt Configuration */}
-                {receiptSubTab === 'receipt' && (
-                  <div style={{display: 'flex', gap: '24px', flexWrap: 'wrap'}}>
-                    <div style={{flex: 1, minWidth: '300px', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0', maxHeight: '65vh', overflowY: 'auto'}}>
-                      <h4 style={{margin: '0 0 16px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Receipt Branding & Fields</h4>
-                      
-                      <div style={styles.fieldGroup}>
-                        <label style={styles.label}>RESTAURANT DISPLAY NAME</label>
-                        <input 
-                          style={styles.input} 
-                          value={formData.receiptConfig?.restaurantName || ''} 
-                          onChange={e => setFormData({...formData, receiptConfig: {...formData.receiptConfig, restaurantName: e.target.value}})} 
-                        />
-                      </div>
-
-                      <div style={{...styles.fieldGroup, marginTop: '14px'}}>
-                        <label style={styles.label}>HEADER TEXT / SUBTITLE</label>
-                        <input 
-                          style={styles.input} 
-                          value={formData.receiptConfig?.headerText || ''} 
-                          onChange={e => setFormData({...formData, receiptConfig: {...formData.receiptConfig, headerText: e.target.value}})} 
-                        />
-                      </div>
-
-                      <div style={{...styles.fieldGroup, marginTop: '14px'}}>
-                        <label style={styles.label}>STORE ADDRESS</label>
-                        <textarea 
-                          style={{...styles.input, height: '60px', resize: 'vertical'}} 
-                          value={formData.receiptConfig?.address || ''} 
-                          onChange={e => setFormData({...formData, receiptConfig: {...formData.receiptConfig, address: e.target.value}})} 
-                        />
-                      </div>
-
-                      <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '14px'}}>
-                        <div style={styles.fieldGroup}>
-                          <label style={styles.label}>PHONE NUMBER</label>
-                          <input 
-                            style={styles.input} 
-                            value={formData.receiptConfig?.phone || ''} 
-                            onChange={e => setFormData({...formData, receiptConfig: {...formData.receiptConfig, phone: e.target.value}})} 
-                          />
-                        </div>
-                        <div style={styles.fieldGroup}>
-                          <label style={styles.label}>GST / TAX ID</label>
-                          <input 
-                            style={styles.input} 
-                            value={formData.receiptConfig?.gstin || ''} 
-                            onChange={e => setFormData({...formData, receiptConfig: {...formData.receiptConfig, gstin: e.target.value}})} 
-                          />
-                        </div>
-                      </div>
-
-                      <div style={{...styles.fieldGroup, marginTop: '14px'}}>
-                        <label style={styles.label}>FSSAI / LICENSE NUMBER</label>
-                        <input 
-                          style={styles.input} 
-                          value={formData.receiptConfig?.fssai || ''} 
-                          onChange={e => setFormData({...formData, receiptConfig: {...formData.receiptConfig, fssai: e.target.value}})} 
-                        />
-                      </div>
-
-                      <div style={{...styles.fieldGroup, marginTop: '14px'}}>
-                        <label style={styles.label}>CUSTOM FOOTER NOTE</label>
-                        <textarea 
-                          style={{...styles.input, height: '70px', resize: 'vertical'}} 
-                          value={formData.receiptConfig?.footerNote || ''} 
-                          onChange={e => setFormData({...formData, receiptConfig: {...formData.receiptConfig, footerNote: e.target.value}})} 
-                        />
-                      </div>
-                    </div>
-
-                    <div style={{width: '360px', backgroundColor: '#fff', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0', textAlign: 'center'}}>
-                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px'}}>
-                        <h4 style={{margin: 0, fontSize: '13px', fontWeight: '950', color: '#64748b'}}>LIVE RECEIPT PREVIEW</h4>
-                        <div style={{display: 'flex', gap: '6px'}}>
-                          <button 
-                            type="button"
-                            onClick={() => setFormData({...formData, receiptConfig: {...formData.receiptConfig, paperSize: '58mm'}})}
-                            style={{backgroundColor: formData.receiptConfig?.paperSize === '58mm' ? '#059669' : '#f1f5f9', color: formData.receiptConfig?.paperSize === '58mm' ? '#fff' : '#334155', border: 'none', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '950', cursor: 'pointer'}}
-                          >
-                            58mm
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={() => setFormData({...formData, receiptConfig: {...formData.receiptConfig, paperSize: '80mm'}})}
-                            style={{backgroundColor: formData.receiptConfig?.paperSize === '80mm' ? '#059669' : '#f1f5f9', color: formData.receiptConfig?.paperSize === '80mm' ? '#fff' : '#334155', border: 'none', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '950', cursor: 'pointer'}}
-                          >
-                            80mm
-                          </button>
-                        </div>
-                      </div>
-
-                      <div style={{backgroundColor: '#fefefe', border: '1.5px dashed #cbd5e1', padding: '16px', borderRadius: '10px', fontFamily: 'monospace', fontSize: '11px', textAlign: 'left', lineHeight: '1.4', color: '#000'}}>
-                        <div style={{textAlign: 'center', fontWeight: 'bold', fontSize: '12px'}}>*** TEST PRINT ***</div>
-                        <div style={{textAlign: 'center', fontWeight: '950', fontSize: '13px', marginTop: '4px'}}>{formData.receiptConfig?.restaurantName || 'RESTAURANT'}</div>
-                        <div style={{textAlign: 'center', color: '#444', fontSize: '10px'}}>{formData.receiptConfig?.headerText || ''}</div>
-                        <div style={{textAlign: 'center', color: '#444', fontSize: '10px', margin: '4px 0'}}>{formData.receiptConfig?.address || ''}</div>
-                        <div style={{textAlign: 'center', color: '#444', fontSize: '10px'}}>Ph: {formData.receiptConfig?.phone || ''}</div>
-                        <div style={{textAlign: 'center', color: '#444', fontSize: '10px'}}>GSTIN: {formData.receiptConfig?.gstin || ''}</div>
-                        <div style={{textAlign: 'center', color: '#444', fontSize: '10px', marginBottom: '8px'}}>{formData.receiptConfig?.fssai || ''}</div>
-                        
-                        <div style={{borderTop: '1px dashed #000', margin: '6px 0'}}></div>
-                        <div><strong>Invoice:</strong> INV-000724</div>
-                        <div><strong>Date:</strong> {new Date().toLocaleString()}</div>
-                        
-                        <div style={{borderTop: '1px dashed #000', margin: '6px 0'}}></div>
-                        <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: 'bold'}}>
-                          <span>Item</span><span>Qty Price</span>
-                        </div>
-                        <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                          <span>Test Burger</span><span>2 x 200 = 400.00</span>
-                        </div>
-                        <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                          <span>Test Coke</span><span>1 x 70 = 70.00</span>
-                        </div>
-
-                        <div style={{borderTop: '1px dashed #000', margin: '6px 0'}}></div>
-                        <div style={{display: 'flex', justifyContent: 'space-between'}}><span>Subtotal:</span><span>₹470.00</span></div>
-                        <div style={{display: 'flex', justifyContent: 'space-between'}}><span>Tax (5%):</span><span>₹23.50</span></div>
-                        <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '12px', marginTop: '4px'}}>
-                          <span>TOTAL:</span><span>₹494.00</span>
-                        </div>
-                        
-                        <div style={{borderTop: '1px dashed #000', margin: '6px 0'}}></div>
-                        <div style={{textAlign: 'center', whiteSpace: 'pre-line', fontSize: '10px', color: '#222', marginTop: '8px'}}>
-                          {formData.receiptConfig?.footerNote || ''}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Sub-Tab 3: Print Rules */}
-                {receiptSubTab === 'rules' && (
-                  <div style={styles.grid2}>
-                    <div style={{backgroundColor: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0'}}>
-                      <h4 style={{margin: '0 0 10px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Counter Orders</h4>
-                      <label style={styles.label}>When should the Receipt print?</label>
-                      <select 
-                        style={styles.input} 
-                        value={formData.printRules?.counterReceiptTrigger || 'auto'}
-                        onChange={e => setFormData({...formData, printRules: {...formData.printRules, counterReceiptTrigger: e.target.value}})}
-                      >
-                        <option value="auto">Automatically after successful payment</option>
-                        <option value="manual">On Demand (Manual Print Button)</option>
-                      </select>
-
-                      <label style={{...styles.label, marginTop: '14px'}}>When should the KOT print?</label>
-                      <select 
-                        style={styles.input} 
-                        value={formData.printRules?.counterKotTrigger || 'auto'}
-                        onChange={e => setFormData({...formData, printRules: {...formData.printRules, counterKotTrigger: e.target.value}})}
-                      >
-                        <option value="auto">Automatically on order save</option>
-                        <option value="manual">On Demand</option>
-                      </select>
-                    </div>
-
-                    <div style={{backgroundColor: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0'}}>
-                      <h4 style={{margin: '0 0 10px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Table Orders</h4>
-                      <label style={styles.label}>When should the Receipt print?</label>
-                      <select 
-                        style={styles.input} 
-                        value={formData.printRules?.tableReceiptTrigger || 'manual'}
-                        onChange={e => setFormData({...formData, printRules: {...formData.printRules, tableReceiptTrigger: e.target.value}})}
-                      >
-                        <option value="auto">Automatically after successful payment</option>
-                        <option value="manual">On Demand (Manual Print Button)</option>
-                      </select>
-
-                      <label style={{...styles.label, marginTop: '14px'}}>When should the KOT print?</label>
-                      <select 
-                        style={styles.input} 
-                        value={formData.printRules?.tableKotTrigger || 'auto'}
-                        onChange={e => setFormData({...formData, printRules: {...formData.printRules, tableKotTrigger: e.target.value}})}
-                      >
-                        <option value="auto">Automatically when KOT is sent</option>
-                        <option value="manual">On Demand</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* PLACEHOLDER FOR OTHER TABS */}
-            {activeTab !== 'business' && activeTab !== 'profile' && activeTab !== 'hours' && activeTab !== 'tables' && activeTab !== 'delivery' && activeTab !== 'billing' && activeTab !== 'printers' && (
+            {activeTab !== 'business' && activeTab !== 'profile' && activeTab !== 'hours' && activeTab !== 'tables' && activeTab !== 'delivery' && activeTab !== 'billing' && (
               <div style={styles.placeholderTab}>
                 <h3>🚧 {sidebarItems.find(i => i.id === activeTab)?.label} Configuration</h3>
                 <p style={{color: '#475569', fontSize: '14px', fontWeight: '800', marginTop: '8px'}}>
@@ -1646,7 +1320,6 @@ const styles = {
   fieldGroup: { display: 'flex', flexDirection: 'column', gap: '6px' },
   label: { fontSize: '12px', fontWeight: '950', color: '#0f172a' },
   input: { padding: '10px 14px', borderRadius: '10px', border: '2px solid #94a3b8', fontSize: '13px', fontWeight: '900', color: '#0f172a', outline: 'none', backgroundColor: '#fff', width: '100%', boxSizing: 'border-box' },
-  subTabBtn: { background: 'none', border: 'none', padding: '10px 4px', fontSize: '14px', fontWeight: '950', cursor: 'pointer' },
   placeholderTab: { textAlign: 'center', padding: '80px 20px', color: '#0f172a' },
   centerMsg: { padding: '40px', textAlign: 'center', fontWeight: '900', color: '#334155' },
   serviceHoursBanner: { backgroundColor: '#e0f2fe', border: '2px solid #7dd3fc', borderRadius: '12px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
