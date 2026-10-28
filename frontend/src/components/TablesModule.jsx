@@ -21,7 +21,7 @@ export default function TablesModule() {
   const [showCaptainManageModal, setShowCaptainManageModal] = useState(false);
   const [editingCaptain, setEditingCaptain] = useState(null);
 
-  // 🧾 Receipt & Print Modal State & Settings Config
+  // 🧾 Receipt & Print Modal State & Settings Config (Synced with Settings Module)
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [completedOrderReceipt, setCompletedOrderReceipt] = useState(null);
   const [receiptConfig, setReceiptConfig] = useState({
@@ -32,7 +32,24 @@ export default function TablesModule() {
     gstin: '37AAFP4128L1ZI',
     fssai: 'FSSAI: 22426260001195',
     footerNote: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***',
-    paperSize: '80mm'
+    paperSize: '80mm',
+    density: 'Compact',
+    toggles: {
+      restaurantName: true,
+      address: true,
+      phone: true,
+      gstin: true,
+      fssai: true,
+      invoiceNo: true,
+      dateAndTime: true,
+      tokenNumber: true,
+      itemNameQtyAmt: true,
+      totalTax: true
+    }
+  });
+
+  const [printRules, setPrintRules] = useState({
+    tableOrders: { receiptTrigger: 'manual', kotTrigger: 'auto' }
   });
 
   // 💳 Cash vs Online Split Payment State
@@ -92,6 +109,12 @@ export default function TablesModule() {
       if (data.receiptConfig) {
         const parsedCfg = typeof data.receiptConfig === 'string' ? JSON.parse(data.receiptConfig) : data.receiptConfig;
         setReceiptConfig(prev => ({ ...prev, ...parsedCfg }));
+      }
+
+      // Load printRules from backend profile if available
+      if (data.printRules) {
+        const parsedRules = typeof data.printRules === 'string' ? JSON.parse(data.printRules) : data.printRules;
+        setPrintRules(prev => ({ ...prev, ...parsedRules }));
       }
 
       let parsedAreas = data.areasAndTables;
@@ -430,6 +453,7 @@ export default function TablesModule() {
       return;
     }
 
+    const toggles = receiptConfig.toggles || {};
     const itemsHtml = completedOrderReceipt.items.map(it => `
       <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
         <span>${it.qty}x ${it.name}</span>
@@ -442,7 +466,7 @@ export default function TablesModule() {
         <head>
           <title>Receipt - ${completedOrderReceipt.orderId}</title>
           <style>
-            body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: ${receiptConfig.paperSize === '58mm' ? '58mm' : '80mm'}; margin: 0 auto; }
+            body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: ${receiptConfig.paperSize === '58mm' ? '58mm' : '80mm'}; margin: 0 auto; font-size: ${receiptConfig.density === 'Compact' ? '10px' : '12px'}; }
             .center { text-align: center; }
             .bold { font-weight: bold; }
             .line { border-top: 1px dashed #000; margin: 8px 0; }
@@ -450,15 +474,15 @@ export default function TablesModule() {
           </style>
         </head>
         <body>
-          <div class="center bold" style="font-size: 14px;">${receiptConfig.restaurantName}</div>
-          <div class="center" style="font-size: 10px; color: #333;">${receiptConfig.headerText || ''}</div>
-          <div class="center" style="font-size: 10px; color: #333; margin: 3px 0;">${receiptConfig.address}</div>
-          <div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>
-          <div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>
-          <div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>
+          ${toggles.restaurantName ? `<div class="center bold" style="font-size: 14px;">${receiptConfig.restaurantName}</div>` : ''}
+          ${receiptConfig.headerText ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.headerText}</div>` : ''}
+          ${toggles.address && receiptConfig.address ? `<div class="center" style="font-size: 10px; color: #333; margin: 3px 0;">${receiptConfig.address}</div>` : ''}
+          ${toggles.phone && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>` : ''}
+          ${toggles.gstin && receiptConfig.gstin ? `<div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>` : ''}
+          ${receiptConfig.fssai ? `<div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>` : ''}
           <div class="line"></div>
-          <div><strong>Order ID:</strong> ${completedOrderReceipt.orderId}</div>
-          <div><strong>Date:</strong> ${completedOrderReceipt.timestamp}</div>
+          ${toggles.invoiceNo ? `<div><strong>Order ID:</strong> ${completedOrderReceipt.orderId}</div>` : ''}
+          ${toggles.dateAndTime ? `<div><strong>Date:</strong> ${completedOrderReceipt.timestamp}</div>` : ''}
           <div><strong>Table:</strong> ${completedOrderReceipt.tableName} (${completedOrderReceipt.areaName})</div>
           <div><strong>Captain:</strong> ${completedOrderReceipt.captain}</div>
           <div><strong>Type:</strong> ${completedOrderReceipt.orderType}</div>
@@ -468,7 +492,7 @@ export default function TablesModule() {
           ${itemsHtml}
           <div class="line"></div>
           <div class="flex"><span>Subtotal:</span><span>₹${completedOrderReceipt.subtotal.toFixed(2)}</span></div>
-          <div class="flex"><span>Tax:</span><span>₹${completedOrderReceipt.totalTax.toFixed(2)}</span></div>
+          ${toggles.totalTax ? `<div class="flex"><span>Tax:</span><span>₹${completedOrderReceipt.totalTax.toFixed(2)}</span></div>` : ''}
           <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>Total:</span><span>₹${completedOrderReceipt.totalAmount}</span></div>
           <div class="line"></div>
           <div class="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptConfig.footerNote}</div>
