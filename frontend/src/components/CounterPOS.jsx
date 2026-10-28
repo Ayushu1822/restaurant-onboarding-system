@@ -19,6 +19,30 @@ export default function CounterPOS() {
   const [cart, setCart] = useState([]);
   const [specialNote, setSpecialNote] = useState(''); // 📝 Special Note / Instructions state
   
+  // Receipt Configuration state synced with Settings Module
+  const [receiptConfig, setReceiptConfig] = useState({
+    restaurantName: 'LINGA FOODS',
+    headerText: 'Linga Foods - Wonghikal',
+    address: 'LINGA FOODS, No. 1540, Vellore Main Road, Wonghikal, Tiruvannamalai, Tamil Nadu 606604',
+    phone: '91234400635',
+    gstin: '37AAFP4128L1ZI',
+    fssai: 'FSSAI: 22426260001195',
+    footerNote: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***',
+    paperSize: '80mm',
+    density: 'Compact',
+    toggles: {
+      restaurantName: true,
+      address: true,
+      phone: true,
+      gstin: true,
+      fssai: true,
+      invoiceNo: true,
+      dateAndTime: true,
+      itemNameQtyAmt: true,
+      totalTax: true
+    }
+  });
+  
   // Identical Customer Form State matching CustomersModule
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [customerName, setCustomerName] = useState('');
@@ -47,10 +71,47 @@ export default function CounterPOS() {
   useEffect(() => {
     const userEmail = localStorage.getItem('userEmail') || '';
 
-    // Fetch Menu synced with account
+    // Fetch Restaurant Profile to load receiptConfig & tax rules
+    fetch(`${API_BASE_URL}/api/v1/restaurants/email/${userEmail}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.receiptConfig) {
+          const parsedCfg = typeof data.receiptConfig === 'string' ? JSON.parse(data.receiptConfig) : data.receiptConfig;
+          setReceiptConfig(prev => ({ ...prev, ...parsedCfg }));
+        }
+      })
+      .catch(err => console.log("Profile fetch error:", err));
+
+    // Fetch Menu synced with account & tax mapping
     fetch(`${API_BASE_URL}/api/v1/menu?email=${userEmail}`)
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setMenuItems(data); })
+      .then(data => {
+        if (Array.isArray(data)) {
+          const storedTaxMap = JSON.parse(localStorage.getItem(`itemTaxMap_${userEmail}`) || '{}');
+          const normalized = data.map((item, idx) => {
+            const rawPrice = item.price ?? item.itemPrice ?? item.cost ?? item.rate ?? item.amount ?? item.unitPrice ?? 0;
+            const parsedPrice = Number(rawPrice);
+            const taxGroupName = item.taxGroup || storedTaxMap[item.id] || storedTaxMap[item.itemName] || 'Standard Restaurant (5%)';
+            
+            let taxRate = 5;
+            const match = taxGroupName.match(/\((\d+)%\)/);
+            if (match && match[1]) {
+              taxRate = Number(match[1]);
+            }
+
+            return {
+              ...item,
+              id: item.id || item.menuId || idx,
+              name: item.name || item.itemName || item.dishName || item.title || 'Unnamed Item',
+              price: isNaN(parsedPrice) ? 0 : parsedPrice,
+              category: item.category || item.foodType || item.menuType || 'Dishes',
+              taxGroup: taxGroupName,
+              taxRate: taxRate
+            };
+          });
+          setMenuItems(normalized);
+        }
+      })
       .catch(err => console.log("Menu fetch error:", err));
 
     // Fetch Customers strictly isolated by account email
@@ -105,7 +166,7 @@ export default function CounterPOS() {
       whatsappNumber: whatsappNumber || customerPhone,
       customerEmail, 
       address,
-      restaurantEmail: userEmail // ✅ Tied strictly to current logged-in account
+      restaurantEmail: userEmail
     };
 
     fetch(`${API_BASE_URL}/api/v1/customers`, {
@@ -124,12 +185,14 @@ export default function CounterPOS() {
     const itemId = item.id || item.menuId;
     const itemName = item.itemName || item.name;
     const itemPrice = item.unitPrice || item.price;
+    const taxRate = item.taxRate ?? 5;
+    const taxGroup = item.taxGroup || 'Standard Restaurant (5%)';
 
     const existing = cart.find(i => i.id === itemId);
     if (existing) {
       setCart(cart.map(i => i.id === itemId ? { ...i, qty: i.qty + 1 } : i));
     } else {
-      setCart([...cart, { id: itemId, name: itemName, price: itemPrice, qty: 1 }]);
+      setCart([...cart, { id: itemId, name: itemName, price: itemPrice, taxRate, taxGroup, qty: 1 }]);
     }
   };
 
@@ -144,8 +207,8 @@ export default function CounterPOS() {
   };
 
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
-  const tax = subtotal * 0.05;
-  const totalAmount = subtotal + tax;
+  const tax = cart.reduce((acc, item) => acc + ((item.price * item.qty * item.taxRate) / 100), 0);
+  const totalAmount = Math.round(subtotal + tax);
 
   const handleCheckout = () => {
     if (cart.length === 0) return alert('Cart is empty!');
@@ -153,6 +216,7 @@ export default function CounterPOS() {
 
     setIsSubmitting(true);
     const userEmail = localStorage.getItem('userEmail') || '';
+    const istTimestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
     const finalPaymentDescription = splitPayment 
       ? `Split: ${pay1Method} (₹${pay1Amount || (totalAmount/2).toFixed(2)}) + ${pay2Method} (₹${(totalAmount - (Number(pay1Amount) || totalAmount/2)).toFixed(2)})`
@@ -160,7 +224,7 @@ export default function CounterPOS() {
 
     const orderPayload = {
       displayId: `#POS-${Math.floor(1000 + Math.random() * 9000)}`,
-      restaurantEmail: userEmail, // ✅ Tied strictly to logged-in account
+      restaurantEmail: userEmail,
       customerName,
       customerPhone,
       customerEmail,
@@ -172,11 +236,15 @@ export default function CounterPOS() {
       paymentStatus: 'PAID',
       status: 'Preparing', 
       subtotal: subtotal,
+      totalTax: tax,
       totalAmount: totalAmount,
+      timestamp: istTimestamp,
       items: cart.map(item => ({
         itemName: item.name,
         quantity: item.qty,
         unitPrice: item.price,
+        taxRate: item.taxRate,
+        taxGroup: item.taxGroup,
         itemDescription: specialNote || ''
       }))
     };
@@ -197,8 +265,72 @@ export default function CounterPOS() {
       .catch(err => {
         console.error("Order save error:", err);
         setIsSubmitting(false);
-        setLastCompletedOrder(orderPayload);
+        setLastCompletedOrder({ ...orderPayload, id: orderPayload.displayId });
       });
+  };
+
+  // 🖨️ Bulletproof Print / Download Handler using Isolated Print Window & Settings Config
+  const handlePrintReceipt = () => {
+    if (!lastCompletedOrder) return;
+    
+    const printWindow = window.open('', '_blank', 'width=450,height=600');
+    if (!printWindow) {
+      alert('Popup blocked! Please allow popups for printing.');
+      return;
+    }
+
+    const toggles = receiptConfig.toggles || {};
+    const itemsHtml = lastCompletedOrder.items.map(it => `
+      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+        <span>${it.quantity}x ${it.itemName}</span>
+        <span>₹${(it.unitPrice * it.quantity).toFixed(2)}</span>
+      </div>
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Receipt - ${lastCompletedOrder.id}</title>
+          <style>
+            body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: ${receiptConfig.paperSize === '58mm' ? '58mm' : '80mm'}; margin: 0 auto; font-size: ${receiptConfig.density === 'Compact' ? '10px' : '12px'}; }
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+            .line { border-top: 1px dashed #000; margin: 8px 0; }
+            .flex { display: flex; justify-content: space-between; }
+          </style>
+        </head>
+        <body>
+          ${toggles.restaurantName ? `<div class="center bold" style="font-size: 14px;">${receiptConfig.restaurantName}</div>` : ''}
+          ${receiptConfig.headerText ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.headerText}</div>` : ''}
+          ${toggles.address && receiptConfig.address ? `<div class="center" style="font-size: 10px; color: #333; margin: 3px 0;">${receiptConfig.address}</div>` : ''}
+          ${toggles.phone && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>` : ''}
+          ${toggles.gstin && receiptConfig.gstin ? `<div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>` : ''}
+          ${receiptConfig.fssai ? `<div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>` : ''}
+          <div class="line"></div>
+          ${toggles.invoiceNo ? `<div><strong>Order ID:</strong> ${lastCompletedOrder.id}</div>` : ''}
+          ${toggles.dateAndTime ? `<div><strong>Date:</strong> ${lastCompletedOrder.timestamp}</div>` : ''}
+          <div><strong>Customer:</strong> ${lastCompletedOrder.customerName} (${lastCompletedOrder.customerPhone})</div>
+          <div><strong>Type:</strong> ${lastCompletedOrder.orderType}</div>
+          <div><strong>Payment:</strong> ${splitPayment ? `Split (${pay1Method} + ${pay2Method})` : lastCompletedOrder.paymentMethod}</div>
+          <div class="line"></div>
+          <div class="bold" style="margin-bottom: 6px;">ITEMS:</div>
+          ${itemsHtml}
+          <div class="line"></div>
+          <div class="flex"><span>Subtotal:</span><span>₹${lastCompletedOrder.subtotal.toFixed(2)}</span></div>
+          ${toggles.totalTax ? `<div class="flex"><span>Tax:</span><span>₹${lastCompletedOrder.totalTax.toFixed(2)}</span></div>` : ''}
+          <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>Total:</span><span>₹${lastCompletedOrder.totalAmount}</span></div>
+          <div class="line"></div>
+          <div class="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptConfig.footerNote}</div>
+          <script>
+            window.onload = function() {
+              window.print();
+              window.close();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const filteredMenu = menuItems.filter(item => {
@@ -273,7 +405,7 @@ export default function CounterPOS() {
         <div style={styles.posHeader}>
           <div>
             <h2 style={{margin: 0, fontSize: '20px', fontWeight: '800', color: '#0f172a'}}>Counter POS ({orderType})</h2>
-            <span style={{fontSize: '12px', color: '#64748b'}}>Live Menu Synchronized</span>
+            <span style={{fontSize: '12px', color: '#64748b'}}>Live Menu & Tax Synchronized</span>
           </div>
           <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
             <input 
@@ -351,7 +483,10 @@ export default function CounterPOS() {
                             </div>
                           </div>
 
-                          <div style={{fontSize: '11px', color: '#64748b', marginLeft: '26px', marginBottom: '12px'}}>{itemCat}</div>
+                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#64748b', marginLeft: '26px', marginBottom: '12px'}}>
+                            <span>{itemCat}</span>
+                            <span style={{background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontWeight: '700'}}>🏷️ {item.taxGroup}</span>
+                          </div>
 
                           <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginLeft: '26px'}}>
                             <span style={{fontSize: '14px', fontWeight: '800', color: '#047857'}}>₹{itemPrice}</span>
@@ -404,7 +539,7 @@ export default function CounterPOS() {
               <div key={item.id} style={styles.cartItemRow}>
                 <div style={{flex: 1}}>
                   <div style={{fontSize: '13px', fontWeight: '600'}}>{item.name}</div>
-                  <div style={{fontSize: '11px', color: '#64748b'}}>₹{item.price} each</div>
+                  <div style={{fontSize: '11px', color: '#64748b'}}>₹{item.price} each · <span style={{color: '#047857'}}>{item.taxRate}% Tax</span></div>
                 </div>
                 <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                   <button onClick={() => handleUpdateQty(item.id, -1)} style={styles.qtyBtn}>-</button>
@@ -434,7 +569,7 @@ export default function CounterPOS() {
             <span>₹{subtotal.toFixed(2)}</span>
           </div>
           <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '10px', color: '#64748b'}}>
-            <span>GST (5%)</span>
+            <span>Total Tax (Mapped)</span>
             <span>₹{tax.toFixed(2)}</span>
           </div>
           <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: '800', borderTop: '1px solid #cbd5e1', paddingTop: '10px', marginBottom: '15px', color: '#0f172a'}}>
@@ -627,12 +762,15 @@ export default function CounterPOS() {
         <div style={styles.modalOverlay}>
           <div style={styles.receiptCard}>
             <div style={{textAlign: 'center', marginBottom: '12px'}}>
-              <h3 style={{margin: 0, fontSize: '20px', fontWeight: '800'}}>FOODOS RESTAURANT</h3>
-              <div style={{fontSize: '12px', color: '#64748b'}}>Counter POS Official Bill</div>
-              <div style={{fontSize: '12px', borderBottom: '1.5px dashed #cbd5e1', paddingBottom: '8px', marginTop: '6px'}}>Order ID: {lastCompletedOrder.id}</div>
+              <h3 style={{margin: 0, fontSize: '18px', fontWeight: '800'}}>{receiptConfig.restaurantName}</h3>
+              <div style={{fontSize: '11px', color: '#64748b'}}>{receiptConfig.headerText}</div>
+              <div style={{fontSize: '10px', color: '#64748b', marginTop: '2px'}}>{receiptConfig.address}</div>
+              <div style={{fontSize: '11px', borderBottom: '1.5px dashed #cbd5e1', paddingBottom: '8px', marginTop: '6px'}}>
+                Order ID: {lastCompletedOrder.id} · {lastCompletedOrder.timestamp}
+              </div>
             </div>
 
-            <div style={{fontSize: '13px', marginBottom: '12px', lineHeight: '1.5'}}>
+            <div style={{fontSize: '12px', marginBottom: '10px', lineHeight: '1.4'}}>
               <div><strong>Customer:</strong> {lastCompletedOrder.customerName} ({lastCompletedOrder.customerPhone})</div>
               <div><strong>Fulfillment:</strong> {lastCompletedOrder.orderType} ({lastCompletedOrder.deliveryAddress})</div>
               {lastCompletedOrder.customerRequest && (
@@ -640,39 +778,47 @@ export default function CounterPOS() {
               )}
             </div>
 
-            <div style={{borderTop: '1.5px dashed #cbd5e1', borderBottom: '1.5px dashed #cbd5e1', padding: '10px 0', marginBottom: '12px'}}>
+            <div style={{borderTop: '1.5px dashed #cbd5e1', borderBottom: '1.5px dashed #cbd5e1', padding: '8px 0', marginBottom: '10px', maxHeight: '140px', overflowY: 'auto'}}>
               {lastCompletedOrder.items.map((it, idx) => (
-                <div key={idx} style={{display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px'}}>
+                <div key={idx} style={{display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px'}}>
                   <span>{it.quantity}x {it.itemName}</span>
                   <span>₹{it.unitPrice * it.quantity}</span>
                 </div>
               ))}
             </div>
 
-            <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '15px', marginBottom: '12px'}}>
+            <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px', color: '#64748b'}}>
+              <span>Subtotal:</span>
+              <span>₹{lastCompletedOrder.subtotal.toFixed(2)}</span>
+            </div>
+            <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px', color: '#64748b'}}>
+              <span>Total Tax:</span>
+              <span>₹{lastCompletedOrder.totalTax.toFixed(2)}</span>
+            </div>
+            <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '15px', marginBottom: '10px'}}>
               <span>Total Amount:</span>
               <span style={{color: '#047857'}}>₹{Number(lastCompletedOrder.totalAmount).toFixed(2)}</span>
             </div>
 
             {/* 💳 SPLIT PAYMENT SECTION INSIDE RECEIPT MODAL */}
             <div style={styles.splitPaymentBox}>
-              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px'}}>
                 <div>
-                  <div style={{fontWeight: '800', fontSize: '13px', color: '#0f172a'}}>⚡ Split Payment</div>
+                  <div style={{fontWeight: '800', fontSize: '12px', color: '#0f172a'}}>⚡ Split Payment</div>
                   <div style={{fontSize: '10px', color: '#64748b'}}>Divide bill across two payment modes</div>
                 </div>
                 <input
                   type="checkbox"
                   checked={splitPayment}
                   onChange={(e) => setSplitPayment(e.target.checked)}
-                  style={{width: '18px', height: '18px', cursor: 'pointer', accentColor: '#047857'}}
+                  style={{width: '16px', height: '16px', cursor: 'pointer', accentColor: '#047857'}}
                 />
               </div>
 
               {splitPayment && (
-                <div style={{display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', borderTop: '1px solid #cbd5e1', paddingTop: '8px'}}>
+                <div style={{display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', borderTop: '1px solid #cbd5e1', paddingTop: '6px'}}>
                   <div style={{display: 'flex', gap: '6px', alignItems: 'center'}}>
-                    <span style={{fontSize: '11px', fontWeight: '700', width: '65px'}}>Payment 1:</span>
+                    <span style={{fontSize: '11px', fontWeight: '700', width: '60px'}}>Pay 1:</span>
                     <select value={pay1Method} onChange={e => setPay1Method(e.target.value)} style={styles.splitSelect}>
                       <option value="Cash">Cash 💵</option>
                       <option value="UPI">UPI 📱</option>
@@ -686,31 +832,18 @@ export default function CounterPOS() {
                       style={styles.splitInput}
                     />
                   </div>
-
-                  <div style={{display: 'flex', gap: '6px', alignItems: 'center'}}>
-                    <span style={{fontSize: '11px', fontWeight: '700', width: '65px'}}>Payment 2:</span>
-                    <select value={pay2Method} onChange={e => setPay2Method(e.target.value)} style={styles.splitSelect}>
-                      <option value="UPI">UPI 📱</option>
-                      <option value="Cash">Cash 💵</option>
-                      <option value="Card">Card 💳</option>
-                    </select>
-                    <span style={{fontSize: '11px', fontWeight: '700', color: '#047857', flex: 1, textAlign: 'right', paddingRight: '4px'}}>
-                      Bal: ₹{(lastCompletedOrder.totalAmount - (Number(pay1Amount) || lastCompletedOrder.totalAmount / 2)).toFixed(2)}
-                    </span>
+                  <div style={{fontSize: '10px', color: '#047857', fontWeight: '700'}}>
+                    Pay 2 ({pay2Method}): ₹{(lastCompletedOrder.totalAmount - (Number(pay1Amount) || 0)).toFixed(2)}
                   </div>
                 </div>
               )}
             </div>
 
-            <div style={{fontSize: '12px', color: '#334155', marginBottom: '16px', background: '#f8fafc', padding: '8px', borderRadius: '6px'}}>
-              <strong>Payment Status:</strong> {splitPayment ? `Split (${pay1Method} + ${pay2Method})` : lastCompletedOrder.paymentMethod} (PAID ✓)
-            </div>
-
-            <div style={{display: 'flex', gap: '12px'}}>
-              <button onClick={() => window.print()} style={{flex: 1, background: '#047857', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(4,120,87,0.3)'}}>
-                🖨️ Print Bill
+            <div style={{display: 'flex', gap: '10px'}}>
+              <button onClick={handlePrintReceipt} style={{flex: 1, background: '#047857', color: '#fff', border: 'none', padding: '11px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer'}}>
+                🖨️ Print / Download Bill
               </button>
-              <button onClick={() => { setLastCompletedOrder(null); setCart([]); setCustomerPhone(''); setCustomerName(''); setSpecialNote(''); setOrderType(null); setSplitPayment(false); }} style={{flex: 1, background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer'}}>
+              <button onClick={() => { setLastCompletedOrder(null); setCart([]); setCustomerPhone(''); setCustomerName(''); setSpecialNote(''); setOrderType(null); setSplitPayment(false); }} style={{flex: 1, background: '#f1f5f9', color: '#334155', border: '1.5px solid #cbd5e1', padding: '11px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer'}}>
                 New Order
               </button>
             </div>
@@ -723,7 +856,7 @@ export default function CounterPOS() {
 }
 
 const styles = {
-  fullScreenSelector: { display: 'flex', flex: 1, width: '100%', height: '100%', background: '#f8fafc', justifyContent: 'center', alignItems: 'center', boxSizing: 'border-box' },
+  fullScreenSelector: { display: 'flex', flex: 1, width: '100%', height: '100vh', background: '#f8fafc', justifyContent: 'center', alignItems: 'center', boxSizing: 'border-box' },
   selectorCard: { width: '520px', background: '#fff', padding: '45px', borderRadius: '24px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.1)', border: '1.5px solid #e2e8f0' },
   modeCard: { flex: 1, padding: '35px 20px', borderRadius: '16px', border: '2px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', textAlign: 'center' },
   posContainer: { display: 'flex', height: '100vh', width: '100%', background: '#f8fafc', boxSizing: 'border-box', overflow: 'hidden' },
@@ -752,7 +885,7 @@ const styles = {
   recentSearchInput: { width: '110px', padding: '4px 8px', borderRadius: '6px', border: '1.5px solid #cbd5e1', fontSize: '11px', outline: 'none' },
   recentCustomerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', border: '1px solid #e2e8f0', transition: 'all 0.15s' },
   deleteCustomerBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: '4px', borderRadius: '4px' },
-  receiptCard: { width: '420px', background: '#fff', padding: '24px', borderRadius: '20px', textAlign: 'left', fontFamily: 'Inter, sans-serif', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' },
+  receiptCard: { width: '440px', background: '#fff', padding: '24px', borderRadius: '20px', textAlign: 'left', fontFamily: 'Inter, sans-serif', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto' },
   splitPaymentBox: { background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '10px', padding: '10px 12px', marginBottom: '12px' },
   splitSelect: { padding: '5px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', background: '#fff', outline: 'none', fontWeight: '600' },
   splitInput: { width: '80px', padding: '5px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', background: '#fff', outline: 'none' }
