@@ -21,9 +21,19 @@ export default function TablesModule() {
   const [showCaptainManageModal, setShowCaptainManageModal] = useState(false);
   const [editingCaptain, setEditingCaptain] = useState(null);
 
-  // 🧾 Receipt & Print Modal State
+  // 🧾 Receipt & Print Modal State & Settings Config
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [completedOrderReceipt, setCompletedOrderReceipt] = useState(null);
+  const [receiptConfig, setReceiptConfig] = useState({
+    restaurantName: 'LINGA FOODS',
+    headerText: 'Linga Foods - Wonghikal',
+    address: 'LINGA FOODS, No. 1540, Vellore Main Road, Wonghikal, Tiruvannamalai, Tamil Nadu 606604',
+    phone: '91234400635',
+    gstin: '37AAFP4128L1ZI',
+    fssai: 'FSSAI: 22426260001195',
+    footerNote: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***',
+    paperSize: '80mm'
+  });
 
   // 💳 Cash vs Online Split Payment State
   const [showSplitModal, setShowSplitModal] = useState(false);
@@ -77,6 +87,12 @@ export default function TablesModule() {
       
       setFullProfile(data);
       setRestaurantId(data.restaurantId);
+
+      // Load receiptConfig from backend profile if available
+      if (data.receiptConfig) {
+        const parsedCfg = typeof data.receiptConfig === 'string' ? JSON.parse(data.receiptConfig) : data.receiptConfig;
+        setReceiptConfig(prev => ({ ...prev, ...parsedCfg }));
+      }
 
       let parsedAreas = data.areasAndTables;
       if (typeof parsedAreas === 'string') {
@@ -404,7 +420,7 @@ export default function TablesModule() {
     });
   };
 
-  // 🖨️ Bulletproof Print / Download Handler using Isolated Print Window
+  // 🖨️ Bulletproof Print / Download Handler using Isolated Print Window & Settings Config
   const handlePrintReceipt = () => {
     if (!completedOrderReceipt) return;
     
@@ -426,17 +442,23 @@ export default function TablesModule() {
         <head>
           <title>Receipt - ${completedOrderReceipt.orderId}</title>
           <style>
-            body { font-family: monospace; padding: 20px; color: #000; background: #fff; }
+            body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: ${receiptConfig.paperSize === '58mm' ? '58mm' : '80mm'}; margin: 0 auto; }
             .center { text-align: center; }
             .bold { font-weight: bold; }
-            .line { border-top: 1px dashed #000; margin: 10px 0; }
+            .line { border-top: 1px dashed #000; margin: 8px 0; }
             .flex { display: flex; justify-content: space-between; }
           </style>
         </head>
         <body>
-          <div class="center bold" style="font-size: 16px;">RESTAURANT KOT & BILL</div>
-          <div class="center" style="font-size: 11px; color: #555; margin-bottom: 10px;">${completedOrderReceipt.timestamp}</div>
+          <div class="center bold" style="font-size: 14px;">${receiptConfig.restaurantName}</div>
+          <div class="center" style="font-size: 10px; color: #333;">${receiptConfig.headerText || ''}</div>
+          <div class="center" style="font-size: 10px; color: #333; margin: 3px 0;">${receiptConfig.address}</div>
+          <div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>
+          <div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>
+          <div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>
+          <div class="line"></div>
           <div><strong>Order ID:</strong> ${completedOrderReceipt.orderId}</div>
+          <div><strong>Date:</strong> ${completedOrderReceipt.timestamp}</div>
           <div><strong>Table:</strong> ${completedOrderReceipt.tableName} (${completedOrderReceipt.areaName})</div>
           <div><strong>Captain:</strong> ${completedOrderReceipt.captain}</div>
           <div><strong>Type:</strong> ${completedOrderReceipt.orderType}</div>
@@ -447,7 +469,9 @@ export default function TablesModule() {
           <div class="line"></div>
           <div class="flex"><span>Subtotal:</span><span>₹${completedOrderReceipt.subtotal.toFixed(2)}</span></div>
           <div class="flex"><span>Tax:</span><span>₹${completedOrderReceipt.totalTax.toFixed(2)}</span></div>
-          <div class="flex bold" style="font-size: 14px; margin-top: 6px;"><span>Total:</span><span>₹${completedOrderReceipt.totalAmount}</span></div>
+          <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>Total:</span><span>₹${completedOrderReceipt.totalAmount}</span></div>
+          <div class="line"></div>
+          <div class="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptConfig.footerNote}</div>
           <script>
             window.onload = function() {
               window.print();
@@ -941,7 +965,7 @@ export default function TablesModule() {
             </div>
 
             <div className="tb-receipt">
-              <div className="tb-receipt-title">RESTAURANT KOT & BILL</div>
+              <div className="tb-receipt-title">{receiptConfig.restaurantName}</div>
               <div className="tb-receipt-time">{completedOrderReceipt.timestamp}</div>
               <div><strong>Order ID:</strong> {completedOrderReceipt.orderId}</div>
               <div><strong>Table:</strong> {completedOrderReceipt.tableName} ({completedOrderReceipt.areaName})</div>
