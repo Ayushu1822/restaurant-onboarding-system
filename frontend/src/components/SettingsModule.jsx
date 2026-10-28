@@ -109,7 +109,7 @@ export default function SettingsModule() {
         { id: 'tg-4', name: 'Non-Taxable / Exempt (0%)', rate: 0, cgst: 0, sgst: 0, hsnCode: '996331', itcEligible: false, status: 'Active' }
       ]
     },
-    // 🖨️ Receipt & Printer Configuration State matching your screenshots
+    // 🖨️ Complete Receipt & Printer Configuration State
     receiptConfig: {
       density: 'Compact',
       restaurantName: 'Linga Foods',
@@ -149,9 +149,12 @@ export default function SettingsModule() {
       }
     },
     printRules: {
-      counterOrders: { receiptTrigger: 'auto', kotTrigger: 'auto' },
-      tableOrders: { receiptTrigger: 'manual', kotTrigger: 'auto' },
-      takeawayOrders: { receiptTrigger: 'auto', kotTrigger: 'auto' }
+      counterReceiptTrigger: 'auto',
+      counterKotTrigger: 'auto',
+      tableReceiptTrigger: 'manual',
+      tableKotTrigger: 'auto',
+      takeawayReceiptTrigger: 'auto',
+      takeawayKotTrigger: 'auto'
     },
     printerInfo: {
       printerName: '',
@@ -1118,7 +1121,7 @@ export default function SettingsModule() {
                         <p style={{fontSize: '12px', color: '#64748b', fontWeight: '800', marginBottom: '16px'}}>Used for customer receipts and optionally KOT printing.</p>
 
                         <div style={{backgroundColor: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px', color: '#334155', fontWeight: '800', marginBottom: '16px'}}>
-                          ℹ️ No printer saved yet, so Print buttons use <strong>this computer's installed printer</strong> through the browser — that's why printing works. Choose it below to save it here (needed for automatic prints), or connect a printer for silent printing.
+                          ℹ️ No printer saved yet, so Print buttons use <strong>this computer's installed printer</strong> through the browser.
                         </div>
 
                         <label style={styles.label}>Printer</label>
@@ -1131,13 +1134,7 @@ export default function SettingsModule() {
 
                         <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '14px'}}>
                           <button type="button" onClick={() => alert('Connecting USB printer...')} style={styles.deviceBtn}>🔌 Connect USB printer</button>
-                          <button type="button" onClick={() => alert('Connecting Bluetooth...')} style={styles.deviceBtn}>📡 Connect serial / Bluetooth (classic)</button>
-                          <button type="button" onClick={() => alert('Connecting BLE...')} style={styles.deviceBtn}>📶 Connect Bluetooth (BLE)</button>
-                          <button type="button" onClick={() => alert('Adding network printer...')} style={styles.deviceBtn}>🌐 Add network printer</button>
-                        </div>
-                        
-                        <div style={{fontSize: '11px', color: '#64748b', fontWeight: '800', margin: '12px 0'}}>
-                          The browser can't list this computer's installed printers by name. Choose "This computer's printer (via browser)" to use them, or connect a USB, serial or network printer above.
+                          <button type="button" onClick={() => alert('Connecting Bluetooth...')} style={styles.deviceBtn}>📡 Connect Bluetooth</button>
                         </div>
 
                         <h5 style={{margin: '20px 0 10px 0', fontSize: '13px', fontWeight: '950', color: '#0f172a'}}>Documents</h5>
@@ -1164,7 +1161,7 @@ export default function SettingsModule() {
                 {receiptSubTab === 'receipt' && (
                   <div style={{display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start'}}>
                     <div style={{flex: 1, minWidth: '380px', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0', maxHeight: '72vh', overflowY: 'auto'}}>
-                      <div style={{fontSize: '11px', color: '#64748b', fontWeight: '900', marginBottom: '16px'}}>ℹ️ Business details come from Settings — Business Information.</div>
+                      <div style={{fontSize: '11px', color: '#64748b', fontWeight: '900', marginBottom: '16px'}}>ℹ️ Business details come from Settings — Business Information. Changes here only affect printed receipts.</div>
 
                       <h4 style={{margin: '0 0 10px 0', fontSize: '13px', fontWeight: '950', color: '#64748b'}}>RECEIPT DENSITY</h4>
                       <div style={{display: 'flex', gap: '8px', marginBottom: '20px'}}>
@@ -1175,17 +1172,41 @@ export default function SettingsModule() {
                       <h4 style={{margin: '0 0 12px 0', fontSize: '13px', fontWeight: '950', color: '#64748b'}}>BRANDING & BUSINESS INFORMATION</h4>
                       <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px'}}>
                         <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.restaurantName} onChange={() => handleToggleReceiptField('restaurantName')} style={styles.checkbox}/><span style={styles.toggleLabel}>Restaurant Display Name</span></div>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
+                            <input type="checkbox" checked={toggles.restaurantName} onChange={() => handleToggleReceiptField('restaurantName')} style={styles.checkbox}/>
+                            <div style={{flex: 1}}>
+                              <span style={styles.toggleLabel}>Restaurant Display Name</span>
+                              <input style={styles.smallInput} value={formData.receiptConfig?.restaurantName || ''} onChange={e => setFormData({...formData, receiptConfig: {...formData.receiptConfig, restaurantName: e.target.value}})}/>
+                            </div>
+                          </div>
                           <span style={styles.badgeRed}>Required</span>
                         </div>
                         <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.address} onChange={() => handleToggleReceiptField('address')} style={styles.checkbox}/><span style={styles.toggleLabel}>Address</span></div>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
+                            <input type="checkbox" checked={toggles.address} onChange={() => handleToggleReceiptField('address')} style={styles.checkbox}/>
+                            <div style={{flex: 1}}>
+                              <span style={styles.toggleLabel}>Address</span>
+                              <input style={styles.smallInput} value={formData.receiptConfig?.address || ''} onChange={e => setFormData({...formData, receiptConfig: {...formData.receiptConfig, address: e.target.value}})}/>
+                            </div>
+                          </div>
                         </div>
                         <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.phone} onChange={() => handleToggleReceiptField('phone')} style={styles.checkbox}/><span style={styles.toggleLabel}>Phone Number</span></div>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
+                            <input type="checkbox" checked={toggles.phone} onChange={() => handleToggleReceiptField('phone')} style={styles.checkbox}/>
+                            <div style={{flex: 1}}>
+                              <span style={styles.toggleLabel}>Phone Number</span>
+                              <input style={styles.smallInput} value={formData.receiptConfig?.phone || ''} onChange={e => setFormData({...formData, receiptConfig: {...formData.receiptConfig, phone: e.target.value}})}/>
+                            </div>
+                          </div>
                         </div>
                         <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.gstin} onChange={() => handleToggleReceiptField('gstin')} style={styles.checkbox}/><span style={styles.toggleLabel}>GST / Tax ID</span></div>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
+                            <input type="checkbox" checked={toggles.gstin} onChange={() => handleToggleReceiptField('gstin')} style={styles.checkbox}/>
+                            <div style={{flex: 1}}>
+                              <span style={styles.toggleLabel}>GST / Tax ID</span>
+                              <input style={styles.smallInput} value={formData.receiptConfig?.gstin || ''} onChange={e => setFormData({...formData, receiptConfig: {...formData.receiptConfig, gstin: e.target.value}})}/>
+                            </div>
+                          </div>
                           <span style={styles.badgeRed}>Required</span>
                         </div>
                       </div>
@@ -1204,7 +1225,14 @@ export default function SettingsModule() {
                     </div>
 
                     <div style={{width: '380px', backgroundColor: '#fff', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0', textAlign: 'center', position: 'sticky', top: '20px'}}>
-                      <h4 style={{margin: '0 0 14px 0', fontSize: '13px', fontWeight: '950', color: '#64748b'}}>Live Preview</h4>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px'}}>
+                        <h4 style={{margin: 0, fontSize: '13px', fontWeight: '950', color: '#64748b'}}>Live Preview</h4>
+                        <div style={{display: 'flex', gap: '6px'}}>
+                          <button type="button" onClick={() => setFormData({...formData, receiptConfig: {...formData.receiptConfig, paperSize: '58mm'}})} style={{backgroundColor: formData.receiptConfig?.paperSize === '58mm' ? '#ef4444' : '#f1f5f9', color: formData.receiptConfig?.paperSize === '58mm' ? '#fff' : '#334155', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '950', cursor: 'pointer'}}>58 mm</button>
+                          <button type="button" onClick={() => setFormData({...formData, receiptConfig: {...formData.receiptConfig, paperSize: '80mm'}})} style={{backgroundColor: formData.receiptConfig?.paperSize === '80mm' ? '#ef4444' : '#f1f5f9', color: formData.receiptConfig?.paperSize === '80mm' ? '#fff' : '#334155', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '950', cursor: 'pointer'}}>80 mm</button>
+                        </div>
+                      </div>
+
                       <div style={{backgroundColor: '#fefefe', border: '1.5px dashed #cbd5e1', padding: '16px', borderRadius: '10px', fontFamily: 'monospace', fontSize: '11px', textAlign: 'left', lineHeight: '1.4', color: '#000'}}>
                         <div style={{textAlign: 'center', fontWeight: 'bold', fontSize: '12px'}}>*** TEST PRINT ***</div>
                         {toggles.restaurantName && <div style={{textAlign: 'center', fontWeight: '950', fontSize: '13px', marginTop: '4px'}}>{formData.receiptConfig?.restaurantName}</div>}
@@ -1225,25 +1253,51 @@ export default function SettingsModule() {
                       <h4 style={{margin: '0 0 14px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Counter Orders</h4>
                       <label style={styles.ruleLabel}>When should the Receipt print?</label>
                       <div style={{display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px'}}>
-                        <label style={styles.radioLabel}><input type="radio" name="c-receipt" defaultChecked/> Automatically after successful payment</label>
-                        <label style={styles.radioLabel}><input type="radio" name="c-receipt"/> On Demand</label>
+                        <label style={styles.radioLabel}><input type="radio" name="counterReceipt" defaultChecked/> Automatically after successful payment</label>
+                        <label style={styles.radioLabel}><input type="radio" name="counterReceipt"/> On Demand</label>
                       </div>
+                      <div style={{fontSize: '11px', color: '#d97706', fontWeight: '800', marginBottom: '16px'}}>⚠️ No printer is set up for this — nothing will auto-print.</div>
+
+                      <label style={styles.ruleLabel}>When should the KOT print?</label>
+                      <div style={{display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px'}}>
+                        <label style={styles.radioLabel}><input type="radio" name="counterKot" defaultChecked/> Automatically after successful payment</label>
+                        <label style={styles.radioLabel}><input type="radio" name="counterKot"/> On Demand</label>
+                      </div>
+                      <div style={{fontSize: '11px', color: '#d97706', fontWeight: '800'}}>⚠️ No printer is set up for this — nothing will auto-print.</div>
                     </div>
+
                     <div style={styles.ruleCard}>
                       <h4 style={{margin: '0 0 14px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Table Orders</h4>
                       <label style={styles.ruleLabel}>When should the Receipt print?</label>
                       <div style={{display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px'}}>
-                        <label style={styles.radioLabel}><input type="radio" name="t-receipt"/> Automatically after successful payment</label>
-                        <label style={styles.radioLabel}><input type="radio" name="t-receipt" defaultChecked/> On Demand</label>
+                        <label style={styles.radioLabel}><input type="radio" name="tableReceipt"/> Automatically after successful payment</label>
+                        <label style={styles.radioLabel}><input type="radio" name="tableReceipt" defaultChecked/> On Demand</label>
                       </div>
+
+                      <label style={styles.ruleLabel}>When should the KOT print?</label>
+                      <div style={{display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px'}}>
+                        <label style={styles.radioLabel}><input type="radio" name="tableKot" defaultChecked/> Automatically when "Done Editing" is successfully completed</label>
+                        <label style={styles.radioLabel}><input type="radio" name="tableKot"/> On Demand</label>
+                      </div>
+                      <div style={{fontSize: '11px', color: '#d97706', fontWeight: '800', marginBottom: '12px'}}>⚠️ No printer is set up for this — nothing will auto-print.</div>
+                      <div style={{fontSize: '11px', color: '#64748b', fontWeight: '800', backgroundColor: '#f1f5f9', padding: '8px', borderRadius: '6px'}}>ℹ️ For Table Orders, subsequent KOTs contain only items or quantities added since the previous KOT.</div>
                     </div>
+
                     <div style={styles.ruleCard}>
                       <h4 style={{margin: '0 0 14px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Takeaway Orders</h4>
                       <label style={styles.ruleLabel}>When should the Receipt print?</label>
                       <div style={{display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px'}}>
-                        <label style={styles.radioLabel}><input type="radio" name="tk-receipt" defaultChecked/> Automatically after successful payment</label>
-                        <label style={styles.radioLabel}><input type="radio" name="tk-receipt"/> On Demand</label>
+                        <label style={styles.radioLabel}><input type="radio" name="takeawayReceipt" defaultChecked/> Automatically after successful payment</label>
+                        <label style={styles.radioLabel}><input type="radio" name="takeawayReceipt"/> On Demand</label>
                       </div>
+                      <div style={{fontSize: '11px', color: '#d97706', fontWeight: '800', marginBottom: '16px'}}>⚠️ No printer is set up for this — nothing will auto-print.</div>
+
+                      <label style={styles.ruleLabel}>When should the KOT print?</label>
+                      <div style={{display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px'}}>
+                        <label style={styles.radioLabel}><input type="radio" name="takeawayKot" defaultChecked/> Automatically after successful payment</label>
+                        <label style={styles.radioLabel}><input type="radio" name="takeawayKot"/> On Demand</label>
+                      </div>
+                      <div style={{fontSize: '11px', color: '#d97706', fontWeight: '800'}}>⚠️ No printer is set up for this — nothing will auto-print.</div>
                     </div>
                   </div>
                 )}
