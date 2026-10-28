@@ -261,9 +261,14 @@ export default function ReportsModule({ orders: parentOrders }) {
     return a.localeCompare(b);
   });
 
-  // 🖨️ Synchronized Settings-Based Receipt Printer Utility
+  // 🖨️ Synchronized Settings-Based Receipt Printer Utility with Accurate Original Timestamp
   const printSingleReceipt = (o, index) => {
-    const dateStr = o.timestamp || getSafeTimestamp(o, index).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    let dateStr = o.timestamp;
+    if (!dateStr) {
+      const orderDateObj = getSafeTimestamp(o, index);
+      dateStr = orderDateObj.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    }
+
     const items = o.items || o.orderItems || [];
     const toggles = receiptConfig.toggles || {};
 
