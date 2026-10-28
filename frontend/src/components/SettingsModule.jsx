@@ -109,7 +109,7 @@ export default function SettingsModule() {
         { id: 'tg-4', name: 'Non-Taxable / Exempt (0%)', rate: 0, cgst: 0, sgst: 0, hsnCode: '996331', itcEligible: false, status: 'Active' }
       ]
     },
-    // 🖨️ Complete Receipt & Printer Configuration State
+    // 🖨️ Receipt & Printer Configuration State matching your screenshots
     receiptConfig: {
       density: 'Compact',
       restaurantName: 'Linga Foods',
@@ -1118,7 +1118,7 @@ export default function SettingsModule() {
                         <p style={{fontSize: '12px', color: '#64748b', fontWeight: '800', marginBottom: '16px'}}>Used for customer receipts and optionally KOT printing.</p>
 
                         <div style={{backgroundColor: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px', color: '#334155', fontWeight: '800', marginBottom: '16px'}}>
-                          ℹ️ No printer saved yet, so Print buttons use <strong>this computer's installed printer</strong> through the browser.
+                          ℹ️ No printer saved yet, so Print buttons use <strong>this computer's installed printer</strong> through the browser — that's why printing works. Choose it below to save it here (needed for automatic prints), or connect a printer for silent printing.
                         </div>
 
                         <label style={styles.label}>Printer</label>
@@ -1131,7 +1131,13 @@ export default function SettingsModule() {
 
                         <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '14px'}}>
                           <button type="button" onClick={() => alert('Connecting USB printer...')} style={styles.deviceBtn}>🔌 Connect USB printer</button>
-                          <button type="button" onClick={() => alert('Connecting Bluetooth...')} style={styles.deviceBtn}>📡 Connect Bluetooth</button>
+                          <button type="button" onClick={() => alert('Connecting Bluetooth...')} style={styles.deviceBtn}>📡 Connect serial / Bluetooth (classic)</button>
+                          <button type="button" onClick={() => alert('Connecting BLE...')} style={styles.deviceBtn}>📶 Connect Bluetooth (BLE)</button>
+                          <button type="button" onClick={() => alert('Adding network printer...')} style={styles.deviceBtn}>🌐 Add network printer</button>
+                        </div>
+                        
+                        <div style={{fontSize: '11px', color: '#64748b', fontWeight: '800', margin: '12px 0'}}>
+                          The browser can't list this computer's installed printers by name. Choose "This computer's printer (via browser)" to use them, or connect a USB, serial or network printer above.
                         </div>
 
                         <h5 style={{margin: '20px 0 10px 0', fontSize: '13px', fontWeight: '950', color: '#0f172a'}}>Documents</h5>
