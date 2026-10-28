@@ -172,7 +172,7 @@ export default function ReportsModule({ orders: parentOrders }) {
 
   const activeBreakdownOrders = filteredOrders;
 
-  // 2. Completed History Filtering
+  // 2. Completed History Filtering (CounterPOS 'Preparing' / 'Paid' & Table orders included)
   const completedHistoryOrders = orders.filter((o, idx) => {
     const st = (o.status || 'New').toLowerCase();
     const isCompleted = st === 'completed' || st === 'delivered' || st === 'picked up' || st === 'ready' || st === 'settled' || st === 'paid' || st === 'preparing';
