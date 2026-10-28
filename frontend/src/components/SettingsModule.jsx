@@ -109,7 +109,7 @@ export default function SettingsModule() {
         { id: 'tg-4', name: 'Non-Taxable / Exempt (0%)', rate: 0, cgst: 0, sgst: 0, hsnCode: '996331', itcEligible: false, status: 'Active' }
       ]
     },
-    // 🖨️ Complete Receipt & Printer Configuration State
+    // 🖨️ Complete Receipt Configuration State with all 25+ fields
     receiptConfig: {
       density: 'Compact',
       restaurantName: 'Linga Foods',
@@ -118,32 +118,33 @@ export default function SettingsModule() {
       phone: '91234400635',
       gstin: '37AAFP4128L1ZI',
       fssai: 'FSSAI: 22426260001195',
+      email: 'support@lingafoods.com',
       footerNote: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***',
       paperSize: '80mm',
       toggles: {
         logo: false,
+        restaurantName: true,
         branchName: true,
         address: true,
-        email: false,
-        fssai: true,
-        restaurantName: true,
-        headerText: true,
         phone: true,
         gstin: true,
+        email: false,
+        fssai: true,
+        headerText: true,
         invoiceNo: true,
-        orderId: true,
-        orderType: true,
-        customerMobile: false,
         dateAndTime: true,
+        orderId: true,
         tokenNumber: true,
+        orderType: true,
         customerName: false,
+        customerMobile: false,
         itemNameQtyAmt: true,
-        variantsAddons: true,
-        discount: true,
-        taxBreakdown: true,
         itemRate: true,
+        variantsAddons: true,
         itemNotes: true,
+        discount: true,
         totalTax: true,
+        taxBreakdown: true,
         paymentMethod: true,
         paymentReference: false
       }
@@ -252,6 +253,16 @@ export default function SettingsModule() {
           ...prev.receiptConfig.toggles,
           [key]: !prev.receiptConfig.toggles[key]
         }
+      }
+    }));
+  };
+
+  const handleReceiptInputChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      receiptConfig: {
+        ...prev.receiptConfig,
+        [field]: value
       }
     }));
   };
@@ -1089,7 +1100,7 @@ export default function SettingsModule() {
               </div>
             )}
 
-            {/* TAB 7: PRINTERS & RECEIPTS (WITH 3 EXACT SCREENSHOT SUB-TABS) */}
+            {/* TAB 7: PRINTERS & RECEIPTS (WITH 3 EXACT SUB-TABS & ALL TOGGLES + EDITS) */}
             {activeTab === 'printers' && (
               <div style={styles.sectionGroup}>
                 <h3 style={styles.sectionTitle}>🖨️ Printers & Receipts</h3>
@@ -1160,68 +1171,165 @@ export default function SettingsModule() {
 
                 {receiptSubTab === 'receipt' && (
                   <div style={{display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start'}}>
-                    <div style={{flex: 1, minWidth: '380px', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0', maxHeight: '72vh', overflowY: 'auto'}}>
+                    <div style={{flex: 1, minWidth: '400px', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0', maxHeight: '72vh', overflowY: 'auto'}}>
                       <div style={{fontSize: '11px', color: '#64748b', fontWeight: '900', marginBottom: '16px'}}>ℹ️ Business details come from Settings — Business Information. Changes here only affect printed receipts.</div>
 
+                      {/* DENSITY */}
                       <h4 style={{margin: '0 0 10px 0', fontSize: '13px', fontWeight: '950', color: '#64748b'}}>RECEIPT DENSITY</h4>
                       <div style={{display: 'flex', gap: '8px', marginBottom: '20px'}}>
                         <button type="button" onClick={() => setFormData({...formData, receiptConfig: {...formData.receiptConfig, density: 'Compact'}})} style={{backgroundColor: formData.receiptConfig?.density === 'Compact' ? '#ef4444' : '#fff', color: formData.receiptConfig?.density === 'Compact' ? '#fff' : '#334155', border: '1.5px solid #cbd5e1', padding: '6px 14px', borderRadius: '8px', fontWeight: '950', fontSize: '12px', cursor: 'pointer'}}>Compact</button>
                         <button type="button" onClick={() => setFormData({...formData, receiptConfig: {...formData.receiptConfig, density: 'Comfortable'}})} style={{backgroundColor: formData.receiptConfig?.density === 'Comfortable' ? '#ef4444' : '#fff', color: formData.receiptConfig?.density === 'Comfortable' ? '#fff' : '#334155', border: '1.5px solid #cbd5e1', padding: '6px 14px', borderRadius: '8px', fontWeight: '950', fontSize: '12px', cursor: 'pointer'}}>Comfortable</button>
                       </div>
 
+                      {/* BRANDING & BUSINESS INFO */}
                       <h4 style={{margin: '0 0 12px 0', fontSize: '13px', fontWeight: '950', color: '#64748b'}}>BRANDING & BUSINESS INFORMATION</h4>
                       <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px'}}>
+                        
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.logo} onChange={() => handleToggleReceiptField('logo')} style={styles.checkbox}/><span style={styles.toggleLabel}>Logo</span></div>
+                          <span style={styles.badgeGray}>Disabled</span>
+                        </div>
+
                         <div style={styles.toggleRow}>
                           <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
                             <input type="checkbox" checked={toggles.restaurantName} onChange={() => handleToggleReceiptField('restaurantName')} style={styles.checkbox}/>
                             <div style={{flex: 1}}>
                               <span style={styles.toggleLabel}>Restaurant Display Name</span>
-                              <input style={styles.smallInput} value={formData.receiptConfig?.restaurantName || ''} onChange={e => setFormData({...formData, receiptConfig: {...formData.receiptConfig, restaurantName: e.target.value}})}/>
+                              <input style={styles.smallInput} value={formData.receiptConfig?.restaurantName || ''} onChange={e => handleReceiptInputChange('restaurantName', e.target.value)}/>
                             </div>
                           </div>
                           <span style={styles.badgeRed}>Required</span>
                         </div>
+
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
+                            <input type="checkbox" checked={toggles.branchName} onChange={() => handleToggleReceiptField('branchName')} style={styles.checkbox}/>
+                            <div style={{flex: 1}}>
+                              <span style={styles.toggleLabel}>Branch Name / Header Text</span>
+                              <input style={styles.smallInput} value={formData.receiptConfig?.headerText || ''} onChange={e => handleReceiptInputChange('headerText', e.target.value)}/>
+                            </div>
+                          </div>
+                        </div>
+
                         <div style={styles.toggleRow}>
                           <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
                             <input type="checkbox" checked={toggles.address} onChange={() => handleToggleReceiptField('address')} style={styles.checkbox}/>
                             <div style={{flex: 1}}>
                               <span style={styles.toggleLabel}>Address</span>
-                              <input style={styles.smallInput} value={formData.receiptConfig?.address || ''} onChange={e => setFormData({...formData, receiptConfig: {...formData.receiptConfig, address: e.target.value}})}/>
+                              <input style={styles.smallInput} value={formData.receiptConfig?.address || ''} onChange={e => handleReceiptInputChange('address', e.target.value)}/>
                             </div>
                           </div>
                         </div>
+
                         <div style={styles.toggleRow}>
                           <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
                             <input type="checkbox" checked={toggles.phone} onChange={() => handleToggleReceiptField('phone')} style={styles.checkbox}/>
                             <div style={{flex: 1}}>
                               <span style={styles.toggleLabel}>Phone Number</span>
-                              <input style={styles.smallInput} value={formData.receiptConfig?.phone || ''} onChange={e => setFormData({...formData, receiptConfig: {...formData.receiptConfig, phone: e.target.value}})}/>
+                              <input style={styles.smallInput} value={formData.receiptConfig?.phone || ''} onChange={e => handleReceiptInputChange('phone', e.target.value)}/>
                             </div>
                           </div>
                         </div>
+
                         <div style={styles.toggleRow}>
                           <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
                             <input type="checkbox" checked={toggles.gstin} onChange={() => handleToggleReceiptField('gstin')} style={styles.checkbox}/>
                             <div style={{flex: 1}}>
                               <span style={styles.toggleLabel}>GST / Tax ID</span>
-                              <input style={styles.smallInput} value={formData.receiptConfig?.gstin || ''} onChange={e => setFormData({...formData, receiptConfig: {...formData.receiptConfig, gstin: e.target.value}})}/>
+                              <input style={styles.smallInput} value={formData.receiptConfig?.gstin || ''} onChange={e => handleReceiptInputChange('gstin', e.target.value)}/>
                             </div>
                           </div>
                           <span style={styles.badgeRed}>Required</span>
                         </div>
+
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
+                            <input type="checkbox" checked={toggles.email} onChange={() => handleToggleReceiptField('email')} style={styles.checkbox}/>
+                            <div style={{flex: 1}}>
+                              <span style={styles.toggleLabel}>Email</span>
+                              <input style={styles.smallInput} value={formData.receiptConfig?.email || ''} onChange={e => handleReceiptInputChange('email', e.target.value)}/>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
+                            <input type="checkbox" checked={toggles.fssai} onChange={() => handleToggleReceiptField('fssai')} style={styles.checkbox}/>
+                            <div style={{flex: 1}}>
+                              <span style={styles.toggleLabel}>FSSAI / Regulatory Number</span>
+                              <input style={styles.smallInput} value={formData.receiptConfig?.fssai || ''} onChange={e => handleReceiptInputChange('fssai', e.target.value)}/>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
+                      {/* ORDER INFORMATION */}
+                      <h4 style={{margin: '0 0 12px 0', fontSize: '13px', fontWeight: '950', color: '#64748b'}}>ORDER INFORMATION</h4>
+                      <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px'}}>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.invoiceNo} onChange={() => handleToggleReceiptField('invoiceNo')} style={styles.checkbox}/><span style={styles.toggleLabel}>Invoice / Receipt Number</span></div>
+                          <span style={styles.badgeRed}>Required</span>
+                        </div>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.dateAndTime} onChange={() => handleToggleReceiptField('dateAndTime')} style={styles.checkbox}/><span style={styles.toggleLabel}>Date & Time</span></div>
+                          <span style={styles.badgeRed}>Required</span>
+                        </div>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.orderId} onChange={() => handleToggleReceiptField('orderId')} style={styles.checkbox}/><span style={styles.toggleLabel}>Order ID</span></div>
+                        </div>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.tokenNumber} onChange={() => handleToggleReceiptField('tokenNumber')} style={styles.checkbox}/><span style={styles.toggleLabel}>Token Number</span></div>
+                        </div>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.orderType} onChange={() => handleToggleReceiptField('orderType')} style={styles.checkbox}/><span style={styles.toggleLabel}>Order Type</span></div>
+                        </div>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.customerName} onChange={() => handleToggleReceiptField('customerName')} style={styles.checkbox}/><span style={styles.toggleLabel}>Customer Name</span></div>
+                        </div>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.customerMobile} onChange={() => handleToggleReceiptField('customerMobile')} style={styles.checkbox}/><span style={styles.toggleLabel}>Customer Mobile</span></div>
+                        </div>
+                      </div>
+
+                      {/* ITEMS & PRICING */}
                       <h4 style={{margin: '0 0 12px 0', fontSize: '13px', fontWeight: '950', color: '#64748b'}}>ITEMS & PRICING</h4>
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                      <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px'}}>
                         <div style={styles.toggleRow}>
                           <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.itemNameQtyAmt} onChange={() => handleToggleReceiptField('itemNameQtyAmt')} style={styles.checkbox}/><span style={styles.toggleLabel}>Item Name / Quantity / Amount</span></div>
                           <span style={styles.badgeRed}>Required</span>
                         </div>
                         <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.itemRate} onChange={() => handleToggleReceiptField('itemRate')} style={styles.checkbox}/><span style={styles.toggleLabel}>Item Rate</span></div>
+                        </div>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.variantsAddons} onChange={() => handleToggleReceiptField('variantsAddons')} style={styles.checkbox}/><span style={styles.toggleLabel}>Variants / Add-ons</span></div>
+                        </div>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.itemNotes} onChange={() => handleToggleReceiptField('itemNotes')} style={styles.checkbox}/><span style={styles.toggleLabel}>Item Notes</span></div>
+                        </div>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.discount} onChange={() => handleToggleReceiptField('discount')} style={styles.checkbox}/><span style={styles.toggleLabel}>Discount</span></div>
+                        </div>
+                        <div style={styles.toggleRow}>
                           <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.totalTax} onChange={() => handleToggleReceiptField('totalTax')} style={styles.checkbox}/><span style={styles.toggleLabel}>Total Tax</span></div>
                           <span style={styles.badgeRed}>Required</span>
                         </div>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.taxBreakdown} onChange={() => handleToggleReceiptField('taxBreakdown')} style={styles.checkbox}/><span style={styles.toggleLabel}>Tax Breakdown</span></div>
+                        </div>
                       </div>
+
+                      {/* PAYMENT INFORMATION */}
+                      <h4 style={{margin: '0 0 12px 0', fontSize: '13px', fontWeight: '950', color: '#64748b'}}>PAYMENT INFORMATION</h4>
+                      <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.paymentMethod} onChange={() => handleToggleReceiptField('paymentMethod')} style={styles.checkbox}/><span style={styles.toggleLabel}>Payment Method</span></div>
+                        </div>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.paymentReference} onChange={() => handleToggleReceiptField('paymentReference')} style={styles.checkbox}/><span style={styles.toggleLabel}>Payment Reference</span></div>
+                        </div>
+                      </div>
+
                     </div>
 
                     <div style={{width: '380px', backgroundColor: '#fff', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0', textAlign: 'center', position: 'sticky', top: '20px'}}>
@@ -1236,10 +1344,26 @@ export default function SettingsModule() {
                       <div style={{backgroundColor: '#fefefe', border: '1.5px dashed #cbd5e1', padding: '16px', borderRadius: '10px', fontFamily: 'monospace', fontSize: '11px', textAlign: 'left', lineHeight: '1.4', color: '#000'}}>
                         <div style={{textAlign: 'center', fontWeight: 'bold', fontSize: '12px'}}>*** TEST PRINT ***</div>
                         {toggles.restaurantName && <div style={{textAlign: 'center', fontWeight: '950', fontSize: '13px', marginTop: '4px'}}>{formData.receiptConfig?.restaurantName}</div>}
+                        {toggles.branchName && <div style={{textAlign: 'center', color: '#444', fontSize: '10px'}}>{formData.receiptConfig?.headerText}</div>}
                         {toggles.address && <div style={{textAlign: 'center', color: '#444', fontSize: '10px', margin: '4px 0'}}>{formData.receiptConfig?.address}</div>}
+                        {toggles.phone && <div style={{textAlign: 'center', color: '#444', fontSize: '10px'}}>Ph: {formData.receiptConfig?.phone}</div>}
+                        {toggles.gstin && <div style={{textAlign: 'center', color: '#444', fontSize: '10px'}}>GSTIN: {formData.receiptConfig?.gstin}</div>}
+                        {toggles.fssai && <div style={{textAlign: 'center', color: '#444', fontSize: '10px'}}>{formData.receiptConfig?.fssai}</div>}
                         <div style={{borderTop: '1px dashed #000', margin: '6px 0'}}></div>
-                        <div style={{display: 'flex', justifyContent: 'space-between'}}><span>Test Burger</span><span>2 x 200 = 400.00</span></div>
+                        {toggles.invoiceNo && <div>Invoice #: INV-000724</div>}
+                        {toggles.dateAndTime && <div>Date: 28 Oct 2026, 8:50 am</div>}
+                        {toggles.tokenNumber && <div style={{fontWeight: 'bold', margin: '4px 0'}}>TOKEN: 000724</div>}
                         <div style={{borderTop: '1px dashed #000', margin: '6px 0'}}></div>
+                        {toggles.itemNameQtyAmt && (
+                          <div>
+                            <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: 'bold'}}><span>Item</span><span>Qty Amt</span></div>
+                            <div style={{display: 'flex', justifyContent: 'space-between'}}><span>Test Burger</span><span>2 400.00</span></div>
+                            {toggles.variantsAddons && <div style={{color: '#555', fontSize: '10px', paddingLeft: '8px'}}>+ Extra Cheese x1</div>}
+                            {toggles.itemNotes && <div style={{color: '#555', fontSize: '10px', paddingLeft: '8px'}}>Note: Less spicy</div>}
+                          </div>
+                        )}
+                        <div style={{borderTop: '1px dashed #000', margin: '6px 0'}}></div>
+                        {toggles.totalTax && <div style={{display: 'flex', justifyContent: 'space-between'}}><span>Total Tax:</span><span>₹20.00</span></div>}
                         <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: 'bold'}}><span>TOTAL:</span><span>₹420.00</span></div>
                       </div>
                       <button type="button" onClick={() => alert('Test print triggered!')} style={styles.testPrintBtn}>🖨️ Test Print</button>
