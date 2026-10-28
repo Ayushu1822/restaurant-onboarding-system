@@ -7,6 +7,30 @@ export default function ReportsModule({ orders: parentOrders }) {
   const [closedComplaints, setClosedComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   
+  // Receipt Configuration state synced with Settings Module
+  const [receiptConfig, setReceiptConfig] = useState({
+    restaurantName: 'LINGA FOODS',
+    headerText: 'Linga Foods - Wonghikal',
+    address: 'LINGA FOODS, No. 1540, Vellore Main Road, Wonghikal, Tiruvannamalai, Tamil Nadu 606604',
+    phone: '91234400635',
+    gstin: '37AAFP4128L1ZI',
+    fssai: 'FSSAI: 22426260001195',
+    footerNote: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***',
+    paperSize: '80mm',
+    density: 'Compact',
+    toggles: {
+      restaurantName: true,
+      address: true,
+      phone: true,
+      gstin: true,
+      fssai: true,
+      invoiceNo: true,
+      dateAndTime: true,
+      itemNameQtyAmt: true,
+      totalTax: true
+    }
+  });
+  
   // Filter States
   const [dateRange, setDateRange] = useState('today');
   const [orderChannelFilter, setOrderChannelFilter] = useState('ALL');
@@ -35,6 +59,17 @@ export default function ReportsModule({ orders: parentOrders }) {
   const fetchData = () => {
     const loggedInEmail = localStorage.getItem('userEmail') || 'novio@gmail.com';
 
+    // Fetch Restaurant Profile to sync receiptConfig
+    fetch(`${API_BASE_URL}/api/v1/restaurants/email/${loggedInEmail}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.receiptConfig) {
+          const parsedCfg = typeof data.receiptConfig === 'string' ? JSON.parse(data.receiptConfig) : data.receiptConfig;
+          setReceiptConfig(prev => ({ ...prev, ...parsedCfg }));
+        }
+      })
+      .catch(err => console.log("Profile fetch error:", err));
+
     fetch(`${API_BASE_URL}/api/v1/orders?email=${loggedInEmail}`)
       .then(res => res.json())
       .then(data => {
@@ -56,7 +91,7 @@ export default function ReportsModule({ orders: parentOrders }) {
       .catch(err => console.error("Error fetching complaints for reports:", err));
   };
 
-  // Robust timestamp parser handling high-precision ISO strings safely
+  // Robust timestamp parser handling high-precision ISO strings safely with IST fallback
   const getSafeTimestamp = (order, index) => {
     if (order.timestamp) {
       let ts = order.timestamp;
@@ -64,7 +99,7 @@ export default function ReportsModule({ orders: parentOrders }) {
       const d = new Date(ts);
       if (!isNaN(d.getTime())) return d;
     }
-    const fallbackDate = new Date(2026, 9, 1);
+    const fallbackDate = new Date();
     fallbackDate.setHours(fallbackDate.getHours() - index);
     return fallbackDate;
   };
@@ -104,7 +139,7 @@ export default function ReportsModule({ orders: parentOrders }) {
   // 1. Active Orders Filtering
   const filteredOrders = orders.filter((o, idx) => {
     const st = (o.status || 'New').toLowerCase();
-    const isCompleted = st === 'completed' || st === 'delivered' || st === 'settled';
+    const isCompleted = st === 'completed' || st === 'delivered' || st === 'settled' || st === 'paid';
     if (isCompleted) return false;
 
     let matchesChannel = true;
@@ -140,7 +175,7 @@ export default function ReportsModule({ orders: parentOrders }) {
   // 2. Completed History Filtering
   const completedHistoryOrders = orders.filter((o, idx) => {
     const st = (o.status || 'New').toLowerCase();
-    const isCompleted = st === 'completed' || st === 'delivered' || st === 'picked up' || st === 'ready' || st === 'settled';
+    const isCompleted = st === 'completed' || st === 'delivered' || st === 'picked up' || st === 'ready' || st === 'settled' || st === 'paid' || st === 'preparing';
     if (!isCompleted) return false;
 
     const orderDate = getSafeTimestamp(o, idx);
@@ -226,44 +261,70 @@ export default function ReportsModule({ orders: parentOrders }) {
     return a.localeCompare(b);
   });
 
+  // 🖨️ Synchronized Settings-Based Receipt Printer Utility
   const printSingleReceipt = (o, index) => {
-    const dateStr = getSafeTimestamp(o, index).toLocaleString();
+    const dateStr = o.timestamp || getSafeTimestamp(o, index).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
     const items = o.items || o.orderItems || [];
-    
-    let receiptWindow = window.open('', '_blank', 'width=400,height=600');
-    if (!receiptWindow) return;
+    const toggles = receiptConfig.toggles || {};
 
-    const itemsHtml = items.map(it => 
-      '<li>' + (it.itemName || it.name || 'Item') + ' x ' + (it.quantity || it.qty || 1) + ' — ₹' + ((Number(it.unitPrice || it.price) || 0) * (Number(it.quantity || it.qty) || 1)) + '</li>'
-    ).join('');
+    let printWindow = window.open('', '_blank', 'width=450,height=600');
+    if (!printWindow) {
+      alert('Popup blocked! Please allow popups for printing.');
+      return;
+    }
 
-    receiptWindow.document.write(
-      '<html>' +
-        '<head><title>Receipt - ' + (o.displayId || 'Order') + '</title></head>' +
-        '<body style="font-family: monospace; padding: 20px; font-size: 14px; color: #000;">' +
-          '<h3 style="text-align: center; margin: 0;">RESTAURANT POS</h3>' +
-          '<p style="text-align: center; margin: 2px 0 15px 0; font-size: 12px;">Thermal Receipt</p>' +
-          '<hr style="border: dashed 1px #000;" />' +
-          '<p><b>Order ID:</b> ' + (o.displayId || o.orderId || 'N/A') + '</p>' +
-          '<p><b>Customer:</b> ' + (o.customerName || 'Walk-In') + '</p>' +
-          '<p><b>Captain:</b> ' + (extractCaptain(o.customerName) || 'N/A') + '</p>' +
-          '<p><b>Channel:</b> ' + (o.channel || 'COUNTER') + '</p>' +
-          '<p><b>Status:</b> ' + (o.status || 'Completed') + '</p>' +
-          '<p><b>Date:</b> ' + dateStr + '</p>' +
-          '<hr style="border: dashed 1px #000;" />' +
-          '<p><b>ITEMS:</b></p>' +
-          '<ul style="padding-left: 20px; margin: 5px 0;">' +
-            itemsHtml +
-          '</ul>' +
-          '<hr style="border: dashed 1px #000;" />' +
-          '<h3 style="text-align: center; margin: 15px 0;">TOTAL: ₹' + (o.totalAmount || 0) + '</h3>' +
-          '<p style="text-align: center; font-size: 11px; margin-top: 20px;">Thank You! Visit Again</p>' +
-        '</body>' +
-      '</html>'
-    );
-    receiptWindow.document.close();
-    receiptWindow.focus();
-    setTimeout(() => { receiptWindow.print(); }, 250);
+    const itemsHtml = items.map(it => `
+      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+        <span>${it.quantity || it.qty || 1}x ${it.itemName || it.name || 'Item'}</span>
+        <span>₹${((Number(it.unitPrice || it.price) || 0) * (Number(it.quantity || it.qty) || 1)).toFixed(2)}</span>
+      </div>
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Receipt - ${o.displayId || o.orderId || 'Order'}</title>
+          <style>
+            body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: ${receiptConfig.paperSize === '58mm' ? '58mm' : '80mm'}; margin: 0 auto; font-size: ${receiptConfig.density === 'Compact' ? '10px' : '12px'}; }
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+            .line { border-top: 1px dashed #000; margin: 8px 0; }
+            .flex { display: flex; justify-content: space-between; }
+          </style>
+        </head>
+        <body>
+          ${toggles.restaurantName ? `<div class="center bold" style="font-size: 14px;">${receiptConfig.restaurantName}</div>` : ''}
+          ${receiptConfig.headerText ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.headerText}</div>` : ''}
+          ${toggles.address && receiptConfig.address ? `<div class="center" style="font-size: 10px; color: #333; margin: 3px 0;">${receiptConfig.address}</div>` : ''}
+          ${toggles.phone && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>` : ''}
+          ${toggles.gstin && receiptConfig.gstin ? `<div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>` : ''}
+          ${receiptConfig.fssai ? `<div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>` : ''}
+          <div class="line"></div>
+          ${toggles.invoiceNo ? `<div><strong>Order ID:</strong> ${o.displayId || o.orderId || 'N/A'}</div>` : ''}
+          ${toggles.dateAndTime ? `<div><strong>Date:</strong> ${dateStr}</div>` : ''}
+          <div><strong>Customer:</strong> ${o.customerName || 'Walk-In'}</div>
+          <div><strong>Captain:</strong> ${extractCaptain(o.customerName) || 'Unassigned'}</div>
+          <div><strong>Channel:</strong> ${o.channel || 'COUNTER'}</div>
+          <div><strong>Status:</strong> ${o.status || 'Completed'}</div>
+          <div class="line"></div>
+          <div class="bold" style="margin-bottom: 6px;">ITEMS:</div>
+          ${itemsHtml}
+          <div class="line"></div>
+          <div class="flex"><span>Subtotal:</span><span>₹${(o.subtotal || o.totalAmount || 0).toFixed(2)}</span></div>
+          ${toggles.totalTax ? `<div class="flex"><span>Tax:</span><span>₹${(o.totalTax || 0).toFixed(2)}</span></div>` : ''}
+          <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>Total:</span><span>₹${o.totalAmount || 0}</span></div>
+          <div class="line"></div>
+          <div class="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptConfig.footerNote}</div>
+          <script>
+            window.onload = function() {
+              window.print();
+              window.close();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const printBulkHistory = () => {
@@ -284,8 +345,8 @@ export default function ReportsModule({ orders: parentOrders }) {
       <html>
         <head><title>Completed Orders History Report</title></head>
         <body style="font-family: 'Inter', sans-serif; padding: 30px; color: #1e293b;">
-          <h2 style="margin-bottom: 5px;">Restaurant POS - Completed Orders Report</h2>
-          <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">Generated on: ${new Date().toLocaleString()}</p>
+          <h2 style="margin-bottom: 5px;">${receiptConfig.restaurantName} - Completed Orders Report</h2>
+          <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">Generated on: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} (IST)</p>
           <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
             <thead>
               <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
