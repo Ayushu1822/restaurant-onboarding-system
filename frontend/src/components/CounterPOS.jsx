@@ -238,7 +238,7 @@ export default function CounterPOS() {
       subtotal: subtotal,
       totalTax: tax,
       totalAmount: totalAmount,
-      timestamp: istTimestamp,
+      timestamp: istTimestamp, // ✅ Enforced IST Timestamp for Reports / Past Orders sync
       items: cart.map(item => ({
         itemName: item.name,
         quantity: item.qty,
@@ -353,7 +353,7 @@ export default function CounterPOS() {
     return (
       <div style={styles.fullScreenSelector}>
         <div style={styles.selectorCard}>
-          <div style={styles.modalHeaderIcon}>🍽️</div>
+          <div style={{fontSize: '36px', marginBottom: '10px'}}>🍽️</div>
           <h2 style={{margin: '0 0 6px 0', fontSize: '24px', fontWeight: '800', color: '#0f172a'}}>Counter POS Workstation</h2>
           <p style={{fontSize: '13px', color: '#64748b', marginBottom: '28px'}}>Select order fulfillment channel to proceed</p>
           
