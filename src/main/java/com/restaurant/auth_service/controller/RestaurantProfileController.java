@@ -133,15 +133,22 @@ public class RestaurantProfileController {
             profile.setBillingConfig(updatedDetails.getBillingConfig());
         }
 
-        // 📂 Custom Menus Configuration (Added here!)
+        // 📂 Custom Menus Configuration
         if (updatedDetails.getCustomMenus() != null) {
             profile.setCustomMenus(updatedDetails.getCustomMenus());
         }
 
-      
+        // 🖨️ Printer & Receipt Settings Configuration (Added!)
+        if (updatedDetails.getReceiptConfig() != null) {
+            profile.setReceiptConfig(updatedDetails.getReceiptConfig());
+        }
+
+        if (updatedDetails.getPrintRules() != null) {
+            profile.setPrintRules(updatedDetails.getPrintRules());
+        }
 
         RestaurantProfile saved = profileRepository.save(profile);
-        System.out.println("✅ PROFILE, TABLES, DELIVERY, BILLING & CUSTOM MENUS SUCCESSFULLY SAVED — ID: " + saved.getRestaurantId());
+        System.out.println("✅ PROFILE, TABLES, DELIVERY, BILLING, CUSTOM MENUS & RECEIPT CONFIG SUCCESSFULLY SAVED — ID: " + saved.getRestaurantId());
         return ResponseEntity.ok(saved);
     }
 }

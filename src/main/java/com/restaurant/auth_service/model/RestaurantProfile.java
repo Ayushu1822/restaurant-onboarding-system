@@ -102,9 +102,16 @@ public class RestaurantProfile {
     @Column(name = "billing_config", columnDefinition = "TEXT")
     private String billingConfig;
 
-    // 📂 Custom Menus Configuration (Added here!)
+    // 📂 Custom Menus Configuration
     @Column(name = "custom_menus", columnDefinition = "TEXT")
     private String customMenus;
+
+    // 🖨️ Printer & Receipt Settings Configuration (Added!)
+    @Column(name = "receipt_config", columnDefinition = "TEXT")
+    private String receiptConfig;
+
+    @Column(name = "print_rules", columnDefinition = "TEXT")
+    private String printRules;
 
     // ================= Getters and Setters =================
 
@@ -206,4 +213,10 @@ public class RestaurantProfile {
 
     public String getCustomMenus() { return customMenus; }
     public void setCustomMenus(String customMenus) { this.customMenus = customMenus; }
+
+    public String getReceiptConfig() { return receiptConfig; }
+    public void setReceiptConfig(String receiptConfig) { this.receiptConfig = receiptConfig; }
+
+    public String getPrintRules() { return printRules; }
+    public void setPrintRules(String printRules) { this.printRules = printRules; }
 }
