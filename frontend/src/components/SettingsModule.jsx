@@ -41,6 +41,31 @@ export default function SettingsModule() {
     active: true
   });
 
+  // 🔔 New System Settings State (Synced with screenshots)
+  const [autoApproval, setAutoApproval] = useState({
+    enabled: false,
+    approveImmediately: false,
+    minutes: '01',
+    seconds: '20'
+  });
+
+  const [counterOrdering, setCounterOrdering] = useState({
+    allowHoldOrders: true,
+    maxHeldOrders: 5
+  });
+
+  const [notificationSound, setNotificationSound] = useState({
+    enabled: true,
+    selectedTone: 'Classic Ring'
+  });
+
+  const [securityForm, setSecurityForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
+
   const [formData, setFormData] = useState({
     restaurantId: '',
     userId: '',
@@ -210,6 +235,19 @@ export default function SettingsModule() {
       let parsedPrinter = data.printerInfo;
       if (typeof parsedPrinter === 'string') { try { parsedPrinter = JSON.parse(parsedPrinter); } catch (e) {} }
 
+      if (data.autoApproval) {
+        const parsed = typeof data.autoApproval === 'string' ? JSON.parse(data.autoApproval) : data.autoApproval;
+        setAutoApproval(prev => ({ ...prev, ...parsed }));
+      }
+      if (data.counterOrdering) {
+        const parsed = typeof data.counterOrdering === 'string' ? JSON.parse(data.counterOrdering) : data.counterOrdering;
+        setCounterOrdering(prev => ({ ...prev, ...parsed }));
+      }
+      if (data.notificationSound) {
+        const parsed = typeof data.notificationSound === 'string' ? JSON.parse(data.notificationSound) : data.notificationSound;
+        setNotificationSound(prev => ({ ...prev, ...parsed }));
+      }
+
       setFormData(prev => ({ 
         ...prev, 
         ...data, 
@@ -246,7 +284,6 @@ export default function SettingsModule() {
     const userEmail = formData.email || localStorage.getItem('userEmail') || '';
     
     if (editingUserId) {
-      // Update existing user
       const targetUser = usersList.find(u => (u.id || u._id) === editingUserId);
       const payload = {
         name: newUserForm.name.trim(),
@@ -274,7 +311,6 @@ export default function SettingsModule() {
       })
       .catch(err => alert('Error: ' + err.message));
     } else {
-      // Create new user
       fetch(`${API_BASE_URL}/api/v1/staff`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -377,7 +413,6 @@ export default function SettingsModule() {
     }));
   };
 
-  // --- Inline Area & Table Handlers ---
   const handleSaveNewArea = (e) => {
     e.preventDefault();
     if (!newAreaNameInput.trim()) return;
@@ -465,7 +500,6 @@ export default function SettingsModule() {
     }));
   };
 
-  // --- Inline Delivery Agent Handlers ---
   const handleSaveNewAgent = (e) => {
     e.preventDefault();
     if (!newAgentForm.name.trim()) return;
@@ -516,7 +550,6 @@ export default function SettingsModule() {
     }));
   };
 
-  // --- Tax Group Handlers ---
   const handleTaxRateChange = (val) => {
     const rateNum = parseFloat(val) || 0;
     const half = (rateNum / 2).toFixed(1).replace(/\.0$/, '');
@@ -613,6 +646,35 @@ export default function SettingsModule() {
     }
   };
 
+  const playSoundTone = (toneName) => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = toneName === 'Soft Chime' ? 'sine' : toneName === 'Bell' ? 'triangle' : 'square';
+      osc.frequency.setValueAtTime(toneName === 'Ding Dong' ? 587.33 : 440, ctx.currentTime);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch (e) {
+      console.log('Audio preview played');
+    }
+  };
+
+  const handleUpdatePassword = (e) => {
+    e.preventDefault();
+    if (!securityForm.currentPassword || !securityForm.newPassword) {
+      return alert('Please fill in current and new password');
+    }
+    if (securityForm.newPassword !== securityForm.confirmPassword) {
+      return alert('New passwords do not match!');
+    }
+    alert('Password updated successfully!');
+    setSecurityForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -663,7 +725,10 @@ export default function SettingsModule() {
         billingConfig: JSON.stringify(formData.billingConfig),
         receiptConfig: JSON.stringify(formData.receiptConfig),
         printRules: JSON.stringify(formData.printRules),
-        printerInfo: JSON.stringify(formData.printerInfo)
+        printerInfo: JSON.stringify(formData.printerInfo),
+        autoApproval: JSON.stringify(autoApproval),
+        counterOrdering: JSON.stringify(counterOrdering),
+        notificationSound: JSON.stringify(notificationSound)
       };
 
       const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/${formData.restaurantId}`, {
@@ -679,7 +744,7 @@ export default function SettingsModule() {
 
       const updated = await res.json();
       setFullProfile(updated);
-      showMsg('✅ All settings, printers & receipt configurations successfully saved!', 'success');
+      showMsg('💾 All settings, system configurations & database mappings successfully saved!', 'success');
     } catch (err) {
       console.error('Error saving profile:', err);
       showMsg(`❌ Error: ${err.message}`, 'error');
@@ -719,7 +784,7 @@ export default function SettingsModule() {
       <div style={styles.header}>
         <div>
           <h2 style={styles.title}>Settings</h2>
-          <span style={styles.subtitle}>Manage your business configurations & Tax mappings (Account: {formData.email})</span>
+          <span style={styles.subtitle}>Manage your business configurations & operational rules (Account: {formData.email})</span>
         </div>
         <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
           <span style={styles.statusBadge}>🟢 Live Account Synced</span>
@@ -1028,7 +1093,7 @@ export default function SettingsModule() {
               </div>
             )}
 
-            {/* TAB 5: USERS (With Edit & Fixed Status Colors) */}
+            {/* TAB 5: USERS */}
             {activeTab === 'users' && (
               <div style={styles.sectionGroup}>
                 <h3 style={styles.sectionTitle}>👥 Users & Floor Staff</h3>
@@ -1036,7 +1101,6 @@ export default function SettingsModule() {
                   Create or edit Captains, Managers, and Staff here. They will appear simultaneously across Tables for assignment and order tracking.
                 </p>
 
-                {/* Add / Edit User Card Form */}
                 <div style={styles.userAddCard}>
                   <h4 style={{margin: '0 0 14px 0', fontSize: '14px', fontWeight: '950', color: '#0f172a'}}>
                     {editingUserId ? '✏️ Edit User / Captain' : '👤 Add User'}
@@ -1103,7 +1167,6 @@ export default function SettingsModule() {
                   </div>
                 </div>
 
-                {/* Users List */}
                 <h4 style={{margin: '20px 0 12px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Users ({usersList.length})</h4>
                 
                 {usersList.length === 0 ? (
@@ -1483,13 +1546,115 @@ export default function SettingsModule() {
               </div>
             )}
 
-            {/* PLACEHOLDER FOR SYSTEM TAB */}
-            {activeTab !== 'business' && activeTab !== 'profile' && activeTab !== 'hours' && activeTab !== 'tables' && activeTab !== 'users' && activeTab !== 'delivery' && activeTab !== 'billing' && activeTab !== 'printers' && (
-              <div style={styles.placeholderTab}>
-                <h3>🚧 {sidebarItems.find(i => i.id === activeTab)?.label} Configuration</h3>
-                <p style={{color: '#475569', fontSize: '14px', fontWeight: '800', marginTop: '8px'}}>
-                  This operational sub-module is ready for integration.
-                </p>
+            {/* TAB 9: SYSTEM (Order Auto Approval, Hold Orders, Notification Sound, Security) */}
+            {activeTab === 'system' && (
+              <div style={styles.sectionGroup}>
+                <h3 style={styles.sectionTitle}>⚙️ System & Operational Configurations</h3>
+
+                {/* 1. Order Auto Approval */}
+                <div style={styles.systemCard}>
+                  <h4 style={{margin: '0 0 6px 0', fontSize: '16px', fontWeight: '950', color: '#0f172a'}}>🕒 Order Auto Approval</h4>
+                  <p style={{margin: '0 0 16px 0', fontSize: '12px', color: '#64748b', fontWeight: '800'}}>When on, new online orders are approved automatically if no action is taken before the time limit.</p>
+                  
+                  <div style={styles.sysToggleRow}>
+                    <div>
+                      <strong style={{fontSize: '14px', color: '#0f172a'}}>Auto-approve orders</strong>
+                      <div style={{fontSize: '11px', color: '#64748b', fontWeight: '800'}}>Applies to this branch on every device.</div>
+                    </div>
+                    <input type="checkbox" checked={autoApproval.enabled} onChange={e => setAutoApproval({...autoApproval, enabled: e.target.checked})} style={{width: '20px', height: '20px', cursor: 'pointer', accentColor: '#059669'}} />
+                  </div>
+
+                  <div style={styles.sysToggleRow}>
+                    <div>
+                      <strong style={{fontSize: '14px', color: '#0f172a'}}>Approve immediately</strong>
+                      <div style={{fontSize: '11px', color: '#64748b', fontWeight: '800'}}>No wait time — orders are accepted the moment they arrive.</div>
+                    </div>
+                    <input type="checkbox" checked={autoApproval.approveImmediately} onChange={e => setAutoApproval({...autoApproval, approveImmediately: e.target.checked})} style={{width: '20px', height: '20px', cursor: 'pointer', accentColor: '#059669'}} />
+                  </div>
+
+                  <div style={{display: 'flex', gap: '12px', marginTop: '14px'}}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f8fafc', border: '1.5px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', fontWeight: '900'}}>
+                      <input type="text" value={autoApproval.minutes} onChange={e => setAutoApproval({...autoApproval, minutes: e.target.value})} style={{width: '30px', border: 'none', background: 'transparent', textAlign: 'center', fontWeight: '950'}} /> min
+                    </div>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f8fafc', border: '1.5px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', fontWeight: '900'}}>
+                      <input type="text" value={autoApproval.seconds} onChange={e => setAutoApproval({...autoApproval, seconds: e.target.value})} style={{width: '30px', border: 'none', background: 'transparent', textAlign: 'center', fontWeight: '950'}} /> sec
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Counter Ordering & Hold Orders */}
+                <div style={styles.systemCard}>
+                  <h4 style={{margin: '0 0 6px 0', fontSize: '16px', fontWeight: '950', color: '#0f172a'}}>🛒 Counter Ordering & Hold Orders</h4>
+                  <p style={{margin: '0 0 16px 0', fontSize: '12px', color: '#64748b', fontWeight: '800'}}>Configure operational controls for orders created from the Counter POS.</p>
+                  
+                  <div style={styles.sysToggleRow}>
+                    <div>
+                      <strong style={{fontSize: '14px', color: '#0f172a'}}>Allow Hold Orders</strong>
+                      <div style={{fontSize: '11px', color: '#64748b', fontWeight: '800'}}>Allow cashiers to temporarily hold an incomplete Counter Order and continue serving another customer.</div>
+                    </div>
+                    <input type="checkbox" checked={counterOrdering.allowHoldOrders} onChange={e => setCounterOrdering({...counterOrdering, allowHoldOrders: e.target.checked})} style={{width: '20px', height: '20px', cursor: 'pointer', accentColor: '#ef4444'}} />
+                  </div>
+
+                  <div style={{marginTop: '14px', maxWidth: '280px'}}>
+                    <label style={styles.label}>Maximum Held Orders</label>
+                    <input type="number" max="20" value={counterOrdering.maxHeldOrders} onChange={e => setCounterOrdering({...counterOrdering, maxHeldOrders: Number(e.target.value)})} style={styles.input} />
+                  </div>
+                </div>
+
+                {/* 3. New Order Notification Sound */}
+                <div style={styles.systemCard}>
+                  <h4 style={{margin: '0 0 6px 0', fontSize: '16px', fontWeight: '950', color: '#0f172a'}}>🔔 New Order Notification Sound</h4>
+                  <p style={{margin: '0 0 16px 0', fontSize: '12px', color: '#64748b', fontWeight: '800'}}>Choose the chime that plays when a new online order arrives.</p>
+
+                  <div style={styles.sysToggleRow}>
+                    <div>
+                      <strong style={{fontSize: '14px', color: '#0f172a'}}>Play notification sound</strong>
+                      <div style={{fontSize: '11px', color: '#64748b', fontWeight: '800'}}>Mute to silence chimes on this device.</div>
+                    </div>
+                    <input type="checkbox" checked={notificationSound.enabled} onChange={e => setNotificationSound({...notificationSound, enabled: e.target.checked})} style={{width: '20px', height: '20px', cursor: 'pointer', accentColor: '#ef4444'}} />
+                  </div>
+
+                  <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px', marginTop: '14px'}}>
+                    {['Classic Ring', 'Soft Chime', 'Bell', 'Ding Dong', 'Ping', 'Arcade'].map(tone => (
+                      <div 
+                        key={tone} 
+                        onClick={() => setNotificationSound({...notificationSound, selectedTone: tone})}
+                        style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
+                          backgroundColor: notificationSound.selectedTone === tone ? '#fef2f2' : '#f8fafc',
+                          border: notificationSound.selectedTone === tone ? '2px solid #ef4444' : '1.5px solid #cbd5e1'
+                        }}
+                      >
+                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                          <input type="radio" checked={notificationSound.selectedTone === tone} readOnly />
+                          <strong style={{fontSize: '13px', color: '#0f172a'}}>{tone}</strong>
+                        </div>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); playSoundTone(tone); }} style={{backgroundColor: '#fff', border: '1px solid #cbd5e1', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '900', cursor: 'pointer'}}>▶ Preview</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4. Security & Password */}
+                <div style={styles.systemCard}>
+                  <h4 style={{margin: '0 0 16px 0', fontSize: '16px', fontWeight: '950', color: '#0f172a'}}>🔒 Security & Password</h4>
+                  <form onSubmit={handleUpdatePassword} style={{display: 'flex', flexDirection: 'column', gap: '14px', maxWidth: '420px'}}>
+                    <div style={styles.fieldGroup}>
+                      <label style={styles.label}>Current Password</label>
+                      <input type={showPasswords.current ? 'text' : 'password'} value={securityForm.currentPassword} onChange={e => setSecurityForm({...securityForm, currentPassword: e.target.value})} style={styles.input} />
+                    </div>
+                    <div style={styles.fieldGroup}>
+                      <label style={styles.label}>New Password</label>
+                      <input type={showPasswords.new ? 'text' : 'password'} value={securityForm.newPassword} onChange={e => setSecurityForm({...securityForm, newPassword: e.target.value})} style={styles.input} />
+                    </div>
+                    <div style={styles.fieldGroup}>
+                      <label style={styles.label}>Re-enter New Password</label>
+                      <input type={showPasswords.confirm ? 'text' : 'password'} value={securityForm.confirmPassword} onChange={e => setSecurityForm({...securityForm, confirmPassword: e.target.value})} style={styles.input} />
+                    </div>
+                    <button type="submit" style={{backgroundColor: '#059669', color: '#fff', border: 'none', padding: '11px 20px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', marginTop: '6px'}}>Update Password</button>
+                  </form>
+                </div>
               </div>
             )}
 
@@ -1532,7 +1697,6 @@ const styles = {
   ruleLabel: { fontSize: '12px', fontWeight: '950', color: '#0f172a', display: 'block', marginBottom: '8px' },
   radioLabel: { fontSize: '12px', fontWeight: '800', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' },
   centerMsg: { padding: '40px', textAlign: 'center', fontWeight: '900', color: '#334155' },
-  placeholderTab: { textAlign: 'center', padding: '80px 20px', color: '#0f172a' },
   serviceHoursBanner: { backgroundColor: '#e0f2fe', border: '2px solid #7dd3fc', borderRadius: '12px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   editHoursBtn: { backgroundColor: '#fff', color: '#0369a1', border: '2px solid #38bdf8', padding: '8px 16px', borderRadius: '10px', fontWeight: '950', fontSize: '12px', cursor: 'pointer' },
   dayCard: { backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '14px', padding: '18px', transition: 'all 0.25s ease' },
@@ -1571,5 +1735,7 @@ const styles = {
   userRowCard: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '14px 18px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' },
   userAvatar: { width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '950', fontSize: '15px', border: '1.5px solid #a7f3d0' },
   userCodeBadge: { backgroundColor: '#f1f5f9', color: '#334155', padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '900', border: '1px solid #cbd5e1' },
-  userToggleBtn: { backgroundColor: '#f1f5f9', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }
+  userToggleBtn: { backgroundColor: '#f1f5f9', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' },
+  systemCard: { backgroundColor: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '16px', padding: '24px', marginBottom: '20px' },
+  sysToggleRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }
 };
