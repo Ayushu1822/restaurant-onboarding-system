@@ -271,47 +271,49 @@ export default function MenuModule() {
   // ==========================================
   if (activeMenu) {
     return (
-      <div style={styles.container}>
-        <div style={styles.headerRow}>
-          <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-            <button onClick={() => setActiveMenu(null)} style={styles.backBtn}>← Back to Menus</button>
+      <div className="mn">
+        <style>{css}</style>
+
+        <div className="mn-header">
+          <div className="mn-header-left">
+            <button onClick={() => setActiveMenu(null)} className="mn-back-btn">← Back to Menus</button>
             <div>
-              <h2 style={{margin: 0, fontSize: '22px', fontWeight: '900', color: '#0f172a'}}>
+              <h2 className="mn-title">
                 {activeMenu.icon} {activeMenu.name}
               </h2>
-              <p style={{margin: '2px 0 0 0', fontSize: '12px', color: '#64748b', fontWeight: '700'}}>
+              <p className="mn-subtitle">
                 {activeMenu.description || 'Manage items, categories, variants, and add-ons'} · Channel: {activeMenu.channel}
               </p>
             </div>
           </div>
 
-          <div style={{display: 'flex', gap: '10px'}}>
+          <div className="mn-header-actions">
             {activeTab === 'items' && (
-              <button onClick={handleOpenAddItemModal} style={styles.primaryBtn}>+ Add Item</button>
+              <button onClick={handleOpenAddItemModal} className="mn-primary-btn">+ Add Item</button>
             )}
             {activeTab === 'categories' && (
-              <button onClick={() => setShowAddCategoryModal(true)} style={styles.primaryBtn}>+ Add Category</button>
+              <button onClick={() => setShowAddCategoryModal(true)} className="mn-primary-btn">+ Add Category</button>
             )}
             {activeTab === 'variants' && (
-              <button onClick={() => setShowAddVariantModal(true)} style={styles.primaryBtn}>+ Add Variant</button>
+              <button onClick={() => setShowAddVariantModal(true)} className="mn-primary-btn">+ Add Variant</button>
             )}
             {activeTab === 'addons' && (
-              <button onClick={() => setShowAddAddonModal(true)} style={styles.primaryBtn}>+ Add Add-on</button>
+              <button onClick={() => setShowAddAddonModal(true)} className="mn-primary-btn">+ Add Add-on</button>
             )}
             {activeTab === 'addon-groups' && (
-              <button onClick={() => setShowAddGroupModal(true)} style={styles.primaryBtn}>+ Add Group</button>
+              <button onClick={() => setShowAddGroupModal(true)} className="mn-primary-btn">+ Add Group</button>
             )}
           </div>
         </div>
 
         {message.text && (
-          <div style={{...styles.alert, backgroundColor: message.type === 'error' ? '#fef2f2' : '#f0fdf4', color: message.type === 'error' ? '#991b1b' : '#166534'}}>
+          <div className={`mn-alert ${message.type === 'error' ? 'is-error' : 'is-success'}`}>
             {message.text}
           </div>
         )}
 
         {/* 5 Sub Navigation Tabs */}
-        <div style={styles.subTabsRow}>
+        <div className="mn-tabs">
           {[
             { id: 'items', label: 'Items' },
             { id: 'categories', label: 'Categories' },
@@ -322,10 +324,7 @@ export default function MenuModule() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              style={{
-                ...styles.subTabBtn,
-                ...(activeTab === tab.id ? styles.activeSubTabBtn : {})
-              }}
+              className={`mn-tab ${activeTab === tab.id ? 'is-active' : ''}`}
             >
               {tab.label}
             </button>
@@ -334,50 +333,45 @@ export default function MenuModule() {
 
         {/* TAB 1: ITEMS */}
         {activeTab === 'items' && (
-          <div>
-            <div style={styles.summaryStrip}>
-              <span>{activeCatalogName.toUpperCase()} · <strong>{totalAvailable} AVAILABLE</strong> · <strong style={{color: '#dc2626'}}>{totalPaused} PAUSED</strong></span>
+          <div className="mn-panel">
+            <div className="mn-summary">
+              <span>{activeCatalogName.toUpperCase()} · <strong>{totalAvailable} AVAILABLE</strong> · <strong className="mn-red">{totalPaused} PAUSED</strong></span>
             </div>
 
             {loading ? (
-              <div style={{textAlign: 'center', padding: '40px', color: '#64748b'}}>Loading items...</div>
+              <div className="mn-center">
+                <span className="mn-spinner" aria-hidden="true" />
+                Loading items...
+              </div>
             ) : catalogFilteredItems.length === 0 ? (
-              <div style={styles.emptyBox}>No items found in this menu. Click "+ Add Item" above!</div>
+              <div className="mn-empty">No items found in this menu. Click "+ Add Item" above!</div>
             ) : (
               dynamicCategories.map(cat => {
                 const catItems = catalogFilteredItems.filter(i => i.category === cat);
                 if (catItems.length === 0) return null;
 
                 return (
-                  <div key={cat} style={{marginBottom: '20px'}}>
-                    <div style={styles.categoryHeader}>{cat}</div>
-                    <div style={styles.categoryCard}>
+                  <div key={cat} className="mn-cat-block">
+                    <div className="mn-cat-header">{cat}</div>
+                    <div className="mn-cat-card">
                       {catItems.map((item, idx) => {
                         const isLive = item.status === 'LIVE';
                         return (
-                          <div key={item.id} style={{
-                            ...styles.itemRow,
-                            borderBottom: idx === catItems.length - 1 ? 'none' : '1px solid #f1f5f9'
-                          }}>
-                            <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                              <span style={{width: '8px', height: '8px', borderRadius: '50%', background: isLive ? '#10b981' : '#ef4444'}}></span>
+                          <div key={item.id} className="mn-item-row">
+                            <div className="mn-item-left">
+                              <span className={`mn-dot ${isLive ? 'is-live' : 'is-paused'}`}></span>
                               <div>
-                                <span style={{fontSize: '14px', fontWeight: '800', color: '#0f172a'}}>{item.itemName}</span>
-                                {item.description && <div style={{fontSize: '11px', color: '#64748b'}}>{item.description}</div>}
+                                <span className="mn-item-name">{item.itemName}</span>
+                                {item.description && <div className="mn-item-desc">{item.description}</div>}
                               </div>
                             </div>
-                            <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-                              <span style={{fontSize: '12px', fontWeight: '900', color: '#059669', background: '#ecfdf5', padding: '3px 8px', borderRadius: '6px'}}>🏷️ {item.taxGroup}</span>
-                              <span style={{fontSize: '14px', fontWeight: '950', color: '#0f172a'}}>₹{Number(item.unitPrice || 0).toFixed(2)}</span>
-                              <button onClick={() => handleToggleStatus(item.id, item.status)} style={{
-                                background: isLive ? '#ecfdf5' : '#fef2f2',
-                                color: isLive ? '#047857' : '#dc2626',
-                                border: `1.5px solid ${isLive ? '#10b981' : '#fca5a5'}`,
-                                padding: '4px 12px', borderRadius: '6px', fontWeight: '900', fontSize: '11px', cursor: 'pointer'
-                              }}>
+                            <div className="mn-item-right">
+                              <span className="mn-tax-chip">🏷️ {item.taxGroup}</span>
+                              <span className="mn-price">₹{Number(item.unitPrice || 0).toFixed(2)}</span>
+                              <button onClick={() => handleToggleStatus(item.id, item.status)} className={`mn-toggle ${isLive ? 'is-live' : 'is-paused'}`}>
                                 {isLive ? '🟢 Live' : '🔴 Paused'}
                               </button>
-                              <button onClick={() => handleDeleteItem(item.id, item.itemName)} title="Delete" style={styles.deleteBtn}>🗑️</button>
+                              <button onClick={() => handleDeleteItem(item.id, item.itemName)} title="Delete" className="mn-delete-btn">🗑️</button>
                             </div>
                           </div>
                         );
@@ -392,19 +386,19 @@ export default function MenuModule() {
 
         {/* TAB 2: CATEGORIES */}
         {activeTab === 'categories' && (
-          <div style={styles.cardContainer}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+          <div className="mn-panel mn-card-box">
+            <div className="mn-box-head">
               <div>
-                <h3 style={{margin: 0, fontSize: '16px', fontWeight: '950', color: '#0f172a'}}>Categories</h3>
-                <p style={{margin: '2px 0 0 0', fontSize: '12px', color: '#64748b', fontWeight: '700'}}>Categories appear on POS sidebar and online menu navigation.</p>
+                <h3 className="mn-box-title">Categories</h3>
+                <p className="mn-box-desc">Categories appear on POS sidebar and online menu navigation.</p>
               </div>
-              <button onClick={() => setShowAddCategoryModal(true)} style={styles.primaryBtn}>+ Add Category</button>
+              <button onClick={() => setShowAddCategoryModal(true)} className="mn-primary-btn">+ Add Category</button>
             </div>
-            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px'}}>
+            <div className="mn-simple-grid">
               {categories.map(c => (
-                <div key={c.id} style={styles.simpleCard}>
-                  <div style={{fontWeight: '950', color: '#0f172a', fontSize: '15px'}}>{c.name}</div>
-                  <div style={{fontSize: '12px', color: '#64748b', fontWeight: '800', marginTop: '4px'}}>Display Name: {c.displayName}</div>
+                <div key={c.id} className="mn-simple-card">
+                  <div className="mn-simple-name">{c.name}</div>
+                  <div className="mn-simple-sub">Display Name: {c.displayName}</div>
                 </div>
               ))}
             </div>
@@ -413,19 +407,19 @@ export default function MenuModule() {
 
         {/* TAB 3: VARIANTS */}
         {activeTab === 'variants' && (
-          <div style={styles.cardContainer}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+          <div className="mn-panel mn-card-box">
+            <div className="mn-box-head">
               <div>
-                <h3 style={{margin: 0, fontSize: '16px', fontWeight: '950', color: '#0f172a'}}>Variants</h3>
-                <p style={{margin: '2px 0 0 0', fontSize: '12px', color: '#64748b', fontWeight: '700'}}>Size or portion options an item can be sold in.</p>
+                <h3 className="mn-box-title">Variants</h3>
+                <p className="mn-box-desc">Size or portion options an item can be sold in.</p>
               </div>
-              <button onClick={() => setShowAddVariantModal(true)} style={styles.primaryBtn}>+ Add Variant</button>
+              <button onClick={() => setShowAddVariantModal(true)} className="mn-primary-btn">+ Add Variant</button>
             </div>
-            <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+            <div className="mn-simple-col">
               {variants.map(v => (
-                <div key={v.id} style={styles.simpleCardRow}>
-                  <span style={{fontWeight: '950', color: '#0f172a'}}>{v.name}</span>
-                  <span style={{fontSize: '11px', color: '#047857', fontWeight: '900', background: '#ecfdf5', padding: '4px 10px', borderRadius: '6px'}}>Active</span>
+                <div key={v.id} className="mn-simple-row">
+                  <span className="mn-simple-name">{v.name}</span>
+                  <span className="mn-active-chip">Active</span>
                 </div>
               ))}
             </div>
@@ -434,22 +428,22 @@ export default function MenuModule() {
 
         {/* TAB 4: ADDON GROUPS */}
         {activeTab === 'addon-groups' && (
-          <div style={styles.cardContainer}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+          <div className="mn-panel mn-card-box">
+            <div className="mn-box-head">
               <div>
-                <h3 style={{margin: 0, fontSize: '16px', fontWeight: '950', color: '#0f172a'}}>Add-on groups</h3>
-                <p style={{margin: '2px 0 0 0', fontSize: '12px', color: '#64748b', fontWeight: '700'}}>Buckets that add-ons belong to, e.g. Dips or Sides.</p>
+                <h3 className="mn-box-title">Add-on groups</h3>
+                <p className="mn-box-desc">Buckets that add-ons belong to, e.g. Dips or Sides.</p>
               </div>
-              <button onClick={() => setShowAddGroupModal(true)} style={styles.primaryBtn}>+ Add Group</button>
+              <button onClick={() => setShowAddGroupModal(true)} className="mn-primary-btn">+ Add Group</button>
             </div>
-            <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+            <div className="mn-simple-col">
               {addonGroups.map(ag => (
-                <div key={ag.id} style={styles.simpleCardRow}>
+                <div key={ag.id} className="mn-simple-row">
                   <div>
-                    <div style={{fontWeight: '950', color: '#0f172a'}}>{ag.name}</div>
-                    <div style={{fontSize: '11px', color: '#64748b', fontWeight: '800'}}>Display: {ag.displayName}</div>
+                    <div className="mn-simple-name">{ag.name}</div>
+                    <div className="mn-simple-sub">Display: {ag.displayName}</div>
                   </div>
-                  <span style={{fontSize: '12px', fontWeight: '900', color: '#059669'}}>1 Add-on</span>
+                  <span className="mn-count-chip">1 Add-on</span>
                 </div>
               ))}
             </div>
@@ -458,32 +452,32 @@ export default function MenuModule() {
 
         {/* TAB 5: ADDONS */}
         {activeTab === 'addons' && (
-          <div style={styles.cardContainer}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+          <div className="mn-panel mn-card-box">
+            <div className="mn-box-head">
               <div>
-                <h3 style={{margin: 0, fontSize: '16px', fontWeight: '950', color: '#0f172a'}}>Add-ons</h3>
-                <p style={{margin: '2px 0 0 0', fontSize: '12px', color: '#64748b', fontWeight: '700'}}>Extras customers can add to an item.</p>
+                <h3 className="mn-box-title">Add-ons</h3>
+                <p className="mn-box-desc">Extras customers can add to an item.</p>
               </div>
-              <button onClick={() => setShowAddAddonModal(true)} style={styles.primaryBtn}>+ Add Add-on</button>
+              <button onClick={() => setShowAddAddonModal(true)} className="mn-primary-btn">+ Add Add-on</button>
             </div>
-            <div style={styles.tableWrapper}>
-              <table style={styles.table}>
+            <div className="mn-table-wrap">
+              <table className="mn-table">
                 <thead>
-                  <tr style={styles.tableHeaderRow}>
-                    <th style={styles.th}>Name</th>
-                    <th style={styles.th}>Group</th>
-                    <th style={styles.th}>Price</th>
-                    <th style={styles.th}>Available</th>
+                  <tr>
+                    <th>Name</th>
+                    <th>Group</th>
+                    <th>Price</th>
+                    <th>Available</th>
                   </tr>
                 </thead>
                 <tbody>
                   {addons.map(ad => (
-                    <tr key={ad.id} style={styles.tableRow}>
-                      <td style={styles.td}><strong style={{color: '#0f172a'}}>{ad.name}</strong></td>
-                      <td style={styles.td}>{ad.group}</td>
-                      <td style={styles.td}><strong style={{color: '#059669'}}>₹{ad.price.toFixed(2)}</strong></td>
-                      <td style={styles.td}>
-                        <input type="checkbox" checked={ad.available} readOnly style={{accentColor: '#059669', width: '18px', height: '18px'}} />
+                    <tr key={ad.id}>
+                      <td><strong className="mn-strong">{ad.name}</strong></td>
+                      <td>{ad.group}</td>
+                      <td><strong className="mn-green">₹{ad.price.toFixed(2)}</strong></td>
+                      <td>
+                        <input type="checkbox" checked={ad.available} readOnly className="mn-checkbox" />
                       </td>
                     </tr>
                   ))}
@@ -497,48 +491,48 @@ export default function MenuModule() {
 
         {/* Modal: Add Item */}
         {showAddItemModal && (
-          <div style={styles.modalOverlay} onClick={() => setShowAddItemModal(false)}>
-            <form onSubmit={handleSaveItem} style={styles.modalCard} onClick={e => e.stopPropagation()}>
-              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+          <div className="mn-overlay" onClick={() => setShowAddItemModal(false)}>
+            <form onSubmit={handleSaveItem} className="mn-modal" onClick={e => e.stopPropagation()}>
+              <div className="mn-modal-head">
                 <div>
-                  <h3 style={{margin: '0 0 2px 0', color: '#0f172a', fontWeight: '950', fontSize: '18px'}}>Add Item</h3>
-                  <p style={{margin: 0, fontSize: '12px', color: '#64748b', fontWeight: '800'}}>Every item needs a tax group.</p>
+                  <h3 className="mn-modal-title">Add Item</h3>
+                  <p className="mn-modal-sub">Every item needs a tax group.</p>
                 </div>
-                <button type="button" onClick={() => setShowAddItemModal(false)} style={styles.closeXBtn}>✕</button>
+                <button type="button" onClick={() => setShowAddItemModal(false)} className="mn-close-x">✕</button>
               </div>
 
-              <label style={styles.label}>Item Name *</label>
-              <input type="text" placeholder="e.g. Butter Chicken" value={newItemForm.itemName} onChange={e => setNewItemForm({...newItemForm, itemName: e.target.value})} style={styles.input} required autoFocus />
+              <label className="mn-label">Item Name *</label>
+              <input type="text" placeholder="e.g. Butter Chicken" value={newItemForm.itemName} onChange={e => setNewItemForm({...newItemForm, itemName: e.target.value})} className="mn-input" required autoFocus />
 
-              <label style={styles.label}>Description</label>
-              <textarea placeholder="Short note or ingredients..." value={newItemForm.description} onChange={e => setNewItemForm({...newItemForm, description: e.target.value})} style={{...styles.input, height: '65px', resize: 'none'}} />
+              <label className="mn-label">Description</label>
+              <textarea placeholder="Short note or ingredients..." value={newItemForm.description} onChange={e => setNewItemForm({...newItemForm, description: e.target.value})} className="mn-input mn-textarea" />
 
-              <div style={{display: 'flex', gap: '12px'}}>
-                <div style={{flex: 1}}>
-                  <label style={styles.label}>Price (₹) *</label>
-                  <input type="number" step="0.01" placeholder="299" value={newItemForm.unitPrice} onChange={e => setNewItemForm({...newItemForm, unitPrice: e.target.value})} style={styles.input} required />
+              <div className="mn-two-col">
+                <div className="mn-col">
+                  <label className="mn-label">Price (₹) *</label>
+                  <input type="number" step="0.01" placeholder="299" value={newItemForm.unitPrice} onChange={e => setNewItemForm({...newItemForm, unitPrice: e.target.value})} className="mn-input" required />
                 </div>
-                <div style={{flex: 1}}>
-                  <label style={styles.label}>Category</label>
-                  <select value={newItemForm.category} onChange={e => setNewItemForm({...newItemForm, category: e.target.value})} style={styles.input}>
+                <div className="mn-col">
+                  <label className="mn-label">Category</label>
+                  <select value={newItemForm.category} onChange={e => setNewItemForm({...newItemForm, category: e.target.value})} className="mn-input">
                     {dynamicCategories.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
               </div>
 
-              <label style={styles.label}>Tax Group *</label>
-              <select value={newItemForm.taxGroup} onChange={e => setNewItemForm({...newItemForm, taxGroup: e.target.value})} style={styles.input}>
+              <label className="mn-label">Tax Group *</label>
+              <select value={newItemForm.taxGroup} onChange={e => setNewItemForm({...newItemForm, taxGroup: e.target.value})} className="mn-input">
                 {taxGroups.map(tg => (
                   <option key={tg.name} value={tg.name}>{tg.name} ({tg.rate}%)</option>
                 ))}
               </select>
-              <div style={{fontSize: '11px', color: '#64748b', fontWeight: '800', marginTop: '-6px', marginBottom: '14px'}}>
+              <div className="mn-hint">
                 CGST {taxGroups.find(t => t.name === newItemForm.taxGroup)?.cgst || 2.5}% + SGST {taxGroups.find(t => t.name === newItemForm.taxGroup)?.sgst || 2.5}%
               </div>
 
-              <div style={{display: 'flex', gap: '10px'}}>
-                <button type="submit" style={styles.saveBtn}>Save</button>
-                <button type="button" onClick={() => setShowAddItemModal(false)} style={styles.cancelBtn}>Cancel</button>
+              <div className="mn-btn-row">
+                <button type="submit" className="mn-save-btn">Save</button>
+                <button type="button" onClick={() => setShowAddItemModal(false)} className="mn-cancel-btn">Cancel</button>
               </div>
             </form>
           </div>
@@ -546,16 +540,16 @@ export default function MenuModule() {
 
         {/* Modal: Add Category */}
         {showAddCategoryModal && (
-          <div style={styles.modalOverlay} onClick={() => setShowAddCategoryModal(false)}>
-            <form onSubmit={handleSaveCategory} style={styles.modalCard} onClick={e => e.stopPropagation()}>
-              <h3 style={{margin: '0 0 16px 0', color: '#0f172a', fontWeight: '950'}}>Add category</h3>
-              <label style={styles.label}>Category name *</label>
-              <input type="text" placeholder="e.g. Starters" value={newCatForm.name} onChange={e => setNewCatForm({...newCatForm, name: e.target.value})} style={styles.input} required autoFocus />
-              <label style={styles.label}>Display name (optional)</label>
-              <input type="text" placeholder="Shown to customers" value={newCatForm.displayName} onChange={e => setNewCatForm({...newCatForm, displayName: e.target.value})} style={styles.input} />
-              <div style={{display: 'flex', gap: '10px', marginTop: '16px'}}>
-                <button type="submit" style={styles.saveBtn}>Save</button>
-                <button type="button" onClick={() => setShowAddCategoryModal(false)} style={styles.cancelBtn}>Cancel</button>
+          <div className="mn-overlay" onClick={() => setShowAddCategoryModal(false)}>
+            <form onSubmit={handleSaveCategory} className="mn-modal" onClick={e => e.stopPropagation()}>
+              <h3 className="mn-modal-title mn-mb">Add category</h3>
+              <label className="mn-label">Category name *</label>
+              <input type="text" placeholder="e.g. Starters" value={newCatForm.name} onChange={e => setNewCatForm({...newCatForm, name: e.target.value})} className="mn-input" required autoFocus />
+              <label className="mn-label">Display name (optional)</label>
+              <input type="text" placeholder="Shown to customers" value={newCatForm.displayName} onChange={e => setNewCatForm({...newCatForm, displayName: e.target.value})} className="mn-input" />
+              <div className="mn-btn-row mn-mt">
+                <button type="submit" className="mn-save-btn">Save</button>
+                <button type="button" onClick={() => setShowAddCategoryModal(false)} className="mn-cancel-btn">Cancel</button>
               </div>
             </form>
           </div>
@@ -563,14 +557,14 @@ export default function MenuModule() {
 
         {/* Modal: Add Variant */}
         {showAddVariantModal && (
-          <div style={styles.modalOverlay} onClick={() => setShowAddVariantModal(false)}>
-            <form onSubmit={handleSaveVariant} style={styles.modalCard} onClick={e => e.stopPropagation()}>
-              <h3 style={{margin: '0 0 16px 0', color: '#0f172a', fontWeight: '950'}}>Add variant</h3>
-              <label style={styles.label}>Variant name *</label>
-              <input type="text" placeholder="e.g. Half / Full" value={newVarName} onChange={e => setNewVarName(e.target.value)} style={styles.input} required autoFocus />
-              <div style={{display: 'flex', gap: '10px', marginTop: '16px'}}>
-                <button type="submit" style={styles.saveBtn}>Save</button>
-                <button type="button" onClick={() => setShowAddVariantModal(false)} style={styles.cancelBtn}>Cancel</button>
+          <div className="mn-overlay" onClick={() => setShowAddVariantModal(false)}>
+            <form onSubmit={handleSaveVariant} className="mn-modal" onClick={e => e.stopPropagation()}>
+              <h3 className="mn-modal-title mn-mb">Add variant</h3>
+              <label className="mn-label">Variant name *</label>
+              <input type="text" placeholder="e.g. Half / Full" value={newVarName} onChange={e => setNewVarName(e.target.value)} className="mn-input" required autoFocus />
+              <div className="mn-btn-row mn-mt">
+                <button type="submit" className="mn-save-btn">Save</button>
+                <button type="button" onClick={() => setShowAddVariantModal(false)} className="mn-cancel-btn">Cancel</button>
               </div>
             </form>
           </div>
@@ -578,16 +572,16 @@ export default function MenuModule() {
 
         {/* Modal: Add Add-on Group */}
         {showAddGroupModal && (
-          <div style={styles.modalOverlay} onClick={() => setShowAddGroupModal(false)}>
-            <form onSubmit={handleSaveGroup} style={styles.modalCard} onClick={e => e.stopPropagation()}>
-              <h3 style={{margin: '0 0 16px 0', color: '#0f172a', fontWeight: '950'}}>Add add-on group</h3>
-              <label style={styles.label}>Group name *</label>
-              <input type="text" placeholder="e.g. Dips or Sides" value={newGroupForm.name} onChange={e => setNewGroupForm({...newGroupForm, name: e.target.value})} style={styles.input} required autoFocus />
-              <label style={styles.label}>Display name</label>
-              <input type="text" placeholder="Defaults to group name" value={newGroupForm.displayName} onChange={e => setNewGroupForm({...newGroupForm, displayName: e.target.value})} style={styles.input} />
-              <div style={{display: 'flex', gap: '10px', marginTop: '16px'}}>
-                <button type="submit" style={styles.saveBtn}>Save</button>
-                <button type="button" onClick={() => setShowAddGroupModal(false)} style={styles.cancelBtn}>Cancel</button>
+          <div className="mn-overlay" onClick={() => setShowAddGroupModal(false)}>
+            <form onSubmit={handleSaveGroup} className="mn-modal" onClick={e => e.stopPropagation()}>
+              <h3 className="mn-modal-title mn-mb">Add add-on group</h3>
+              <label className="mn-label">Group name *</label>
+              <input type="text" placeholder="e.g. Dips or Sides" value={newGroupForm.name} onChange={e => setNewGroupForm({...newGroupForm, name: e.target.value})} className="mn-input" required autoFocus />
+              <label className="mn-label">Display name</label>
+              <input type="text" placeholder="Defaults to group name" value={newGroupForm.displayName} onChange={e => setNewGroupForm({...newGroupForm, displayName: e.target.value})} className="mn-input" />
+              <div className="mn-btn-row mn-mt">
+                <button type="submit" className="mn-save-btn">Save</button>
+                <button type="button" onClick={() => setShowAddGroupModal(false)} className="mn-cancel-btn">Cancel</button>
               </div>
             </form>
           </div>
@@ -595,39 +589,39 @@ export default function MenuModule() {
 
         {/* Modal: Add Add-on */}
         {showAddAddonModal && (
-          <div style={styles.modalOverlay} onClick={() => setShowAddAddonModal(false)}>
-            <form onSubmit={handleSaveAddon} style={styles.modalCard} onClick={e => e.stopPropagation()}>
-              <h3 style={{margin: '0 0 16px 0', color: '#0f172a', fontWeight: '950'}}>Add add-on</h3>
-              <label style={styles.label}>Name *</label>
-              <input type="text" placeholder="e.g. Extra Cheese" value={newAddonForm.name} onChange={e => setNewAddonForm({...newAddonForm, name: e.target.value})} style={styles.input} required autoFocus />
+          <div className="mn-overlay" onClick={() => setShowAddAddonModal(false)}>
+            <form onSubmit={handleSaveAddon} className="mn-modal" onClick={e => e.stopPropagation()}>
+              <h3 className="mn-modal-title mn-mb">Add add-on</h3>
+              <label className="mn-label">Name *</label>
+              <input type="text" placeholder="e.g. Extra Cheese" value={newAddonForm.name} onChange={e => setNewAddonForm({...newAddonForm, name: e.target.value})} className="mn-input" required autoFocus />
               
-              <div style={{display: 'flex', gap: '10px'}}>
-                <div style={{flex: 1}}>
-                  <label style={styles.label}>Price (₹) *</label>
-                  <input type="number" step="0.01" placeholder="30" value={newAddonForm.price} onChange={e => setNewAddonForm({...newAddonForm, price: e.target.value})} style={styles.input} required />
+              <div className="mn-two-col">
+                <div className="mn-col">
+                  <label className="mn-label">Price (₹) *</label>
+                  <input type="number" step="0.01" placeholder="30" value={newAddonForm.price} onChange={e => setNewAddonForm({...newAddonForm, price: e.target.value})} className="mn-input" required />
                 </div>
-                <div style={{flex: 1}}>
-                  <label style={styles.label}>Tag</label>
-                  <input type="text" placeholder="Optional" value={newAddonForm.tag} onChange={e => setNewAddonForm({...newAddonForm, tag: e.target.value})} style={styles.input} />
+                <div className="mn-col">
+                  <label className="mn-label">Tag</label>
+                  <input type="text" placeholder="Optional" value={newAddonForm.tag} onChange={e => setNewAddonForm({...newAddonForm, tag: e.target.value})} className="mn-input" />
                 </div>
               </div>
 
-              <label style={styles.label}>Group *</label>
-              <select value={newAddonForm.group} onChange={e => setNewAddonForm({...newAddonForm, group: e.target.value})} style={styles.input}>
+              <label className="mn-label">Group *</label>
+              <select value={newAddonForm.group} onChange={e => setNewAddonForm({...newAddonForm, group: e.target.value})} className="mn-input">
                 {addonGroups.map(ag => <option key={ag.name} value={ag.name}>{ag.name}</option>)}
               </select>
 
-              <label style={styles.label}>Description</label>
-              <input type="text" placeholder="Optional" value={newAddonForm.description} onChange={e => setNewAddonForm({...newAddonForm, description: e.target.value})} style={styles.input} />
+              <label className="mn-label">Description</label>
+              <input type="text" placeholder="Optional" value={newAddonForm.description} onChange={e => setNewAddonForm({...newAddonForm, description: e.target.value})} className="mn-input" />
 
-              <div style={{display: 'flex', alignItems: 'center', gap: '10px', margin: '10px 0'}}>
-                <input type="checkbox" checked={newAddonForm.available} onChange={e => setNewAddonForm({...newAddonForm, available: e.target.checked})} style={{width: '18px', height: '18px', accentColor: '#059669'}} />
-                <label style={{fontSize: '13px', fontWeight: '900', color: '#0f172a'}}>Available</label>
+              <div className="mn-avail-row">
+                <input type="checkbox" checked={newAddonForm.available} onChange={e => setNewAddonForm({...newAddonForm, available: e.target.checked})} className="mn-checkbox" />
+                <label className="mn-avail-label">Available</label>
               </div>
 
-              <div style={{display: 'flex', gap: '10px', marginTop: '16px'}}>
-                <button type="submit" style={styles.saveBtn}>Save</button>
-                <button type="button" onClick={() => setShowAddAddonModal(false)} style={styles.cancelBtn}>Cancel</button>
+              <div className="mn-btn-row mn-mt">
+                <button type="submit" className="mn-save-btn">Save</button>
+                <button type="button" onClick={() => setShowAddAddonModal(false)} className="mn-cancel-btn">Cancel</button>
               </div>
             </form>
           </div>
@@ -641,37 +635,30 @@ export default function MenuModule() {
   // VIEW 1: MAIN MENU LIST (Two Options + Catalog Cards)
   // ==========================================
   return (
-    <div style={styles.container}>
-      <div style={styles.headerRow}>
+    <div className="mn">
+      <style>{css}</style>
+
+      <div className="mn-header">
         <div>
-          <h2 style={{margin: 0, fontSize: '24px', fontWeight: '950', color: '#0f172a', letterSpacing: '-0.02em'}}>Menus</h2>
-          <p style={{margin: '4px 0 0 0', fontSize: '13px', color: '#64748b', fontWeight: '700'}}>Create menus, activate them per channel, and manage items.</p>
+          <h2 className="mn-title mn-title-lg">Menus</h2>
+          <p className="mn-subtitle">Create menus, activate them per channel, and manage items.</p>
         </div>
 
-        <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
+        <div className="mn-header-actions">
           <button 
             onClick={() => setShowPausedModal(true)}
             onMouseEnter={() => setHoveredBtn('paused')}
             onMouseLeave={() => setHoveredBtn(null)}
-            style={{
-              ...styles.pausedHeaderBtn,
-              background: hoveredBtn === 'paused' ? '#fef2f2' : '#fff',
-              borderColor: totalPaused > 0 ? '#dc2626' : '#cbd5e1',
-              color: totalPaused > 0 ? '#dc2626' : '#334155'
-            }}
+            className={`mn-paused-btn ${totalPaused > 0 ? 'has-paused' : ''}`}
           >
-            🔴 Manage Paused Items <span style={styles.pausedCountPill}>{totalPaused}</span>
+            🔴 Manage Paused Items <span className="mn-paused-pill">{totalPaused}</span>
           </button>
 
           <button 
             onClick={() => setShowNewMenuModal(true)}
             onMouseEnter={() => setHoveredBtn('newMenu')}
             onMouseLeave={() => setHoveredBtn(null)}
-            style={{
-              ...styles.primaryBtn,
-              background: hoveredBtn === 'newMenu' ? '#065f46' : '#047857',
-              transform: hoveredBtn === 'newMenu' ? 'translateY(-2px)' : 'translateY(0)'
-            }}
+            className="mn-primary-btn"
           >
             + Add Menu
           </button>
@@ -679,38 +666,32 @@ export default function MenuModule() {
       </div>
 
       {message.text && (
-        <div style={{...styles.alert, backgroundColor: message.type === 'error' ? '#fef2f2' : '#f0fdf4', color: message.type === 'error' ? '#991b1b' : '#166534', marginBottom: '20px'}}>
+        <div className={`mn-alert ${message.type === 'error' ? 'is-error' : 'is-success'}`}>
           {message.text}
         </div>
       )}
 
       {/* Menu Catalog Cards (Reactive Hover Effects) */}
-      <div style={styles.catalogsGrid}>
+      <div className="mn-catalogs">
         {menus.map(menu => {
-          const isCardHovered = hoveredCard === menu.id;
           return (
             <div 
               key={menu.id}
               onClick={() => setActiveMenu(menu)}
               onMouseEnter={() => setHoveredCard(menu.id)}
               onMouseLeave={() => setHoveredCard(null)}
-              style={{
-                ...styles.catalogCard,
-                borderColor: isCardHovered ? '#059669' : '#cbd5e1',
-                transform: isCardHovered ? 'translateY(-4px)' : 'translateY(0)',
-                boxShadow: isCardHovered ? '0 12px 25px rgba(5,150,105,0.15)' : '0 2px 6px rgba(0,0,0,0.02)'
-              }}
+              className={`mn-catalog ${menu.channel === 'Online' ? 'is-online' : 'is-inhouse'}`}
             >
-              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px'}}>
-                <span style={menu.channel === 'Online' ? styles.liveOnlineBadge : styles.inhouseBadge}>
+              <div className="mn-catalog-top">
+                <span className={menu.channel === 'Online' ? 'mn-badge-online' : 'mn-badge-inhouse'}>
                   {menu.channel === 'Online' ? '🟢 ONLINE CHANNEL' : '🍴 IN-HOUSE MENU'}
                 </span>
-                <span style={{fontSize: '11px', color: '#059669', fontWeight: '900'}}>Click to Manage →</span>
+                <span className="mn-manage-link">Click to Manage →</span>
               </div>
-              <h3 style={{margin: '0 0 6px 0', fontSize: '18px', fontWeight: '950', color: '#0f172a'}}>
-                {menu.icon} {menu.name}
+              <h3 className="mn-catalog-name">
+                <span className="mn-catalog-icon">{menu.icon}</span> {menu.name}
               </h3>
-              <p style={{margin: 0, fontSize: '12px', color: '#64748b', fontWeight: '800'}}>{menu.description}</p>
+              <p className="mn-catalog-desc">{menu.description}</p>
             </div>
           );
         })}
@@ -718,69 +699,65 @@ export default function MenuModule() {
 
       {/* Modal: Add Menu */}
       {showNewMenuModal && (
-        <div style={styles.modalOverlay} onClick={() => setShowNewMenuModal(false)}>
-          <form onSubmit={handleCreateMenu} style={styles.modalCard} onClick={e => e.stopPropagation()}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+        <div className="mn-overlay" onClick={() => setShowNewMenuModal(false)}>
+          <form onSubmit={handleCreateMenu} className="mn-modal" onClick={e => e.stopPropagation()}>
+            <div className="mn-modal-head">
               <div>
-                <h3 style={{margin: '0 0 4px 0', fontSize: '18px', fontWeight: '950', color: '#0f172a'}}>New Menu</h3>
-                <p style={{margin: 0, fontSize: '12px', color: '#64748b', fontWeight: '800'}}>Give the menu a name, an icon, and choose which channel it primarily serves.</p>
+                <h3 className="mn-modal-title">New Menu</h3>
+                <p className="mn-modal-sub">Give the menu a name, an icon, and choose which channel it primarily serves.</p>
               </div>
-              <button type="button" onClick={() => setShowNewMenuModal(false)} style={styles.closeXBtn}>✕</button>
+              <button type="button" onClick={() => setShowNewMenuModal(false)} className="mn-close-x">✕</button>
             </div>
 
-            <label style={styles.label}>Menu name *</label>
+            <label className="mn-label">Menu name *</label>
             <input 
               type="text" 
               placeholder="e.g. Lunch Special, Bar Menu" 
               value={newMenuForm.name} 
               onChange={e => setNewMenuForm({...newMenuForm, name: e.target.value})} 
-              style={styles.input} 
+              className="mn-input" 
               required 
               autoFocus 
             />
 
-            <label style={styles.label}>Description (optional)</label>
+            <label className="mn-label">Description (optional)</label>
             <textarea 
               placeholder="Short note shown to captains and staff" 
               value={newMenuForm.description} 
               onChange={e => setNewMenuForm({...newMenuForm, description: e.target.value})} 
-              style={{...styles.input, height: '70px', resize: 'none'}} 
+              className="mn-input mn-textarea" 
             />
 
-            <label style={styles.label}>Icon</label>
-            <div style={styles.iconGrid}>
+            <label className="mn-label">Icon</label>
+            <div className="mn-icon-grid">
               {AVAILABLE_ICONS.map(ic => (
                 <button
                   key={ic}
                   type="button"
                   onClick={() => setNewMenuForm({...newMenuForm, icon: ic})}
-                  style={{
-                    ...styles.iconOptionBtn,
-                    borderColor: newMenuForm.icon === ic ? '#ef4444' : '#cbd5e1',
-                    background: newMenuForm.icon === ic ? '#fef2f2' : '#fff'
-                  }}
+                  className={`mn-icon-btn ${newMenuForm.icon === ic ? 'is-selected' : ''}`}
                 >
                   {ic}
                 </button>
               ))}
             </div>
 
-            <label style={styles.label}>Primary channel</label>
+            <label className="mn-label">Primary channel</label>
             <select 
               value={newMenuForm.channel} 
               onChange={e => setNewMenuForm({...newMenuForm, channel: e.target.value})} 
-              style={styles.input}
+              className="mn-input"
             >
               <option value="In-house">In-house</option>
               <option value="Online">Online</option>
             </select>
-            <div style={{fontSize: '11px', color: '#64748b', fontWeight: '800', marginTop: '-6px', marginBottom: '16px'}}>
+            <div className="mn-hint mn-hint-lg">
               Classification only. You can still activate this menu on either channel.
             </div>
 
-            <div style={{display: 'flex', gap: '10px', justifyContent: 'flex-end'}}>
-              <button type="button" onClick={() => setShowNewMenuModal(false)} style={styles.cancelBtn}>Cancel</button>
-              <button type="submit" style={styles.redSaveBtn}>Create menu</button>
+            <div className="mn-btn-row mn-end">
+              <button type="button" onClick={() => setShowNewMenuModal(false)} className="mn-cancel-btn">Cancel</button>
+              <button type="submit" className="mn-red-btn">Create menu</button>
             </div>
           </form>
         </div>
@@ -788,31 +765,31 @@ export default function MenuModule() {
 
       {/* Modal: Manage Paused Items */}
       {showPausedModal && (
-        <div style={styles.modalOverlay} onClick={() => setShowPausedModal(false)}>
-          <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
-              <h3 style={{margin: 0, fontSize: '18px', fontWeight: '950', color: '#0f172a'}}>🔴 Manage Paused Items ({allPausedItems.length})</h3>
-              <button onClick={() => setShowPausedModal(false)} style={styles.closeXBtn}>✕</button>
+        <div className="mn-overlay" onClick={() => setShowPausedModal(false)}>
+          <div className="mn-modal" onClick={e => e.stopPropagation()}>
+            <div className="mn-modal-head">
+              <h3 className="mn-modal-title">🔴 Manage Paused Items ({allPausedItems.length})</h3>
+              <button onClick={() => setShowPausedModal(false)} className="mn-close-x">✕</button>
             </div>
 
             {allPausedItems.length === 0 ? (
-              <div style={{textAlign: 'center', padding: '30px', color: '#64748b', fontSize: '13px', fontWeight: '800'}}>No paused items across your restaurant menus! All dishes are LIVE.</div>
+              <div className="mn-paused-empty">No paused items across your restaurant menus! All dishes are LIVE.</div>
             ) : (
-              <div style={{maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px'}}>
+              <div className="mn-paused-list">
                 {allPausedItems.map(item => (
-                  <div key={item.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #e2e8f0'}}>
+                  <div key={item.id} className="mn-paused-row">
                     <div>
-                      <div style={{fontSize: '13px', fontWeight: '950', color: '#0f172a'}}>{item.itemName}</div>
-                      <div style={{fontSize: '11px', color: '#64748b', fontWeight: '800'}}>{item.category} · {item.catalogName || 'Default In-House Menu'}</div>
+                      <div className="mn-paused-name">{item.itemName}</div>
+                      <div className="mn-paused-meta">{item.category} · {item.catalogName || 'Default In-House Menu'}</div>
                     </div>
-                    <button onClick={() => handleToggleStatus(item.id, 'PAUSED')} style={{background: '#ecfdf5', color: '#047857', border: '1.5px solid #10b981', padding: '5px 12px', borderRadius: '6px', fontWeight: '950', fontSize: '11px', cursor: 'pointer'}}>
+                    <button onClick={() => handleToggleStatus(item.id, 'PAUSED')} className="mn-make-live">
                       Make Live 🟢
                     </button>
                   </div>
                 ))}
               </div>
             )}
-            <button onClick={() => setShowPausedModal(false)} style={styles.saveBtn}>Close Modal</button>
+            <button onClick={() => setShowPausedModal(false)} className="mn-save-btn">Close Modal</button>
           </div>
         </div>
       )}
@@ -820,48 +797,609 @@ export default function MenuModule() {
   );
 }
 
-const styles = {
-  container: { padding: '28px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', overflowY: 'auto', paddingBottom: '80px', textAlign: 'left' },
-  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' },
-  title: { fontSize: '22px', fontWeight: '950', color: '#0f172a', margin: 0 },
-  subtitle: { fontSize: '12px', color: '#64748b', fontWeight: '800' },
-  backBtn: { background: '#f1f5f9', border: '1.5px solid #cbd5e1', padding: '8px 14px', borderRadius: '10px', fontWeight: '950', fontSize: '12px', cursor: 'pointer', color: '#334155' },
-  primaryBtn: { background: '#059669', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(5,150,105,0.2)' },
-  redSaveBtn: { background: '#ef4444', color: '#fff', border: 'none', padding: '11px 22px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer' },
-  pausedHeaderBtn: { border: '1.5px solid #cbd5e1', padding: '9px 16px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' },
-  pausedCountPill: { background: '#dc2626', color: '#fff', padding: '1px 6px', borderRadius: '10px', fontSize: '11px', fontWeight: '950' },
-  catalogsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '24px' },
-  catalogCard: { background: '#fff', border: '2px solid #cbd5e1', borderRadius: '16px', padding: '22px', transition: 'all 0.25s ease', cursor: 'pointer' },
-  liveOnlineBadge: { background: '#ecfdf5', color: '#047857', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '950' },
-  inhouseBadge: { background: '#f1f5f9', color: '#334155', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '950' },
-  summaryStrip: { background: '#fff', border: '2px solid #e2e8f0', borderRadius: '12px', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', fontWeight: '900', color: '#334155', marginBottom: '20px' },
-  subTabsRow: { display: 'flex', gap: '8px', borderBottom: '2px solid #e2e8f0', paddingBottom: '12px', marginBottom: '20px' },
-  subTabBtn: { background: 'none', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '950', fontSize: '13px', color: '#64748b', cursor: 'pointer', transition: 'all 0.2s' },
-  activeSubTabBtn: { background: '#0f172a', color: '#fff' },
-  cardContainer: { background: '#fff', borderRadius: '16px', border: '2px solid #cbd5e1', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' },
-  categorySection: { marginBottom: '24px' },
-  categoryHeader: { fontSize: '12px', fontWeight: '950', color: '#047857', background: '#ecfdf5', padding: '6px 12px', borderRadius: '8px', display: 'inline-block', border: '1.5px solid #10b981', marginBottom: '10px', textTransform: 'uppercase' },
-  categoryCard: { background: '#fff', borderRadius: '14px', border: '2px solid #cbd5e1', overflow: 'hidden' },
-  itemRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', background: '#fff' },
-  deleteBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '15px' },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
-  modalCard: { width: '480px', background: '#fff', padding: '28px', borderRadius: '20px', textAlign: 'left', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '2px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto' },
-  label: { fontSize: '11px', fontWeight: '950', display: 'block', marginBottom: '6px', color: '#334155' },
-  input: { width: '100%', padding: '11px 14px', borderRadius: '10px', border: '2px solid #94a3b8', fontSize: '13px', boxSizing: 'border-box', marginBottom: '14px', background: '#fff', outline: 'none', fontWeight: '900', color: '#0f172a' },
-  closeXBtn: { background: 'none', border: 'none', fontSize: '18px', fontWeight: '950', color: '#64748b', cursor: 'pointer' },
-  saveBtn: { width: '100%', background: '#047857', color: '#fff', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer' },
-  cancelBtn: { flex: 1, background: '#f1f5f9', color: '#334155', border: '2px solid #cbd5e1', padding: '12px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer' },
-  emptyBox: { textAlign: 'center', padding: '60px', background: '#f8fafc', borderRadius: '16px', border: '2px dashed #cbd5e1', color: '#64748b', fontWeight: '900' },
-  simpleCard: { background: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '12px', padding: '16px' },
-  simpleCardRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '12px', padding: '14px 18px' },
-  grid2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' },
-  tableWrapper: { width: '100%', overflowX: 'auto', border: '2px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#fff' },
-  table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' },
-  tableHeaderRow: { backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' },
-  th: { padding: '12px 16px', fontWeight: '950', color: '#475569' },
-  tableRow: { borderBottom: '1px solid #f1f5f9' },
-  td: { padding: '14px 16px', fontWeight: '800', color: '#334155' },
-  iconGrid: { display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '8px', marginBottom: '14px' },
-  iconOptionBtn: { padding: '8px', fontSize: '18px', border: '2px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', background: '#fff' },
-  alert: { padding: '12px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: '900', border: '2px solid' }
-};
+/* ---------- Styles (frontend only) ---------- */
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap');
+
+.mn {
+  --ink: #0f172a;
+  --ink-soft: #334155;
+  --ink-faint: #64748b;
+  --line: #e2e8f0;
+  --surface: #ffffff;
+  --canvas: #f3f5f9;
+  --green: #059669;
+  --green-dark: #047857;
+  --red: #ef4444;
+  --red-dark: #dc2626;
+
+  padding: clamp(16px, 3vw, 36px);
+  padding-bottom: 90px;
+  min-height: 100vh;
+  box-sizing: border-box;
+  overflow-y: auto;
+  text-align: left;
+  font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  color: var(--ink);
+  background:
+    radial-gradient(900px 420px at 100% -10%, rgba(5, 150, 105, 0.09), transparent 60%),
+    radial-gradient(700px 380px at -10% 0%, rgba(239, 68, 68, 0.06), transparent 60%),
+    var(--canvas);
+}
+.mn *, .mn *::before, .mn *::after { box-sizing: border-box; }
+.mn-red { color: var(--red-dark); }
+.mn-green { color: var(--green); }
+.mn-strong { color: var(--ink); }
+.mn-mb { margin-bottom: 18px !important; }
+.mn-mt { margin-top: 18px; }
+
+/* ---------- Header ---------- */
+.mn-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 28px;
+  animation: mn-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.mn-header-left { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.mn-header-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.mn-title { margin: 0; font-size: clamp(22px, 2.8vw, 28px); font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+.mn-title-lg { font-size: clamp(28px, 3.6vw, 36px); letter-spacing: -0.03em; }
+.mn-subtitle { margin: 6px 0 0 0; font-size: 15px; color: var(--ink-faint); font-weight: 600; }
+
+/* ---------- Buttons ---------- */
+.mn-primary-btn {
+  position: relative;
+  overflow: hidden;
+  font-family: inherit;
+  background: linear-gradient(135deg, #10b981, #047857);
+  color: #fff;
+  border: none;
+  padding: 14px 24px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.mn-primary-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -80%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+}
+.mn-primary-btn:hover { transform: translateY(-3px); filter: brightness(1.05); box-shadow: 0 14px 28px rgba(5, 150, 105, 0.4); }
+.mn-primary-btn:hover::after { left: 130%; }
+.mn-primary-btn:active { transform: translateY(0) scale(0.97); }
+
+.mn-back-btn {
+  font-family: inherit;
+  background: #fff;
+  border: 2px solid #d5dde8;
+  padding: 11px 18px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.mn-back-btn:hover { transform: translateX(-4px); border-color: var(--green); background: #f0fdf9; box-shadow: 0 8px 18px rgba(5, 150, 105, 0.14); }
+.mn-back-btn:active { transform: translateX(-2px) scale(0.97); }
+
+.mn-paused-btn {
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border: 2px solid #d5dde8;
+  color: var(--ink-soft);
+  padding: 13px 20px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.mn-paused-btn.has-paused { border-color: var(--red-dark); color: var(--red-dark); }
+.mn-paused-btn:hover { background: #fef2f2; transform: translateY(-3px); box-shadow: 0 12px 24px rgba(239, 68, 68, 0.2); }
+.mn-paused-btn:active { transform: translateY(0) scale(0.97); }
+.mn-paused-pill { background: var(--red-dark); color: #fff; padding: 2px 9px; border-radius: 999px; font-size: 13px; font-weight: 800; }
+.mn-paused-btn.has-paused .mn-paused-pill { animation: mn-pulse 2s infinite; }
+
+.mn-save-btn {
+  width: 100%;
+  font-family: inherit;
+  background: linear-gradient(135deg, #10b981, #047857);
+  color: #fff;
+  border: none;
+  padding: 15px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(5, 150, 105, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.mn-save-btn:hover { transform: translateY(-2px); filter: brightness(1.07); box-shadow: 0 14px 26px rgba(5, 150, 105, 0.38); }
+.mn-save-btn:active { transform: translateY(0) scale(0.97); }
+
+.mn-red-btn {
+  font-family: inherit;
+  background: linear-gradient(135deg, #f87171, #dc2626);
+  color: #fff;
+  border: none;
+  padding: 14px 26px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.mn-red-btn:hover { transform: translateY(-2px); filter: brightness(1.07); box-shadow: 0 14px 26px rgba(239, 68, 68, 0.4); }
+.mn-red-btn:active { transform: translateY(0) scale(0.97); }
+
+.mn-cancel-btn {
+  flex: 1;
+  font-family: inherit;
+  background: #f1f5f9;
+  color: var(--ink-soft);
+  border: 2px solid #cbd5e1;
+  padding: 14px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.mn-cancel-btn:hover { background: #e2e8f0; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(15, 23, 42, 0.1); }
+.mn-cancel-btn:active { transform: translateY(0) scale(0.97); }
+
+/* ---------- Alerts ---------- */
+.mn-alert {
+  padding: 14px 18px;
+  border-radius: 14px;
+  margin-bottom: 22px;
+  font-size: 15px;
+  font-weight: 800;
+  border: 2px solid;
+  animation: mn-slide 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.mn-alert.is-success { background: #f0fdf4; color: #166534; border-color: #4ade80; }
+.mn-alert.is-error { background: #fef2f2; color: #991b1b; border-color: #f87171; }
+
+/* ---------- Catalog cards ---------- */
+.mn-catalogs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.mn-catalog {
+  --accent: var(--green);
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 26px 26px 24px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 28px -14px rgba(15, 23, 42, 0.16);
+  transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+  animation: mn-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.mn-catalog:nth-child(2) { animation-delay: 0.08s; }
+.mn-catalog:nth-child(3) { animation-delay: 0.16s; }
+.mn-catalog:nth-child(n+4) { animation-delay: 0.24s; }
+.mn-catalog.is-inhouse { --accent: #3b82f6; }
+.mn-catalog::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 6px;
+  background: var(--accent);
+  transition: height 0.28s ease;
+}
+.mn-catalog::after {
+  content: '';
+  position: absolute;
+  right: -40px;
+  bottom: -40px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.07;
+  transition: transform 0.4s ease, opacity 0.3s ease;
+}
+.mn-catalog:hover {
+  transform: translateY(-7px);
+  border-color: var(--accent);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05), 0 26px 46px -16px rgba(15, 23, 42, 0.28);
+}
+.mn-catalog:hover::before { height: 9px; }
+.mn-catalog:hover::after { transform: scale(2.4); opacity: 0.1; }
+
+.mn-catalog-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.mn-badge-online,
+.mn-badge-inhouse { padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+.mn-badge-online { background: #ecfdf5; color: var(--green-dark); border: 1.5px solid #6ee7b7; }
+.mn-badge-inhouse { background: #eff6ff; color: #1d4ed8; border: 1.5px solid #93c5fd; }
+.mn-manage-link { font-size: 13px; color: var(--accent); font-weight: 800; transition: transform 0.25s ease; display: inline-block; }
+.mn-catalog:hover .mn-manage-link { transform: translateX(6px); }
+
+.mn-catalog-name { position: relative; z-index: 1; margin: 0 0 8px 0; font-size: 22px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+.mn-catalog-icon { display: inline-block; transition: transform 0.3s ease; }
+.mn-catalog:hover .mn-catalog-icon { transform: scale(1.25) rotate(-8deg); }
+.mn-catalog-desc { position: relative; z-index: 1; margin: 0; font-size: 15px; color: var(--ink-faint); font-weight: 600; line-height: 1.5; }
+
+/* ---------- Tabs ---------- */
+.mn-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid var(--line);
+  padding-bottom: 14px;
+  margin-bottom: 24px;
+  overflow-x: auto;
+  animation: mn-rise 0.5s 0.06s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.mn-tab {
+  font-family: inherit;
+  background: none;
+  border: none;
+  padding: 11px 20px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.mn-tab:hover { background: #e8edf3; color: var(--ink); transform: translateY(-2px); }
+.mn-tab.is-active { background: var(--ink); color: #fff; box-shadow: 0 8px 18px rgba(15, 23, 42, 0.28); }
+.mn-tab.is-active:hover { background: #1e293b; }
+
+.mn-panel { animation: mn-rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* ---------- Items tab ---------- */
+.mn-summary {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px 22px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink-soft);
+  margin-bottom: 24px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 22px -14px rgba(15, 23, 42, 0.12);
+}
+
+.mn-cat-block { margin-bottom: 26px; }
+.mn-cat-header {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--green-dark);
+  background: #ecfdf5;
+  padding: 8px 16px;
+  border-radius: 10px;
+  display: inline-block;
+  border: 1.5px solid #10b981;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mn-cat-card {
+  background: var(--surface);
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 26px -14px rgba(15, 23, 42, 0.12);
+}
+
+.mn-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 18px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid #eef2f7;
+  transition: background 0.2s ease, padding-left 0.2s ease, box-shadow 0.2s ease;
+  animation: mn-fade 0.4s ease both;
+}
+.mn-item-row:last-child { border-bottom: none; }
+.mn-item-row:nth-child(2) { animation-delay: 0.04s; }
+.mn-item-row:nth-child(3) { animation-delay: 0.08s; }
+.mn-item-row:nth-child(4) { animation-delay: 0.12s; }
+.mn-item-row:nth-child(n+5) { animation-delay: 0.16s; }
+.mn-item-row:hover { background: #f0fdf9; padding-left: 30px; box-shadow: inset 5px 0 0 var(--green); }
+
+.mn-item-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.mn-item-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.mn-item-name { font-size: 17px; font-weight: 800; color: var(--ink); }
+.mn-item-desc { font-size: 13px; color: var(--ink-faint); font-weight: 600; margin-top: 3px; }
+.mn-price { font-size: 18px; font-weight: 800; color: var(--ink); }
+.mn-tax-chip { font-size: 13px; font-weight: 800; color: var(--green); background: #ecfdf5; padding: 5px 11px; border-radius: 8px; }
+
+.mn-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.mn-dot.is-live { background: #10b981; animation: mn-dot-pulse 2s infinite; }
+.mn-dot.is-paused { background: #ef4444; }
+
+.mn-toggle {
+  font-family: inherit;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+.mn-toggle.is-live { background: #ecfdf5; color: var(--green-dark); border: 2px solid #10b981; }
+.mn-toggle.is-paused { background: #fef2f2; color: var(--red-dark); border: 2px solid #fca5a5; }
+.mn-toggle.is-live:hover { background: #10b981; color: #fff; transform: translateY(-2px); box-shadow: 0 8px 16px rgba(16, 185, 129, 0.32); }
+.mn-toggle.is-paused:hover { background: #ef4444; color: #fff; transform: translateY(-2px); box-shadow: 0 8px 16px rgba(239, 68, 68, 0.32); }
+.mn-toggle:active { transform: translateY(0) scale(0.95); }
+
+.mn-delete-btn {
+  font-family: inherit;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.mn-delete-btn:hover { background: #fee2e2; transform: scale(1.15) rotate(-8deg); }
+.mn-delete-btn:active { transform: scale(0.92); }
+
+/* ---------- Other tabs ---------- */
+.mn-card-box {
+  background: var(--surface);
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  padding: clamp(18px, 2.4vw, 30px);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 30px -16px rgba(15, 23, 42, 0.14);
+}
+.mn-box-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 22px; }
+.mn-box-title { margin: 0; font-size: 22px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+.mn-box-desc { margin: 5px 0 0 0; font-size: 14px; color: var(--ink-faint); font-weight: 600; }
+
+.mn-simple-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 16px; }
+.mn-simple-col { display: flex; flex-direction: column; gap: 12px; }
+.mn-simple-card,
+.mn-simple-row {
+  background: #f8fafc;
+  border: 1.5px solid var(--line);
+  border-radius: 16px;
+  transition: transform 0.22s ease, border-color 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
+  animation: mn-fade 0.4s ease both;
+}
+.mn-simple-card { padding: 20px; }
+.mn-simple-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 22px; }
+.mn-simple-card:hover { border-color: var(--green); background: #f0fdf4; transform: translateY(-4px); box-shadow: 0 14px 28px rgba(5, 150, 105, 0.14); }
+.mn-simple-row:hover { border-color: var(--green); background: #f0fdf4; transform: translateX(5px); box-shadow: 0 10px 22px rgba(5, 150, 105, 0.12); }
+.mn-simple-name { font-weight: 800; color: var(--ink); font-size: 17px; }
+.mn-simple-sub { font-size: 14px; color: var(--ink-faint); font-weight: 600; margin-top: 4px; }
+.mn-active-chip { font-size: 13px; color: var(--green-dark); font-weight: 800; background: #d1fae5; padding: 6px 14px; border-radius: 999px; }
+.mn-count-chip { font-size: 14px; font-weight: 800; color: var(--green); }
+
+/* Table */
+.mn-table-wrap { width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: #fff; }
+.mn-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 15px; min-width: 480px; }
+.mn-table thead tr { background: #f1f5f9; }
+.mn-table th { padding: 16px 20px; font-weight: 800; color: #475569; font-size: 14px; border-bottom: 2px solid var(--line); }
+.mn-table td { padding: 17px 20px; font-weight: 700; color: var(--ink-soft); border-bottom: 1px solid #eef2f7; }
+.mn-table tbody tr { transition: background 0.18s ease, box-shadow 0.18s ease; animation: mn-fade 0.4s ease both; }
+.mn-table tbody tr:hover { background: #f0fdf9; box-shadow: inset 4px 0 0 var(--green); }
+.mn-table tbody tr:last-child td { border-bottom: none; }
+
+/* Loading / empty */
+.mn-center { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; padding: 56px 20px; color: var(--ink-faint); font-weight: 700; }
+.mn-spinner { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--green); animation: mn-spin 0.8s linear infinite; }
+.mn-empty {
+  text-align: center;
+  padding: 60px 24px;
+  background: #fff;
+  border-radius: 20px;
+  border: 2px dashed #cbd5e1;
+  color: var(--ink-faint);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+/* ---------- Modals ---------- */
+.mn-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  z-index: 2000;
+  animation: mn-fade 0.25s ease both;
+}
+.mn-modal {
+  width: min(520px, 100%);
+  background: #fff;
+  padding: clamp(20px, 3vw, 32px);
+  border-radius: 26px;
+  text-align: left;
+  box-shadow: 0 30px 64px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--line);
+  max-height: 92vh;
+  overflow-y: auto;
+  animation: mn-pop 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.mn-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 22px; }
+.mn-modal-title { margin: 0 0 4px 0; color: var(--ink); font-weight: 800; font-size: 22px; letter-spacing: -0.02em; }
+.mn-modal-sub { margin: 0; font-size: 14px; color: var(--ink-faint); font-weight: 600; line-height: 1.45; }
+
+.mn-close-x {
+  font-family: inherit;
+  background: #f1f5f9;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ink-faint);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.25s ease;
+}
+.mn-close-x:hover { background: #fee2e2; color: var(--red-dark); transform: rotate(90deg); }
+
+.mn-label { font-size: 13px; font-weight: 800; display: block; margin-bottom: 7px; color: var(--ink-soft); }
+.mn-input {
+  width: 100%;
+  font-family: inherit;
+  padding: 13px 16px;
+  border-radius: 12px;
+  border: 2px solid #d5dde8;
+  font-size: 15px;
+  margin-bottom: 16px;
+  background: #f8fafc;
+  outline: none;
+  font-weight: 700;
+  color: var(--ink);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.mn-input::placeholder { color: #94a3b8; font-weight: 600; }
+.mn-input:hover { border-color: #b6c3d4; }
+.mn-input:focus { border-color: var(--green); background: #fff; box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.18); }
+.mn-textarea { height: 84px; resize: none; line-height: 1.45; }
+
+.mn-two-col { display: flex; gap: 14px; }
+.mn-col { flex: 1; min-width: 0; }
+.mn-hint { font-size: 13px; color: var(--ink-faint); font-weight: 700; margin-top: -6px; margin-bottom: 18px; }
+.mn-hint-lg { margin-bottom: 20px; }
+.mn-btn-row { display: flex; gap: 12px; }
+.mn-btn-row .mn-save-btn { flex: 1; width: auto; }
+.mn-end { justify-content: flex-end; }
+
+.mn-avail-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
+.mn-avail-label { font-size: 15px; font-weight: 800; color: var(--ink); cursor: pointer; }
+.mn-checkbox { width: 20px; height: 20px; accent-color: var(--green); cursor: pointer; }
+
+/* Icon picker */
+.mn-icon-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin-bottom: 18px; }
+.mn-icon-btn {
+  font-family: inherit;
+  padding: 10px 0;
+  font-size: 21px;
+  border: 2px solid #d5dde8;
+  border-radius: 12px;
+  cursor: pointer;
+  background: #fff;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+.mn-icon-btn:hover { transform: translateY(-3px) scale(1.1); border-color: #94a3b8; box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12); }
+.mn-icon-btn.is-selected { border-color: var(--red); background: #fef2f2; box-shadow: 0 6px 14px rgba(239, 68, 68, 0.25); transform: scale(1.08); }
+
+/* Paused modal */
+.mn-paused-empty { text-align: center; padding: 36px 20px; color: var(--ink-faint); font-size: 15px; font-weight: 700; background: #f8fafc; border-radius: 16px; border: 2px dashed #cbd5e1; margin-bottom: 18px; line-height: 1.5; }
+.mn-paused-list { max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; padding-right: 4px; }
+.mn-paused-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: #f8fafc;
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1.5px solid var(--line);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.mn-paused-row:hover { border-color: #fca5a5; background: #fff7f7; transform: translateX(4px); box-shadow: 0 8px 18px rgba(239, 68, 68, 0.1); }
+.mn-paused-name { font-size: 16px; font-weight: 800; color: var(--ink); }
+.mn-paused-meta { font-size: 13px; color: var(--ink-faint); font-weight: 600; margin-top: 3px; }
+.mn-make-live {
+  font-family: inherit;
+  background: #ecfdf5;
+  color: var(--green-dark);
+  border: 2px solid #10b981;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.mn-make-live:hover { background: #10b981; color: #fff; transform: translateY(-2px); box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3); }
+
+/* ---------- Animations ---------- */
+@keyframes mn-rise {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes mn-slide {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes mn-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mn-pop {
+  from { opacity: 0; transform: translateY(18px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes mn-spin { to { transform: rotate(360deg); } }
+@keyframes mn-dot-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+  70%  { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+@keyframes mn-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
+  70%  { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+}
+
+/* ---------- Keyboard focus ---------- */
+.mn button:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.5);
+  outline-offset: 2px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 720px) {
+  .mn-header-actions { width: 100%; }
+  .mn-header-actions .mn-primary-btn,
+  .mn-header-actions .mn-paused-btn { flex: 1; justify-content: center; }
+  .mn-item-row { padding: 16px; }
+  .mn-item-row:hover { padding-left: 20px; }
+  .mn-item-right { width: 100%; justify-content: space-between; }
+  .mn-icon-grid { grid-template-columns: repeat(4, 1fr); }
+  .mn-two-col { flex-direction: column; gap: 0; }
+  .mn-btn-row { flex-direction: column-reverse; }
+  .mn-end { justify-content: stretch; }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .mn *, .mn *::before, .mn *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+`;
