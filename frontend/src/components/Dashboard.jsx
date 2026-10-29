@@ -79,6 +79,30 @@ export default function Dashboard({ user, onLogout }) {
     whatsappNumber: FALLBACK_RESTAURANT_PROFILE.whatsappNumber
   });
 
+  // Receipt Configuration state synced with Settings Module
+  const [receiptConfig, setReceiptConfig] = useState({
+    restaurantName: 'LINGA FOODS',
+    headerText: 'Linga Foods - Wonghikal',
+    address: 'LINGA FOODS, No. 1540, Vellore Main Road, Wonghikal, Tiruvannamalai, Tamil Nadu 606604',
+    phone: '91234400635',
+    gstin: '37AAFP4128L1ZI',
+    fssai: 'FSSAI: 22426260001195',
+    footerNote: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***',
+    paperSize: '80mm',
+    density: 'Compact',
+    toggles: {
+      restaurantName: true,
+      address: true,
+      phone: true,
+      gstin: true,
+      fssai: true,
+      invoiceNo: true,
+      dateAndTime: true,
+      itemNameQtyAmt: true,
+      totalTax: true
+    }
+  });
+
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState(profileData);
   const [orders, setOrders] = useState([]);
@@ -132,6 +156,10 @@ export default function Dashboard({ user, onLogout }) {
           setIsProfileFallback(false);
           const fetchedId = data.restaurantId || data.restaurant_id || data.id;
           if (fetchedId) setRestaurantId(fetchedId);
+          if (data.receiptConfig) {
+            const parsedCfg = typeof data.receiptConfig === 'string' ? JSON.parse(data.receiptConfig) : data.receiptConfig;
+            setReceiptConfig(prev => ({ ...prev, ...parsedCfg }));
+          }
           const fetched = {
             businessName: data.businessName || data.business_name || FALLBACK_RESTAURANT_PROFILE.businessName,
             ownerName: data.ownerName || data.owner_name || FALLBACK_RESTAURANT_PROFILE.ownerName,
@@ -172,30 +200,47 @@ export default function Dashboard({ user, onLogout }) {
 
         const formattedOrders = onlineOnlyList.map((o, index) => {
           const rawItems = o.items || o.orderItems || [];
-          const mappedItems = rawItems.map(i => ({
-            name: i.itemName || i.item_name || 'Food Item',
-            qty: i.quantity || 1,
-            price: i.unitPrice || i.unit_price || 150.00,
-            desc: i.itemDescription || i.item_description || ''
-          }));
+          const mappedItems = rawItems.map(i => {
+            const rawPrice = i.unitPrice ?? i.unit_price ?? i.price ?? 150.00;
+            const taxRate = i.taxRate ?? 5;
+            return {
+              name: i.itemName || i.item_name || i.name || 'Food Item',
+              qty: i.quantity || i.qty || 1,
+              price: Number(rawPrice),
+              taxRate: Number(taxRate),
+              desc: i.itemDescription || i.item_description || ''
+            };
+          });
 
           const resolvedOrderId = o.orderId || o.order_id || o.id;
           const resolvedDisplayId = o.displayId || o.display_id || resolvedOrderId || `#KO01/00000${index + 1}`;
+          const istTimestamp = o.timestamp || new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
+          const subtotalCalc = mappedItems.length > 0 
+            ? mappedItems.reduce((acc, it) => acc + (it.price * it.qty), 0)
+            : (o.subtotal || 500.00);
+
+          const taxCalc = mappedItems.length > 0
+            ? mappedItems.reduce((acc, it) => acc + ((it.price * it.qty * it.taxRate) / 100), 0)
+            : (subtotalCalc * 0.05);
+
+          const totalCalc = Math.round(subtotalCalc + taxCalc);
 
           return {
             id: resolvedDisplayId,
             orderId: resolvedOrderId,
             customer: o.customerName || o.customer_name || 'Valued Customer',
-            time: 'Just now',
+            time: istTimestamp,
             status: o.status || 'New',
             type: o.orderType || o.order_type || 'Delivery',
             channel: o.channel || 'WhatsApp',
-            items: mappedItems.length > 0 ? mappedItems : [{ name: 'Order Meal', qty: 1, price: 200.00, desc: '' }],
+            items: mappedItems.length > 0 ? mappedItems : [{ name: 'Order Meal', qty: 1, price: 200.00, taxRate: 5, desc: '' }],
             address: o.deliveryAddress || o.delivery_address || 'MG Road, Bengaluru',
             phone: o.customerPhone || o.customer_phone || '9876543210',
             customerRequest: getOrderNote(o),
-            subtotal: o.subtotal || 500.00,
-            total: o.totalAmount || o.total_amount || 540.00
+            subtotal: subtotalCalc,
+            totalTax: taxCalc,
+            total: totalCalc
           };
         });
 
@@ -298,7 +343,70 @@ export default function Dashboard({ user, onLogout }) {
     setAlertsEnabled(permission === 'granted');
   };
 
-  const handlePrintReceipt = () => window.print();
+  // 🖨️ Synchronized Settings-Based Receipt Printer for Online Orders
+  const handlePrintReceipt = () => {
+    if (!selectedOrder) return;
+    
+    const printWindow = window.open('', '_blank', 'width=450,height=600');
+    if (!printWindow) {
+      alert('Popup blocked! Please allow popups for printing.');
+      return;
+    }
+
+    const toggles = receiptConfig.toggles || {};
+    const itemsHtml = selectedOrder.items.map(it => `
+      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+        <span>${it.qty}x ${it.name}</span>
+        <span>₹${(it.price * it.qty).toFixed(2)}</span>
+      </div>
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Receipt - ${selectedOrder.id}</title>
+          <style>
+            body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: ${receiptConfig.paperSize === '58mm' ? '58mm' : '80mm'}; margin: 0 auto; font-size: ${receiptConfig.density === 'Compact' ? '10px' : '12px'}; }
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+            .line { border-top: 1px dashed #000; margin: 8px 0; }
+            .flex { display: flex; justify-content: space-between; }
+          </style>
+        </head>
+        <body>
+          ${toggles.restaurantName ? `<div class="center bold" style="font-size: 14px;">${receiptConfig.restaurantName}</div>` : ''}
+          ${receiptConfig.headerText ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.headerText}</div>` : ''}
+          ${toggles.address && receiptConfig.address ? `<div class="center" style="font-size: 10px; color: #333; margin: 3px 0;">${receiptConfig.address}</div>` : ''}
+          ${toggles.phone && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>` : ''}
+          ${toggles.gstin && receiptConfig.gstin ? `<div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>` : ''}
+          ${receiptConfig.fssai ? `<div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>` : ''}
+          <div class="line"></div>
+          ${toggles.invoiceNo ? `<div><strong>Order ID:</strong> ${selectedOrder.id}</div>` : ''}
+          ${toggles.dateAndTime ? `<div><strong>Date:</strong> ${selectedOrder.time}</div>` : ''}
+          <div><strong>Customer:</strong> ${selectedOrder.customer} (${selectedOrder.phone})</div>
+          <div><strong>Type:</strong> ${selectedOrder.type} (${selectedOrder.channel})</div>
+          <div><strong>Address:</strong> ${selectedOrder.address}</div>
+          ${selectedOrder.customerRequest ? `<div><strong>Note:</strong> <span style="color: #d97706; font-weight: bold;">${selectedOrder.customerRequest}</span></div>` : ''}
+          <div class="line"></div>
+          <div class="bold" style="margin-bottom: 6px;">ITEMS:</div>
+          ${itemsHtml}
+          <div class="line"></div>
+          <div class="flex"><span>Subtotal:</span><span>₹${selectedOrder.subtotal.toFixed(2)}</span></div>
+          ${toggles.totalTax ? `<div class="flex"><span>Tax:</span><span>₹${(selectedOrder.totalTax || (selectedOrder.subtotal * 0.05)).toFixed(2)}</span></div>` : ''}
+          <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>Total:</span><span>₹${selectedOrder.total}</span></div>
+          <div class="line"></div>
+          <div class="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptConfig.footerNote}</div>
+          <script>
+            window.onload = function() {
+              window.print();
+              window.close();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   const saveOrderNotes = async () => {
     if (!selectedOrder?.orderId) return;
@@ -703,7 +811,7 @@ export default function Dashboard({ user, onLogout }) {
 
                     <div className="orderTotals">
                       <div><span>Subtotal</span><strong>₹{selectedOrder.subtotal.toFixed(2)}</strong></div>
-                      <div><span>GST (5%)</span><strong>₹{(selectedOrder.subtotal * 0.05).toFixed(2)}</strong></div>
+                      <div><span>Tax (Mapped)</span><strong>₹{(selectedOrder.totalTax || (selectedOrder.subtotal * 0.05)).toFixed(2)}</strong></div>
                       <div className="totalLine"><strong>Total</strong><strong>₹{selectedOrder.total.toFixed(2)}</strong></div>
                     </div>
 
