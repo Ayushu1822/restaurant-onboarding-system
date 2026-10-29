@@ -147,15 +147,11 @@ export default function ReportsModule({ orders: parentOrders }) {
     return true;
   };
 
-  // 1. Active Orders Filtering (Strictly excluding New, Preparing, Ready, Accepted from Active section)
+  // 1. Active Orders Filtering (Keeps active queue visible in Reports Active section)
   const filteredOrders = orders.filter((o, idx) => {
     const st = (o.status || 'New').toLowerCase();
-    
-    // 🔍 Exclude completed, settled, and also filter out New/Preparing/Ready/Accepted from active view
     const isSettledOrDone = st === 'completed' || st === 'delivered' || st === 'settled' || st === 'paid' || st === 'picked up';
-    const isPendingKitchenState = st === 'new' || st === 'preparing' || st === 'ready' || st === 'accepted';
-    
-    if (isSettledOrDone || isPendingKitchenState) return false;
+    if (isSettledOrDone) return false;
 
     let matchesChannel = true;
     const channel = (o.channel || 'COUNTER').toUpperCase();
@@ -187,8 +183,12 @@ export default function ReportsModule({ orders: parentOrders }) {
 
   const activeBreakdownOrders = filteredOrders;
 
-  // 2. Completed & Processed History Filtering
+  // 2. Completed & Processed History Filtering (Strictly for fully finished / settled orders)
   const completedHistoryOrders = orders.filter((o, idx) => {
+    const st = (o.status || 'New').toLowerCase();
+    const isFinished = st === 'completed' || st === 'delivered' || st === 'picked up' || st === 'settled' || st === 'paid';
+    if (!isFinished) return false;
+
     const orderDate = getSafeTimestamp(o, idx);
     let matchesDate = checkDateMatch(orderDate, historyDateRange);
 
