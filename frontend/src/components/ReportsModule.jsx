@@ -147,11 +147,15 @@ export default function ReportsModule({ orders: parentOrders }) {
     return true;
   };
 
-  // 1. Active Orders Filtering
+  // 1. Active Orders Filtering (Strictly excluding New, Preparing, Ready, Accepted from Active section)
   const filteredOrders = orders.filter((o, idx) => {
     const st = (o.status || 'New').toLowerCase();
-    const isSettledOrDone = st === 'completed' || st === 'delivered' || st === 'settled' || st === 'paid' || st === 'preparing';
-    if (isSettledOrDone) return false;
+    
+    // 🔍 Exclude completed, settled, and also filter out New/Preparing/Ready/Accepted from active view
+    const isSettledOrDone = st === 'completed' || st === 'delivered' || st === 'settled' || st === 'paid' || st === 'picked up';
+    const isPendingKitchenState = st === 'new' || st === 'preparing' || st === 'ready' || st === 'accepted';
+    
+    if (isSettledOrDone || isPendingKitchenState) return false;
 
     let matchesChannel = true;
     const channel = (o.channel || 'COUNTER').toUpperCase();
