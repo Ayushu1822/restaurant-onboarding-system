@@ -11,15 +11,12 @@ export default function SettingsModule() {
   const [isEditingHours, setIsEditingHours] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
 
-  // Store full profile so we preserve unedited fields
   const [fullProfile, setFullProfile] = useState({});
 
-  // Staff / Users List State (With Edit & Phone Support)
   const [usersList, setUsersList] = useState([]);
   const [editingUserId, setEditingUserId] = useState(null);
   const [newUserForm, setNewUserForm] = useState({ name: '', userId: '', role: 'Captain', phone: '' });
 
-  // Inline Form States
   const [showAddAreaBox, setShowAddAreaBox] = useState(false);
   const [newAreaNameInput, setNewAreaNameInput] = useState('');
 
@@ -646,20 +643,167 @@ export default function SettingsModule() {
     }
   };
 
+  // 🎵 10-Second Rich Real Chime / Melodic Audio Generator (Web Audio API)
   const playSoundTone = (toneName) => {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = toneName === 'Soft Chime' ? 'sine' : toneName === 'Bell' ? 'triangle' : 'square';
-      osc.frequency.setValueAtTime(toneName === 'Ding Dong' ? 587.33 : 440, ctx.currentTime);
-      gain.gain.setValueAtTime(0.1, ctx.currentTime);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.3);
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const now = audioCtx.currentTime;
+      const duration = 9.0; // Play for ~9-10 seconds with rich fading echoes
+
+      if (toneName === 'Classic Ring') {
+        // Repeated dual-tone heavy telephone ring for 9 seconds
+        for (let i = 0; i < 6; i++) {
+          const startTime = now + (i * 1.5);
+          const osc1 = audioCtx.createOscillator();
+          const osc2 = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+
+          osc1.type = 'square';
+          osc2.type = 'sawtooth';
+          osc1.frequency.setValueAtTime(880, startTime);
+          osc2.frequency.setValueAtTime(1320, startTime);
+
+          gain.gain.setValueAtTime(0.12, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 1.2);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(audioCtx.destination);
+
+          osc1.start(startTime);
+          osc2.start(startTime);
+          osc1.stop(startTime + 1.2);
+          osc2.stop(startTime + 1.2);
+        }
+      } else if (toneName === 'Soft Chime') {
+        // Uplifting multi-chord musical arpeggio looping over 9 seconds
+        const chords = [
+          [523.25, 659.25, 783.99], // C Major
+          [587.33, 698.46, 880.00], // D Minor
+          [659.25, 783.99, 987.77]  // E Minor
+        ];
+        chords.forEach((chord, round) => {
+          chord.forEach((freq, noteIdx) => {
+            const startTime = now + (round * 3.0) + (noteIdx * 0.3);
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, startTime);
+
+            gain.gain.setValueAtTime(0.15, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.5);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(startTime);
+            osc.stop(startTime + 2.5);
+          });
+        });
+      } else if (toneName === 'Ding Dong') {
+        // Repeated majestic doorbell chimes over 9 seconds
+        for (let i = 0; i < 4; i++) {
+          const startTime = now + (i * 2.2);
+          [587.33, 440].forEach((freq, idx) => {
+            const noteTime = startTime + (idx * 0.6);
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, noteTime);
+
+            gain.gain.setValueAtTime(0.2, noteTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 1.5);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(noteTime);
+            osc.stop(noteTime + 1.5);
+          });
+        }
+      } else if (toneName === 'Bell') {
+        // Deep resonant cathedral bell with lingering harmonics over 9 seconds
+        for (let i = 0; i < 3; i++) {
+          const startTime = now + (i * 3.0);
+          const osc1 = audioCtx.createOscillator();
+          const osc2 = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+
+          osc1.type = 'triangle';
+          osc2.type = 'sine';
+          osc1.frequency.setValueAtTime(440, startTime);
+          osc2.frequency.setValueAtTime(880, startTime);
+
+          gain.gain.setValueAtTime(0.25, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.8);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(audioCtx.destination);
+
+          osc1.start(startTime);
+          osc2.start(startTime);
+          osc1.stop(startTime + 2.8);
+          osc2.stop(startTime + 2.8);
+        }
+      } else if (toneName === 'Ping') {
+        // Sparkling high-frequency crystalline pings repeated over 9 seconds
+        for (let i = 0; i < 12; i++) {
+          const startTime = now + (i * 0.75);
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1046.50 + (i * 50), startTime);
+
+          gain.gain.setValueAtTime(0.12, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.8);
+
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+
+          osc.start(startTime);
+          osc.stop(startTime + 0.8);
+        }
+      } else if (toneName === 'Arcade') {
+        // Energetic 8-bit retro arcade fanfare lasting ~9 seconds
+        const melody = [440, 554.37, 659.25, 880, 987.77, 1108.73];
+        for (let loop = 0; loop < 2; loop++) {
+          melody.forEach((freq, idx) => {
+            const startTime = now + (loop * 4.5) + (idx * 0.6);
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(freq, startTime);
+
+            gain.gain.setValueAtTime(0.1, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.5);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.5);
+          });
+        }
+      } else {
+        // Default Rich Chime
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + duration);
+      }
     } catch (e) {
-      console.log('Audio preview played');
+      console.log("Audio preview error:", e);
     }
   };
 
@@ -1604,7 +1748,7 @@ export default function SettingsModule() {
                 {/* 3. New Order Notification Sound */}
                 <div style={styles.systemCard}>
                   <h4 style={{margin: '0 0 6px 0', fontSize: '16px', fontWeight: '950', color: '#0f172a'}}>🔔 New Order Notification Sound</h4>
-                  <p style={{margin: '0 0 16px 0', fontSize: '12px', color: '#64748b', fontWeight: '800'}}>Choose the chime that plays when a new online order arrives.</p>
+                  <p style={{margin: '0 0 16px 0', fontSize: '12px', color: '#64748b', fontWeight: '800'}}>Choose the chime that plays when a new online order arrives (Plays rich melody for ~10 seconds).</p>
 
                   <div style={styles.sysToggleRow}>
                     <div>
