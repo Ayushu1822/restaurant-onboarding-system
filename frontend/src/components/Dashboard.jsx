@@ -64,7 +64,6 @@ export default function Dashboard({ user, onLogout }) {
   const [alertsEnabled, setAlertsEnabled] = useState(false);
   const [orderSearch, setOrderSearch] = useState('');
   
-  // Custom Toast Popup State (Replaces alert() popups)
   const [toastMessage, setToastMessage] = useState(null);
   const [newOrderPopup, setNewOrderPopup] = useState(null);
 
@@ -83,7 +82,6 @@ export default function Dashboard({ user, onLogout }) {
     whatsappNumber: FALLBACK_RESTAURANT_PROFILE.whatsappNumber
   });
 
-  // Settings configurations
   const [notificationSoundConfig, setNotificationSoundConfig] = useState({
     enabled: true,
     selectedTone: 'Classic Ring'
@@ -126,48 +124,124 @@ export default function Dashboard({ user, onLogout }) {
     setOrderNote(getOrderNote(selectedOrder));
   }, [selectedOrder?.orderId]);
 
-  // 🔔 Web Audio API Synthesized Chime Player
+  // 🔔 10-Second Rich Real Chime / Melodic Audio Generator (Web Audio API)
   const playSynthesizedChime = (toneName = 'Classic Ring') => {
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
+      const now = audioCtx.currentTime;
+      const duration = 9.0;
 
       if (toneName === 'Soft Chime') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
-        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.15);
-        osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.3);
+        const chords = [
+          [523.25, 659.25, 783.99],
+          [587.33, 698.46, 880.00],
+          [659.25, 783.99, 987.77]
+        ];
+        chords.forEach((chord, round) => {
+          chord.forEach((freq, noteIdx) => {
+            const startTime = now + (round * 3.0) + (noteIdx * 0.3);
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, startTime);
+            gain.gain.setValueAtTime(0.15, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.5);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(startTime);
+            osc.stop(startTime + 2.5);
+          });
+        });
       } else if (toneName === 'Ding Dong') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
-        osc.frequency.setValueAtTime(440, audioCtx.currentTime + 0.2);
+        for (let i = 0; i < 4; i++) {
+          const startTime = now + (i * 2.2);
+          [587.33, 440].forEach((freq, idx) => {
+            const noteTime = startTime + (idx * 0.6);
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, noteTime);
+            gain.gain.setValueAtTime(0.2, noteTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 1.5);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(noteTime);
+            osc.stop(noteTime + 1.5);
+          });
+        }
       } else if (toneName === 'Bell') {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime);
+        for (let i = 0; i < 3; i++) {
+          const startTime = now + (i * 3.0);
+          const osc1 = audioCtx.createOscillator();
+          const osc2 = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc1.type = 'triangle';
+          osc2.type = 'sine';
+          osc1.frequency.setValueAtTime(440, startTime);
+          osc2.frequency.setValueAtTime(880, startTime);
+          gain.gain.setValueAtTime(0.25, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.8);
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc1.start(startTime);
+          osc2.start(startTime);
+          osc1.stop(startTime + 2.8);
+          osc2.stop(startTime + 2.8);
+        }
       } else if (toneName === 'Ping') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        for (let i = 0; i < 12; i++) {
+          const startTime = now + (i * 0.75);
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1046.50 + (i * 50), startTime);
+          gain.gain.setValueAtTime(0.12, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.8);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(startTime);
+          osc.stop(startTime + 0.8);
+        }
       } else if (toneName === 'Arcade') {
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
-        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1);
-        osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2);
+        const melody = [440, 554.37, 659.25, 880, 987.77, 1108.73];
+        for (let loop = 0; loop < 2; loop++) {
+          melody.forEach((freq, idx) => {
+            const startTime = now + (loop * 4.5) + (idx * 0.6);
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(freq, startTime);
+            gain.gain.setValueAtTime(0.1, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.5);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(startTime);
+            osc.stop(startTime + 0.5);
+          });
+        }
       } else {
         // Classic Ring
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15);
+        for (let i = 0; i < 6; i++) {
+          const startTime = now + (i * 1.5);
+          const osc1 = audioCtx.createOscillator();
+          const osc2 = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc1.type = 'square';
+          osc2.type = 'sawtooth';
+          osc1.frequency.setValueAtTime(880, startTime);
+          osc2.frequency.setValueAtTime(1320, startTime);
+          gain.gain.setValueAtTime(0.12, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 1.2);
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc1.start(startTime);
+          osc2.start(startTime);
+          osc1.stop(startTime + 1.2);
+          osc2.stop(startTime + 1.2);
+        }
       }
-
-      gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.5);
     } catch (e) {
       console.log("Audio play error:", e);
     }
@@ -268,9 +342,13 @@ export default function Dashboard({ user, onLogout }) {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     })
-      .then(res => {
-        if (!res.ok) throw new Error(`Server status ${res.status}`);
-        return res.json();
+      .then(async res => {
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`Server status ${res.status}: ${errText}`);
+        }
+        const text = await res.text();
+        return text ? JSON.parse(text) : [];
       })
       .then(data => {
         let orderList = Array.isArray(data) ? data : [];
@@ -337,11 +415,9 @@ export default function Dashboard({ user, onLogout }) {
         if (knownOrderIdsRef.current.size > 0) {
           const hasBrandNew = newOrdersList.some(o => !knownOrderIdsRef.current.has(o.orderId));
           if (hasBrandNew) {
-            // Play Sound
             if (notificationSoundConfig.enabled !== false) {
               playSynthesizedChime(notificationSoundConfig.selectedTone || 'Classic Ring');
             }
-            // Show Custom Popup Modal
             const latestNewOrder = newOrdersList.find(o => !knownOrderIdsRef.current.has(o.orderId)) || newOrdersList[0];
             setNewOrderPopup(latestNewOrder);
           }
@@ -984,7 +1060,7 @@ export default function Dashboard({ user, onLogout }) {
         </div>
       )}
 
-      {/* 🟢 Custom Toast Banner (Replaces alert popups) */}
+      {/* 🟢 Custom Toast Banner */}
       {toastMessage && (
         <div style={{
           position: 'fixed', bottom: '24px', right: '24px', zIndex: 4000,
