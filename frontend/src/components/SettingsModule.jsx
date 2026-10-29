@@ -14,8 +14,9 @@ export default function SettingsModule() {
   // Store full profile so we preserve unedited fields
   const [fullProfile, setFullProfile] = useState({});
 
-  // Staff / Users List State (With Phone Support)
+  // Staff / Users List State (With Edit & Phone Support)
   const [usersList, setUsersList] = useState([]);
+  const [editingUserId, setEditingUserId] = useState(null);
   const [newUserForm, setNewUserForm] = useState({ name: '', userId: '', role: 'Captain', phone: '' });
 
   // Inline Form States (Replacing browser prompts)
@@ -238,33 +239,65 @@ export default function SettingsModule() {
       .catch(err => console.log("Users fetch error:", err));
   };
 
-  const handleAddUser = (e) => {
+  const handleSaveUser = (e) => {
     e.preventDefault();
     if (!newUserForm.name.trim()) return alert('Enter user name');
 
     const userEmail = formData.email || localStorage.getItem('userEmail') || '';
-    fetch(`${API_BASE_URL}/api/v1/staff`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        name: newUserForm.name.trim(), 
+    
+    if (editingUserId) {
+      // Update existing user
+      const targetUser = usersList.find(u => (u.id || u._id) === editingUserId);
+      const payload = {
+        name: newUserForm.name.trim(),
         userIdCode: newUserForm.userId.trim() || 'U01',
-        role: newUserForm.role.toUpperCase(), 
+        role: newUserForm.role.toUpperCase(),
         phone: newUserForm.phone.trim(),
-        status: 'Active',
-        restaurantEmail: userEmail 
+        status: targetUser?.status || 'Active',
+        restaurantEmail: userEmail
+      };
+
+      fetch(`${API_BASE_URL}/api/v1/staff/${editingUserId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       })
-    })
-    .then(res => {
-      if (res.ok) {
-        setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' });
-        fetchUsers(userEmail);
-        showMsg('✅ User successfully created & synced!', 'success');
-      } else {
-        alert('Failed to add user.');
-      }
-    })
-    .catch(err => alert('Error: ' + err.message));
+      .then(res => {
+        if (res.ok) {
+          setEditingUserId(null);
+          setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' });
+          fetchUsers(userEmail);
+          showMsg('✅ User successfully updated!', 'success');
+        } else {
+          alert('Failed to update user.');
+        }
+      })
+      .catch(err => alert('Error: ' + err.message));
+    } else {
+      // Create new user
+      fetch(`${API_BASE_URL}/api/v1/staff`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: newUserForm.name.trim(), 
+          userIdCode: newUserForm.userId.trim() || 'U01',
+          role: newUserForm.role.toUpperCase(), 
+          phone: newUserForm.phone.trim(),
+          status: 'Active',
+          restaurantEmail: userEmail 
+        })
+      })
+      .then(res => {
+        if (res.ok) {
+          setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' });
+          fetchUsers(userEmail);
+          showMsg('✅ User successfully created & synced!', 'success');
+        } else {
+          alert('Failed to add user.');
+        }
+      })
+      .catch(err => alert('Error: ' + err.message));
+    }
   };
 
   const handleToggleUserStatus = (userId) => {
@@ -995,17 +1028,19 @@ export default function SettingsModule() {
               </div>
             )}
 
-            {/* TAB 5: USERS (With Phone Input & Fixed Active/Inactive Toggle) */}
+            {/* TAB 5: USERS (With Edit & Fixed Status Colors) */}
             {activeTab === 'users' && (
               <div style={styles.sectionGroup}>
                 <h3 style={styles.sectionTitle}>👥 Users & Floor Staff</h3>
                 <p style={{fontSize: '12px', color: '#64748b', fontWeight: '800', marginTop: '-8px', marginBottom: '16px'}}>
-                  Create Captains, Managers, and Staff here. They will appear simultaneously across Tables for assignment and order tracking.
+                  Create or edit Captains, Managers, and Staff here. They will appear simultaneously across Tables for assignment and order tracking.
                 </p>
 
-                {/* Add User Card Form with Phone field */}
+                {/* Add / Edit User Card Form */}
                 <div style={styles.userAddCard}>
-                  <h4 style={{margin: '0 0 14px 0', fontSize: '14px', fontWeight: '950', color: '#0f172a'}}>👤 Add User</h4>
+                  <h4 style={{margin: '0 0 14px 0', fontSize: '14px', fontWeight: '950', color: '#0f172a'}}>
+                    {editingUserId ? '✏️ Edit User / Captain' : '👤 Add User'}
+                  </h4>
                   <div style={{display: 'grid', gridTemplateColumns: '1.6fr 0.9fr 1fr 1fr auto', gap: '12px', alignItems: 'flex-end'}}>
                     <div style={styles.fieldGroup}>
                       <label style={styles.label}>Name *</label>
@@ -1051,10 +1086,20 @@ export default function SettingsModule() {
                         <option value="Kitchen">Kitchen Staff</option>
                       </select>
                     </div>
-                    <button type="button" onClick={handleAddUser} style={styles.addUserBtn}>+ Add</button>
-                  </div>
-                  <div style={{fontSize: '11px', color: '#64748b', fontWeight: '700', marginTop: '10px'}}>
-                    The User ID appears in every System Order ID (e.g. W/KO/01/U01/...) so kitchen & reports can trace which user handled the order.
+                    <div style={{display: 'flex', gap: '6px'}}>
+                      <button type="button" onClick={handleSaveUser} style={styles.addUserBtn}>
+                        {editingUserId ? 'Update' : '+ Add'}
+                      </button>
+                      {editingUserId && (
+                        <button 
+                          type="button" 
+                          onClick={() => { setEditingUserId(null); setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' }); }} 
+                          style={styles.cancelInlineBtn}
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -1097,6 +1142,21 @@ export default function SettingsModule() {
                             }}>
                               {isActive ? 'Active' : 'Inactive'}
                             </span>
+                            <button 
+                              type="button" 
+                              onClick={() => {
+                                setEditingUserId(uId);
+                                setNewUserForm({
+                                  name: u.name || '',
+                                  userId: u.userIdCode || '',
+                                  role: u.role || 'Captain',
+                                  phone: u.phone || ''
+                                });
+                              }} 
+                              style={styles.actionEditBtn}
+                            >
+                              Edit
+                            </button>
                             <button type="button" onClick={() => handleToggleUserStatus(uId)} style={styles.userToggleBtn}>
                               {isActive ? 'Deactivate' : 'Activate'}
                             </button>
