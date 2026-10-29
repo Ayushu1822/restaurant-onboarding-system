@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './LoginScreen.css';
 
 // Import all modular sub-components
@@ -64,6 +64,10 @@ export default function Dashboard({ user, onLogout }) {
   const [alertsEnabled, setAlertsEnabled] = useState(false);
   const [orderSearch, setOrderSearch] = useState('');
   
+  // Custom Toast Popup State (Replaces alert() popups)
+  const [toastMessage, setToastMessage] = useState(null);
+  const [newOrderPopup, setNewOrderPopup] = useState(null);
+
   const [isProfileFallback, setIsProfileFallback] = useState(false);
   const [isOrdersFallback, setIsOrdersFallback] = useState(false);
   
@@ -79,7 +83,12 @@ export default function Dashboard({ user, onLogout }) {
     whatsappNumber: FALLBACK_RESTAURANT_PROFILE.whatsappNumber
   });
 
-  // Receipt Configuration state synced with Settings Module
+  // Settings configurations
+  const [notificationSoundConfig, setNotificationSoundConfig] = useState({
+    enabled: true,
+    selectedTone: 'Classic Ring'
+  });
+
   const [receiptConfig, setReceiptConfig] = useState({
     restaurantName: 'LINGA FOODS',
     headerText: 'Linga Foods - Wonghikal',
@@ -111,34 +120,94 @@ export default function Dashboard({ user, onLogout }) {
   const [orderNote, setOrderNote] = useState('');
   const [savingOrderNotes, setSavingOrderNotes] = useState(false);
 
+  const knownOrderIdsRef = useRef(new Set());
+
   useEffect(() => {
     setOrderNote(getOrderNote(selectedOrder));
   }, [selectedOrder?.orderId]);
 
+  // 🔔 Web Audio API Synthesized Chime Player
+  const playSynthesizedChime = (toneName = 'Classic Ring') => {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      if (toneName === 'Soft Chime') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.15);
+        osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.3);
+      } else if (toneName === 'Ding Dong') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime + 0.2);
+      } else if (toneName === 'Bell') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime);
+      } else if (toneName === 'Ping') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+      } else if (toneName === 'Arcade') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1);
+        osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2);
+      } else {
+        // Classic Ring
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15);
+      }
+
+      gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.5);
+    } catch (e) {
+      console.log("Audio play error:", e);
+    }
+  };
+
+  const showToast = (text, type = 'success') => {
+    setToastMessage({ text, type });
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
   const fetchHeaderData = () => {
-    // Fetch restaurant profile directly to parse saved areasAndTables for live header counts
     fetch(`${API_BASE_URL}/api/v1/restaurants/email/${loggedInEmail}`)
       .then(res => res.json())
       .then(data => {
-        if (data && data.areasAndTables) {
-          let parsedAreas = data.areasAndTables;
-          if (typeof parsedAreas === 'string') {
-            try { parsedAreas = JSON.parse(parsedAreas); } catch (e) {}
+        if (data) {
+          if (data.notificationSound) {
+            const parsedSnd = typeof data.notificationSound === 'string' ? JSON.parse(data.notificationSound) : data.notificationSound;
+            setNotificationSoundConfig(prev => ({ ...prev, ...parsedSnd }));
           }
 
-          if (parsedAreas && parsedAreas.areas) {
-            let allTables = [];
-            parsedAreas.areas.forEach(area => {
-              if (area.tables) {
-                allTables = allTables.concat(area.tables);
-              }
-            });
+          if (data.areasAndTables) {
+            let parsedAreas = data.areasAndTables;
+            if (typeof parsedAreas === 'string') {
+              try { parsedAreas = JSON.parse(parsedAreas); } catch (e) {}
+            }
 
-            if (allTables.length > 0) {
-              const open = allTables.filter(t => (t.status || 'Available') === 'Available').length;
-              const occupied = allTables.filter(t => (t.status || 'Available') === 'Occupied').length;
-              const billing = allTables.filter(t => t.status === 'Billing' || t.status === 'Ready to Pay').length;
-              setTableStats({ open, total: allTables.length, occupied, billing });
+            if (parsedAreas && parsedAreas.areas) {
+              let allTables = [];
+              parsedAreas.areas.forEach(area => {
+                if (area.tables) {
+                  allTables = allTables.concat(area.tables);
+                }
+              });
+
+              if (allTables.length > 0) {
+                const open = allTables.filter(t => (t.status || 'Available') === 'Available').length;
+                const occupied = allTables.filter(t => (t.status || 'Available') === 'Occupied').length;
+                const billing = allTables.filter(t => t.status === 'Billing' || t.status === 'Ready to Pay').length;
+                setTableStats({ open, total: allTables.length, occupied, billing });
+              }
             }
           }
         }
@@ -263,6 +332,22 @@ export default function Dashboard({ user, onLogout }) {
           };
         });
 
+        // 🔔 Check for brand new incoming orders
+        const newOrdersList = formattedOrders.filter(o => o.status === 'New');
+        if (knownOrderIdsRef.current.size > 0) {
+          const hasBrandNew = newOrdersList.some(o => !knownOrderIdsRef.current.has(o.orderId));
+          if (hasBrandNew) {
+            // Play Sound
+            if (notificationSoundConfig.enabled !== false) {
+              playSynthesizedChime(notificationSoundConfig.selectedTone || 'Classic Ring');
+            }
+            // Show Custom Popup Modal
+            const latestNewOrder = newOrdersList.find(o => !knownOrderIdsRef.current.has(o.orderId)) || newOrdersList[0];
+            setNewOrderPopup(latestNewOrder);
+          }
+        }
+        knownOrderIdsRef.current = new Set(formattedOrders.map(o => o.orderId));
+
         setOrders(formattedOrders);
         if (formattedOrders.length > 0) {
           setSelectedOrder(current => current || formattedOrders[0]);
@@ -307,10 +392,10 @@ export default function Dashboard({ user, onLogout }) {
         setEditForm(savedProfile);
         setIsEditingProfile(false);
         setShowProfileModal(false);
-        alert('Profile globally updated and saved to PostgreSQL database!');
+        showToast('Profile globally updated and saved to PostgreSQL database!');
       })
       .catch(err => {
-        alert('Error saving profile globally: ' + err.message);
+        showToast('Error saving profile globally: ' + err.message, 'error');
       });
   };
 
@@ -354,12 +439,16 @@ export default function Dashboard({ user, onLogout }) {
   const handleEnableAlerts = async () => {
     if (!('Notification' in window)) {
       setAlertsEnabled(false);
+      showToast('Notifications not supported by this browser.', 'error');
       return;
     }
     const permission = Notification.permission === 'default'
       ? await Notification.requestPermission()
       : Notification.permission;
     setAlertsEnabled(permission === 'granted');
+    if (permission === 'granted') {
+      showToast('Desktop alerts successfully enabled!');
+    }
   };
 
   const handlePrintReceipt = () => {
@@ -367,7 +456,7 @@ export default function Dashboard({ user, onLogout }) {
     
     const printWindow = window.open('', '_blank', 'width=450,height=600');
     if (!printWindow) {
-      alert('Popup blocked! Please allow popups for printing.');
+      showToast('Popup blocked! Please allow popups for printing.', 'error');
       return;
     }
 
@@ -445,9 +534,10 @@ export default function Dashboard({ user, onLogout }) {
         order.orderId === selectedOrder.orderId ? { ...order, ...updatedOrder } : order
       ));
       setSelectedOrder(updatedOrder);
+      showToast('Order notes successfully saved!');
     } catch (error) {
       console.error('Failed to save order notes:', error);
-      alert(`Unable to save order notes: ${error.message}`);
+      showToast(`Unable to save order notes: ${error.message}`, 'error');
     } finally {
       setSavingOrderNotes(false);
     }
@@ -863,6 +953,51 @@ export default function Dashboard({ user, onLogout }) {
         {activeTab === 'Settings' && <SettingsModule />}
       </div>
 
+      {/* 🔔 Custom Professional New Order Popup Modal */}
+      {newOrderPopup && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.popupCard}>
+            <div style={{fontSize: '38px', marginBottom: '8px'}}>🔔</div>
+            <h3 style={{margin: '0 0 6px 0', fontSize: '20px', fontWeight: '950', color: '#0f172a'}}>New Online Order Received!</h3>
+            <p style={{margin: '0 0 16px 0', fontSize: '13px', color: '#64748b', fontWeight: '800'}}>
+              Order <b>{newOrderPopup.id}</b> from <b>{newOrderPopup.customer}</b> (₹{newOrderPopup.total})
+            </p>
+            <div style={{display: 'flex', gap: '10px', width: '100%'}}>
+              <button 
+                onClick={() => {
+                  setSelectedOrder(newOrderPopup);
+                  setActiveTab('Online Orders');
+                  setNewOrderPopup(null);
+                }} 
+                style={styles.primaryModalBtn}
+              >
+                View Order
+              </button>
+              <button 
+                onClick={() => setNewOrderPopup(null)} 
+                style={styles.secondaryModalBtn}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🟢 Custom Toast Banner (Replaces alert popups) */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed', bottom: '24px', right: '24px', zIndex: 4000,
+          backgroundColor: toastMessage.type === 'error' ? '#fee2e2' : '#ecfdf5',
+          color: toastMessage.type === 'error' ? '#991b1b' : '#065f46',
+          border: `2px solid ${toastMessage.type === 'error' ? '#fca5a5' : '#6ee7b7'}`,
+          padding: '14px 20px', borderRadius: '12px', fontWeight: '900', fontSize: '13px',
+          boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
+        }}>
+          {toastMessage.text}
+        </div>
+      )}
+
       {/* Modern Styled Profile Modal */}
       {showProfileModal && (
         <div style={styles.modalOverlay} onClick={() => setShowProfileModal(false)}>
@@ -971,6 +1106,7 @@ const styles = {
     fontSize: '12px', fontWeight: '900', padding: '5px 12px', borderRadius: '8px', textTransform: 'uppercase', border: '1.5px solid currentColor'
   }),
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 },
+  popupCard: { width: '420px', backgroundColor: '#fff', padding: '28px', borderRadius: '20px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '1.5px solid #e2e8f0', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' },
   modernProfileCard: { width: '460px', backgroundColor: '#fff', padding: '28px', borderRadius: '20px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '1.5px solid #e2e8f0', textAlign: 'left' },
   profileRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #f1f5f9', fontSize: '13px', fontWeight: '800', color: '#334155' },
   modalLabel: { fontSize: '12px', fontWeight: '900', color: '#334155', display: 'block', marginBottom: '4px' },

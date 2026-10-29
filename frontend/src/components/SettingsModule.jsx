@@ -19,7 +19,7 @@ export default function SettingsModule() {
   const [editingUserId, setEditingUserId] = useState(null);
   const [newUserForm, setNewUserForm] = useState({ name: '', userId: '', role: 'Captain', phone: '' });
 
-  // Inline Form States (Replacing browser prompts)
+  // Inline Form States
   const [showAddAreaBox, setShowAddAreaBox] = useState(false);
   const [newAreaNameInput, setNewAreaNameInput] = useState('');
 
@@ -41,7 +41,7 @@ export default function SettingsModule() {
     active: true
   });
 
-  // 🔔 New System Settings State (Synced with screenshots)
+  // 🔔 System Settings State
   const [autoApproval, setAutoApproval] = useState({
     enabled: false,
     approveImmediately: false,
@@ -1546,7 +1546,7 @@ export default function SettingsModule() {
               </div>
             )}
 
-            {/* TAB 9: SYSTEM (Order Auto Approval, Hold Orders, Notification Sound, Security) */}
+            {/* TAB 9: SYSTEM */}
             {activeTab === 'system' && (
               <div style={styles.sectionGroup}>
                 <h3 style={styles.sectionTitle}>⚙️ System & Operational Configurations</h3>
