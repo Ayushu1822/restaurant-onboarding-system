@@ -214,6 +214,8 @@ export default function Dashboard({ user, onLogout }) {
 
           const resolvedOrderId = o.orderId || o.order_id || o.id;
           const resolvedDisplayId = o.displayId || o.display_id || resolvedOrderId || `#KO01/00000${index + 1}`;
+          
+          // Robust IST Timestamp synchronization
           const istTimestamp = o.timestamp || new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
           const subtotalCalc = mappedItems.length > 0 
@@ -231,6 +233,7 @@ export default function Dashboard({ user, onLogout }) {
             orderId: resolvedOrderId,
             customer: o.customerName || o.customer_name || 'Valued Customer',
             time: istTimestamp,
+            timestamp: istTimestamp,
             status: o.status || 'New',
             type: o.orderType || o.order_type || 'Delivery',
             channel: o.channel || 'WhatsApp',
