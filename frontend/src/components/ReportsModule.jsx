@@ -91,10 +91,21 @@ export default function ReportsModule({ orders: parentOrders }) {
       .catch(err => console.error("Error fetching complaints for reports:", err));
   };
 
-  // Robust timestamp parser handling high-precision ISO strings safely with IST fallback
+  // 🔍 Robust timestamp parser supporting Counter POS dd/mm/yyyy format and backend ISO strings
   const getSafeTimestamp = (order, index) => {
     if (order.timestamp) {
-      let ts = order.timestamp;
+      let ts = String(order.timestamp);
+
+      // Counter POS format: "29/10/2026, 5:32:15 am" (dd/mm/yyyy)
+      const m = ts.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)$/i);
+      if (m) {
+        let h = Number(m[4]) % 12;
+        if (m[7].toLowerCase() === 'pm') h += 12;
+        const parsed = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), h, Number(m[5]), Number(m[6] || 0));
+        if (!isNaN(parsed.getTime())) return parsed;
+      }
+
+      // ISO format from the backend
       ts = ts.replace(/\.(\d{3})\d+/, '.$1');
       const d = new Date(ts);
       if (!isNaN(d.getTime())) return d;
@@ -139,8 +150,8 @@ export default function ReportsModule({ orders: parentOrders }) {
   // 1. Active Orders Filtering
   const filteredOrders = orders.filter((o, idx) => {
     const st = (o.status || 'New').toLowerCase();
-    const isCompleted = st === 'completed' || st === 'delivered' || st === 'settled' || st === 'paid';
-    if (isCompleted) return false;
+    const isSettledOrDone = st === 'completed' || st === 'delivered' || st === 'settled' || st === 'paid' || st === 'preparing';
+    if (isSettledOrDone) return false;
 
     let matchesChannel = true;
     const channel = (o.channel || 'COUNTER').toUpperCase();
@@ -172,12 +183,8 @@ export default function ReportsModule({ orders: parentOrders }) {
 
   const activeBreakdownOrders = filteredOrders;
 
-  // 2. Completed History Filtering (CounterPOS 'Preparing' / 'Paid' & Table orders included)
+  // 2. Completed & Processed History Filtering
   const completedHistoryOrders = orders.filter((o, idx) => {
-    const st = (o.status || 'New').toLowerCase();
-    const isCompleted = st === 'completed' || st === 'delivered' || st === 'picked up' || st === 'ready' || st === 'settled' || st === 'paid' || st === 'preparing';
-    if (!isCompleted) return false;
-
     const orderDate = getSafeTimestamp(o, idx);
     let matchesDate = checkDateMatch(orderDate, historyDateRange);
 
@@ -261,7 +268,7 @@ export default function ReportsModule({ orders: parentOrders }) {
     return a.localeCompare(b);
   });
 
-  // 🖨️ Synchronized Settings-Based Receipt Printer Utility with Accurate Original Timestamp
+  // 🖨️ Synchronized Settings-Based Receipt Printer Utility
   const printSingleReceipt = (o, index) => {
     let dateStr = o.timestamp;
     if (!dateStr) {
