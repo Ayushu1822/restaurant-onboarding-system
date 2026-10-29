@@ -14,7 +14,7 @@ export default function SettingsModule() {
   // Store full profile so we preserve unedited fields
   const [fullProfile, setFullProfile] = useState({});
 
-  // Staff / Users List State
+  // Staff / Users List State (With Phone Support)
   const [usersList, setUsersList] = useState([]);
   const [newUserForm, setNewUserForm] = useState({ name: '', userId: '', role: 'Captain', phone: '' });
 
@@ -259,7 +259,7 @@ export default function SettingsModule() {
       if (res.ok) {
         setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' });
         fetchUsers(userEmail);
-        showMsg('✅ User / Captain successfully created & synced with Tables!', 'success');
+        showMsg('✅ User successfully created & synced!', 'success');
       } else {
         alert('Failed to add user.');
       }
@@ -272,16 +272,32 @@ export default function SettingsModule() {
     const target = usersList.find(u => (u.id || u._id) === userId);
     if (!target) return;
 
-    const nextStatus = target.status === 'Inactive' ? 'Active' : 'Inactive';
+    const currentStatus = target.status || 'Active';
+    const nextStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
+
+    const payload = {
+      name: target.name,
+      role: target.role || 'CAPTAIN',
+      phone: target.phone || '',
+      userIdCode: target.userIdCode || 'U01',
+      status: nextStatus,
+      restaurantEmail: userEmail
+    };
+
     fetch(`${API_BASE_URL}/api/v1/staff/${userId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...target, status: nextStatus, restaurantEmail: userEmail })
+      body: JSON.stringify(payload)
     })
     .then(res => {
-      if (res.ok) fetchUsers(userEmail);
+      if (res.ok) {
+        fetchUsers(userEmail);
+        showMsg(`✅ User status updated to ${nextStatus}`, 'success');
+      } else {
+        alert('Failed to update user status.');
+      }
     })
-    .catch(err => console.log(err));
+    .catch(err => alert('Error: ' + err.message));
   };
 
   const handleDeleteUser = (userId) => {
@@ -324,16 +340,6 @@ export default function SettingsModule() {
           ...prev.receiptConfig.toggles,
           [key]: !prev.receiptConfig.toggles[key]
         }
-      }
-    }));
-  };
-
-  const handleReceiptInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      receiptConfig: {
-        ...prev.receiptConfig,
-        [field]: value
       }
     }));
   };
@@ -989,7 +995,7 @@ export default function SettingsModule() {
               </div>
             )}
 
-            {/* TAB 5: USERS (Synced with Captains / Staff Database) */}
+            {/* TAB 5: USERS (With Phone Input & Fixed Active/Inactive Toggle) */}
             {activeTab === 'users' && (
               <div style={styles.sectionGroup}>
                 <h3 style={styles.sectionTitle}>👥 Users & Floor Staff</h3>
@@ -997,10 +1003,10 @@ export default function SettingsModule() {
                   Create Captains, Managers, and Staff here. They will appear simultaneously across Tables for assignment and order tracking.
                 </p>
 
-                {/* Add User Card Form matching screenshot */}
+                {/* Add User Card Form with Phone field */}
                 <div style={styles.userAddCard}>
                   <h4 style={{margin: '0 0 14px 0', fontSize: '14px', fontWeight: '950', color: '#0f172a'}}>👤 Add User</h4>
-                  <div style={{display: 'grid', gridTemplateColumns: '1.8fr 1fr 1.2fr auto', gap: '12px', alignItems: 'flex-end'}}>
+                  <div style={{display: 'grid', gridTemplateColumns: '1.6fr 0.9fr 1fr 1fr auto', gap: '12px', alignItems: 'flex-end'}}>
                     <div style={styles.fieldGroup}>
                       <label style={styles.label}>Name *</label>
                       <input 
@@ -1012,7 +1018,7 @@ export default function SettingsModule() {
                       />
                     </div>
                     <div style={styles.fieldGroup}>
-                      <label style={styles.label}>User ID * <span style={{fontSize: '10px', color: '#64748b'}}>(e.g. U01 or KC)</span></label>
+                      <label style={styles.label}>User ID *</label>
                       <input 
                         type="text" 
                         placeholder="U01" 
@@ -1020,6 +1026,16 @@ export default function SettingsModule() {
                         onChange={e => setNewUserForm({...newUserForm, userId: e.target.value})} 
                         style={styles.input} 
                         maxLength="5"
+                      />
+                    </div>
+                    <div style={styles.fieldGroup}>
+                      <label style={styles.label}>Phone No</label>
+                      <input 
+                        type="text" 
+                        placeholder="10-digit mobile" 
+                        value={newUserForm.phone} 
+                        onChange={e => setNewUserForm({...newUserForm, phone: e.target.value})} 
+                        style={styles.input} 
                       />
                     </div>
                     <div style={styles.fieldGroup}>
@@ -1038,7 +1054,7 @@ export default function SettingsModule() {
                     <button type="button" onClick={handleAddUser} style={styles.addUserBtn}>+ Add</button>
                   </div>
                   <div style={{fontSize: '11px', color: '#64748b', fontWeight: '700', marginTop: '10px'}}>
-                    The User ID appears in every System Order ID (e.g. W/KO/01/U01/...) so kitchen & reports can trace which user handled the order. Captains added here can be assigned to tables on the Tables screen.
+                    The User ID appears in every System Order ID (e.g. W/KO/01/U01/...) so kitchen & reports can trace which user handled the order.
                   </div>
                 </div>
 
@@ -1052,6 +1068,7 @@ export default function SettingsModule() {
                     {usersList.map(u => {
                       const uId = u.id || u._id;
                       const status = u.status || 'Active';
+                      const isActive = status === 'Active';
                       return (
                         <div key={uId || u.name} style={styles.userRowCard}>
                           <div style={{display: 'flex', alignItems: 'center', gap: '14px'}}>
@@ -1071,17 +1088,17 @@ export default function SettingsModule() {
                           
                           <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
                             <span style={{
-                              backgroundColor: status === 'Active' ? '#dcfce7' : '#fee2e2',
-                              color: status === 'Active' ? '#15803d' : '#991b1b',
+                              backgroundColor: isActive ? '#dcfce7' : '#fee2e2',
+                              color: isActive ? '#15803d' : '#991b1b',
                               padding: '4px 10px',
                               borderRadius: '8px',
                               fontSize: '11px',
                               fontWeight: '950'
                             }}>
-                              {status}
+                              {isActive ? 'Active' : 'Inactive'}
                             </span>
                             <button type="button" onClick={() => handleToggleUserStatus(uId)} style={styles.userToggleBtn}>
-                              {status === 'Active' ? 'Deactivate' : 'Activate'}
+                              {isActive ? 'Deactivate' : 'Activate'}
                             </button>
                             <button type="button" onClick={() => handleDeleteUser(uId)} style={styles.iconBtn} title="Delete User">🗑️</button>
                           </div>
