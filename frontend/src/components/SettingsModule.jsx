@@ -109,7 +109,6 @@ export default function SettingsModule() {
         { id: 'tg-4', name: 'Non-Taxable / Exempt (0%)', rate: 0, cgst: 0, sgst: 0, hsnCode: '996331', itcEligible: false, status: 'Active' }
       ]
     },
-    // 🖨️ Complete Receipt Configuration State with all 25+ fields
     receiptConfig: {
       density: 'Compact',
       restaurantName: 'Linga Foods',
@@ -1100,12 +1099,11 @@ export default function SettingsModule() {
               </div>
             )}
 
-            {/* TAB 7: PRINTERS & RECEIPTS (WITH 3 EXACT SUB-TABS & ALL TOGGLES + EDITS) */}
+            {/* TAB 7: PRINTERS & RECEIPTS (WITH 3 SUB-TABS & ALL TOGGLES) */}
             {activeTab === 'printers' && (
               <div style={styles.sectionGroup}>
                 <h3 style={styles.sectionTitle}>🖨️ Printers & Receipts</h3>
                 
-                {/* 3 Sub-Tabs matching your screenshots */}
                 <div style={{display: 'flex', gap: '8px', marginBottom: '20px'}}>
                   <button type="button" onClick={() => setReceiptSubTab('printers')} style={{...styles.subTabBtn, backgroundColor: receiptSubTab === 'printers' ? '#ef4444' : '#f1f5f9', color: receiptSubTab === 'printers' ? '#fff' : '#334155'}}>Printers</button>
                   <button type="button" onClick={() => setReceiptSubTab('receipt')} style={{...styles.subTabBtn, backgroundColor: receiptSubTab === 'receipt' ? '#ef4444' : '#f1f5f9', color: receiptSubTab === 'receipt' ? '#fff' : '#334155'}}>Receipt Configuration</button>
@@ -1121,19 +1119,10 @@ export default function SettingsModule() {
                       <button type="button" onClick={() => alert('Refreshing connected printers...')} style={styles.refreshBtn}>🔄 Refresh printers</button>
                     </div>
 
-                    <div style={styles.infoBox}>
-                      <div style={{fontWeight: '950', color: '#dc2626', marginBottom: '4px'}}>⚡ One-click printing — any printer, nothing to install</div>
-                      <div style={{fontSize: '11px', color: '#64748b', fontWeight: '800'}}>Open FoodOS from a special Chrome shortcut and every receipt prints straight to this computer's default printer, with no print window.</div>
-                    </div>
-
                     <div style={styles.grid2}>
                       <div style={{backgroundColor: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '16px', padding: '20px'}}>
                         <h4 style={{margin: '0 0 4px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Counter Printer</h4>
                         <p style={{fontSize: '12px', color: '#64748b', fontWeight: '800', marginBottom: '16px'}}>Used for customer receipts and optionally KOT printing.</p>
-
-                        <div style={{backgroundColor: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px', color: '#334155', fontWeight: '800', marginBottom: '16px'}}>
-                          ℹ️ No printer saved yet, so Print buttons use <strong>this computer's installed printer</strong> through the browser.
-                        </div>
 
                         <label style={styles.label}>Printer</label>
                         <select style={styles.input} value={formData.printerInfo?.printerName || ''} onChange={e => setFormData({...formData, printerInfo: {...formData.printerInfo, printerName: e.target.value}})}>
@@ -1142,28 +1131,12 @@ export default function SettingsModule() {
                           <option value="Thermal-80mm">Thermal 80mm USB</option>
                           <option value="Thermal-58mm">Thermal 58mm USB</option>
                         </select>
-
-                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '14px'}}>
-                          <button type="button" onClick={() => alert('Connecting USB printer...')} style={styles.deviceBtn}>🔌 Connect USB printer</button>
-                          <button type="button" onClick={() => alert('Connecting Bluetooth...')} style={styles.deviceBtn}>📡 Connect Bluetooth</button>
-                        </div>
-
-                        <h5 style={{margin: '20px 0 10px 0', fontSize: '13px', fontWeight: '950', color: '#0f172a'}}>Documents</h5>
-                        <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                          <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '900', cursor: 'pointer'}}>
-                            <input type="checkbox" checked={formData.printerInfo?.printReceiptDoc ?? true} onChange={e => setFormData({...formData, printerInfo: {...formData.printerInfo, printReceiptDoc: e.target.checked}})} /> Print Receipt
-                          </label>
-                          <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '900', cursor: 'pointer'}}>
-                            <input type="checkbox" checked={formData.printerInfo?.printKotDoc ?? false} onChange={e => setFormData({...formData, printerInfo: {...formData.printerInfo, printKotDoc: e.target.checked}})} /> Print KOT
-                          </label>
-                        </div>
                       </div>
 
                       <div style={{backgroundColor: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center'}}>
                         <div style={{fontSize: '32px', marginBottom: '8px'}}>👨‍🍳</div>
                         <h4 style={{margin: '0 0 4px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Kitchen Printer</h4>
-                        <p style={{fontSize: '12px', color: '#64748b', fontWeight: '800', marginBottom: '16px'}}>No Kitchen Printer configured.<br/>Optional — a single Counter Printer can print both receipts and KOTs.</p>
-                        <button type="button" onClick={() => alert('Configuring Kitchen Printer')} style={styles.addAreaBtn}>+ Configure Kitchen Printer</button>
+                        <p style={{fontSize: '12px', color: '#64748b', fontWeight: '800', marginBottom: '16px'}}>Optional — a single Counter Printer can print both receipts and KOTs.</p>
                       </div>
                     </div>
                   </div>
@@ -1172,167 +1145,45 @@ export default function SettingsModule() {
                 {receiptSubTab === 'receipt' && (
                   <div style={{display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start'}}>
                     <div style={{flex: 1, minWidth: '400px', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0', maxHeight: '72vh', overflowY: 'auto'}}>
-                      <div style={{fontSize: '11px', color: '#64748b', fontWeight: '900', marginBottom: '16px'}}>ℹ️ Business details come from Settings — Business Information. Changes here only affect printed receipts.</div>
-
-                      {/* DENSITY */}
                       <h4 style={{margin: '0 0 10px 0', fontSize: '13px', fontWeight: '950', color: '#64748b'}}>RECEIPT DENSITY</h4>
                       <div style={{display: 'flex', gap: '8px', marginBottom: '20px'}}>
                         <button type="button" onClick={() => setFormData({...formData, receiptConfig: {...formData.receiptConfig, density: 'Compact'}})} style={{backgroundColor: formData.receiptConfig?.density === 'Compact' ? '#ef4444' : '#fff', color: formData.receiptConfig?.density === 'Compact' ? '#fff' : '#334155', border: '1.5px solid #cbd5e1', padding: '6px 14px', borderRadius: '8px', fontWeight: '950', fontSize: '12px', cursor: 'pointer'}}>Compact</button>
                         <button type="button" onClick={() => setFormData({...formData, receiptConfig: {...formData.receiptConfig, density: 'Comfortable'}})} style={{backgroundColor: formData.receiptConfig?.density === 'Comfortable' ? '#ef4444' : '#fff', color: formData.receiptConfig?.density === 'Comfortable' ? '#fff' : '#334155', border: '1.5px solid #cbd5e1', padding: '6px 14px', borderRadius: '8px', fontWeight: '950', fontSize: '12px', cursor: 'pointer'}}>Comfortable</button>
                       </div>
 
-                      {/* BRANDING & BUSINESS INFO */}
-                      <h4 style={{margin: '0 0 12px 0', fontSize: '13px', fontWeight: '950', color: '#64748b'}}>BRANDING & BUSINESS INFORMATION</h4>
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px'}}>
-                        
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.logo} onChange={() => handleToggleReceiptField('logo')} style={styles.checkbox}/><span style={styles.toggleLabel}>Logo</span></div>
-                          <span style={styles.badgeGray}>Disabled</span>
-                        </div>
-
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
-                            <input type="checkbox" checked={toggles.restaurantName} onChange={() => handleToggleReceiptField('restaurantName')} style={styles.checkbox}/>
-                            <div style={{flex: 1}}>
-                              <span style={styles.toggleLabel}>Restaurant Display Name</span>
-                              <input style={styles.smallInput} value={formData.receiptConfig?.restaurantName || ''} onChange={e => handleReceiptInputChange('restaurantName', e.target.value)}/>
-                            </div>
-                          </div>
-                          <span style={styles.badgeRed}>Required</span>
-                        </div>
-
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
-                            <input type="checkbox" checked={toggles.branchName} onChange={() => handleToggleReceiptField('branchName')} style={styles.checkbox}/>
-                            <div style={{flex: 1}}>
-                              <span style={styles.toggleLabel}>Branch Name / Header Text</span>
-                              <input style={styles.smallInput} value={formData.receiptConfig?.headerText || ''} onChange={e => handleReceiptInputChange('headerText', e.target.value)}/>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
-                            <input type="checkbox" checked={toggles.address} onChange={() => handleToggleReceiptField('address')} style={styles.checkbox}/>
-                            <div style={{flex: 1}}>
-                              <span style={styles.toggleLabel}>Address</span>
-                              <input style={styles.smallInput} value={formData.receiptConfig?.address || ''} onChange={e => handleReceiptInputChange('address', e.target.value)}/>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
-                            <input type="checkbox" checked={toggles.phone} onChange={() => handleToggleReceiptField('phone')} style={styles.checkbox}/>
-                            <div style={{flex: 1}}>
-                              <span style={styles.toggleLabel}>Phone Number</span>
-                              <input style={styles.smallInput} value={formData.receiptConfig?.phone || ''} onChange={e => handleReceiptInputChange('phone', e.target.value)}/>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
-                            <input type="checkbox" checked={toggles.gstin} onChange={() => handleToggleReceiptField('gstin')} style={styles.checkbox}/>
-                            <div style={{flex: 1}}>
-                              <span style={styles.toggleLabel}>GST / Tax ID</span>
-                              <input style={styles.smallInput} value={formData.receiptConfig?.gstin || ''} onChange={e => handleReceiptInputChange('gstin', e.target.value)}/>
-                            </div>
-                          </div>
-                          <span style={styles.badgeRed}>Required</span>
-                        </div>
-
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
-                            <input type="checkbox" checked={toggles.email} onChange={() => handleToggleReceiptField('email')} style={styles.checkbox}/>
-                            <div style={{flex: 1}}>
-                              <span style={styles.toggleLabel}>Email</span>
-                              <input style={styles.smallInput} value={formData.receiptConfig?.email || ''} onChange={e => handleReceiptInputChange('email', e.target.value)}/>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
-                            <input type="checkbox" checked={toggles.fssai} onChange={() => handleToggleReceiptField('fssai')} style={styles.checkbox}/>
-                            <div style={{flex: 1}}>
-                              <span style={styles.toggleLabel}>FSSAI / Regulatory Number</span>
-                              <input style={styles.smallInput} value={formData.receiptConfig?.fssai || ''} onChange={e => handleReceiptInputChange('fssai', e.target.value)}/>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* ORDER INFORMATION */}
-                      <h4 style={{margin: '0 0 12px 0', fontSize: '13px', fontWeight: '950', color: '#64748b'}}>ORDER INFORMATION</h4>
+                      <h4 style={{margin: '0 0 12px 0', fontSize: '13px', fontWeight: '950', color: '#64748b'}}>RECEIPT DISPLAY TOGGLES</h4>
                       <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px'}}>
                         <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.invoiceNo} onChange={() => handleToggleReceiptField('invoiceNo')} style={styles.checkbox}/><span style={styles.toggleLabel}>Invoice / Receipt Number</span></div>
-                          <span style={styles.badgeRed}>Required</span>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.restaurantName} onChange={() => handleToggleReceiptField('restaurantName')} style={styles.checkbox}/><span style={styles.toggleLabel}>Restaurant Name</span></div>
+                        </div>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.address} onChange={() => handleToggleReceiptField('address')} style={styles.checkbox}/><span style={styles.toggleLabel}>Address</span></div>
+                        </div>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.phone} onChange={() => handleToggleReceiptField('phone')} style={styles.checkbox}/><span style={styles.toggleLabel}>Phone</span></div>
+                        </div>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.gstin} onChange={() => handleToggleReceiptField('gstin')} style={styles.checkbox}/><span style={styles.toggleLabel}>GSTIN</span></div>
+                        </div>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.fssai} onChange={() => handleToggleReceiptField('fssai')} style={styles.checkbox}/><span style={styles.toggleLabel}>FSSAI</span></div>
+                        </div>
+                        <div style={styles.toggleRow}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.invoiceNo} onChange={() => handleToggleReceiptField('invoiceNo')} style={styles.checkbox}/><span style={styles.toggleLabel}>Invoice Number</span></div>
                         </div>
                         <div style={styles.toggleRow}>
                           <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.dateAndTime} onChange={() => handleToggleReceiptField('dateAndTime')} style={styles.checkbox}/><span style={styles.toggleLabel}>Date & Time</span></div>
-                          <span style={styles.badgeRed}>Required</span>
                         </div>
                         <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.orderId} onChange={() => handleToggleReceiptField('orderId')} style={styles.checkbox}/><span style={styles.toggleLabel}>Order ID</span></div>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.tokenNumber} onChange={() => handleToggleReceiptField('tokenNumber')} style={styles.checkbox}/><span style={styles.toggleLabel}>Token Number</span></div>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.orderType} onChange={() => handleToggleReceiptField('orderType')} style={styles.checkbox}/><span style={styles.toggleLabel}>Order Type</span></div>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.customerName} onChange={() => handleToggleReceiptField('customerName')} style={styles.checkbox}/><span style={styles.toggleLabel}>Customer Name</span></div>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.customerMobile} onChange={() => handleToggleReceiptField('customerMobile')} style={styles.checkbox}/><span style={styles.toggleLabel}>Customer Mobile</span></div>
-                        </div>
-                      </div>
-
-                      {/* ITEMS & PRICING */}
-                      <h4 style={{margin: '0 0 12px 0', fontSize: '13px', fontWeight: '950', color: '#64748b'}}>ITEMS & PRICING</h4>
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px'}}>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.itemNameQtyAmt} onChange={() => handleToggleReceiptField('itemNameQtyAmt')} style={styles.checkbox}/><span style={styles.toggleLabel}>Item Name / Quantity / Amount</span></div>
-                          <span style={styles.badgeRed}>Required</span>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.itemRate} onChange={() => handleToggleReceiptField('itemRate')} style={styles.checkbox}/><span style={styles.toggleLabel}>Item Rate</span></div>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.variantsAddons} onChange={() => handleToggleReceiptField('variantsAddons')} style={styles.checkbox}/><span style={styles.toggleLabel}>Variants / Add-ons</span></div>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.itemNotes} onChange={() => handleToggleReceiptField('itemNotes')} style={styles.checkbox}/><span style={styles.toggleLabel}>Item Notes</span></div>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.discount} onChange={() => handleToggleReceiptField('discount')} style={styles.checkbox}/><span style={styles.toggleLabel}>Discount</span></div>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.itemNameQtyAmt} onChange={() => handleToggleReceiptField('itemNameQtyAmt')} style={styles.checkbox}/><span style={styles.toggleLabel}>Item Name / Qty / Amount</span></div>
                         </div>
                         <div style={styles.toggleRow}>
                           <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.totalTax} onChange={() => handleToggleReceiptField('totalTax')} style={styles.checkbox}/><span style={styles.toggleLabel}>Total Tax</span></div>
-                          <span style={styles.badgeRed}>Required</span>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.taxBreakdown} onChange={() => handleToggleReceiptField('taxBreakdown')} style={styles.checkbox}/><span style={styles.toggleLabel}>Tax Breakdown</span></div>
                         </div>
                       </div>
-
-                      {/* PAYMENT INFORMATION */}
-                      <h4 style={{margin: '0 0 12px 0', fontSize: '13px', fontWeight: '950', color: '#64748b'}}>PAYMENT INFORMATION</h4>
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.paymentMethod} onChange={() => handleToggleReceiptField('paymentMethod')} style={styles.checkbox}/><span style={styles.toggleLabel}>Payment Method</span></div>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.paymentReference} onChange={() => handleToggleReceiptField('paymentReference')} style={styles.checkbox}/><span style={styles.toggleLabel}>Payment Reference</span></div>
-                        </div>
-                      </div>
-
                     </div>
 
-                    <div style={{width: '380px', backgroundColor: '#fff', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0', textAlign: 'center', position: 'sticky', top: '20px'}}>
+                    <div style={{width: '380px', backgroundColor: '#fff', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0', textAlign: 'center'}}>
                       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px'}}>
                         <h4 style={{margin: 0, fontSize: '13px', fontWeight: '950', color: '#64748b'}}>Live Preview</h4>
                         <div style={{display: 'flex', gap: '6px'}}>
@@ -1344,29 +1195,23 @@ export default function SettingsModule() {
                       <div style={{backgroundColor: '#fefefe', border: '1.5px dashed #cbd5e1', padding: '16px', borderRadius: '10px', fontFamily: 'monospace', fontSize: '11px', textAlign: 'left', lineHeight: '1.4', color: '#000'}}>
                         <div style={{textAlign: 'center', fontWeight: 'bold', fontSize: '12px'}}>*** TEST PRINT ***</div>
                         {toggles.restaurantName && <div style={{textAlign: 'center', fontWeight: '950', fontSize: '13px', marginTop: '4px'}}>{formData.receiptConfig?.restaurantName}</div>}
-                        {toggles.branchName && <div style={{textAlign: 'center', color: '#444', fontSize: '10px'}}>{formData.receiptConfig?.headerText}</div>}
                         {toggles.address && <div style={{textAlign: 'center', color: '#444', fontSize: '10px', margin: '4px 0'}}>{formData.receiptConfig?.address}</div>}
                         {toggles.phone && <div style={{textAlign: 'center', color: '#444', fontSize: '10px'}}>Ph: {formData.receiptConfig?.phone}</div>}
                         {toggles.gstin && <div style={{textAlign: 'center', color: '#444', fontSize: '10px'}}>GSTIN: {formData.receiptConfig?.gstin}</div>}
-                        {toggles.fssai && <div style={{textAlign: 'center', color: '#444', fontSize: '10px'}}>{formData.receiptConfig?.fssai}</div>}
                         <div style={{borderTop: '1px dashed #000', margin: '6px 0'}}></div>
                         {toggles.invoiceNo && <div>Invoice #: INV-000724</div>}
-                        {toggles.dateAndTime && <div>Date: 28 Oct 2026, 8:50 am</div>}
-                        {toggles.tokenNumber && <div style={{fontWeight: 'bold', margin: '4px 0'}}>TOKEN: 000724</div>}
+                        {toggles.dateAndTime && <div>Date: 29 Oct 2026, 7:19 am</div>}
                         <div style={{borderTop: '1px dashed #000', margin: '6px 0'}}></div>
                         {toggles.itemNameQtyAmt && (
                           <div>
                             <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: 'bold'}}><span>Item</span><span>Qty Amt</span></div>
-                            <div style={{display: 'flex', justifyContent: 'space-between'}}><span>Test Burger</span><span>2 400.00</span></div>
-                            {toggles.variantsAddons && <div style={{color: '#555', fontSize: '10px', paddingLeft: '8px'}}>+ Extra Cheese x1</div>}
-                            {toggles.itemNotes && <div style={{color: '#555', fontSize: '10px', paddingLeft: '8px'}}>Note: Less spicy</div>}
+                            <div style={{display: 'flex', justifyContent: 'space-between'}}><span>Paneer Tikka</span><span>2 400.00</span></div>
                           </div>
                         )}
                         <div style={{borderTop: '1px dashed #000', margin: '6px 0'}}></div>
                         {toggles.totalTax && <div style={{display: 'flex', justifyContent: 'space-between'}}><span>Total Tax:</span><span>₹20.00</span></div>}
                         <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: 'bold'}}><span>TOTAL:</span><span>₹420.00</span></div>
                       </div>
-                      <button type="button" onClick={() => alert('Test print triggered!')} style={styles.testPrintBtn}>🖨️ Test Print</button>
                     </div>
                   </div>
                 )}
@@ -1378,57 +1223,14 @@ export default function SettingsModule() {
                       <label style={styles.ruleLabel}>When should the Receipt print?</label>
                       <div style={{display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px'}}>
                         <label style={styles.radioLabel}><input type="radio" name="counterReceipt" defaultChecked/> Automatically after successful payment</label>
-                        <label style={styles.radioLabel}><input type="radio" name="counterReceipt"/> On Demand</label>
                       </div>
-                      <div style={{fontSize: '11px', color: '#d97706', fontWeight: '800', marginBottom: '16px'}}>⚠️ No printer is set up for this — nothing will auto-print.</div>
-
-                      <label style={styles.ruleLabel}>When should the KOT print?</label>
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px'}}>
-                        <label style={styles.radioLabel}><input type="radio" name="counterKot" defaultChecked/> Automatically after successful payment</label>
-                        <label style={styles.radioLabel}><input type="radio" name="counterKot"/> On Demand</label>
-                      </div>
-                      <div style={{fontSize: '11px', color: '#d97706', fontWeight: '800'}}>⚠️ No printer is set up for this — nothing will auto-print.</div>
-                    </div>
-
-                    <div style={styles.ruleCard}>
-                      <h4 style={{margin: '0 0 14px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Table Orders</h4>
-                      <label style={styles.ruleLabel}>When should the Receipt print?</label>
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px'}}>
-                        <label style={styles.radioLabel}><input type="radio" name="tableReceipt"/> Automatically after successful payment</label>
-                        <label style={styles.radioLabel}><input type="radio" name="tableReceipt" defaultChecked/> On Demand</label>
-                      </div>
-
-                      <label style={styles.ruleLabel}>When should the KOT print?</label>
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px'}}>
-                        <label style={styles.radioLabel}><input type="radio" name="tableKot" defaultChecked/> Automatically when "Done Editing" is successfully completed</label>
-                        <label style={styles.radioLabel}><input type="radio" name="tableKot"/> On Demand</label>
-                      </div>
-                      <div style={{fontSize: '11px', color: '#d97706', fontWeight: '800', marginBottom: '12px'}}>⚠️ No printer is set up for this — nothing will auto-print.</div>
-                      <div style={{fontSize: '11px', color: '#64748b', fontWeight: '800', backgroundColor: '#f1f5f9', padding: '8px', borderRadius: '6px'}}>ℹ️ For Table Orders, subsequent KOTs contain only items or quantities added since the previous KOT.</div>
-                    </div>
-
-                    <div style={styles.ruleCard}>
-                      <h4 style={{margin: '0 0 14px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Takeaway Orders</h4>
-                      <label style={styles.ruleLabel}>When should the Receipt print?</label>
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px'}}>
-                        <label style={styles.radioLabel}><input type="radio" name="takeawayReceipt" defaultChecked/> Automatically after successful payment</label>
-                        <label style={styles.radioLabel}><input type="radio" name="takeawayReceipt"/> On Demand</label>
-                      </div>
-                      <div style={{fontSize: '11px', color: '#d97706', fontWeight: '800', marginBottom: '16px'}}>⚠️ No printer is set up for this — nothing will auto-print.</div>
-
-                      <label style={styles.ruleLabel}>When should the KOT print?</label>
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px'}}>
-                        <label style={styles.radioLabel}><input type="radio" name="takeawayKot" defaultChecked/> Automatically after successful payment</label>
-                        <label style={styles.radioLabel}><input type="radio" name="takeawayKot"/> On Demand</label>
-                      </div>
-                      <div style={{fontSize: '11px', color: '#d97706', fontWeight: '800'}}>⚠️ No printer is set up for this — nothing will auto-print.</div>
                     </div>
                   </div>
                 )}
               </div>
             )}
 
-            {/* PLACEHOLDER FOR OTHER TABS */}
+            {/* PLACEHOLDER FOR USERS & SYSTEM TABS */}
             {activeTab !== 'business' && activeTab !== 'profile' && activeTab !== 'hours' && activeTab !== 'tables' && activeTab !== 'delivery' && activeTab !== 'billing' && activeTab !== 'printers' && (
               <div style={styles.placeholderTab}>
                 <h3>🚧 {sidebarItems.find(i => i.id === activeTab)?.label} Configuration</h3>
@@ -1466,21 +1268,48 @@ const styles = {
   fieldGroup: { display: 'flex', flexDirection: 'column', gap: '6px' },
   label: { fontSize: '12px', fontWeight: '950', color: '#0f172a' },
   input: { padding: '10px 14px', borderRadius: '10px', border: '2px solid #94a3b8', fontSize: '13px', fontWeight: '900', color: '#0f172a', outline: 'none', backgroundColor: '#fff', width: '100%', boxSizing: 'border-box' },
-  smallInput: { padding: '6px 10px', borderRadius: '6px', border: '1.5px solid #cbd5e1', fontSize: '12px', fontWeight: '800', color: '#0f172a', width: '100%', marginTop: '4px', backgroundColor: '#fff' },
   subTabBtn: { border: 'none', padding: '8px 16px', fontSize: '13px', fontWeight: '950', cursor: 'pointer', borderRadius: '8px', transition: 'all 0.2s' },
   infoBox: { backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px' },
   refreshBtn: { marginTop: '10px', backgroundColor: '#fff', color: '#334155', border: '1.5px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' },
-  deviceBtn: { backgroundColor: '#fff', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' },
   addAreaBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '900', fontSize: '12px', cursor: 'pointer' },
   toggleRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: '10px 14px', borderRadius: '10px', border: '1px solid #e2e8f0' },
   toggleLabel: { fontSize: '13px', fontWeight: '900', color: '#0f172a' },
   checkbox: { width: '16px', height: '16px', cursor: 'pointer', accentColor: '#059669' },
-  badgeRed: { backgroundColor: '#fee2e2', color: '#991b1b', padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '950' },
-  badgeGray: { backgroundColor: '#f1f5f9', color: '#64748b', padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '950' },
-  testPrintBtn: { width: '100%', marginTop: '14px', backgroundColor: '#f1f5f9', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '10px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer' },
   ruleCard: { backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '20px' },
   ruleLabel: { fontSize: '12px', fontWeight: '950', color: '#0f172a', display: 'block', marginBottom: '8px' },
   radioLabel: { fontSize: '12px', fontWeight: '800', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' },
   centerMsg: { padding: '40px', textAlign: 'center', fontWeight: '900', color: '#334155' },
-  placeholderTab: { textAlign: 'center', padding: '80px 20px', color: '#0f172a' }
+  placeholderTab: { textAlign: 'center', padding: '80px 20px', color: '#0f172a' },
+  serviceHoursBanner: { backgroundColor: '#e0f2fe', border: '2px solid #7dd3fc', borderRadius: '12px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  editHoursBtn: { backgroundColor: '#fff', color: '#0369a1', border: '2px solid #38bdf8', padding: '8px 16px', borderRadius: '10px', fontWeight: '950', fontSize: '12px', cursor: 'pointer' },
+  dayCard: { backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '14px', padding: '18px', transition: 'all 0.25s ease' },
+  dayCardHover: { borderColor: '#059669', backgroundColor: '#f0fdf4', transform: 'translateY(-2px)' },
+  dayCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  timeInput: { padding: '8px 14px', borderRadius: '8px', border: '2px solid #94a3b8', fontSize: '13px', fontWeight: '900', color: '#0f172a', backgroundColor: '#fff', width: '150px', outline: 'none' },
+  noticeBanner: { backgroundColor: '#fef2f2', border: '1.5px solid #fecaca', color: '#991b1b', padding: '12px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: '800' },
+  areaContainer: { backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '14px', padding: '16px' },
+  areaHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1.5px solid #e2e8f0', paddingBottom: '10px' },
+  addTableBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' },
+  tablesGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' },
+  tableCard: { backgroundColor: '#fff', border: '2px solid #cbd5e1', borderRadius: '12px', padding: '14px' },
+  iconBtn: { backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px' },
+  viewQrBtn: { backgroundColor: '#f1f5f9', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '4px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' },
+  agentCard: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '14px', padding: '16px' },
+  agentToggleBtn: { backgroundColor: '#fff', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '6px 14px', borderRadius: '8px', fontWeight: '950', fontSize: '11px', cursor: 'pointer' },
+  addTaxGroupBtn: { backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '900', fontSize: '12px', cursor: 'pointer' },
+  tableWrapper: { width: '100%', overflowX: 'auto', border: '2px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#fff' },
+  table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' },
+  tableHeaderRow: { backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' },
+  th: { padding: '12px 16px', fontWeight: '950', color: '#475569' },
+  tableRow: { borderBottom: '1px solid #f1f5f9' },
+  td: { padding: '14px 16px', fontWeight: '800', color: '#334155' },
+  actionEditBtn: { background: 'none', border: 'none', color: '#2563eb', fontWeight: '900', cursor: 'pointer' },
+  actionDeactivateBtn: { background: 'none', border: 'none', color: '#d97706', fontWeight: '900', cursor: 'pointer' },
+  actionDeleteBtn: { background: 'none', border: 'none', color: '#dc2626', fontWeight: '900', cursor: 'pointer' },
+  inlineCardForm: { backgroundColor: '#fff', border: '2px solid #0f172a', borderRadius: '12px', padding: '16px', marginBottom: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' },
+  saveInlineBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '950', fontSize: '12px', cursor: 'pointer' },
+  cancelInlineBtn: { backgroundColor: '#f1f5f9', color: '#334155', border: '1.5px solid #cbd5e1', padding: '8px 14px', borderRadius: '8px', fontWeight: '950', fontSize: '12px', cursor: 'pointer' },
+  screenCardForm: { backgroundColor: '#fff', border: '2.5px solid #cbd5e1', borderRadius: '16px', padding: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' },
+  saveFormBtn: { backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '11px 22px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer' },
+  cancelFormBtn: { backgroundColor: '#fff', color: '#334155', border: '2px solid #cbd5e1', padding: '11px 18px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer' }
 };
