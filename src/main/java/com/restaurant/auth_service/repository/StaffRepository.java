@@ -3,8 +3,11 @@ package com.restaurant.auth_service.repository;
 import com.restaurant.auth_service.model.Staff;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
 public interface StaffRepository extends JpaRepository<Staff, UUID> {
+    // 🛠️ Yeh method add karna zaroori hai taaki email ke hisab se staff fetch ho sake
+    List<Staff> findByRestaurantEmail(String restaurantEmail);
 }
