@@ -116,14 +116,31 @@ export default function Dashboard({ user, onLogout }) {
   }, [selectedOrder?.orderId]);
 
   const fetchHeaderData = () => {
-    fetch(`${API_BASE_URL}/api/v1/tables?email=${loggedInEmail}`)
+    // Fetch restaurant profile directly to parse saved areasAndTables for live header counts
+    fetch(`${API_BASE_URL}/api/v1/restaurants/email/${loggedInEmail}`)
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          const open = data.filter(t => t.status === 'Available').length;
-          const occupied = data.filter(t => t.status === 'Occupied').length;
-          const billing = data.filter(t => t.status === 'Billing' || t.status === 'Ready to Pay').length;
-          setTableStats({ open, total: data.length, occupied, billing });
+        if (data && data.areasAndTables) {
+          let parsedAreas = data.areasAndTables;
+          if (typeof parsedAreas === 'string') {
+            try { parsedAreas = JSON.parse(parsedAreas); } catch (e) {}
+          }
+
+          if (parsedAreas && parsedAreas.areas) {
+            let allTables = [];
+            parsedAreas.areas.forEach(area => {
+              if (area.tables) {
+                allTables = allTables.concat(area.tables);
+              }
+            });
+
+            if (allTables.length > 0) {
+              const open = allTables.filter(t => (t.status || 'Available') === 'Available').length;
+              const occupied = allTables.filter(t => (t.status || 'Available') === 'Occupied').length;
+              const billing = allTables.filter(t => t.status === 'Billing' || t.status === 'Ready to Pay').length;
+              setTableStats({ open, total: allTables.length, occupied, billing });
+            }
+          }
         }
       })
       .catch(err => console.log("Table stats sync note:", err));
@@ -141,7 +158,7 @@ export default function Dashboard({ user, onLogout }) {
 
   useEffect(() => {
     fetchHeaderData();
-    const interval = setInterval(fetchHeaderData, 6000);
+    const interval = setInterval(fetchHeaderData, 4000);
     return () => clearInterval(interval);
   }, [loggedInEmail]);
 
@@ -345,7 +362,6 @@ export default function Dashboard({ user, onLogout }) {
     setAlertsEnabled(permission === 'granted');
   };
 
-  // 🖨️ Synchronized Settings-Based Receipt Printer for Online Orders
   const handlePrintReceipt = () => {
     if (!selectedOrder) return;
     
