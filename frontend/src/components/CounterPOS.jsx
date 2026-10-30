@@ -238,7 +238,7 @@ export default function CounterPOS() {
       subtotal: subtotal,
       totalTax: tax,
       totalAmount: totalAmount,
-      timestamp: istTimestamp, // ✅ Enforced IST Timestamp for Reports / Past Orders sync
+      timestamp: istTimestamp,
       items: cart.map(item => ({
         itemName: item.name,
         quantity: item.qty,
@@ -269,7 +269,6 @@ export default function CounterPOS() {
       });
   };
 
-  // 🖨️ Bulletproof Print / Download Handler using Isolated Print Window & Settings Config
   const handlePrintReceipt = () => {
     if (!lastCompletedOrder) return;
     
@@ -435,7 +434,6 @@ export default function CounterPOS() {
                       const itemName = item.itemName || item.name;
                       const itemPrice = item.unitPrice || item.price;
                       const itemCat = item.category || 'Dishes';
-                      const isCardHovered = hoveredCard === itemId;
                       const isInCart = cart.some(i => i.id === itemId);
 
                       return (
@@ -668,30 +666,27 @@ export default function CounterPOS() {
                   {filteredRecentCustomers.length === 0 ? (
                     <div className="cp-recent-empty">No matching recent guests</div>
                   ) : (
-                    filteredRecentCustomers.map((c, idx) => {
-                      const isRowHovered = hoveredRow === idx;
-                      return (
-                        <div 
-                          key={idx} 
-                          onClick={() => handleSelectExistingCustomer(c)}
-                          onMouseEnter={() => setHoveredRow(idx)}
-                          onMouseLeave={() => setHoveredRow(null)}
-                          className="cp-recent-row"
-                        >
-                          <div className="cp-recent-info">
-                            <div className="cp-recent-name">{c.customerName}</div>
-                            <div className="cp-recent-phone">{c.customerPhone} {c.ageGroup ? `• ${c.ageGroup}` : ''}</div>
-                          </div>
-                          <button 
-                            onClick={(e) => handleDeleteCustomer(e, c.customerPhone)}
-                            title="Remove from recent list"
-                            className="cp-recent-del"
-                          >
-                            🗑️
-                          </button>
+                    filteredRecentCustomers.map((c, idx) => (
+                      <div 
+                        key={idx} 
+                        onClick={() => handleSelectExistingCustomer(c)}
+                        onMouseEnter={() => setHoveredRow(idx)}
+                        onMouseLeave={() => setHoveredRow(null)}
+                        className="cp-recent-row"
+                      >
+                        <div className="cp-recent-info">
+                          <div className="cp-recent-name">{c.customerName}</div>
+                          <div className="cp-recent-phone">{c.customerPhone} {c.ageGroup ? `• ${c.ageGroup}` : ''}</div>
                         </div>
-                      );
-                    })
+                        <button 
+                          onClick={(e) => handleDeleteCustomer(e, c.customerPhone)}
+                          title="Remove from recent list"
+                          className="cp-recent-del"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
