@@ -64,7 +64,7 @@ public class OrderController {
         return savedOrder;
     }
 
-    // 🔄 APPEND ITEMS TO EXISTING ACTIVE TABLE ORDER (KOT UPDATE - FIXED BigDecimal Arithmetic)
+    // 🔄 SMART APPEND & MERGE ITEMS TO EXISTING ACTIVE TABLE ORDER (KOT UPDATE)
     @PutMapping("/table/{tableName}/append")
     public ResponseEntity<Order> appendItemsToTableOrder(
             @PathVariable String tableName,
@@ -81,14 +81,26 @@ public class OrderController {
                 Order existingOrder = activeOrderOpt.get();
 
                 if (incomingOrder.getItems() != null) {
-                    for (OrderItem newItem : incomingOrder.getItems()) {
-                        newItem.setItemId(UUID.randomUUID());
-                        newItem.setOrder(existingOrder);
-                        existingOrder.getItems().add(newItem);
+                    for (OrderItem incomingItem : incomingOrder.getItems()) {
+                        // Check if this item already exists in the active table order
+                        Optional<OrderItem> existingItemOpt = existingOrder.getItems().stream()
+                            .filter(i -> i.getItemName() != null && i.getItemName().equalsIgnoreCase(incomingItem.getItemName()))
+                            .findFirst();
+
+                        if (existingItemOpt.isPresent()) {
+                            // Item already exists -> Update quantity instead of creating a duplicate row
+                            OrderItem existingItem = existingItemOpt.get();
+                            existingItem.setQuantity(existingItem.getQuantity() + incomingItem.getQuantity());
+                        } else {
+                            // Brand new item -> Add to order items list
+                            incomingItem.setItemId(UUID.randomUUID());
+                            incomingItem.setOrder(existingOrder);
+                            existingOrder.getItems().add(incomingItem);
+                        }
                     }
                 }
 
-                // ✅ FIXED: Safely calculate subtotal using BigDecimal multiply
+                // Recalculate Subtotal & Total Amount using BigDecimal safely
                 BigDecimal newSubtotal = BigDecimal.ZERO;
                 if (existingOrder.getItems() != null) {
                     for (OrderItem item : existingOrder.getItems()) {
@@ -102,15 +114,16 @@ public class OrderController {
                 existingOrder.setTotalAmount(newSubtotal);
 
                 Order updatedOrder = orderRepository.save(existingOrder);
-                System.out.println("✅ EXISTING TABLE ORDER UPDATED (KOT APPENDED) — ID: " + updatedOrder.getOrderId());
+                System.out.println("✅ SMART TABLE ORDER UPDATED (ITEMS MERGED) — ID: " + updatedOrder.getOrderId());
                 return ResponseEntity.ok(updatedOrder);
             }
 
+            // Fallback: Create new order if no active order found
             Order created = createOrder(incomingOrder);
             return ResponseEntity.ok(created);
 
         } catch (Exception e) {
-            System.err.println("❌ Error appending items to table order: " + e.getMessage());
+            System.err.println("❌ Error appending/merging items to table order: " + e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
