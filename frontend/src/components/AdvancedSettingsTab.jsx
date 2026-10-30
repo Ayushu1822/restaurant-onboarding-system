@@ -68,8 +68,23 @@ function Switch({ checked, onChange, disabled }) {
   );
 }
 
-function ToggleCard({ field, on, onToggle, children }) {
+function ToggleCard({ field, on, onToggle, value, onValueChange }) {
   const locked = !!field.required;
+  const inputStyle = {
+    width: '100%',
+    boxSizing: 'border-box',
+    marginTop: '8px',
+    padding: '7px 9px',
+    fontSize: '12px',
+    fontWeight: '700',
+    color: '#0f172a',
+    border: '1.5px solid #cbd5e1',
+    borderRadius: '8px',
+    outline: 'none',
+    fontFamily: 'inherit',
+    backgroundColor: '#fff',
+    opacity: locked || on ? 1 : 0.55
+  };
   return (
     <div
       style={{
@@ -104,7 +119,25 @@ function ToggleCard({ field, on, onToggle, children }) {
           <Switch checked={on} onChange={onToggle} />
         )}
       </div>
-      {children}
+
+      {field.valueKey && field.multiline && (
+        <textarea
+          rows={2}
+          value={value ?? ''}
+          placeholder={field.placeholder}
+          onChange={(e) => onValueChange(e.target.value)}
+          style={{ ...inputStyle, resize: 'vertical' }}
+        />
+      )}
+      {field.valueKey && !field.multiline && (
+        <input
+          type="text"
+          value={value ?? ''}
+          placeholder={field.placeholder}
+          onChange={(e) => onValueChange(e.target.value)}
+          style={inputStyle}
+        />
+      )}
     </div>
   );
 }
@@ -124,21 +157,22 @@ function Radio({ name, checked, onChange, label }) {
   );
 }
 
-/* ---------- receipt field definitions (match the screenshot) ---------- */
+/* ---------- receipt field definitions ---------- */
+/* valueKey = editable text stored in formData.receiptConfig[valueKey] */
 
 const RECEIPT_SECTIONS = [
   {
     title: 'BRANDING & BUSINESS INFORMATION',
     fields: [
-      { key: 'logo', label: 'Logo', hint: 'Prints the uploaded image', def: false },
-      { key: 'restaurantName', label: 'Restaurant Display Name', hint: 'Business: Linga Foods', def: true, input: true },
-      { key: 'branchName', label: 'Branch Name', hint: 'Linga Foods - Vengikkal', def: true },
-      { key: 'headerText', label: 'Header Text', def: false },
-      { key: 'address', label: 'Address', def: true },
-      { key: 'phone', label: 'Phone Number', def: true },
-      { key: 'email', label: 'Email', def: false },
-      { key: 'gstin', label: 'GST / Tax ID', hint: 'Mandatory for GST registered businesses', required: true },
-      { key: 'fssai', label: 'FSSAI / Regulatory Number', def: true }
+      { key: 'logo', label: 'Logo', hint: 'Paste an image URL to print it', def: false, valueKey: 'logoUrl', placeholder: 'https://.../logo.png' },
+      { key: 'restaurantName', label: 'Restaurant Display Name', def: true, valueKey: 'restaurantName', placeholder: 'Restaurant name' },
+      { key: 'branchName', label: 'Branch Name', def: true, valueKey: 'branchName', placeholder: 'Branch name' },
+      { key: 'headerText', label: 'Header Text', def: false, valueKey: 'headerText', placeholder: 'e.g. Welcome to our restaurant' },
+      { key: 'address', label: 'Address', def: true, valueKey: 'address', placeholder: 'Street, city, state, PIN', multiline: true },
+      { key: 'phone', label: 'Phone Number', def: true, valueKey: 'phone', placeholder: '10-digit number' },
+      { key: 'email', label: 'Email', def: false, valueKey: 'email', placeholder: 'name@example.com' },
+      { key: 'gstin', label: 'GST / Tax ID', hint: 'Mandatory for GST registered businesses', required: true, valueKey: 'gstin', placeholder: '15-character GSTIN' },
+      { key: 'fssai', label: 'FSSAI / Regulatory Number', def: true, valueKey: 'fssai', placeholder: '14-digit FSSAI number' }
     ]
   },
   {
@@ -170,6 +204,12 @@ const RECEIPT_SECTIONS = [
     fields: [
       { key: 'paymentMethod', label: 'Payment Method', def: true },
       { key: 'paymentReference', label: 'Payment Reference', def: false }
+    ]
+  },
+  {
+    title: 'FOOTER',
+    fields: [
+      { key: 'footerText', label: 'Footer Message', def: true, valueKey: 'footerText', placeholder: 'Thank you for visiting us!', multiline: true }
     ]
   }
 ];
@@ -427,16 +467,14 @@ export default function AdvancedSettingsTab({
                     <div style={{ fontSize: '10px', fontWeight: '950', color: '#64748b', marginBottom: '10px' }}>{section.title}</div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px' }}>
                       {section.fields.map((f) => (
-                        <ToggleCard key={f.key} field={f} on={isOn(f)} onToggle={() => handleToggleReceiptField(f.key)}>
-                          {f.input && (
-                            <input
-                              type="text"
-                              value={receiptConfig.restaurantName || ''}
-                              onChange={(e) => setReceiptConfig({ restaurantName: e.target.value })}
-                              style={{ ...styles.input, marginTop: '8px', fontSize: '12px' }}
-                            />
-                          )}
-                        </ToggleCard>
+                        <ToggleCard
+                          key={f.key}
+                          field={f}
+                          on={isOn(f)}
+                          onToggle={() => handleToggleReceiptField(f.key)}
+                          value={f.valueKey ? receiptConfig[f.valueKey] : undefined}
+                          onValueChange={f.valueKey ? (v) => setReceiptConfig({ [f.valueKey]: v }) : undefined}
+                        />
                       ))}
                     </div>
                   </div>
@@ -485,10 +523,17 @@ export default function AdvancedSettingsTab({
                     }}
                   >
                     <div style={{ textAlign: 'center', fontWeight: 'bold' }}>*** TEST PRINT ***</div>
-                    {on('restaurantName') && <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.2em' }}>{(receiptConfig.restaurantName || 'RESTAURANT').toUpperCase()}</div>}
-                    {on('branchName') && <div style={{ textAlign: 'center' }}>Linga Foods - Vengikkal</div>}
-                    {on('address') && <div style={{ textAlign: 'center' }}>{receiptConfig.address || 'Address line, City, State'}</div>}
+                    {on('logo') && receiptConfig.logoUrl && (
+                      <div style={{ textAlign: 'center', margin: '4px 0' }}>
+                        <img src={receiptConfig.logoUrl} alt="logo" style={{ maxWidth: '60%', maxHeight: '50px', filter: 'grayscale(1)' }} />
+                      </div>
+                    )}
+                    {on('headerText') && receiptConfig.headerText && <div style={{ textAlign: 'center' }}>{receiptConfig.headerText}</div>}
+                    {on('restaurantName') && <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.2em' }}>{(receiptConfig.restaurantName || 'RESTAURANT NAME').toUpperCase()}</div>}
+                    {on('branchName') && <div style={{ textAlign: 'center' }}>{receiptConfig.branchName || 'Branch name'}</div>}
+                    {on('address') && <div style={{ textAlign: 'center', whiteSpace: 'pre-line' }}>{receiptConfig.address || 'Address line, City, State'}</div>}
                     {on('phone') && <div style={{ textAlign: 'center' }}>Ph: {receiptConfig.phone || '0000000000'}</div>}
+                    {on('email') && <div style={{ textAlign: 'center' }}>{receiptConfig.email || 'name@example.com'}</div>}
                     {on('gstin') && <div style={{ textAlign: 'center' }}>GSTIN: {receiptConfig.gstin || '00AAAAA0000A1Z5'}</div>}
                     {on('fssai') && <div style={{ textAlign: 'center' }}>FSSAI: {receiptConfig.fssai || '00000000000000'}</div>}
                     {dash}
@@ -533,7 +578,11 @@ export default function AdvancedSettingsTab({
                     {dash}
                     {on('paymentMethod') && <div>Paid by Card</div>}
                     {on('paymentReference') && <div>Ref: TXN123456</div>}
-                    <div style={{ textAlign: 'center', marginTop: '6px' }}>Thank you for visiting us!</div>
+                    {on('footerText') && (
+                      <div style={{ textAlign: 'center', marginTop: '6px', whiteSpace: 'pre-line' }}>
+                        {receiptConfig.footerText || 'Thank you for visiting us!'}
+                      </div>
+                    )}
                     <div style={{ textAlign: 'center', fontWeight: 'bold' }}>*** NOT A VALID BILL / INVOICE ***</div>
                   </div>
                 </div>
