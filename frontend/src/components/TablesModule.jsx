@@ -1,3 +1,4 @@
+// FILE: src/components/TablesModule.jsx
 import React, { useState, useEffect } from 'react';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
@@ -90,10 +91,26 @@ export default function TablesModule() {
       setLoading(false);
       return;
     }
-    fetchProfile(userEmail);
-    fetchCaptains(userEmail);
-    fetchLiveMenu(userEmail);
+    loadAllData(userEmail);
+
+    // Real-time synchronization with SettingsModule updates
+    const handleSettingsUpdate = () => {
+      loadAllData(userEmail);
+    };
+    window.addEventListener('settingsUpdated', handleSettingsUpdate);
+    window.addEventListener('storage', handleSettingsUpdate);
+
+    return () => {
+      window.removeEventListener('settingsUpdated', handleSettingsUpdate);
+      window.removeEventListener('storage', handleSettingsUpdate);
+    };
   }, []);
+
+  const loadAllData = (email) => {
+    fetchProfile(email);
+    fetchCaptains(email);
+    fetchLiveMenu(email);
+  };
 
   const fetchProfile = async (email) => {
     setLoading(true);
@@ -251,7 +268,17 @@ export default function TablesModule() {
 
       if (foundTable) {
         setActiveOrderTable(foundTable);
-        setCartItems([]);
+        // Load active cart session if table is already occupied
+        const savedCart = localStorage.getItem(`table_cart_${foundTable.id}`);
+        if (savedCart) {
+          try {
+            setCartItems(JSON.parse(savedCart));
+          } catch (e) {
+            setCartItems([]);
+          }
+        } else {
+          setCartItems([]);
+        }
         setOrderNote('');
         setOrderType('Dine-In');
       }
@@ -431,6 +458,9 @@ export default function TablesModule() {
         timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
       };
 
+      // Clear stored cart upon order completion
+      localStorage.removeItem(`table_cart_${activeOrderTable.id}`);
+
       setCompletedOrderReceipt(receiptData);
       setShowReceiptModal(true);
       setActiveOrderTable(null);
@@ -441,6 +471,13 @@ export default function TablesModule() {
       console.error(err);
       alert('Error sending order to kitchen.');
     });
+  };
+
+  const handleSaveActiveCart = () => {
+    if (activeOrderTable) {
+      localStorage.setItem(`table_cart_${activeOrderTable.id}`, JSON.stringify(cartItems));
+      showMsg('✅ Order items saved to table session!', 'success');
+    }
   };
 
   // 🖨️ Bulletproof Print / Download Handler using Isolated Print Window & Settings Config
@@ -538,7 +575,10 @@ export default function TablesModule() {
             <h3 className="tb-pos-title">Table {activeOrderTable.name} ({activeOrderTable.areaName}) POS Terminal</h3>
             <span className="tb-pos-captain">🧑‍✈️ {activeOrderTable.captain || 'Unassigned'}</span>
           </div>
-          <button onClick={() => setActiveOrderTable(null)} className="tb-exit-btn">✕ Exit POS</button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={handleSaveActiveCart} className="tb-exit-btn" style={{ background: '#059669', borderColor: '#10b981' }}>💾 Save Cart</button>
+            <button onClick={() => setActiveOrderTable(null)} className="tb-exit-btn">✕ Exit POS</button>
+          </div>
         </div>
 
         <div className="tb-pos-body">
@@ -614,7 +654,7 @@ export default function TablesModule() {
             <div className="tb-cart-list">
               {cartItems.length === 0 ? (
                 <div className="tb-cart-empty">
-                  Cart is empty. Click items from menu.
+                  Cart is empty. Click items from menu to add items.
                 </div>
               ) : (
                 cartItems.map((item, idx) => {
@@ -873,7 +913,7 @@ export default function TablesModule() {
                 onClick={() => handleUpdateTableStatusAndCaptain(selectedTable.areaId, selectedTable.id, 'Occupied', selectedTable.captain, true)} 
                 className="tb-action-open"
               >
-                🚀 Mark Occupied & Open POS Terminal
+                🚀 Open POS Terminal (Add / Edit Items)
               </button>
             </div>
 

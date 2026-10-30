@@ -522,7 +522,6 @@ export default function AdvancedSettingsTab({
                       textAlign: 'left'
                     }}
                   >
-                    <div style={{ textAlign: 'center', fontWeight: 'bold' }}>*** TEST PRINT ***</div>
                     {on('logo') && receiptConfig.logoUrl && (
                       <div style={{ textAlign: 'center', margin: '4px 0' }}>
                         <img src={receiptConfig.logoUrl} alt="logo" style={{ maxWidth: '60%', maxHeight: '50px', filter: 'grayscale(1)' }} />
@@ -536,8 +535,6 @@ export default function AdvancedSettingsTab({
                     {on('email') && <div style={{ textAlign: 'center' }}>{receiptConfig.email || 'name@example.com'}</div>}
                     {on('gstin') && <div style={{ textAlign: 'center' }}>GSTIN: {receiptConfig.gstin || '00AAAAA0000A1Z5'}</div>}
                     {on('fssai') && <div style={{ textAlign: 'center' }}>FSSAI: {receiptConfig.fssai || '00000000000000'}</div>}
-                    {dash}
-                    <div style={{ textAlign: 'center', fontWeight: 'bold' }}>TAX INVOICE</div>
                     {dash}
                     {on('tokenNumber') && (
                       <div style={{ textAlign: 'center' }}>
@@ -583,7 +580,6 @@ export default function AdvancedSettingsTab({
                         {receiptConfig.footerText || 'Thank you for visiting us!'}
                       </div>
                     )}
-                    <div style={{ textAlign: 'center', fontWeight: 'bold' }}>*** NOT A VALID BILL / INVOICE ***</div>
                   </div>
                 </div>
 
