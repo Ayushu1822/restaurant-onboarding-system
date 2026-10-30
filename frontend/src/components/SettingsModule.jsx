@@ -1,11 +1,12 @@
 // FILE: src/components/SettingsModule.jsx
 import React, { useState, useEffect } from 'react';
+import AdvancedSettingsTab from './AdvancedSettingsTab';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
 export default function SettingsModule() {
   const [activeTab, setActiveTab] = useState('business');
-  const [receiptSubTab, setReceiptSubTab] = useState('printers'); // 'printers' | 'receipt' | 'rules'
+  const [receiptSubTab, setReceiptSubTab] = useState('printers');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
@@ -13,61 +14,30 @@ export default function SettingsModule() {
   const [hoveredCard, setHoveredCard] = useState(null);
 
   const [fullProfile, setFullProfile] = useState({});
-
   const [usersList, setUsersList] = useState([]);
   const [editingUserId, setEditingUserId] = useState(null);
   const [newUserForm, setNewUserForm] = useState({ name: '', userId: '', role: 'Captain', phone: '' });
 
   const [showAddAreaBox, setShowAddAreaBox] = useState(false);
   const [newAreaNameInput, setNewAreaNameInput] = useState('');
-
   const [activeAreaForTableBox, setActiveAreaForTableBox] = useState(null);
   const [newTableForm, setNewTableForm] = useState({ name: '', pax: 4 });
 
   const [showAddAgentBox, setShowAddAgentBox] = useState(false);
   const [newAgentForm, setNewAgentForm] = useState({ name: '', phone: '', vehicleNo: '' });
 
-  const [taxFormMode, setTaxFormMode] = useState('list'); // 'list' | 'add' | 'edit'
+  const [taxFormMode, setTaxFormMode] = useState('list');
   const [editingTaxId, setEditingTaxId] = useState(null);
   const [taxFormData, setTaxFormData] = useState({
-    name: '',
-    rate: '',
-    cgst: '',
-    sgst: '',
-    hsnCode: '',
-    itcEligible: false,
-    active: true
+    name: '', rate: '', cgst: '', sgst: '', hsnCode: '', itcEligible: false, active: true
   });
 
   const [formData, setFormData] = useState({
-    restaurantId: '',
-    userId: '',
-    email: '', 
-    businessName: '',
-    ownerName: '',
-    phoneNumber: '',
-    whatsappNumber: '',
-    website: '',
-    gstnNumber: '',
-    businessRegistrationNumber: '',
-    businessLicenseNumber: '',
-    addressLine1: '',
-    addressLine2: '',
-    area: '',
-    city: '',
-    state: '',
-    pinCode: '',
-    latitude: '',
-    longitude: '',
-    onlineRestaurantName: '',
-    branchDisplayName: '',
-    businessShortCode: '',
-    branchShortCode: '',
-    whatsappBannerUrl: '',
-    defaultItemImageUrl: '',
-    firstName: '',
-    lastName: '',
-    preferredLanguage: 'Telugu',
+    restaurantId: '', userId: '', email: '', businessName: '', ownerName: '', phoneNumber: '', whatsappNumber: '',
+    website: '', gstnNumber: '', businessRegistrationNumber: '', businessLicenseNumber: '', addressLine1: '',
+    addressLine2: '', area: '', city: '', state: '', pinCode: '', latitude: '', longitude: '',
+    onlineRestaurantName: '', branchDisplayName: '', businessShortCode: '', branchShortCode: '',
+    whatsappBannerUrl: '', defaultItemImageUrl: '', firstName: '', lastName: '', preferredLanguage: 'Telugu',
     serviceHours: {
       Monday: { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' },
       Tuesday: { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' },
@@ -81,8 +51,7 @@ export default function SettingsModule() {
       autoOpenQrScan: true,
       areas: [
         {
-          id: 'main-area',
-          name: 'Main',
+          id: 'main-area', name: 'Main',
           tables: [
             { id: 't1', name: 'T1', pax: 2, qrEnabled: true, status: 'Available', captain: 'Unassigned' },
             { id: 't2', name: 'T2', pax: 4, qrEnabled: true, status: 'Available', captain: 'Unassigned' },
@@ -94,14 +63,8 @@ export default function SettingsModule() {
       ]
     },
     deliveryConfig: {
-      serviceRadius: '5',
-      contactName: '',
-      contactNumber: '',
-      deliveryPartner: 'WhatsCom',
-      deliveryFeeChargedTo: 'Customer',
-      agents: [
-        { id: 'agent-1', name: 'Ramesh Kumar', phone: '+91 98765 43210', vehicleNo: 'TS 09 AB 1234', status: 'Available' }
-      ]
+      serviceRadius: '5', contactName: '', contactNumber: '', deliveryPartner: 'WhatsCom', deliveryFeeChargedTo: 'Customer',
+      agents: [{ id: 'agent-1', name: 'Ramesh Kumar', phone: '+91 98765 43210', vehicleNo: 'TS 09 AB 1234', status: 'Available' }]
     },
     billingConfig: {
       defaultTaxGroup: 'Standard Restaurant (5%)',
@@ -113,57 +76,22 @@ export default function SettingsModule() {
       ]
     },
     receiptConfig: {
-      density: 'Compact',
-      restaurantName: 'Linga Foods',
-      headerText: 'Linga Foods - Wonghikal',
+      density: 'Compact', restaurantName: 'Linga Foods', headerText: 'Linga Foods - Wonghikal',
       address: 'LINGA FOODS, No. 1540, Vellore Main Road, Wonghikal, Tiruvannamalai, Tamil Nadu 606604',
-      phone: '91234400635',
-      gstin: '37AAFP4128L1ZI',
-      fssai: 'FSSAI: 22426260001195',
-      email: 'support@lingafoods.com',
-      footerNote: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***',
-      paperSize: '80mm',
+      phone: '91234400635', gstin: '37AAFP4128L1ZI', fssai: 'FSSAI: 22426260001195', email: 'support@lingafoods.com',
+      footerNote: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***', paperSize: '80mm',
       toggles: {
-        logo: false,
-        restaurantName: true,
-        branchName: true,
-        address: true,
-        phone: true,
-        gstin: true,
-        email: false,
-        fssai: true,
-        headerText: true,
-        invoiceNo: true,
-        dateAndTime: true,
-        orderId: true,
-        tokenNumber: true,
-        orderType: true,
-        customerName: false,
-        customerMobile: false,
-        itemNameQtyAmt: true,
-        itemRate: true,
-        variantsAddons: true,
-        itemNotes: true,
-        discount: true,
-        totalTax: true,
-        taxBreakdown: true,
-        paymentMethod: true,
-        paymentReference: false
+        logo: false, restaurantName: true, branchName: true, address: true, phone: true, gstin: true, email: false,
+        fssai: true, headerText: true, invoiceNo: true, dateAndTime: true, orderId: true, tokenNumber: true, orderType: true,
+        customerName: false, customerMobile: false, itemNameQtyAmt: true, itemRate: true, variantsAddons: true, itemNotes: true,
+        discount: true, totalTax: true, taxBreakdown: true, paymentMethod: true, paymentReference: false
       }
     },
     printRules: {
-      counterReceiptTrigger: 'auto',
-      counterKotTrigger: 'auto',
-      tableReceiptTrigger: 'manual',
-      tableKotTrigger: 'auto',
-      takeawayReceiptTrigger: 'auto',
-      takeawayKotTrigger: 'auto'
+      counterReceiptTrigger: 'auto', counterKotTrigger: 'auto', tableReceiptTrigger: 'manual',
+      tableKotTrigger: 'auto', takeawayReceiptTrigger: 'auto', takeawayKotTrigger: 'auto'
     },
-    printerInfo: {
-      printerName: '',
-      printReceiptDoc: true,
-      printKotDoc: false
-    }
+    printerInfo: { printerName: '', printReceiptDoc: true, printKotDoc: false }
   });
 
   useEffect(() => {
@@ -184,34 +112,25 @@ export default function SettingsModule() {
       const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/email/${email}`);
       if (!res.ok) throw new Error('Failed to fetch profile from database');
       const data = await res.json();
-      
       setFullProfile(data);
 
       let parsedHours = data.serviceHours;
       if (typeof parsedHours === 'string') { try { parsedHours = JSON.parse(parsedHours); } catch (e) {} }
-
       let parsedAreas = data.areasAndTables;
       if (typeof parsedAreas === 'string') { try { parsedAreas = JSON.parse(parsedAreas); } catch (e) {} }
-
       let parsedDelivery = data.deliveryConfig;
       if (typeof parsedDelivery === 'string') { try { parsedDelivery = JSON.parse(parsedDelivery); } catch (e) {} }
-
       let parsedBilling = data.billingConfig;
       if (typeof parsedBilling === 'string') { try { parsedBilling = JSON.parse(parsedBilling); } catch (e) {} }
-
       let parsedReceipt = data.receiptConfig;
       if (typeof parsedReceipt === 'string') { try { parsedReceipt = JSON.parse(parsedReceipt); } catch (e) {} }
-
       let parsedRules = data.printRules;
       if (typeof parsedRules === 'string') { try { parsedRules = JSON.parse(parsedRules); } catch (e) {} }
-
       let parsedPrinter = data.printerInfo;
       if (typeof parsedPrinter === 'string') { try { parsedPrinter = JSON.parse(parsedPrinter); } catch (e) {} }
 
       setFormData(prev => ({ 
-        ...prev, 
-        ...data, 
-        email,
+        ...prev, ...data, email,
         serviceHours: parsedHours || prev.serviceHours,
         areasAndTables: parsedAreas || prev.areasAndTables,
         deliveryConfig: parsedDelivery || prev.deliveryConfig,
@@ -231,68 +150,43 @@ export default function SettingsModule() {
   const fetchUsers = (email) => {
     fetch(`${API_BASE_URL}/api/v1/staff?email=${email}`)
       .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) setUsersList(data);
-      })
+      .then(data => { if (Array.isArray(data)) setUsersList(data); })
       .catch(err => console.log("Users fetch error:", err));
   };
 
   const handleSaveUser = (e) => {
     e.preventDefault();
     if (!newUserForm.name.trim()) return alert('Enter user name');
-
     const userEmail = formData.email || localStorage.getItem('userEmail') || '';
     
     if (editingUserId) {
       const targetUser = usersList.find(u => (u.id || u._id) === editingUserId);
       const payload = {
-        name: newUserForm.name.trim(),
-        userIdCode: newUserForm.userId.trim() || 'U01',
-        role: newUserForm.role.toUpperCase(),
-        phone: newUserForm.phone.trim(),
-        status: targetUser?.status || 'Active',
-        restaurantEmail: userEmail
+        name: newUserForm.name.trim(), userIdCode: newUserForm.userId.trim() || 'U01',
+        role: newUserForm.role.toUpperCase(), phone: newUserForm.phone.trim(),
+        status: targetUser?.status || 'Active', restaurantEmail: userEmail
       };
-
       fetch(`${API_BASE_URL}/api/v1/staff/${editingUserId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      .then(res => {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      }).then(res => {
         if (res.ok) {
           setEditingUserId(null);
           setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' });
           fetchUsers(userEmail);
           showMsg('✅ User successfully updated!', 'success');
-        } else {
-          alert('Failed to update user.');
-        }
-      })
-      .catch(err => alert('Error: ' + err.message));
+        } else { alert('Failed to update user.'); }
+      }).catch(err => alert('Error: ' + err.message));
     } else {
       fetch(`${API_BASE_URL}/api/v1/staff`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          name: newUserForm.name.trim(), 
-          userIdCode: newUserForm.userId.trim() || 'U01',
-          role: newUserForm.role.toUpperCase(), 
-          phone: newUserForm.phone.trim(),
-          status: 'Active',
-          restaurantEmail: userEmail 
-        })
-      })
-      .then(res => {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newUserForm.name.trim(), userIdCode: newUserForm.userId.trim() || 'U01', role: newUserForm.role.toUpperCase(), phone: newUserForm.phone.trim(), status: 'Active', restaurantEmail: userEmail })
+      }).then(res => {
         if (res.ok) {
           setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' });
           fetchUsers(userEmail);
           showMsg('✅ User successfully created & synced!', 'success');
-        } else {
-          alert('Failed to add user.');
-        }
-      })
-      .catch(err => alert('Error: ' + err.message));
+        } else { alert('Failed to add user.'); }
+      }).catch(err => alert('Error: ' + err.message));
     }
   };
 
@@ -300,45 +194,26 @@ export default function SettingsModule() {
     const userEmail = formData.email || localStorage.getItem('userEmail') || '';
     const target = usersList.find(u => (u.id || u._id) === userId);
     if (!target) return;
-
     const currentStatus = target.status || 'Active';
     const nextStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
-
     const payload = {
-      name: target.name,
-      role: target.role || 'CAPTAIN',
-      phone: target.phone || '',
-      userIdCode: target.userIdCode || 'U01',
-      status: nextStatus,
-      restaurantEmail: userEmail
+      name: target.name, role: target.role || 'CAPTAIN', phone: target.phone || '',
+      userIdCode: target.userIdCode || 'U01', status: nextStatus, restaurantEmail: userEmail
     };
-
     fetch(`${API_BASE_URL}/api/v1/staff/${userId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-    .then(res => {
-      if (res.ok) {
-        fetchUsers(userEmail);
-        showMsg(`✅ User status updated to ${nextStatus}`, 'success');
-      } else {
-        alert('Failed to update user status.');
-      }
-    })
-    .catch(err => alert('Error: ' + err.message));
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    }).then(res => {
+      if (res.ok) { fetchUsers(userEmail); showMsg(`✅ User status updated to ${nextStatus}`, 'success'); }
+      else { alert('Failed to update user status.'); }
+    }).catch(err => alert('Error: ' + err.message));
   };
 
   const handleDeleteUser = (userId) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
     const userEmail = formData.email || localStorage.getItem('userEmail') || '';
-    fetch(`${API_BASE_URL}/api/v1/staff/${userId}`, {
-      method: 'DELETE'
-    })
-    .then(res => {
-      if (res.ok) fetchUsers(userEmail);
-    })
-    .catch(err => alert('Error: ' + err.message));
+    fetch(`${API_BASE_URL}/api/v1/staff/${userId}`, { method: 'DELETE' })
+      .then(res => { if (res.ok) fetchUsers(userEmail); })
+      .catch(err => alert('Error: ' + err.message));
   };
 
   const handleChange = (e) => {
@@ -347,17 +222,11 @@ export default function SettingsModule() {
   };
 
   const handleDeliveryChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      deliveryConfig: { ...prev.deliveryConfig, [field]: value }
-    }));
+    setFormData(prev => ({ ...prev, deliveryConfig: { ...prev.deliveryConfig, [field]: value } }));
   };
 
   const handleBillingDefaultChange = (val) => {
-    setFormData(prev => ({
-      ...prev,
-      billingConfig: { ...prev.billingConfig, defaultTaxGroup: val }
-    }));
+    setFormData(prev => ({ ...prev, billingConfig: { ...prev.billingConfig, defaultTaxGroup: val } }));
   };
 
   const handleToggleReceiptField = (key) => {
@@ -365,10 +234,7 @@ export default function SettingsModule() {
       ...prev,
       receiptConfig: {
         ...prev.receiptConfig,
-        toggles: {
-          ...prev.receiptConfig.toggles,
-          [key]: !prev.receiptConfig.toggles[key]
-        }
+        toggles: { ...prev.receiptConfig.toggles, [key]: !prev.receiptConfig.toggles[key] }
       }
     }));
   };
@@ -376,19 +242,9 @@ export default function SettingsModule() {
   const handleSaveNewArea = (e) => {
     e.preventDefault();
     if (!newAreaNameInput.trim()) return;
-
-    const newArea = {
-      id: 'area-' + Date.now(),
-      name: newAreaNameInput.trim(),
-      tables: []
-    };
-
+    const newArea = { id: 'area-' + Date.now(), name: newAreaNameInput.trim(), tables: [] };
     setFormData(prev => ({
-      ...prev,
-      areasAndTables: {
-        ...prev.areasAndTables,
-        areas: [...(prev.areasAndTables?.areas || []), newArea]
-      }
+      ...prev, areasAndTables: { ...prev.areasAndTables, areas: [...(prev.areasAndTables?.areas || []), newArea] }
     }));
     setNewAreaNameInput('');
     setShowAddAreaBox(false);
@@ -397,26 +253,14 @@ export default function SettingsModule() {
   const handleSaveNewTable = (e, areaId) => {
     e.preventDefault();
     if (!newTableForm.name.trim()) return;
-
     const newTable = {
-      id: 'table-' + Date.now(),
-      name: newTableForm.name.trim().toUpperCase(),
-      pax: parseInt(newTableForm.pax) || 4,
-      qrEnabled: true,
-      status: 'Available',
-      captain: 'Unassigned'
+      id: 'table-' + Date.now(), name: newTableForm.name.trim().toUpperCase(),
+      pax: parseInt(newTableForm.pax) || 4, qrEnabled: true, status: 'Available', captain: 'Unassigned'
     };
-
     setFormData(prev => ({
-      ...prev,
-      areasAndTables: {
+      ...prev, areasAndTables: {
         ...prev.areasAndTables,
-        areas: (prev.areasAndTables?.areas || []).map(area => {
-          if (area.id === areaId) {
-            return { ...area, tables: [...(area.tables || []), newTable] };
-          }
-          return area;
-        })
+        areas: (prev.areasAndTables?.areas || []).map(area => area.id === areaId ? { ...area, tables: [...(area.tables || []), newTable] } : area)
       }
     }));
     setNewTableForm({ name: '', pax: 4 });
@@ -425,18 +269,11 @@ export default function SettingsModule() {
 
   const handleToggleTableQr = (areaId, tableId) => {
     setFormData(prev => ({
-      ...prev,
-      areasAndTables: {
+      ...prev, areasAndTables: {
         ...prev.areasAndTables,
-        areas: (prev.areasAndTables?.areas || []).map(area => {
-          if (area.id === areaId) {
-            return {
-              ...area,
-              tables: (area.tables || []).map(t => t.id === tableId ? { ...t, qrEnabled: !t.qrEnabled } : t)
-            };
-          }
-          return area;
-        })
+        areas: (prev.areasAndTables?.areas || []).map(area => area.id === areaId ? {
+          ...area, tables: (area.tables || []).map(t => t.id === tableId ? { ...t, qrEnabled: !t.qrEnabled } : t)
+        } : area)
       }
     }));
   };
@@ -444,18 +281,11 @@ export default function SettingsModule() {
   const handleDeleteTable = (areaId, tableId) => {
     if (!window.confirm('Are you sure you want to delete this table?')) return;
     setFormData(prev => ({
-      ...prev,
-      areasAndTables: {
+      ...prev, areasAndTables: {
         ...prev.areasAndTables,
-        areas: (prev.areasAndTables?.areas || []).map(area => {
-          if (area.id === areaId) {
-            return {
-              ...area,
-              tables: (area.tables || []).filter(t => t.id !== tableId)
-            };
-          }
-          return area;
-        })
+        areas: (prev.areasAndTables?.areas || []).map(area => area.id === areaId ? {
+          ...area, tables: (area.tables || []).filter(t => t.id !== tableId)
+        } : area)
       }
     }));
   };
@@ -463,21 +293,12 @@ export default function SettingsModule() {
   const handleSaveNewAgent = (e) => {
     e.preventDefault();
     if (!newAgentForm.name.trim()) return;
-
     const newAgent = {
-      id: 'agent-' + Date.now(),
-      name: newAgentForm.name.trim(),
-      phone: newAgentForm.phone.trim() || '',
-      vehicleNo: newAgentForm.vehicleNo.trim() || '',
-      status: 'Available'
+      id: 'agent-' + Date.now(), name: newAgentForm.name.trim(),
+      phone: newAgentForm.phone.trim() || '', vehicleNo: newAgentForm.vehicleNo.trim() || '', status: 'Available'
     };
-
     setFormData(prev => ({
-      ...prev,
-      deliveryConfig: {
-        ...prev.deliveryConfig,
-        agents: [...(prev.deliveryConfig?.agents || []), newAgent]
-      }
+      ...prev, deliveryConfig: { ...prev.deliveryConfig, agents: [...(prev.deliveryConfig?.agents || []), newAgent] }
     }));
     setNewAgentForm({ name: '', phone: '', vehicleNo: '' });
     setShowAddAgentBox(false);
@@ -485,16 +306,9 @@ export default function SettingsModule() {
 
   const handleToggleAgentStatus = (agentId) => {
     setFormData(prev => ({
-      ...prev,
-      deliveryConfig: {
+      ...prev, deliveryConfig: {
         ...prev.deliveryConfig,
-        agents: (prev.deliveryConfig?.agents || []).map(ag => {
-          if (ag.id === agentId) {
-            const nextStatus = ag.status === 'Available' ? 'Unavailable' : 'Available';
-            return { ...ag, status: nextStatus };
-          }
-          return ag;
-        })
+        agents: (prev.deliveryConfig?.agents || []).map(ag => ag.id === agentId ? { ...ag, status: ag.status === 'Available' ? 'Unavailable' : 'Available' } : ag)
       }
     }));
   };
@@ -502,10 +316,8 @@ export default function SettingsModule() {
   const handleDeleteAgent = (agentId) => {
     if (!window.confirm('Are you sure you want to delete this delivery agent?')) return;
     setFormData(prev => ({
-      ...prev,
-      deliveryConfig: {
-        ...prev.deliveryConfig,
-        agents: (prev.deliveryConfig?.agents || []).filter(ag => ag.id !== agentId)
+      ...prev, deliveryConfig: {
+        ...prev.deliveryConfig, agents: (prev.deliveryConfig?.agents || []).filter(ag => ag.id !== agentId)
       }
     }));
   };
@@ -535,32 +347,23 @@ export default function SettingsModule() {
     if (!taxFormData.name.trim()) return alert('Enter Group Name');
     const rateNum = parseFloat(taxFormData.rate) || 0;
     const halfRate = rateNum / 2;
-
     const groupObj = {
-      id: editingTaxId || ('tg-' + Date.now()),
-      name: taxFormData.name.trim(),
-      rate: rateNum,
-      cgst: parseFloat(taxFormData.cgst) || halfRate,
-      sgst: parseFloat(taxFormData.sgst) || halfRate,
-      hsnCode: taxFormData.hsnCode.trim() || '996331',
-      itcEligible: taxFormData.itcEligible,
-      status: taxFormData.active ? 'Active' : 'Inactive'
+      id: editingTaxId || ('tg-' + Date.now()), name: taxFormData.name.trim(), rate: rateNum,
+      cgst: parseFloat(taxFormData.cgst) || halfRate, sgst: parseFloat(taxFormData.sgst) || halfRate,
+      hsnCode: taxFormData.hsnCode.trim() || '996331', itcEligible: taxFormData.itcEligible, status: taxFormData.active ? 'Active' : 'Inactive'
     };
-
     setFormData(prev => {
       const existing = prev.billingConfig?.taxGroups || [];
-      let updatedGroups = editingTaxId ? existing.map(tg => tg.id === editingTaxId ? groupObj : tg) : [...existing, groupObj];
+      const updatedGroups = editingTaxId ? existing.map(tg => tg.id === editingTaxId ? groupObj : tg) : [...existing, groupObj];
       return { ...prev, billingConfig: { ...prev.billingConfig, taxGroups: updatedGroups } };
     });
-
     setTaxFormMode('list');
     setEditingTaxId(null);
   };
 
   const handleToggleTaxGroupStatus = (tgId) => {
     setFormData(prev => ({
-      ...prev,
-      billingConfig: {
+      ...prev, billingConfig: {
         ...prev.billingConfig,
         taxGroups: (prev.billingConfig?.taxGroups || []).map(tg => tg.id === tgId ? { ...tg, status: tg.status === 'Active' ? 'Inactive' : 'Active' } : tg)
       }
@@ -570,26 +373,20 @@ export default function SettingsModule() {
   const handleDeleteTaxGroup = (tgId) => {
     if (!window.confirm('Are you sure you want to delete this Tax Group?')) return;
     setFormData(prev => ({
-      ...prev,
-      billingConfig: {
-        ...prev.billingConfig,
-        taxGroups: (prev.billingConfig?.taxGroups || []).filter(tg => tg.id !== tgId)
+      ...prev, billingConfig: {
+        ...prev.billingConfig, taxGroups: (prev.billingConfig?.taxGroups || []).filter(tg => tg.id !== tgId)
       }
     }));
   };
 
   const handleHourChange = (day, field, value) => {
     setFormData(prev => ({
-      ...prev,
-      serviceHours: { ...prev.serviceHours, [day]: { ...prev.serviceHours?.[day], [field]: value } }
+      ...prev, serviceHours: { ...prev.serviceHours, [day]: { ...prev.serviceHours?.[day], [field]: value } }
     }));
   };
 
   const handleAutoOpenToggle = (val) => {
-    setFormData(prev => ({
-      ...prev,
-      areasAndTables: { ...prev.areasAndTables, autoOpenQrScan: val }
-    }));
+    setFormData(prev => ({ ...prev, areasAndTables: { ...prev.areasAndTables, autoOpenQrScan: val } }));
   };
 
   const calculateBreakDuration = (end1, start2) => {
@@ -601,34 +398,23 @@ export default function SettingsModule() {
       const hours = Math.floor(diff / 60);
       const mins = diff % 60;
       return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-    } catch (e) {
-      return '3h';
-    }
+    } catch (e) { return '3h'; }
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
     setMessage({ text: '', type: '' });
-
     try {
       const latestRes = await fetch(`${API_BASE_URL}/api/v1/restaurants/email/${formData.email}`);
       const latestData = latestRes.ok ? await latestRes.json() : fullProfile;
 
       let existingAreasMap = {};
       const currentAreasAndTables = formData.areasAndTables || { autoOpenQrScan: true, areas: [] };
-
       try {
-        const parsedLatestAreas = typeof latestData.areasAndTables === 'string' 
-          ? JSON.parse(latestData.areasAndTables) 
-          : latestData.areasAndTables;
-
-        if (parsedLatestAreas && parsedLatestAreas.areas) {
-          parsedLatestAreas.areas.forEach(a => {
-            (a.tables || []).forEach(t => {
-              existingAreasMap[t.id] = { status: t.status, captain: t.captain, qrEnabled: t.qrEnabled };
-            });
-          });
+        const parsedLatestAreas = typeof latestData.areasAndTables === 'string' ? JSON.parse(latestData.areasAndTables) : latestData.areasAndTables;
+        if (parsedLatestAreas?.areas) {
+          parsedLatestAreas.areas.forEach(a => (a.tables || []).forEach(t => { existingAreasMap[t.id] = { status: t.status, captain: t.captain, qrEnabled: t.qrEnabled }; }));
         }
       } catch (err) {}
 
@@ -647,8 +433,7 @@ export default function SettingsModule() {
       };
 
       const payload = {
-        ...latestData,
-        ...formData,
+        ...latestData, ...formData,
         serviceHours: JSON.stringify(formData.serviceHours || {}),
         areasAndTables: JSON.stringify(mergedAreas),
         deliveryConfig: JSON.stringify(formData.deliveryConfig || {}),
@@ -659,15 +444,9 @@ export default function SettingsModule() {
       };
 
       const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/${formData.restaurantId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || 'Failed to update settings in database');
-      }
+      if (!res.ok) throw new Error(await res.text() || 'Failed to update settings in database');
 
       const updated = await res.json();
       setFullProfile(updated);
@@ -675,9 +454,7 @@ export default function SettingsModule() {
     } catch (err) {
       console.error('Error saving profile:', err);
       showMsg(`❌ Error: ${err.message}`, 'error');
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   const showMsg = (text, type) => {
@@ -699,15 +476,12 @@ export default function SettingsModule() {
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-  if (loading) {
-    return <div style={styles.centerMsg}>Loading settings from database...</div>;
-  }
+  if (loading) return <div style={styles.centerMsg}>Loading settings from database...</div>;
 
   const toggles = formData.receiptConfig?.toggles || {};
 
   return (
     <div style={styles.container}>
-      {/* Top Header */}
       <div style={styles.header}>
         <div>
           <h2 style={styles.title}>Settings</h2>
@@ -727,113 +501,49 @@ export default function SettingsModule() {
         </div>
       )}
 
-      {/* Main Layout */}
       <div style={styles.layout}>
-        {/* Sidebar Navigation */}
         <div style={styles.sidebar}>
           {sidebarItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              style={{
-                ...styles.sidebarBtn,
-                ...(activeTab === item.id ? styles.activeSidebarBtn : {})
-              }}
-            >
+            <button key={item.id} onClick={() => setActiveTab(item.id)} style={{...styles.sidebarBtn, ...(activeTab === item.id ? styles.activeSidebarBtn : {})}}>
               <span>{item.icon}</span> {item.label}
             </button>
           ))}
         </div>
 
-        {/* Content Panel */}
         <div style={styles.contentPanel}>
           <form onSubmit={handleSave} style={styles.formContainer}>
-
+            
             {/* TAB 1: BUSINESS INFORMATION */}
             {activeTab === 'business' && (
               <div style={styles.sectionGroup}>
                 <h3 style={styles.sectionTitle}>🏢 Business Information & Identity</h3>
                 <div style={styles.grid2}>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Business Name *</label>
-                    <input type="text" name="businessName" value={formData.businessName || ''} onChange={handleChange} style={styles.input} required />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Owner Name *</label>
-                    <input type="text" name="ownerName" value={formData.ownerName || ''} onChange={handleChange} style={styles.input} required />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Email ID (Login ID)</label>
-                    <input type="email" name="email" value={formData.email || ''} style={{...styles.input, backgroundColor: '#f1f5f9'}} disabled />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>WhatsApp Business Number *</label>
-                    <input type="text" name="whatsappNumber" value={formData.whatsappNumber || ''} onChange={handleChange} style={styles.input} required />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Mobile Number *</label>
-                    <input type="text" name="phoneNumber" value={formData.phoneNumber || ''} onChange={handleChange} style={styles.input} required />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Website</label>
-                    <input type="text" name="website" value={formData.website || ''} onChange={handleChange} placeholder="https://" style={styles.input} />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>GSTN Number *</label>
-                    <input type="text" name="gstnNumber" value={formData.gstnNumber || ''} onChange={handleChange} style={styles.input} />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Business License Number *</label>
-                    <input type="text" name="businessLicenseNumber" value={formData.businessLicenseNumber || ''} onChange={handleChange} style={styles.input} />
-                  </div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Business Name *</label><input type="text" name="businessName" value={formData.businessName || ''} onChange={handleChange} style={styles.input} required /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Owner Name *</label><input type="text" name="ownerName" value={formData.ownerName || ''} onChange={handleChange} style={styles.input} required /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Email ID (Login ID)</label><input type="email" name="email" value={formData.email || ''} style={{...styles.input, backgroundColor: '#f1f5f9'}} disabled /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>WhatsApp Business Number *</label><input type="text" name="whatsappNumber" value={formData.whatsappNumber || ''} onChange={handleChange} style={styles.input} required /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Mobile Number *</label><input type="text" name="phoneNumber" value={formData.phoneNumber || ''} onChange={handleChange} style={styles.input} required /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Website</label><input type="text" name="website" value={formData.website || ''} onChange={handleChange} placeholder="https://" style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>GSTN Number *</label><input type="text" name="gstnNumber" value={formData.gstnNumber || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Business License Number *</label><input type="text" name="businessLicenseNumber" value={formData.businessLicenseNumber || ''} onChange={handleChange} style={styles.input} /></div>
                 </div>
 
                 <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>🏷️ Display Names & Codes</h3>
                 <div style={styles.grid2}>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Online Restaurant Name *</label>
-                    <input type="text" name="onlineRestaurantName" value={formData.onlineRestaurantName || ''} onChange={handleChange} placeholder="e.g. FOODOS Kitchen" style={styles.input} />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Branch Display Name *</label>
-                    <input type="text" name="branchDisplayName" value={formData.branchDisplayName || ''} onChange={handleChange} placeholder="e.g. Koramangala" style={styles.input} />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Business Short Code *</label>
-                    <input type="text" name="businessShortCode" value={formData.businessShortCode || ''} onChange={handleChange} maxLength="5" placeholder="e.g. KO" style={styles.input} />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Branch Short Code *</label>
-                    <input type="text" name="branchShortCode" value={formData.branchShortCode || ''} onChange={handleChange} maxLength="2" placeholder="e.g. 01" style={styles.input} />
-                  </div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Online Restaurant Name *</label><input type="text" name="onlineRestaurantName" value={formData.onlineRestaurantName || ''} onChange={handleChange} placeholder="e.g. FOODOS Kitchen" style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Branch Display Name *</label><input type="text" name="branchDisplayName" value={formData.branchDisplayName || ''} onChange={handleChange} placeholder="e.g. Koramangala" style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Business Short Code *</label><input type="text" name="businessShortCode" value={formData.businessShortCode || ''} onChange={handleChange} maxLength="5" placeholder="e.g. KO" style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Branch Short Code *</label><input type="text" name="branchShortCode" value={formData.branchShortCode || ''} onChange={handleChange} maxLength="2" placeholder="e.g. 01" style={styles.input} /></div>
                 </div>
 
                 <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>📍 Address & Location</h3>
                 <div style={styles.grid2}>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Address Line 1</label>
-                    <input type="text" name="addressLine1" value={formData.addressLine1 || ''} onChange={handleChange} style={styles.input} />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Address Line 2</label>
-                    <input type="text" name="addressLine2" value={formData.addressLine2 || ''} onChange={handleChange} style={styles.input} />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Area</label>
-                    <input type="text" name="area" value={formData.area || ''} onChange={handleChange} style={styles.input} />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>City</label>
-                    <input type="text" name="city" value={formData.city || ''} onChange={handleChange} style={styles.input} />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>State</label>
-                    <input type="text" name="state" value={formData.state || ''} onChange={handleChange} style={styles.input} />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>PIN Code</label>
-                    <input type="text" name="pinCode" value={formData.pinCode || ''} onChange={handleChange} style={styles.input} />
-                  </div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Address Line 1</label><input type="text" name="addressLine1" value={formData.addressLine1 || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Address Line 2</label><input type="text" name="addressLine2" value={formData.addressLine2 || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Area</label><input type="text" name="area" value={formData.area || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>City</label><input type="text" name="city" value={formData.city || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>State</label><input type="text" name="state" value={formData.state || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>PIN Code</label><input type="text" name="pinCode" value={formData.pinCode || ''} onChange={handleChange} style={styles.input} /></div>
                 </div>
               </div>
             )}
@@ -843,33 +553,15 @@ export default function SettingsModule() {
               <div style={styles.sectionGroup}>
                 <h3 style={styles.sectionTitle}>👤 Admin & User Profile</h3>
                 <div style={styles.grid2}>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Owner / Admin Name *</label>
-                    <input type="text" name="ownerName" value={formData.ownerName || ''} onChange={handleChange} style={styles.input} required />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>First Name</label>
-                    <input type="text" name="firstName" value={formData.firstName || ''} onChange={handleChange} style={styles.input} />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Last Name</label>
-                    <input type="text" name="lastName" value={formData.lastName || ''} onChange={handleChange} style={styles.input} />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Email (Login ID)</label>
-                    <input type="email" name="email" value={formData.email || ''} style={{...styles.input, backgroundColor: '#f1f5f9'}} disabled />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Mobile Number</label>
-                    <input type="text" name="phoneNumber" value={formData.phoneNumber || ''} onChange={handleChange} style={styles.input} />
-                  </div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Owner / Admin Name *</label><input type="text" name="ownerName" value={formData.ownerName || ''} onChange={handleChange} style={styles.input} required /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>First Name</label><input type="text" name="firstName" value={formData.firstName || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Last Name</label><input type="text" name="lastName" value={formData.lastName || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Email (Login ID)</label><input type="email" name="email" value={formData.email || ''} style={{...styles.input, backgroundColor: '#f1f5f9'}} disabled /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Mobile Number</label><input type="text" name="phoneNumber" value={formData.phoneNumber || ''} onChange={handleChange} style={styles.input} /></div>
                   <div style={styles.fieldGroup}>
                     <label style={styles.label}>Preferred Language</label>
                     <select name="preferredLanguage" value={formData.preferredLanguage || 'Telugu'} onChange={handleChange} style={styles.input}>
-                      <option value="English">English</option>
-                      <option value="Telugu">Telugu</option>
-                      <option value="Hindi">Hindi</option>
-                      <option value="Tamil">Tamil</option>
+                      <option value="English">English</option><option value="Telugu">Telugu</option><option value="Hindi">Hindi</option><option value="Tamil">Tamil</option>
                     </select>
                   </div>
                 </div>
@@ -884,14 +576,10 @@ export default function SettingsModule() {
                     <span style={{fontSize: '22px'}}>⏰</span>
                     <div>
                       <div style={{fontWeight: '950', color: '#0369a1', fontSize: '15px'}}>Online Ordering Hours</div>
-                      <div style={{fontSize: '12px', color: '#0c4a6e', marginTop: '3px', fontWeight: '800'}}>
-                        Configure working days with multiple shifts. Gaps between shifts are treated as breaks automatically.
-                      </div>
+                      <div style={{fontSize: '12px', color: '#0c4a6e', marginTop: '3px', fontWeight: '800'}}>Configure working days with multiple shifts. Gaps between shifts are treated as breaks automatically.</div>
                     </div>
                   </div>
-                  <button type="button" onClick={() => setIsEditingHours(!isEditingHours)} style={styles.editHoursBtn}>
-                    ✏️ {isEditingHours ? 'Lock Hours' : 'Edit Hours'}
-                  </button>
+                  <button type="button" onClick={() => setIsEditingHours(!isEditingHours)} style={styles.editHoursBtn}>✏️ {isEditingHours ? 'Lock Hours' : 'Edit Hours'}</button>
                 </div>
 
                 <div style={{display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '10px'}}>
@@ -1029,44 +717,25 @@ export default function SettingsModule() {
                 </p>
 
                 <div style={styles.userAddCard}>
-                  <h4 style={{margin: '0 0 14px 0', fontSize: '14px', fontWeight: '950', color: '#0f172a'}}>
-                    {editingUserId ? '✏️ Edit User / Captain' : '👤 Add User'}
-                  </h4>
+                  <h4 style={{margin: '0 0 14px 0', fontSize: '14px', fontWeight: '950', color: '#0f172a'}}>{editingUserId ? '✏️ Edit User / Captain' : '👤 Add User'}</h4>
                   <div style={{display: 'grid', gridTemplateColumns: '1.6fr 0.9fr 1fr 1fr auto', gap: '12px', alignItems: 'flex-end'}}>
-                    <div style={styles.fieldGroup}>
-                      <label style={styles.label}>Name *</label>
-                      <input type="text" placeholder="e.g. Ravi Kumar" value={newUserForm.name} onChange={e => setNewUserForm({...newUserForm, name: e.target.value})} style={styles.input} />
-                    </div>
-                    <div style={styles.fieldGroup}>
-                      <label style={styles.label}>User ID *</label>
-                      <input type="text" placeholder="U01" value={newUserForm.userId} onChange={e => setNewUserForm({...newUserForm, userId: e.target.value})} style={styles.input} maxLength="5" />
-                    </div>
-                    <div style={styles.fieldGroup}>
-                      <label style={styles.label}>Phone No</label>
-                      <input type="text" placeholder="10-digit mobile" value={newUserForm.phone} onChange={e => setNewUserForm({...newUserForm, phone: e.target.value})} style={styles.input} />
-                    </div>
+                    <div style={styles.fieldGroup}><label style={styles.label}>Name *</label><input type="text" placeholder="e.g. Ravi Kumar" value={newUserForm.name} onChange={e => setNewUserForm({...newUserForm, name: e.target.value})} style={styles.input} /></div>
+                    <div style={styles.fieldGroup}><label style={styles.label}>User ID *</label><input type="text" placeholder="U01" value={newUserForm.userId} onChange={e => setNewUserForm({...newUserForm, userId: e.target.value})} style={styles.input} maxLength="5" /></div>
+                    <div style={styles.fieldGroup}><label style={styles.label}>Phone No</label><input type="text" placeholder="10-digit mobile" value={newUserForm.phone} onChange={e => setNewUserForm({...newUserForm, phone: e.target.value})} style={styles.input} /></div>
                     <div style={styles.fieldGroup}>
                       <label style={styles.label}>Role</label>
                       <select value={newUserForm.role} onChange={e => setNewUserForm({...newUserForm, role: e.target.value})} style={styles.input}>
-                        <option value="Captain">Captain</option>
-                        <option value="Manager">Manager</option>
-                        <option value="Admin">Admin</option>
-                        <option value="Kitchen">Kitchen Staff</option>
+                        <option value="Captain">Captain</option><option value="Manager">Manager</option><option value="Admin">Admin</option><option value="Kitchen">Kitchen Staff</option>
                       </select>
                     </div>
                     <div style={{display: 'flex', gap: '6px'}}>
-                      <button type="button" onClick={handleSaveUser} style={styles.addUserBtn}>
-                        {editingUserId ? 'Update' : '+ Add'}
-                      </button>
-                      {editingUserId && (
-                        <button type="button" onClick={() => { setEditingUserId(null); setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' }); }} style={styles.cancelInlineBtn}>Cancel</button>
-                      )}
+                      <button type="button" onClick={handleSaveUser} style={styles.addUserBtn}>{editingUserId ? 'Update' : '+ Add'}</button>
+                      {editingUserId && (<button type="button" onClick={() => { setEditingUserId(null); setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' }); }} style={styles.cancelInlineBtn}>Cancel</button>)}
                     </div>
                   </div>
                 </div>
 
                 <h4 style={{margin: '20px 0 12px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Users ({usersList.length})</h4>
-                
                 {usersList.length === 0 ? (
                   <div style={styles.emptyUsersBox}>No users added yet. Use the form above to add your first captain or manager!</div>
                 ) : (
@@ -1089,11 +758,8 @@ export default function SettingsModule() {
                               </div>
                             </div>
                           </div>
-                          
                           <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                            <span style={{backgroundColor: isActive ? '#dcfce7' : '#fee2e2', color: isActive ? '#15803d' : '#991b1b', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '950'}}>
-                              {isActive ? 'Active' : 'Inactive'}
-                            </span>
+                            <span style={{backgroundColor: isActive ? '#dcfce7' : '#fee2e2', color: isActive ? '#15803d' : '#991b1b', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '950'}}>{isActive ? 'Active' : 'Inactive'}</span>
                             <button type="button" onClick={() => { setEditingUserId(uId); setNewUserForm({ name: u.name || '', userId: u.userIdCode || '', role: u.role || 'Captain', phone: u.phone || '' }); }} style={styles.actionEditBtn}>Edit</button>
                             <button type="button" onClick={() => handleToggleUserStatus(uId)} style={styles.userToggleBtn}>{isActive ? 'Deactivate' : 'Activate'}</button>
                             <button type="button" onClick={() => handleDeleteUser(uId)} style={styles.iconBtn} title="Delete User">🗑️</button>
@@ -1111,18 +777,9 @@ export default function SettingsModule() {
               <div style={styles.sectionGroup}>
                 <h3 style={styles.sectionTitle}>🛵 Delivery Setup</h3>
                 <div style={styles.grid2}>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Service Radius (KM)</label>
-                    <input type="number" value={formData.deliveryConfig?.serviceRadius || '5'} onChange={e => handleDeliveryChange('serviceRadius', e.target.value)} style={styles.input} />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Point of Contact Name</label>
-                    <input type="text" value={formData.deliveryConfig?.contactName || ''} onChange={e => handleDeliveryChange('contactName', e.target.value)} placeholder="e.g. Ramesh" style={styles.input} />
-                  </div>
-                  <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Point of Contact Number</label>
-                    <input type="text" value={formData.deliveryConfig?.contactNumber || ''} onChange={e => handleDeliveryChange('contactNumber', e.target.value)} placeholder="+91..." style={styles.input} />
-                  </div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Service Radius (KM)</label><input type="number" value={formData.deliveryConfig?.serviceRadius || '5'} onChange={e => handleDeliveryChange('serviceRadius', e.target.value)} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Point of Contact Name</label><input type="text" value={formData.deliveryConfig?.contactName || ''} onChange={e => handleDeliveryChange('contactName', e.target.value)} placeholder="e.g. Ramesh" style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>Point of Contact Number</label><input type="text" value={formData.deliveryConfig?.contactNumber || ''} onChange={e => handleDeliveryChange('contactNumber', e.target.value)} placeholder="+91..." style={styles.input} /></div>
                 </div>
 
                 <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>📦 Delivery Method</h3>
@@ -1130,18 +787,13 @@ export default function SettingsModule() {
                   <div style={styles.fieldGroup}>
                     <label style={styles.label}>Delivery Partner</label>
                     <select value={formData.deliveryConfig?.deliveryPartner || 'WhatsCom'} onChange={e => handleDeliveryChange('deliveryPartner', e.target.value)} style={styles.input}>
-                      <option value="WhatsCom">WhatsCom</option>
-                      <option value="Dunzo">Dunzo</option>
-                      <option value="Shadowfax">Shadowfax</option>
-                      <option value="In-House">In-House Fleet</option>
+                      <option value="WhatsCom">WhatsCom</option><option value="Dunzo">Dunzo</option><option value="Shadowfax">Shadowfax</option><option value="In-House">In-House Fleet</option>
                     </select>
                   </div>
                   <div style={styles.fieldGroup}>
                     <label style={styles.label}>Delivery Fee Charged To</label>
                     <select value={formData.deliveryConfig?.deliveryFeeChargedTo || 'Customer'} onChange={e => handleDeliveryChange('deliveryFeeChargedTo', e.target.value)} style={styles.input}>
-                      <option value="Customer">Customer</option>
-                      <option value="Restaurant">Restaurant</option>
-                      <option value="Free">Free Delivery</option>
+                      <option value="Customer">Customer</option><option value="Restaurant">Restaurant</option><option value="Free">Free Delivery</option>
                     </select>
                   </div>
                 </div>
@@ -1256,28 +908,13 @@ export default function SettingsModule() {
                     </div>
 
                     <div style={{display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '600px'}}>
-                      <div style={styles.fieldGroup}>
-                        <label style={styles.label}>Group Name *</label>
-                        <input type="text" placeholder="e.g. Standard Restaurant (5%)" value={taxFormData.name} onChange={e => setTaxFormData({...taxFormData, name: e.target.value})} style={styles.input} required />
-                      </div>
-                      <div style={styles.fieldGroup}>
-                        <label style={styles.label}>Tax Rate % *</label>
-                        <input type="number" placeholder="e.g. 5, 12, 18" value={taxFormData.rate} onChange={e => handleTaxRateChange(e.target.value)} style={styles.input} required />
-                      </div>
+                      <div style={styles.fieldGroup}><label style={styles.label}>Group Name *</label><input type="text" placeholder="e.g. Standard Restaurant (5%)" value={taxFormData.name} onChange={e => setTaxFormData({...taxFormData, name: e.target.value})} style={styles.input} required /></div>
+                      <div style={styles.fieldGroup}><label style={styles.label}>Tax Rate % *</label><input type="number" placeholder="e.g. 5, 12, 18" value={taxFormData.rate} onChange={e => handleTaxRateChange(e.target.value)} style={styles.input} required /></div>
                       <div style={styles.grid2}>
-                        <div style={styles.fieldGroup}>
-                          <label style={styles.label}>CGST %</label>
-                          <input type="text" value={taxFormData.cgst} onChange={e => setTaxFormData({...taxFormData, cgst: e.target.value})} style={{...styles.input, backgroundColor: '#f8fafc'}} />
-                        </div>
-                        <div style={styles.fieldGroup}>
-                          <label style={styles.label}>SGST %</label>
-                          <input type="text" value={taxFormData.sgst} onChange={e => setTaxFormData({...taxFormData, sgst: e.target.value})} style={{...styles.input, backgroundColor: '#f8fafc'}} />
-                        </div>
+                        <div style={styles.fieldGroup}><label style={styles.label}>CGST %</label><input type="text" value={taxFormData.cgst} onChange={e => setTaxFormData({...taxFormData, cgst: e.target.value})} style={{...styles.input, backgroundColor: '#f8fafc'}} /></div>
+                        <div style={styles.fieldGroup}><label style={styles.label}>SGST %</label><input type="text" value={taxFormData.sgst} onChange={e => setTaxFormData({...taxFormData, sgst: e.target.value})} style={{...styles.input, backgroundColor: '#f8fafc'}} /></div>
                       </div>
-                      <div style={styles.fieldGroup}>
-                        <label style={styles.label}>HSN/SAC Code *</label>
-                        <input type="text" value={taxFormData.hsnCode} onChange={e => setTaxFormData({...taxFormData, hsnCode: e.target.value})} style={styles.input} required />
-                      </div>
+                      <div style={styles.fieldGroup}><label style={styles.label}>HSN/SAC Code *</label><input type="text" value={taxFormData.hsnCode} onChange={e => setTaxFormData({...taxFormData, hsnCode: e.target.value})} style={styles.input} required /></div>
                       <div style={{display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px'}}>
                         <button type="button" onClick={() => setTaxFormMode('list')} style={styles.cancelFormBtn}>Cancel</button>
                         <button type="button" onClick={handleSaveTaxGroup} style={styles.saveFormBtn}>Save Tax Group</button>
@@ -1288,146 +925,18 @@ export default function SettingsModule() {
               </div>
             )}
 
-            {/* TAB 8: PRINTERS & RECEIPTS */}
-            {activeTab === 'printers' && (
-              <div style={styles.sectionGroup}>
-                <h3 style={styles.sectionTitle}>🖨️ Printers & Receipts</h3>
-                
-                <div style={{display: 'flex', gap: '8px', marginBottom: '20px'}}>
-                  <button type="button" onClick={() => setReceiptSubTab('printers')} style={{...styles.subTabBtn, backgroundColor: receiptSubTab === 'printers' ? '#ef4444' : '#f1f5f9', color: receiptSubTab === 'printers' ? '#fff' : '#334155'}}>Printers</button>
-                  <button type="button" onClick={() => setReceiptSubTab('receipt')} style={{...styles.subTabBtn, backgroundColor: receiptSubTab === 'receipt' ? '#ef4444' : '#f1f5f9', color: receiptSubTab === 'receipt' ? '#fff' : '#334155'}}>Receipt Configuration</button>
-                  <button type="button" onClick={() => setReceiptSubTab('rules')} style={{...styles.subTabBtn, backgroundColor: receiptSubTab === 'rules' ? '#ef4444' : '#f1f5f9', color: receiptSubTab === 'rules' ? '#fff' : '#334155'}}>Print Rules</button>
-                </div>
-
-                {receiptSubTab === 'printers' && (
-                  <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                    <div style={styles.infoBox}>
-                      <div style={{fontWeight: '950', color: '#0f172a', marginBottom: '4px'}}>Printing from this device</div>
-                      <div style={{fontSize: '12px', color: '#059669', fontWeight: '900', marginBottom: '6px'}}>● Direct thermal printing supported</div>
-                      <div style={{fontSize: '11px', color: '#64748b', fontWeight: '800'}}>USB · Serial · Bluetooth · Bluetooth (BLE) · Network (Epson ePOS) — connect a printer below for silent printing. Nothing to install.</div>
-                      <button type="button" onClick={() => alert('Refreshing connected printers...')} style={styles.refreshBtn}>🔄 Refresh printers</button>
-                    </div>
-
-                    <div style={styles.grid2}>
-                      <div style={{backgroundColor: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '16px', padding: '20px'}}>
-                        <h4 style={{margin: '0 0 4px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Counter Printer</h4>
-                        <p style={{fontSize: '12px', color: '#64748b', fontWeight: '800', marginBottom: '16px'}}>Used for customer receipts and optionally KOT printing.</p>
-
-                        <label style={styles.label}>Printer</label>
-                        <select style={styles.input} value={formData.printerInfo?.printerName || ''} onChange={e => setFormData({...formData, printerInfo: {...formData.printerInfo, printerName: e.target.value}})}>
-                          <option value="">Select Printer</option>
-                          <option value="System-Default">Default System Printer</option>
-                          <option value="Thermal-80mm">Thermal 80mm USB</option>
-                          <option value="Thermal-58mm">Thermal 58mm USB</option>
-                        </select>
-                      </div>
-
-                      <div style={{backgroundColor: '#fff', border: '1.5px solid #cbd5e1', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center'}}>
-                        <div style={{fontSize: '32px', marginBottom: '8px'}}>👨‍🍳</div>
-                        <h4 style={{margin: '0 0 4px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Kitchen Printer</h4>
-                        <p style={{fontSize: '12px', color: '#64748b', fontWeight: '800', marginBottom: '16px'}}>Optional — a single Counter Printer can print both receipts and KOTs.</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {receiptSubTab === 'receipt' && (
-                  <div style={{display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start'}}>
-                    <div style={{flex: 1, minWidth: '400px', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0', maxHeight: '72vh', overflowY: 'auto'}}>
-                      <h4 style={{margin: '0 0 10px 0', fontSize: '13px', fontWeight: '950', color: '#64748b'}}>RECEIPT DENSITY</h4>
-                      <div style={{display: 'flex', gap: '8px', marginBottom: '20px'}}>
-                        <button type="button" onClick={() => setFormData({...formData, receiptConfig: {...formData.receiptConfig, density: 'Compact'}})} style={{backgroundColor: formData.receiptConfig?.density === 'Compact' ? '#ef4444' : '#fff', color: formData.receiptConfig?.density === 'Compact' ? '#fff' : '#334155', border: '1.5px solid #cbd5e1', padding: '6px 14px', borderRadius: '8px', fontWeight: '950', fontSize: '12px', cursor: 'pointer'}}>Compact</button>
-                        <button type="button" onClick={() => setFormData({...formData, receiptConfig: {...formData.receiptConfig, density: 'Comfortable'}})} style={{backgroundColor: formData.receiptConfig?.density === 'Comfortable' ? '#ef4444' : '#fff', color: formData.receiptConfig?.density === 'Comfortable' ? '#fff' : '#334155', border: '1.5px solid #cbd5e1', padding: '6px 14px', borderRadius: '8px', fontWeight: '950', fontSize: '12px', cursor: 'pointer'}}>Comfortable</button>
-                      </div>
-
-                      <h4 style={{margin: '0 0 12px 0', fontSize: '13px', fontWeight: '950', color: '#64748b'}}>RECEIPT DISPLAY TOGGLES</h4>
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px'}}>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.restaurantName} onChange={() => handleToggleReceiptField('restaurantName')} style={styles.checkbox}/><span style={styles.toggleLabel}>Restaurant Name</span></div>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.address} onChange={() => handleToggleReceiptField('address')} style={styles.checkbox}/><span style={styles.toggleLabel}>Address</span></div>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.phone} onChange={() => handleToggleReceiptField('phone')} style={styles.checkbox}/><span style={styles.toggleLabel}>Phone</span></div>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.gstin} onChange={() => handleToggleReceiptField('gstin')} style={styles.checkbox}/><span style={styles.toggleLabel}>GSTIN</span></div>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.fssai} onChange={() => handleToggleReceiptField('fssai')} style={styles.checkbox}/><span style={styles.toggleLabel}>FSSAI</span></div>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.invoiceNo} onChange={() => handleToggleReceiptField('invoiceNo')} style={styles.checkbox}/><span style={styles.toggleLabel}>Invoice Number</span></div>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.dateAndTime} onChange={() => handleToggleReceiptField('dateAndTime')} style={styles.checkbox}/><span style={styles.toggleLabel}>Date & Time</span></div>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.itemNameQtyAmt} onChange={() => handleToggleReceiptField('itemNameQtyAmt')} style={styles.checkbox}/><span style={styles.toggleLabel}>Item Name / Qty / Amount</span></div>
-                        </div>
-                        <div style={styles.toggleRow}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><input type="checkbox" checked={toggles.totalTax} onChange={() => handleToggleReceiptField('totalTax')} style={styles.checkbox}/><span style={styles.toggleLabel}>Total Tax</span></div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{width: '380px', backgroundColor: '#fff', padding: '20px', borderRadius: '16px', border: '1.5px solid #e2e8f0', textAlign: 'center'}}>
-                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px'}}>
-                        <h4 style={{margin: 0, fontSize: '13px', fontWeight: '950', color: '#64748b'}}>Live Preview</h4>
-                        <div style={{display: 'flex', gap: '6px'}}>
-                          <button type="button" onClick={() => setFormData({...formData, receiptConfig: {...formData.receiptConfig, paperSize: '58mm'}})} style={{backgroundColor: formData.receiptConfig?.paperSize === '58mm' ? '#ef4444' : '#f1f5f9', color: formData.receiptConfig?.paperSize === '58mm' ? '#fff' : '#334155', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '950', cursor: 'pointer'}}>58 mm</button>
-                          <button type="button" onClick={() => setFormData({...formData, receiptConfig: {...formData.receiptConfig, paperSize: '80mm'}})} style={{backgroundColor: formData.receiptConfig?.paperSize === '80mm' ? '#ef4444' : '#f1f5f9', color: formData.receiptConfig?.paperSize === '80mm' ? '#fff' : '#334155', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '950', cursor: 'pointer'}}>80 mm</button>
-                        </div>
-                      </div>
-
-                      <div style={{backgroundColor: '#fefefe', border: '1.5px dashed #cbd5e1', padding: '16px', borderRadius: '10px', fontFamily: 'monospace', fontSize: '11px', textAlign: 'left', lineHeight: '1.4', color: '#000'}}>
-                        <div style={{textAlign: 'center', fontWeight: 'bold', fontSize: '12px'}}>*** TEST PRINT ***</div>
-                        {toggles.restaurantName && <div style={{textAlign: 'center', fontWeight: '950', fontSize: '13px', marginTop: '4px'}}>{formData.receiptConfig?.restaurantName}</div>}
-                        {toggles.address && <div style={{textAlign: 'center', color: '#444', fontSize: '10px', margin: '4px 0'}}>{formData.receiptConfig?.address}</div>}
-                        {toggles.phone && <div style={{textAlign: 'center', color: '#444', fontSize: '10px'}}>Ph: {formData.receiptConfig?.phone}</div>}
-                        {toggles.gstin && <div style={{textAlign: 'center', color: '#444', fontSize: '10px'}}>GSTIN: {formData.receiptConfig?.gstin}</div>}
-                        <div style={{borderTop: '1px dashed #000', margin: '6px 0'}}></div>
-                        {toggles.invoiceNo && <div>Invoice #: INV-000724</div>}
-                        {toggles.dateAndTime && <div>Date: 29 Oct 2026, 7:19 am</div>}
-                        <div style={{borderTop: '1px dashed #000', margin: '6px 0'}}></div>
-                        {toggles.itemNameQtyAmt && (
-                          <div>
-                            <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: 'bold'}}><span>Item</span><span>Qty Amt</span></div>
-                            <div style={{display: 'flex', justifyContent: 'space-between'}}><span>Paneer Tikka</span><span>2 400.00</span></div>
-                          </div>
-                        )}
-                        <div style={{borderTop: '1px dashed #000', margin: '6px 0'}}></div>
-                        {toggles.totalTax && <div style={{display: 'flex', justifyContent: 'space-between'}}><span>Total Tax:</span><span>₹20.00</span></div>}
-                        <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: 'bold'}}><span>TOTAL:</span><span>₹420.00</span></div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {receiptSubTab === 'rules' && (
-                  <div style={styles.grid3}>
-                    <div style={styles.ruleCard}>
-                      <h4 style={{margin: '0 0 14px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Counter Orders</h4>
-                      <label style={styles.ruleLabel}>When should the Receipt print?</label>
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px'}}>
-                        <label style={styles.radioLabel}><input type="radio" name="counterReceipt" defaultChecked/> Automatically after successful payment</label>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* PLACEHOLDER FOR SYSTEM TAB */}
-            {activeTab !== 'business' && activeTab !== 'profile' && activeTab !== 'hours' && activeTab !== 'tables' && activeTab !== 'users' && activeTab !== 'delivery' && activeTab !== 'billing' && activeTab !== 'printers' && (
-              <div style={styles.placeholderTab}>
-                <h3>🚧 {sidebarItems.find(i => i.id === activeTab)?.label} Configuration</h3>
-                <p style={{color: '#475569', fontSize: '14px', fontWeight: '800', marginTop: '8px'}}>
-                  This operational sub-module is ready for integration.
-                </p>
-              </div>
-            )}
+            {/* TABS 8 & 9 RENDERED VIA ADVANCED SETTINGS COMPONENT */}
+            <AdvancedSettingsTab
+              activeTab={activeTab}
+              receiptSubTab={receiptSubTab}
+              setReceiptSubTab={setReceiptSubTab}
+              formData={formData}
+              setFormData={setFormData}
+              toggles={toggles}
+              handleToggleReceiptField={handleToggleReceiptField}
+              styles={styles}
+              sidebarItems={sidebarItems}
+            />
 
           </form>
         </div>
@@ -1442,13 +951,13 @@ const styles = {
   title: { margin: '0 0 4px 0', fontSize: '22px', fontWeight: '950', color: '#0f172a' },
   subtitle: { fontSize: '12px', color: '#475569', fontWeight: '800' },
   statusBadge: { backgroundColor: '#dcfce7', color: '#15803d', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '950', border: '1.5px solid #86efac' },
-  saveBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.25)', transition: 'all 0.2s ease' },
+  saveBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.25)' },
   alert: { padding: '12px 16px', borderRadius: '10px', marginBottom: '16px', fontSize: '13px', fontWeight: '900', border: '2px solid' },
   layout: { display: 'flex', gap: '24px', flex: 1, alignItems: 'flex-start' },
-  sidebar: { width: '260px', backgroundColor: '#fff', borderRadius: '16px', border: '2px solid #cbd5e1', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' },
-  sidebarBtn: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', backgroundColor: 'transparent', border: '2px solid transparent', borderRadius: '10px', fontWeight: '900', fontSize: '13px', color: '#1e293b', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.2s ease' },
-  activeSidebarBtn: { backgroundColor: '#ecfdf5', color: '#047857', borderColor: '#10b981', boxShadow: '0 2px 8px rgba(16,185,129,0.15)' },
-  contentPanel: { flex: 1, backgroundColor: '#fff', borderRadius: '16px', border: '2px solid #cbd5e1', padding: '24px', minHeight: '600px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' },
+  sidebar: { width: '260px', backgroundColor: '#fff', borderRadius: '16px', border: '2px solid #cbd5e1', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' },
+  sidebarBtn: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', backgroundColor: 'transparent', border: '2px solid transparent', borderRadius: '10px', fontWeight: '900', fontSize: '13px', color: '#1e293b', cursor: 'pointer', textAlign: 'left', width: '100%' },
+  activeSidebarBtn: { backgroundColor: '#ecfdf5', color: '#047857', borderColor: '#10b981' },
+  contentPanel: { flex: 1, backgroundColor: '#fff', borderRadius: '16px', border: '2px solid #cbd5e1', padding: '24px', minHeight: '600px' },
   formContainer: { display: 'flex', flexDirection: 'column', gap: '20px' },
   sectionGroup: { display: 'flex', flexDirection: 'column', gap: '16px' },
   sectionTitle: { fontSize: '17px', fontWeight: '950', color: '#0f172a', margin: '0 0 12px 0', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px' },
@@ -1457,7 +966,7 @@ const styles = {
   fieldGroup: { display: 'flex', flexDirection: 'column', gap: '6px' },
   label: { fontSize: '12px', fontWeight: '950', color: '#0f172a' },
   input: { padding: '10px 14px', borderRadius: '10px', border: '2px solid #94a3b8', fontSize: '13px', fontWeight: '900', color: '#0f172a', outline: 'none', backgroundColor: '#fff', width: '100%', boxSizing: 'border-box' },
-  subTabBtn: { border: 'none', padding: '8px 16px', fontSize: '13px', fontWeight: '950', cursor: 'pointer', borderRadius: '8px', transition: 'all 0.2s' },
+  subTabBtn: { border: 'none', padding: '8px 16px', fontSize: '13px', fontWeight: '950', cursor: 'pointer', borderRadius: '8px' },
   infoBox: { backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px' },
   refreshBtn: { marginTop: '10px', backgroundColor: '#fff', color: '#334155', border: '1.5px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' },
   addAreaBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '900', fontSize: '12px', cursor: 'pointer' },
@@ -1468,11 +977,9 @@ const styles = {
   ruleLabel: { fontSize: '12px', fontWeight: '950', color: '#0f172a', display: 'block', marginBottom: '8px' },
   radioLabel: { fontSize: '12px', fontWeight: '800', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' },
   centerMsg: { padding: '40px', textAlign: 'center', fontWeight: '900', color: '#334155' },
-  placeholderTab: { textAlign: 'center', padding: '80px 20px', color: '#0f172a' },
   serviceHoursBanner: { backgroundColor: '#e0f2fe', border: '2px solid #7dd3fc', borderRadius: '12px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   editHoursBtn: { backgroundColor: '#fff', color: '#0369a1', border: '2px solid #38bdf8', padding: '8px 16px', borderRadius: '10px', fontWeight: '950', fontSize: '12px', cursor: 'pointer' },
-  dayCard: { backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '14px', padding: '18px', transition: 'all 0.25s ease' },
-  dayCardHover: { borderColor: '#059669', backgroundColor: '#f0fdf4', transform: 'translateY(-2px)' },
+  dayCard: { backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '14px', padding: '18px' },
   dayCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   timeInput: { padding: '8px 14px', borderRadius: '8px', border: '2px solid #94a3b8', fontSize: '13px', fontWeight: '900', color: '#0f172a', backgroundColor: '#fff', width: '150px', outline: 'none' },
   noticeBanner: { backgroundColor: '#fef2f2', border: '1.5px solid #fecaca', color: '#991b1b', padding: '12px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: '800' },
@@ -1495,16 +1002,16 @@ const styles = {
   actionEditBtn: { background: 'none', border: 'none', color: '#2563eb', fontWeight: '900', cursor: 'pointer' },
   actionDeactivateBtn: { background: 'none', border: 'none', color: '#d97706', fontWeight: '900', cursor: 'pointer' },
   actionDeleteBtn: { background: 'none', border: 'none', color: '#dc2626', fontWeight: '900', cursor: 'pointer' },
-  inlineCardForm: { backgroundColor: '#fff', border: '2px solid #0f172a', borderRadius: '12px', padding: '16px', marginBottom: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' },
+  inlineCardForm: { backgroundColor: '#fff', border: '2px solid #0f172a', borderRadius: '12px', padding: '16px', marginBottom: '16px' },
   saveInlineBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '950', fontSize: '12px', cursor: 'pointer' },
   cancelInlineBtn: { backgroundColor: '#f1f5f9', color: '#334155', border: '1.5px solid #cbd5e1', padding: '8px 14px', borderRadius: '8px', fontWeight: '950', fontSize: '12px', cursor: 'pointer' },
-  screenCardForm: { backgroundColor: '#fff', border: '2.5px solid #cbd5e1', borderRadius: '16px', padding: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' },
+  screenCardForm: { backgroundColor: '#fff', border: '2.5px solid #cbd5e1', borderRadius: '16px', padding: '24px' },
   saveFormBtn: { backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '11px 22px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer' },
   cancelFormBtn: { backgroundColor: '#fff', color: '#334155', border: '2px solid #cbd5e1', padding: '11px 18px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer' },
   userAddCard: { backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '20px' },
   addUserBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', height: '41px' },
   emptyUsersBox: { textAlign: 'center', color: '#64748b', fontSize: '14px', fontWeight: '800', padding: '32px', backgroundColor: '#f8fafc', borderRadius: '14px', border: '2px dashed #cbd5e1' },
-  userRowCard: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '14px 18px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' },
+  userRowCard: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '14px 18px' },
   userAvatar: { width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '950', fontSize: '15px', border: '1.5px solid #a7f3d0' },
   userCodeBadge: { backgroundColor: '#f1f5f9', color: '#334155', padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '900', border: '1px solid #cbd5e1' },
   userToggleBtn: { backgroundColor: '#f1f5f9', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }
