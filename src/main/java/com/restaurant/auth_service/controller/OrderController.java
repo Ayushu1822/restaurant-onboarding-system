@@ -27,19 +27,13 @@ public class OrderController {
         List<Order> allOrders = orderRepository.findAll();
         
         List<Order> filteredOrders = allOrders.stream().filter(o -> {
-            // Agar email di gayi hai, toh sirf usi restaurant ke orders match hone chahiye
             if (email != null && !email.trim().isEmpty()) {
                 if (o.getRestaurantEmail() == null || !o.getRestaurantEmail().equalsIgnoreCase(email)) {
                     return false;
                 }
             } else {
-                // Agar email nahi bheji, toh safety ke liye empty rakho
                 return false; 
             }
-
-            // ✅ FIXED: Removed status check restrictions here so completed, delivered, 
-            // and picked up orders are NOT filtered out by the backend. 
-            // Frontend will handle active vs history filtering safely!
             return true;
         }).collect(Collectors.toList());
 
@@ -67,6 +61,51 @@ public class OrderController {
         Order savedOrder = orderRepository.save(newOrder);
         System.out.println("✅ NEW ORDER CREATED for restaurant: " + savedOrder.getRestaurantEmail());
         return savedOrder;
+    }
+
+    // 🔄 APPEND ITEMS TO EXISTING ACTIVE TABLE ORDER (KOT UPDATE)
+    @PutMapping("/table/{tableName}/append")
+    public ResponseEntity<Order> appendItemsToTableOrder(
+            @PathVariable String tableName,
+            @RequestParam String email,
+            @RequestBody Order incomingOrder) {
+        try {
+            Optional<Order> activeOrderOpt = orderRepository.findAll().stream()
+                .filter(o -> o.getRestaurantEmail() != null && o.getRestaurantEmail().equalsIgnoreCase(email))
+                .filter(o -> o.getDisplayId() != null && o.getDisplayId().equalsIgnoreCase("Table " + tableName))
+                .filter(o -> !"Completed".equalsIgnoreCase(o.getStatus()) && !"Settled".equalsIgnoreCase(o.getStatus()))
+                .findFirst();
+
+            if (activeOrderOpt.isPresent()) {
+                Order existingOrder = activeOrderOpt.get();
+
+                if (incomingOrder.getItems() != null) {
+                    for (OrderItem newItem : incomingOrder.getItems()) {
+                        newItem.setItemId(UUID.randomUUID());
+                        newItem.setOrder(existingOrder);
+                        existingOrder.getItems().add(newItem);
+                    }
+                }
+
+                double newSubtotal = existingOrder.getItems().stream()
+                    .mapToDouble(i -> i.getUnitPrice() * i.getQuantity())
+                    .sum();
+                
+                existingOrder.setSubtotal(newSubtotal);
+                existingOrder.setTotalAmount(Math.round(newSubtotal));
+
+                Order updatedOrder = orderRepository.save(existingOrder);
+                System.out.println("✅ EXISTING TABLE ORDER UPDATED (KOT APPENDED) — ID: " + updatedOrder.getOrderId());
+                return ResponseEntity.ok(updatedOrder);
+            }
+
+            Order created = createOrder(incomingOrder);
+            return ResponseEntity.ok(created);
+
+        } catch (Exception e) {
+            System.err.println("❌ Error appending items to table order: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @RequestMapping(value = {"/{id}/status", "/{id}"}, method = {RequestMethod.PUT, RequestMethod.PATCH})

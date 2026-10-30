@@ -106,14 +106,14 @@ public class RestaurantProfile {
     @Column(name = "custom_menus", columnDefinition = "TEXT")
     private String customMenus;
 
-    // 🖨️ Printer & Receipt Settings Configuration (Added!)
+    // 🖨️ Printer & Receipt Settings Configuration
     @Column(name = "receipt_config", columnDefinition = "TEXT")
     private String receiptConfig;
 
     @Column(name = "print_rules", columnDefinition = "TEXT")
     private String printRules;
 
-    // ⚙️ System & Printer Settings (Added to fix 500 Error)
+    // ⚙️ System & Printer Settings
     @Column(name = "printer_info", columnDefinition = "TEXT")
     private String printerInfo;
 
