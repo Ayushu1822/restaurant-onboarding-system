@@ -7,8 +7,8 @@ export default function ServiceHoursTab({ formData, setFormData, isEditingHours,
 
   const handleHourChange = (day, field, value) => {
     setFormData(prev => {
-      const currentDays = prev.serviceHours || {};
-      const currentDayData = currentDays[day] || { 
+      const currentServiceHours = prev.serviceHours || {};
+      const currentDayData = currentServiceHours[day] || { 
         open: true, 
         holiday: false, 
         shift1Start: '09:00', 
@@ -20,8 +20,11 @@ export default function ServiceHoursTab({ formData, setFormData, isEditingHours,
       return {
         ...prev,
         serviceHours: { 
-          ...currentDays, 
-          [day]: { ...currentDayData, [field]: value } 
+          ...currentServiceHours, 
+          [day]: { 
+            ...currentDayData, 
+            [field]: value 
+          } 
         }
       };
     });
