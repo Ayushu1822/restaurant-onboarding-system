@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -63,7 +64,7 @@ public class OrderController {
         return savedOrder;
     }
 
-    // 🔄 APPEND ITEMS TO EXISTING ACTIVE TABLE ORDER (KOT UPDATE)
+    // 🔄 APPEND ITEMS TO EXISTING ACTIVE TABLE ORDER (KOT UPDATE - FIXED BigDecimal Arithmetic)
     @PutMapping("/table/{tableName}/append")
     public ResponseEntity<Order> appendItemsToTableOrder(
             @PathVariable String tableName,
@@ -87,12 +88,18 @@ public class OrderController {
                     }
                 }
 
-                double newSubtotal = existingOrder.getItems().stream()
-                    .mapToDouble(i -> i.getUnitPrice() * i.getQuantity())
-                    .sum();
+                // ✅ FIXED: Safely calculate subtotal using BigDecimal multiply
+                BigDecimal newSubtotal = BigDecimal.ZERO;
+                if (existingOrder.getItems() != null) {
+                    for (OrderItem item : existingOrder.getItems()) {
+                        BigDecimal price = item.getUnitPrice() != null ? item.getUnitPrice() : BigDecimal.ZERO;
+                        BigDecimal qty = BigDecimal.valueOf(item.getQuantity());
+                        newSubtotal = newSubtotal.add(price.multiply(qty));
+                    }
+                }
                 
                 existingOrder.setSubtotal(newSubtotal);
-                existingOrder.setTotalAmount(Math.round(newSubtotal));
+                existingOrder.setTotalAmount(newSubtotal);
 
                 Order updatedOrder = orderRepository.save(existingOrder);
                 System.out.println("✅ EXISTING TABLE ORDER UPDATED (KOT APPENDED) — ID: " + updatedOrder.getOrderId());
