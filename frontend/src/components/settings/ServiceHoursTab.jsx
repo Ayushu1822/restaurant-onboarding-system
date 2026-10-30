@@ -6,10 +6,25 @@ const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Sat
 export default function ServiceHoursTab({ formData, setFormData, isEditingHours, setIsEditingHours, hoveredCard, setHoveredCard }) {
 
   const handleHourChange = (day, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      serviceHours: { ...prev.serviceHours, [day]: { ...prev.serviceHours[day], [field]: value } }
-    }));
+    setFormData(prev => {
+      const currentDays = prev.serviceHours || {};
+      const currentDayData = currentDays[day] || { 
+        open: true, 
+        holiday: false, 
+        shift1Start: '09:00', 
+        shift1End: '14:00', 
+        shift2Start: '17:00', 
+        shift2End: '22:00' 
+      };
+
+      return {
+        ...prev,
+        serviceHours: { 
+          ...currentDays, 
+          [day]: { ...currentDayData, [field]: value } 
+        }
+      };
+    });
   };
 
   const calculateBreakDuration = (end1, start2) => {
@@ -45,7 +60,14 @@ export default function ServiceHoursTab({ formData, setFormData, isEditingHours,
 
       <div style={{display: 'flex', flexDirection: 'column', gap: 16, marginTop: 10}}>
         {daysOfWeek.map(day => {
-          const dayData = formData.serviceHours?.[day] || { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' };
+          const dayData = formData.serviceHours?.[day] || { 
+            open: true, 
+            holiday: false, 
+            shift1Start: '09:00', 
+            shift1End: '14:00', 
+            shift2Start: '17:00', 
+            shift2End: '22:00' 
+          };
           const breakDuration = calculateBreakDuration(dayData.shift1End, dayData.shift2Start);
           const isHovered = hoveredCard === day;
 
@@ -67,17 +89,17 @@ export default function ServiceHoursTab({ formData, setFormData, isEditingHours,
               {!dayData.holiday && (
                 <div style={{display: 'flex', flexDirection: 'column', gap: 12, marginTop: 14}}>
                   <div style={{display: 'flex', gap: 14, alignItems: 'center'}}>
-                    <input type="text" value={dayData.shift1Start} onChange={e => handleHourChange(day, 'shift1Start', e.target.value)} disabled={!isEditingHours} style={S.timeInput} />
+                    <input type="text" value={dayData.shift1Start || ''} onChange={e => handleHourChange(day, 'shift1Start', e.target.value)} disabled={!isEditingHours} style={S.timeInput} />
                     <span style={{fontWeight: 900, color: '#334155'}}>to</span>
-                    <input type="text" value={dayData.shift1End} onChange={e => handleHourChange(day, 'shift1End', e.target.value)} disabled={!isEditingHours} style={S.timeInput} />
+                    <input type="text" value={dayData.shift1End || ''} onChange={e => handleHourChange(day, 'shift1End', e.target.value)} disabled={!isEditingHours} style={S.timeInput} />
                   </div>
                   <div style={{textAlign: 'center', fontSize: 12, fontWeight: 900, color: '#b45309', backgroundColor: '#fef3c7', padding: 8, borderRadius: 8, border: '1.5px dashed #f59e0b'}}>
-                    Break {dayData.shift1End}–{dayData.shift2Start} ({breakDuration})
+                    Break {dayData.shift1End || '14:00'}–{dayData.shift2Start || '17:00'} ({breakDuration})
                   </div>
                   <div style={{display: 'flex', gap: 14, alignItems: 'center'}}>
-                    <input type="text" value={dayData.shift2Start} onChange={e => handleHourChange(day, 'shift2Start', e.target.value)} disabled={!isEditingHours} style={S.timeInput} />
+                    <input type="text" value={dayData.shift2Start || ''} onChange={e => handleHourChange(day, 'shift2Start', e.target.value)} disabled={!isEditingHours} style={S.timeInput} />
                     <span style={{fontWeight: 900, color: '#334155'}}>to</span>
-                    <input type="text" value={dayData.shift2End} onChange={e => handleHourChange(day, 'shift2End', e.target.value)} disabled={!isEditingHours} style={S.timeInput} />
+                    <input type="text" value={dayData.shift2End || ''} onChange={e => handleHourChange(day, 'shift2End', e.target.value)} disabled={!isEditingHours} style={S.timeInput} />
                   </div>
                 </div>
               )}
