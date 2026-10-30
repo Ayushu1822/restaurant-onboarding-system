@@ -1,4 +1,3 @@
-// FILE: src/components/SettingsModule.jsx
 import React, { useState, useEffect } from 'react';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
@@ -213,11 +212,7 @@ export default function SettingsModule() {
       setFullProfile(data);
 
       let parsedHours = data.serviceHours;
-      if (parsedHours) {
-        if (typeof parsedHours === 'string') {
-          try { parsedHours = JSON.parse(parsedHours); } catch (e) { parsedHours = null; }
-        }
-      }
+      if (typeof parsedHours === 'string') { try { parsedHours = JSON.parse(parsedHours); } catch (e) {} }
 
       let parsedAreas = data.areasAndTables;
       if (typeof parsedAreas === 'string') { try { parsedAreas = JSON.parse(parsedAreas); } catch (e) {} }
@@ -254,7 +249,7 @@ export default function SettingsModule() {
         ...prev, 
         ...data, 
         email,
-        serviceHours: (parsedHours && Object.keys(parsedHours).length > 0) ? parsedHours : prev.serviceHours,
+        serviceHours: parsedHours || prev.serviceHours,
         areasAndTables: parsedAreas || prev.areasAndTables,
         deliveryConfig: parsedDelivery || prev.deliveryConfig,
         billingConfig: parsedBilling || prev.billingConfig,
@@ -264,7 +259,7 @@ export default function SettingsModule() {
       }));
     } catch (err) {
       console.error('Error fetching profile:', err);
-      setMessage({ text: 'Failed to load profile from database.', type: 'error' });
+      showMsg('Failed to load profile from database.', 'error');
     } finally {
       setLoading(false);
     }
@@ -306,7 +301,7 @@ export default function SettingsModule() {
           setEditingUserId(null);
           setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' });
           fetchUsers(userEmail);
-          setMessage({ text: '✅ User successfully updated!', type: 'success' });
+          showMsg('✅ User successfully updated!', 'success');
         } else {
           alert('Failed to update user.');
         }
@@ -329,7 +324,7 @@ export default function SettingsModule() {
         if (res.ok) {
           setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' });
           fetchUsers(userEmail);
-          setMessage({ text: '✅ User successfully created & synced!', type: 'success' });
+          showMsg('✅ User successfully created & synced!', 'success');
         } else {
           alert('Failed to add user.');
         }
@@ -363,7 +358,7 @@ export default function SettingsModule() {
     .then(res => {
       if (res.ok) {
         fetchUsers(userEmail);
-        setMessage({ text: `✅ User status updated to ${nextStatus}`, type: 'success' });
+        showMsg(`✅ User status updated to ${nextStatus}`, 'success');
       } else {
         alert('Failed to update user status.');
       }
@@ -374,9 +369,13 @@ export default function SettingsModule() {
   const handleDeleteUser = (userId) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
     const userEmail = formData.email || localStorage.getItem('userEmail') || '';
-    fetch(`${API_BASE_URL}/api/v1/staff/${userId}`, { method: 'DELETE' })
-      .then(res => { if (res.ok) fetchUsers(userEmail); })
-      .catch(err => alert('Error: ' + err.message));
+    fetch(`${API_BASE_URL}/api/v1/staff/${userId}`, {
+      method: 'DELETE'
+    })
+    .then(res => {
+      if (res.ok) fetchUsers(userEmail);
+    })
+    .catch(err => alert('Error: ' + err.message));
   };
 
   const handleChange = (e) => {
@@ -617,25 +616,10 @@ export default function SettingsModule() {
   };
 
   const handleHourChange = (day, field, value) => {
-    setFormData(prev => {
-      const currentServiceHours = prev.serviceHours || {};
-      const currentDayData = currentServiceHours[day] || { 
-        open: true, 
-        holiday: false, 
-        shift1Start: '09:00', 
-        shift1End: '14:00', 
-        shift2Start: '17:00', 
-        shift2End: '22:00' 
-      };
-
-      return {
-        ...prev,
-        serviceHours: { 
-          ...currentServiceHours, 
-          [day]: { ...currentDayData, [field]: value } 
-        }
-      };
-    });
+    setFormData(prev => ({
+      ...prev,
+      serviceHours: { ...prev.serviceHours, [day]: { ...prev.serviceHours[day], [field]: value } }
+    }));
   };
 
   const handleAutoOpenToggle = (val) => {
@@ -659,21 +643,165 @@ export default function SettingsModule() {
     }
   };
 
+  // 🎵 10-Second Rich Real Chime / Melodic Audio Generator (Web Audio API)
   const playSoundTone = (toneName) => {
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const now = audioCtx.currentTime;
-      const duration = 9.0;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(523.25, now);
-      gain.gain.setValueAtTime(0.15, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start(now);
-      osc.stop(now + duration);
+      const duration = 9.0; // Play for ~9-10 seconds with rich fading echoes
+
+      if (toneName === 'Classic Ring') {
+        // Repeated dual-tone heavy telephone ring for 9 seconds
+        for (let i = 0; i < 6; i++) {
+          const startTime = now + (i * 1.5);
+          const osc1 = audioCtx.createOscillator();
+          const osc2 = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+
+          osc1.type = 'square';
+          osc2.type = 'sawtooth';
+          osc1.frequency.setValueAtTime(880, startTime);
+          osc2.frequency.setValueAtTime(1320, startTime);
+
+          gain.gain.setValueAtTime(0.12, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 1.2);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(audioCtx.destination);
+
+          osc1.start(startTime);
+          osc2.start(startTime);
+          osc1.stop(startTime + 1.2);
+          osc2.stop(startTime + 1.2);
+        }
+      } else if (toneName === 'Soft Chime') {
+        // Uplifting multi-chord musical arpeggio looping over 9 seconds
+        const chords = [
+          [523.25, 659.25, 783.99], // C Major
+          [587.33, 698.46, 880.00], // D Minor
+          [659.25, 783.99, 987.77]  // E Minor
+        ];
+        chords.forEach((chord, round) => {
+          chord.forEach((freq, noteIdx) => {
+            const startTime = now + (round * 3.0) + (noteIdx * 0.3);
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, startTime);
+
+            gain.gain.setValueAtTime(0.15, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.5);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(startTime);
+            osc.stop(startTime + 2.5);
+          });
+        });
+      } else if (toneName === 'Ding Dong') {
+        // Repeated majestic doorbell chimes over 9 seconds
+        for (let i = 0; i < 4; i++) {
+          const startTime = now + (i * 2.2);
+          [587.33, 440].forEach((freq, idx) => {
+            const noteTime = startTime + (idx * 0.6);
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, noteTime);
+
+            gain.gain.setValueAtTime(0.2, noteTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 1.5);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(noteTime);
+            osc.stop(noteTime + 1.5);
+          });
+        }
+      } else if (toneName === 'Bell') {
+        // Deep resonant cathedral bell with lingering harmonics over 9 seconds
+        for (let i = 0; i < 3; i++) {
+          const startTime = now + (i * 3.0);
+          const osc1 = audioCtx.createOscillator();
+          const osc2 = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+
+          osc1.type = 'triangle';
+          osc2.type = 'sine';
+          osc1.frequency.setValueAtTime(440, startTime);
+          osc2.frequency.setValueAtTime(880, startTime);
+
+          gain.gain.setValueAtTime(0.25, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.8);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(audioCtx.destination);
+
+          osc1.start(startTime);
+          osc2.start(startTime);
+          osc1.stop(startTime + 2.8);
+          osc2.stop(startTime + 2.8);
+        }
+      } else if (toneName === 'Ping') {
+        // Sparkling high-frequency crystalline pings repeated over 9 seconds
+        for (let i = 0; i < 12; i++) {
+          const startTime = now + (i * 0.75);
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1046.50 + (i * 50), startTime);
+
+          gain.gain.setValueAtTime(0.12, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.8);
+
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+
+          osc.start(startTime);
+          osc.stop(startTime + 0.8);
+        }
+      } else if (toneName === 'Arcade') {
+        // Energetic 8-bit retro arcade fanfare lasting ~9 seconds
+        const melody = [440, 554.37, 659.25, 880, 987.77, 1108.73];
+        for (let loop = 0; loop < 2; loop++) {
+          melody.forEach((freq, idx) => {
+            const startTime = now + (loop * 4.5) + (idx * 0.6);
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(freq, startTime);
+
+            gain.gain.setValueAtTime(0.1, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.5);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.5);
+          });
+        }
+      } else {
+        // Default Rich Chime
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + duration);
+      }
     } catch (e) {
       console.log("Audio preview error:", e);
     }
@@ -760,13 +888,18 @@ export default function SettingsModule() {
 
       const updated = await res.json();
       setFullProfile(updated);
-      setMessage({ text: '💾 All settings, service hours & database mappings successfully saved!', type: 'success' });
+      showMsg('💾 All settings, system configurations & database mappings successfully saved!', 'success');
     } catch (err) {
       console.error('Error saving profile:', err);
-      setMessage({ text: `❌ Error: ${err.message}`, type: 'error' });
+      showMsg(`❌ Error: ${err.message}`, 'error');
     } finally {
       setSaving(false);
     }
+  };
+
+  const showMsg = (text, type) => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage({ text: '', type: '' }), 4000);
   };
 
   const sidebarItems = [
@@ -1002,17 +1135,17 @@ export default function SettingsModule() {
                         {!dayData.holiday && (
                           <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px'}}>
                             <div style={{display: 'flex', gap: '14px', alignItems: 'center'}}>
-                              <input type="text" value={dayData.shift1Start || ''} onChange={e => handleHourChange(day, 'shift1Start', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
+                              <input type="text" value={dayData.shift1Start} onChange={e => handleHourChange(day, 'shift1Start', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
                               <span style={{fontWeight: '900', color: '#334155'}}>to</span>
-                              <input type="text" value={dayData.shift1End || ''} onChange={e => handleHourChange(day, 'shift1End', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
+                              <input type="text" value={dayData.shift1End} onChange={e => handleHourChange(day, 'shift1End', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
                             </div>
                             <div style={{textAlign: 'center', fontSize: '12px', fontWeight: '950', color: '#b45309', backgroundColor: '#fef3c7', padding: '8px', borderRadius: '8px', border: '1.5px dashed #f59e0b'}}>
-                              Break {dayData.shift1End || '14:00'}–{dayData.shift2Start || '17:00'} ({breakDuration})
+                              Break {dayData.shift1End}–{dayData.shift2Start} ({breakDuration})
                             </div>
                             <div style={{display: 'flex', gap: '14px', alignItems: 'center'}}>
-                              <input type="text" value={dayData.shift2Start || ''} onChange={e => handleHourChange(day, 'shift2Start', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
+                              <input type="text" value={dayData.shift2Start} onChange={e => handleHourChange(day, 'shift2Start', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
                               <span style={{fontWeight: '900', color: '#334155'}}>to</span>
-                              <input type="text" value={dayData.shift2End || ''} onChange={e => handleHourChange(day, 'shift2End', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
+                              <input type="text" value={dayData.shift2End} onChange={e => handleHourChange(day, 'shift2End', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
                             </div>
                           </div>
                         )}
@@ -1119,19 +1252,42 @@ export default function SettingsModule() {
                   <div style={{display: 'grid', gridTemplateColumns: '1.6fr 0.9fr 1fr 1fr auto', gap: '12px', alignItems: 'flex-end'}}>
                     <div style={styles.fieldGroup}>
                       <label style={styles.label}>Name *</label>
-                      <input type="text" placeholder="e.g. Ravi Kumar" value={newUserForm.name} onChange={e => setNewUserForm({...newUserForm, name: e.target.value})} style={styles.input} />
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Ravi Kumar" 
+                        value={newUserForm.name} 
+                        onChange={e => setNewUserForm({...newUserForm, name: e.target.value})} 
+                        style={styles.input} 
+                      />
                     </div>
                     <div style={styles.fieldGroup}>
                       <label style={styles.label}>User ID *</label>
-                      <input type="text" placeholder="U01" value={newUserForm.userId} onChange={e => setNewUserForm({...newUserForm, userId: e.target.value})} style={styles.input} maxLength="5" />
+                      <input 
+                        type="text" 
+                        placeholder="U01" 
+                        value={newUserForm.userId} 
+                        onChange={e => setNewUserForm({...newUserForm, userId: e.target.value})} 
+                        style={styles.input} 
+                        maxLength="5"
+                      />
                     </div>
                     <div style={styles.fieldGroup}>
                       <label style={styles.label}>Phone No</label>
-                      <input type="text" placeholder="10-digit mobile" value={newUserForm.phone} onChange={e => setNewUserForm({...newUserForm, phone: e.target.value})} style={styles.input} />
+                      <input 
+                        type="text" 
+                        placeholder="10-digit mobile" 
+                        value={newUserForm.phone} 
+                        onChange={e => setNewUserForm({...newUserForm, phone: e.target.value})} 
+                        style={styles.input} 
+                      />
                     </div>
                     <div style={styles.fieldGroup}>
                       <label style={styles.label}>Role</label>
-                      <select value={newUserForm.role} onChange={e => setNewUserForm({...newUserForm, role: e.target.value})} style={styles.input}>
+                      <select 
+                        value={newUserForm.role} 
+                        onChange={e => setNewUserForm({...newUserForm, role: e.target.value})} 
+                        style={styles.input}
+                      >
                         <option value="Captain">Captain</option>
                         <option value="Manager">Manager</option>
                         <option value="Admin">Admin</option>
@@ -1143,7 +1299,13 @@ export default function SettingsModule() {
                         {editingUserId ? 'Update' : '+ Add'}
                       </button>
                       {editingUserId && (
-                        <button type="button" onClick={() => { setEditingUserId(null); setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' }); }} style={styles.cancelInlineBtn}>Cancel</button>
+                        <button 
+                          type="button" 
+                          onClick={() => { setEditingUserId(null); setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' }); }} 
+                          style={styles.cancelInlineBtn}
+                        >
+                          Cancel
+                        </button>
                       )}
                     </div>
                   </div>
@@ -1162,7 +1324,9 @@ export default function SettingsModule() {
                       return (
                         <div key={uId || u.name} style={styles.userRowCard}>
                           <div style={{display: 'flex', alignItems: 'center', gap: '14px'}}>
-                            <div style={styles.userAvatar}>{u.name.charAt(0).toUpperCase()}</div>
+                            <div style={styles.userAvatar}>
+                              {u.name.charAt(0).toUpperCase()}
+                            </div>
                             <div>
                               <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                                 <span style={{fontWeight: '950', fontSize: '15px', color: '#0f172a'}}>{u.name}</span>
@@ -1175,11 +1339,34 @@ export default function SettingsModule() {
                           </div>
                           
                           <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                            <span style={{backgroundColor: isActive ? '#dcfce7' : '#fee2e2', color: isActive ? '#15803d' : '#991b1b', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '950'}}>
+                            <span style={{
+                              backgroundColor: isActive ? '#dcfce7' : '#fee2e2',
+                              color: isActive ? '#15803d' : '#991b1b',
+                              padding: '4px 10px',
+                              borderRadius: '8px',
+                              fontSize: '11px',
+                              fontWeight: '950'
+                            }}>
                               {isActive ? 'Active' : 'Inactive'}
                             </span>
-                            <button type="button" onClick={() => { setEditingUserId(uId); setNewUserForm({ name: u.name || '', userId: u.userIdCode || '', role: u.role || 'Captain', phone: u.phone || '' }); }} style={styles.actionEditBtn}>Edit</button>
-                            <button type="button" onClick={() => handleToggleUserStatus(uId)} style={styles.userToggleBtn}>{isActive ? 'Deactivate' : 'Activate'}</button>
+                            <button 
+                              type="button" 
+                              onClick={() => {
+                                setEditingUserId(uId);
+                                setNewUserForm({
+                                  name: u.name || '',
+                                  userId: u.userIdCode || '',
+                                  role: u.role || 'Captain',
+                                  phone: u.phone || ''
+                                });
+                              }} 
+                              style={styles.actionEditBtn}
+                            >
+                              Edit
+                            </button>
+                            <button type="button" onClick={() => handleToggleUserStatus(uId)} style={styles.userToggleBtn}>
+                              {isActive ? 'Deactivate' : 'Activate'}
+                            </button>
                             <button type="button" onClick={() => handleDeleteUser(uId)} style={styles.iconBtn} title="Delete User">🗑️</button>
                           </div>
                         </div>
@@ -1561,7 +1748,7 @@ export default function SettingsModule() {
                 {/* 3. New Order Notification Sound */}
                 <div style={styles.systemCard}>
                   <h4 style={{margin: '0 0 6px 0', fontSize: '16px', fontWeight: '950', color: '#0f172a'}}>🔔 New Order Notification Sound</h4>
-                  <p style={{margin: '0 0 16px 0', fontSize: '12px', color: '#64748b', fontWeight: '800'}}>Choose the chime that plays when a new online order arrives.</p>
+                  <p style={{margin: '0 0 16px 0', fontSize: '12px', color: '#64748b', fontWeight: '800'}}>Choose the chime that plays when a new online order arrives (Plays rich melody for ~10 seconds).</p>
 
                   <div style={styles.sysToggleRow}>
                     <div>
@@ -1623,7 +1810,7 @@ export default function SettingsModule() {
 }
 
 const styles = {
-  container: { display: 'flex', flexDirection: 'column', height: '100vh', padding: '24px', backgroundColor: '#f1f5f9', overflowY: 'auto', boxSizing: 'border-box', textAlign: 'left' },
+  container: { display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', backgroundColor: '#f1f5f9', overflowY: 'auto', boxSizing: 'border-box', textAlign: 'left' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', backgroundColor: '#fff', padding: '16px 24px', borderRadius: '16px', border: '2px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' },
   title: { margin: '0 0 4px 0', fontSize: '22px', fontWeight: '950', color: '#0f172a' },
   subtitle: { fontSize: '12px', color: '#475569', fontWeight: '800' },
@@ -1634,7 +1821,7 @@ const styles = {
   sidebar: { width: '260px', backgroundColor: '#fff', borderRadius: '16px', border: '2px solid #cbd5e1', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' },
   sidebarBtn: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', backgroundColor: 'transparent', border: '2px solid transparent', borderRadius: '10px', fontWeight: '900', fontSize: '13px', color: '#1e293b', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.2s ease' },
   activeSidebarBtn: { backgroundColor: '#ecfdf5', color: '#047857', borderColor: '#10b981', boxShadow: '0 2px 8px rgba(16,185,129,0.15)' },
-  contentPanel: { flex: 1, backgroundColor: '#fff', borderRadius: '16px', border: '2.5px solid #cbd5e1', padding: '24px', overflowY: 'auto', maxHeight: 'calc(100vh - 160px)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' },
+  contentPanel: { flex: 1, backgroundColor: '#fff', borderRadius: '16px', border: '2px solid #cbd5e1', padding: '24px', minHeight: '600px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' },
   formContainer: { display: 'flex', flexDirection: 'column', gap: '20px' },
   sectionGroup: { display: 'flex', flexDirection: 'column', gap: '16px' },
   sectionTitle: { fontSize: '17px', fontWeight: '950', color: '#0f172a', margin: '0 0 12px 0', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px' },
