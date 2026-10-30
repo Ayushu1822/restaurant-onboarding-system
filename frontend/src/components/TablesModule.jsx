@@ -22,31 +22,47 @@ export default function TablesModule() {
   const [showCaptainManageModal, setShowCaptainManageModal] = useState(false);
   const [editingCaptain, setEditingCaptain] = useState(null);
 
-  // 🧾 Receipt & Print Modal State & Settings Config (Synced with Settings Module)
+  // 🧾 Receipt & Print Modal State & Settings Config (Synced perfectly with AdvancedSettingsTab)
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [completedOrderReceipt, setCompletedOrderReceipt] = useState(null);
   const [receiptConfig, setReceiptConfig] = useState({
     restaurantName: 'LINGA FOODS',
-    headerText: 'Linga Foods - Wonghikal',
+    branchName: 'Wonghikal',
+    headerText: '',
     address: 'LINGA FOODS, No. 1540, Vellore Main Road, Wonghikal, Tiruvannamalai, Tamil Nadu 606604',
     phone: '91234400635',
+    email: '',
     gstin: '37AAFP4128L1ZI',
     fssai: 'FSSAI: 22426260001195',
-    footerNote: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***',
+    footerText: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***',
     paperSize: '80mm',
     density: 'Compact',
-    toggles: {
-      restaurantName: true,
-      address: true,
-      phone: true,
-      gstin: true,
-      fssai: true,
-      invoiceNo: true,
-      dateAndTime: true,
-      tokenNumber: true,
-      itemNameQtyAmt: true,
-      totalTax: true
-    }
+    // Toggle fields matching AdvancedSettingsTab
+    logo: false,
+    restaurantNameToggle: true,
+    branchNameToggle: true,
+    headerTextToggle: false,
+    addressToggle: true,
+    phoneToggle: true,
+    emailToggle: false,
+    gstinToggle: true,
+    fssaiToggle: true,
+    invoiceNo: true,
+    dateAndTime: true,
+    orderId: true,
+    tokenNumber: true,
+    orderType: true,
+    customerName: false,
+    customerMobile: false,
+    itemNameQtyAmt: true,
+    itemRate: true,
+    variants: true,
+    itemNotes: true,
+    discount: true,
+    totalTax: true,
+    taxBreakdown: true,
+    paymentMethod: true,
+    paymentReference: false
   });
 
   const [printRules, setPrintRules] = useState({
@@ -122,13 +138,15 @@ export default function TablesModule() {
       setFullProfile(data);
       setRestaurantId(data.restaurantId);
 
-      // Load receiptConfig from backend profile if available
+      // ✅ Properly parse and merge receiptConfig from backend profile database
       if (data.receiptConfig) {
-        const parsedCfg = typeof data.receiptConfig === 'string' ? JSON.parse(data.receiptConfig) : data.receiptConfig;
+        let parsedCfg = data.receiptConfig;
+        if (typeof parsedCfg === 'string') {
+          try { parsedCfg = JSON.parse(parsedCfg); } catch (e) { parsedCfg = {}; }
+        }
         setReceiptConfig(prev => ({ ...prev, ...parsedCfg }));
       }
 
-      // Load printRules from backend profile if available
       if (data.printRules) {
         const parsedRules = typeof data.printRules === 'string' ? JSON.parse(data.printRules) : data.printRules;
         setPrintRules(prev => ({ ...prev, ...parsedRules }));
@@ -268,7 +286,6 @@ export default function TablesModule() {
 
       if (foundTable) {
         setActiveOrderTable(foundTable);
-        // Load active cart session if table is already occupied so previous items remain visible
         const savedCart = localStorage.getItem(`table_cart_${foundTable.id}`);
         if (savedCart) {
           try {
@@ -434,8 +451,15 @@ export default function TablesModule() {
       }))
     };
 
-    fetch(`${API_BASE_URL}/api/v1/orders`, {
-      method: 'POST',
+    const activeOrderId = localStorage.getItem(`table_order_id_${activeOrderTable.id}`);
+    const endpoint = activeOrderId 
+      ? `${API_BASE_URL}/api/v1/orders/table/${activeOrderTable.name}/append?email=${userEmail}`
+      : `${API_BASE_URL}/api/v1/orders`;
+    
+    const method = activeOrderId ? 'PUT' : 'POST';
+
+    fetch(endpoint, {
+      method: method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderPayload)
     })
@@ -444,8 +468,13 @@ export default function TablesModule() {
       return res.json();
     })
     .then(data => {
+      const orderId = data.orderId || data.id || `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+      
+      localStorage.setItem(`table_order_id_${activeOrderTable.id}`, orderId);
+      localStorage.setItem(`table_cart_${activeOrderTable.id}`, JSON.stringify(cartItems));
+
       const receiptData = {
-        orderId: data.orderId || `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+        orderId: orderId,
         tableName: activeOrderTable.name,
         areaName: activeOrderTable.areaName,
         captain: activeOrderTable.captain || 'Unassigned',
@@ -457,9 +486,6 @@ export default function TablesModule() {
         paymentMode: paymentMode,
         timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
       };
-
-      // Save updated cart to table session so further additions are remembered
-      localStorage.setItem(`table_cart_${activeOrderTable.id}`, JSON.stringify(cartItems));
 
       setCompletedOrderReceipt(receiptData);
       setShowReceiptModal(true);
@@ -480,7 +506,12 @@ export default function TablesModule() {
     }
   };
 
-  // 🖨️ Bulletproof Print / Download Handler using Isolated Print Window & Settings Config
+  // Helper function to check if a specific receipt field toggle is enabled
+  const isFieldOn = (key, defVal = true) => {
+    return receiptConfig[key] !== undefined ? receiptConfig[key] : defVal;
+  };
+
+  // 🖨️ Bulletproof Print / Download Handler fully synced with AdvancedSettingsTab configuration
   const handlePrintReceipt = () => {
     if (!completedOrderReceipt) return;
     
@@ -490,7 +521,6 @@ export default function TablesModule() {
       return;
     }
 
-    const toggles = receiptConfig.toggles || {};
     const itemsHtml = completedOrderReceipt.items.map(it => `
       <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
         <span>${it.qty}x ${it.name}</span>
@@ -511,28 +541,37 @@ export default function TablesModule() {
           </style>
         </head>
         <body>
-          ${toggles.restaurantName ? `<div class="center bold" style="font-size: 14px;">${receiptConfig.restaurantName}</div>` : ''}
-          ${receiptConfig.headerText ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.headerText}</div>` : ''}
-          ${toggles.address && receiptConfig.address ? `<div class="center" style="font-size: 10px; color: #333; margin: 3px 0;">${receiptConfig.address}</div>` : ''}
-          ${toggles.phone && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>` : ''}
-          ${toggles.gstin && receiptConfig.gstin ? `<div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>` : ''}
-          ${receiptConfig.fssai ? `<div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>` : ''}
+          ${isFieldOn('logo', false) && receiptConfig.logoUrl ? `<div class="center" style="margin-bottom: 6px;"><img src="${receiptConfig.logoUrl}" style="max-width: 60%; max-height: 50px; filter: grayscale(1);" /></div>` : ''}
+          ${isFieldOn('headerText', false) && receiptConfig.headerText ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.headerText}</div>` : ''}
+          ${isFieldOn('restaurantName', true) ? `<div class="center bold" style="font-size: 14px;">${(receiptConfig.restaurantName || 'RESTAURANT').toUpperCase()}</div>` : ''}
+          ${isFieldOn('branchName', true) && receiptConfig.branchName ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.branchName}</div>` : ''}
+          ${isFieldOn('address', true) && receiptConfig.address ? `<div class="center" style="font-size: 10px; color: #333; margin: 3px 0; white-space: pre-line;">${receiptConfig.address}</div>` : ''}
+          ${isFieldOn('phone', true) && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>` : ''}
+          ${isFieldOn('email', false) && receiptConfig.email ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.email}</div>` : ''}
+          ${isFieldOn('gstin', true) && receiptConfig.gstin ? `<div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>` : ''}
+          ${isFieldOn('fssai', true) && receiptConfig.fssai ? `<div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>` : ''}
+          
           <div class="line"></div>
-          ${toggles.invoiceNo ? `<div><strong>Order ID:</strong> ${completedOrderReceipt.orderId}</div>` : ''}
-          ${toggles.dateAndTime ? `<div><strong>Date:</strong> ${completedOrderReceipt.timestamp}</div>` : ''}
+          ${isFieldOn('orderId', true) ? `<div><strong>Order ID:</strong> ${completedOrderReceipt.orderId}</div>` : ''}
+          ${isFieldOn('invoiceNo', true) ? `<div><strong>Receipt No:</strong> INV-${completedOrderReceipt.orderId}</div>` : ''}
+          ${isFieldOn('dateAndTime', true) ? `<div><strong>Date:</strong> ${completedOrderReceipt.timestamp}</div>` : ''}
           <div><strong>Table:</strong> ${completedOrderReceipt.tableName} (${completedOrderReceipt.areaName})</div>
           <div><strong>Captain:</strong> ${completedOrderReceipt.captain}</div>
-          <div><strong>Type:</strong> ${completedOrderReceipt.orderType}</div>
-          <div><strong>Payment:</strong> ${completedOrderReceipt.paymentMode}</div>
+          ${isFieldOn('orderType', true) ? `<div><strong>Type:</strong> ${completedOrderReceipt.orderType}</div>` : ''}
+          ${isFieldOn('paymentMethod', true) ? `<div><strong>Payment:</strong> ${completedOrderReceipt.paymentMode}</div>` : ''}
+          
           <div class="line"></div>
           <div class="bold" style="margin-bottom: 6px;">ITEMS:</div>
           ${itemsHtml}
+          
           <div class="line"></div>
           <div class="flex"><span>Subtotal:</span><span>₹${completedOrderReceipt.subtotal.toFixed(2)}</span></div>
-          ${toggles.totalTax ? `<div class="flex"><span>Tax:</span><span>₹${completedOrderReceipt.totalTax.toFixed(2)}</span></div>` : ''}
+          ${isFieldOn('totalTax', true) ? `<div class="flex"><span>Tax:</span><span>₹${completedOrderReceipt.totalTax.toFixed(2)}</span></div>` : ''}
           <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>Total:</span><span>₹${completedOrderReceipt.totalAmount}</span></div>
+          
           <div class="line"></div>
-          <div class="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptConfig.footerNote}</div>
+          ${isFieldOn('footerText', true) && receiptConfig.footerText ? `<div class="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptConfig.footerText}</div>` : ''}
+          
           <script>
             window.onload = function() {
               window.print();
@@ -555,7 +594,6 @@ export default function TablesModule() {
     (a.tables || []).forEach(t => allTablesList.push({ ...t, areaId: a.id, areaName: a.name }));
   });
   const availableCount = allTablesList.filter(t => (t.status || 'Available') === 'Available').length;
-
   const categories = [...new Set(menuItems.map(item => item.category))];
 
   // ==========================================
@@ -582,14 +620,11 @@ export default function TablesModule() {
         </div>
 
         <div className="tb-pos-body">
-          
           <div className="tb-menu-panel">
             <h4 className="tb-panel-title">LIVE RESTAURANT MENU (DATABASE & TAX-MAPPED)</h4>
             
             {menuItems.length === 0 ? (
-              <div className="tb-empty">
-                No menu items found. Please add items via Menu Management module first.
-              </div>
+              <div className="tb-empty">No menu items found. Please add items via Menu Management module first.</div>
             ) : (
               categories.map(category => {
                 const catItems = menuItems.filter(item => item.category === category);
@@ -597,34 +632,28 @@ export default function TablesModule() {
 
                 return (
                   <div key={category} className="tb-cat-block">
-                    <div className="tb-cat">
-                      📁 {category.toUpperCase()}
-                    </div>
+                    <div className="tb-cat">📁 {category.toUpperCase()}</div>
                     <div className="tb-food-grid">
-                      {catItems.map(food => {
-                        return (
-                          <div 
-                            key={food.id}
-                            onClick={() => {
-                              const existing = cartItems.find(i => i.id === food.id);
-                              if (existing) {
-                                setCartItems(cartItems.map(i => i.id === food.id ? {...i, qty: i.qty + 1} : i));
-                              } else {
-                                setCartItems([...cartItems, { ...food, qty: 1 }]);
-                              }
-                            }}
-                            onMouseEnter={() => setHoveredMenuId(food.id)}
-                            onMouseLeave={() => setHoveredMenuId(null)}
-                            className="tb-food"
-                          >
-                            <div className="tb-food-name">{food.name}</div>
-                            <div className="tb-food-row">
-                              <div className="tb-food-price">₹{food.price}</div>
-                              <span className="tb-food-tax">🏷️ {food.taxGroup}</span>
-                            </div>
+                      {catItems.map(food => (
+                        <div 
+                          key={food.id}
+                          onClick={() => {
+                            const existing = cartItems.find(i => i.id === food.id);
+                            if (existing) {
+                              setCartItems(cartItems.map(i => i.id === food.id ? {...i, qty: i.qty + 1} : i));
+                            } else {
+                              setCartItems([...cartItems, { ...food, qty: 1 }]);
+                            }
+                          }}
+                          className="tb-food"
+                        >
+                          <div className="tb-food-name">{food.name}</div>
+                          <div className="tb-food-row">
+                            <div className="tb-food-price">₹{food.price}</div>
+                            <span className="tb-food-tax">🏷️ {food.taxGroup}</span>
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 );
@@ -653,9 +682,7 @@ export default function TablesModule() {
 
             <div className="tb-cart-list">
               {cartItems.length === 0 ? (
-                <div className="tb-cart-empty">
-                  Cart is empty. Click items from menu.
-                </div>
+                <div className="tb-cart-empty">Cart is empty. Click items from menu.</div>
               ) : (
                 cartItems.map((item, idx) => {
                   const itemTotal = item.price * item.qty;
@@ -672,7 +699,7 @@ export default function TablesModule() {
                       </div>
                       <div className="tb-cart-bottom">
                         <span>₹{item.price} x {item.qty} = ₹{itemTotal}</span>
-                        <span className="tb-cart-tax">Tax ({item.taxGroup}): +₹{itemTax.toFixed(2)}</span>
+                        <span className="tb-cart-tax">Tax: +₹{itemTax.toFixed(2)}</span>
                       </div>
                     </div>
                   );
@@ -728,9 +755,7 @@ export default function TablesModule() {
                 💳 Split Cash & Online Checkout
               </button>
             </div>
-
           </div>
-
         </div>
 
         {/* 💳 CASH VS ONLINE SPLIT PAYMENT MODAL */}
@@ -780,7 +805,7 @@ export default function TablesModule() {
                     if (c + o !== totalAmount) {
                       return alert(`Split amounts (Cash ₹${c} + Online ₹${o} = ₹${c+o}) must equal Total Bill ₹${totalAmount}!`);
                     }
-                    // Clear cart session upon full settlement
+                    localStorage.removeItem(`table_order_id_${activeOrderTable.id}`);
                     localStorage.removeItem(`table_cart_${activeOrderTable.id}`);
                     handleSendKOT(`Cash: ₹${c} | Online: ₹${o}`);
                     setShowSplitModal(false);
@@ -830,9 +855,7 @@ export default function TablesModule() {
           Loading tables from database...
         </div>
       ) : areasAndTables.areas.length === 0 ? (
-        <div className="tb-empty">
-          No areas or tables found. Add them via Settings or click "+ Add Table" above!
-        </div>
+        <div className="tb-empty">No areas or tables found. Add them via Settings or click "+ Add Table" above!</div>
       ) : (
         areasAndTables.areas.map(area => {
           const areaTables = area.tables || [];
@@ -841,9 +864,7 @@ export default function TablesModule() {
           return (
             <div key={area.id} className="tb-area">
               <div className="tb-area-head">
-                <span className="tb-area-chip">
-                  🪑 {area.name.toUpperCase()} SECTION
-                </span>
+                <span className="tb-area-chip">🪑 {area.name.toUpperCase()} SECTION</span>
               </div>
               <div className="tb-grid">
                 {areaTables.map(table => {
@@ -854,8 +875,6 @@ export default function TablesModule() {
                     <div 
                       key={table.id} 
                       onClick={() => setSelectedTable({ ...table, areaId: area.id, areaName: area.name })}
-                      onMouseEnter={() => setHoveredId(table.id)}
-                      onMouseLeave={() => setHoveredId(null)}
                       className={`tb-table ${status === 'Available' ? 'is-available' : 'is-occupied'}`}
                     >
                       <div>
@@ -868,10 +887,7 @@ export default function TablesModule() {
                           🧑‍✈️ Captain: {captainName}
                         </div>
                       </div>
-                      
-                      <div className="tb-table-cta">
-                        Manage Table ›
-                      </div>
+                      <div className="tb-table-cta">Manage Table ›</div>
                     </div>
                   );
                 })}
@@ -907,7 +923,7 @@ export default function TablesModule() {
             <div className="tb-action-col">
               <button 
                 onClick={() => {
-                  // Clear table session storage when making available
+                  localStorage.removeItem(`table_order_id_${selectedTable.id}`);
                   localStorage.removeItem(`table_cart_${selectedTable.id}`);
                   handleUpdateTableStatusAndCaptain(selectedTable.areaId, selectedTable.id, 'Available', selectedTable.captain, false);
                 }} 
@@ -935,16 +951,12 @@ export default function TablesModule() {
         <div className="tb-overlay" onClick={() => setShowAddModal(false)}>
           <form onSubmit={handleAddTable} className="tb-modal" onClick={e => e.stopPropagation()}>
             <h3 className="tb-modal-title tb-mb">Add New Table</h3>
-            
             <label className="tb-label">TABLE NAME / ID:</label>
             <input className="tb-input" placeholder="e.g. T5" value={newTableForm.tableName} onChange={e => setNewTableForm({...newTableForm, tableName: e.target.value})} required />
-            
             <label className="tb-label">SECTION / AREA NAME:</label>
-            <input className="tb-input" placeholder="e.g. Main, Patio, Rooftop" value={newTableForm.areaName} onChange={e => setNewTableForm({...newTableForm, areaName: e.target.value})} required />
-
+            <input className="tb-input" placeholder="e.g. Main, Rooftop" value={newTableForm.areaName} onChange={e => setNewTableForm({...newTableForm, areaName: e.target.value})} required />
             <label className="tb-label">SEATS (PAX):</label>
             <input type="number" className="tb-input" value={newTableForm.pax} onChange={e => setNewTableForm({...newTableForm, pax: e.target.value})} required />
-
             <button type="submit" className="tb-add-btn tb-add-btn-full">Create Table</button>
           </form>
         </div>
@@ -961,9 +973,7 @@ export default function TablesModule() {
 
             <div className="tb-cap-list">
               {captainsList.length === 0 ? (
-                <div className="tb-cap-empty">
-                  No captains added yet. Add one below!
-                </div>
+                <div className="tb-cap-empty">No captains added yet. Add one below!</div>
               ) : (
                 captainsList.map(c => {
                   const cId = c.id || c._id;
