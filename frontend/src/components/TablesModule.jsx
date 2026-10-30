@@ -268,7 +268,7 @@ export default function TablesModule() {
 
       if (foundTable) {
         setActiveOrderTable(foundTable);
-        // Load active cart session if table is already occupied
+        // Load active cart session if table is already occupied so previous items remain visible
         const savedCart = localStorage.getItem(`table_cart_${foundTable.id}`);
         if (savedCart) {
           try {
@@ -458,8 +458,8 @@ export default function TablesModule() {
         timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
       };
 
-      // Clear stored cart upon order completion
-      localStorage.removeItem(`table_cart_${activeOrderTable.id}`);
+      // Save updated cart to table session so further additions are remembered
+      localStorage.setItem(`table_cart_${activeOrderTable.id}`, JSON.stringify(cartItems));
 
       setCompletedOrderReceipt(receiptData);
       setShowReceiptModal(true);
@@ -654,7 +654,7 @@ export default function TablesModule() {
             <div className="tb-cart-list">
               {cartItems.length === 0 ? (
                 <div className="tb-cart-empty">
-                  Cart is empty. Click items from menu to add items.
+                  Cart is empty. Click items from menu.
                 </div>
               ) : (
                 cartItems.map((item, idx) => {
@@ -780,6 +780,8 @@ export default function TablesModule() {
                     if (c + o !== totalAmount) {
                       return alert(`Split amounts (Cash ₹${c} + Online ₹${o} = ₹${c+o}) must equal Total Bill ₹${totalAmount}!`);
                     }
+                    // Clear cart session upon full settlement
+                    localStorage.removeItem(`table_cart_${activeOrderTable.id}`);
                     handleSendKOT(`Cash: ₹${c} | Online: ₹${o}`);
                     setShowSplitModal(false);
                   }}
@@ -904,7 +906,11 @@ export default function TablesModule() {
             <label className="tb-label">ACTIONS</label>
             <div className="tb-action-col">
               <button 
-                onClick={() => handleUpdateTableStatusAndCaptain(selectedTable.areaId, selectedTable.id, 'Available', selectedTable.captain, false)} 
+                onClick={() => {
+                  // Clear table session storage when making available
+                  localStorage.removeItem(`table_cart_${selectedTable.id}`);
+                  handleUpdateTableStatusAndCaptain(selectedTable.areaId, selectedTable.id, 'Available', selectedTable.captain, false);
+                }} 
                 className="tb-action-clear"
               >
                 🟢 Clear Table (Make Available)
