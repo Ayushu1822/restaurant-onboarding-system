@@ -1,3 +1,4 @@
+// FILE: src/components/SettingsModule.jsx
 import React, { useState, useEffect } from 'react';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
@@ -11,15 +12,12 @@ export default function SettingsModule() {
   const [isEditingHours, setIsEditingHours] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
 
-  // Store full profile so we preserve unedited fields
   const [fullProfile, setFullProfile] = useState({});
 
-  // Staff / Users List State (With Edit & Phone Support)
   const [usersList, setUsersList] = useState([]);
   const [editingUserId, setEditingUserId] = useState(null);
   const [newUserForm, setNewUserForm] = useState({ name: '', userId: '', role: 'Captain', phone: '' });
 
-  // Inline Form States (Replacing browser prompts)
   const [showAddAreaBox, setShowAddAreaBox] = useState(false);
   const [newAreaNameInput, setNewAreaNameInput] = useState('');
 
@@ -246,7 +244,6 @@ export default function SettingsModule() {
     const userEmail = formData.email || localStorage.getItem('userEmail') || '';
     
     if (editingUserId) {
-      // Update existing user
       const targetUser = usersList.find(u => (u.id || u._id) === editingUserId);
       const payload = {
         name: newUserForm.name.trim(),
@@ -274,7 +271,6 @@ export default function SettingsModule() {
       })
       .catch(err => alert('Error: ' + err.message));
     } else {
-      // Create new user
       fetch(`${API_BASE_URL}/api/v1/staff`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -377,7 +373,6 @@ export default function SettingsModule() {
     }));
   };
 
-  // --- Inline Area & Table Handlers ---
   const handleSaveNewArea = (e) => {
     e.preventDefault();
     if (!newAreaNameInput.trim()) return;
@@ -392,7 +387,7 @@ export default function SettingsModule() {
       ...prev,
       areasAndTables: {
         ...prev.areasAndTables,
-        areas: [...prev.areasAndTables.areas, newArea]
+        areas: [...(prev.areasAndTables?.areas || []), newArea]
       }
     }));
     setNewAreaNameInput('');
@@ -416,9 +411,9 @@ export default function SettingsModule() {
       ...prev,
       areasAndTables: {
         ...prev.areasAndTables,
-        areas: prev.areasAndTables.areas.map(area => {
+        areas: (prev.areasAndTables?.areas || []).map(area => {
           if (area.id === areaId) {
-            return { ...area, tables: [...area.tables, newTable] };
+            return { ...area, tables: [...(area.tables || []), newTable] };
           }
           return area;
         })
@@ -433,11 +428,11 @@ export default function SettingsModule() {
       ...prev,
       areasAndTables: {
         ...prev.areasAndTables,
-        areas: prev.areasAndTables.areas.map(area => {
+        areas: (prev.areasAndTables?.areas || []).map(area => {
           if (area.id === areaId) {
             return {
               ...area,
-              tables: area.tables.map(t => t.id === tableId ? { ...t, qrEnabled: !t.qrEnabled } : t)
+              tables: (area.tables || []).map(t => t.id === tableId ? { ...t, qrEnabled: !t.qrEnabled } : t)
             };
           }
           return area;
@@ -452,11 +447,11 @@ export default function SettingsModule() {
       ...prev,
       areasAndTables: {
         ...prev.areasAndTables,
-        areas: prev.areasAndTables.areas.map(area => {
+        areas: (prev.areasAndTables?.areas || []).map(area => {
           if (area.id === areaId) {
             return {
               ...area,
-              tables: area.tables.filter(t => t.id !== tableId)
+              tables: (area.tables || []).filter(t => t.id !== tableId)
             };
           }
           return area;
@@ -465,7 +460,6 @@ export default function SettingsModule() {
     }));
   };
 
-  // --- Inline Delivery Agent Handlers ---
   const handleSaveNewAgent = (e) => {
     e.preventDefault();
     if (!newAgentForm.name.trim()) return;
@@ -482,7 +476,7 @@ export default function SettingsModule() {
       ...prev,
       deliveryConfig: {
         ...prev.deliveryConfig,
-        agents: [...(prev.deliveryConfig.agents || []), newAgent]
+        agents: [...(prev.deliveryConfig?.agents || []), newAgent]
       }
     }));
     setNewAgentForm({ name: '', phone: '', vehicleNo: '' });
@@ -494,7 +488,7 @@ export default function SettingsModule() {
       ...prev,
       deliveryConfig: {
         ...prev.deliveryConfig,
-        agents: prev.deliveryConfig.agents.map(ag => {
+        agents: (prev.deliveryConfig?.agents || []).map(ag => {
           if (ag.id === agentId) {
             const nextStatus = ag.status === 'Available' ? 'Unavailable' : 'Available';
             return { ...ag, status: nextStatus };
@@ -511,12 +505,11 @@ export default function SettingsModule() {
       ...prev,
       deliveryConfig: {
         ...prev.deliveryConfig,
-        agents: prev.deliveryConfig.agents.filter(ag => ag.id !== agentId)
+        agents: (prev.deliveryConfig?.agents || []).filter(ag => ag.id !== agentId)
       }
     }));
   };
 
-  // --- Tax Group Handlers ---
   const handleTaxRateChange = (val) => {
     const rateNum = parseFloat(val) || 0;
     const half = (rateNum / 2).toFixed(1).replace(/\.0$/, '');
@@ -569,7 +562,7 @@ export default function SettingsModule() {
       ...prev,
       billingConfig: {
         ...prev.billingConfig,
-        taxGroups: prev.billingConfig.taxGroups.map(tg => tg.id === tgId ? { ...tg, status: tg.status === 'Active' ? 'Inactive' : 'Active' } : tg)
+        taxGroups: (prev.billingConfig?.taxGroups || []).map(tg => tg.id === tgId ? { ...tg, status: tg.status === 'Active' ? 'Inactive' : 'Active' } : tg)
       }
     }));
   };
@@ -580,7 +573,7 @@ export default function SettingsModule() {
       ...prev,
       billingConfig: {
         ...prev.billingConfig,
-        taxGroups: prev.billingConfig.taxGroups.filter(tg => tg.id !== tgId)
+        taxGroups: (prev.billingConfig?.taxGroups || []).filter(tg => tg.id !== tgId)
       }
     }));
   };
@@ -588,7 +581,7 @@ export default function SettingsModule() {
   const handleHourChange = (day, field, value) => {
     setFormData(prev => ({
       ...prev,
-      serviceHours: { ...prev.serviceHours, [day]: { ...prev.serviceHours[day], [field]: value } }
+      serviceHours: { ...prev.serviceHours, [day]: { ...prev.serviceHours?.[day], [field]: value } }
     }));
   };
 
@@ -623,7 +616,7 @@ export default function SettingsModule() {
       const latestData = latestRes.ok ? await latestRes.json() : fullProfile;
 
       let existingAreasMap = {};
-      let latestAreasAndTables = formData.areasAndTables;
+      const currentAreasAndTables = formData.areasAndTables || { autoOpenQrScan: true, areas: [] };
 
       try {
         const parsedLatestAreas = typeof latestData.areasAndTables === 'string' 
@@ -631,7 +624,6 @@ export default function SettingsModule() {
           : latestData.areasAndTables;
 
         if (parsedLatestAreas && parsedLatestAreas.areas) {
-          latestAreasAndTables = parsedLatestAreas;
           parsedLatestAreas.areas.forEach(a => {
             (a.tables || []).forEach(t => {
               existingAreasMap[t.id] = { status: t.status, captain: t.captain, qrEnabled: t.qrEnabled };
@@ -641,11 +633,11 @@ export default function SettingsModule() {
       } catch (err) {}
 
       const mergedAreas = {
-        ...latestAreasAndTables,
-        autoOpenQrScan: formData.areasAndTables.autoOpenQrScan,
-        areas: formData.areasAndTables.areas.map(area => ({
+        ...currentAreasAndTables,
+        autoOpenQrScan: currentAreasAndTables.autoOpenQrScan ?? true,
+        areas: (currentAreasAndTables.areas || []).map(area => ({
           ...area,
-          tables: area.tables.map(t => ({
+          tables: (area.tables || []).map(t => ({
             ...t,
             status: existingAreasMap[t.id]?.status || t.status || 'Available',
             captain: existingAreasMap[t.id]?.captain || t.captain || 'Unassigned',
@@ -657,13 +649,13 @@ export default function SettingsModule() {
       const payload = {
         ...latestData,
         ...formData,
-        serviceHours: JSON.stringify(formData.serviceHours),
+        serviceHours: JSON.stringify(formData.serviceHours || {}),
         areasAndTables: JSON.stringify(mergedAreas),
-        deliveryConfig: JSON.stringify(formData.deliveryConfig),
-        billingConfig: JSON.stringify(formData.billingConfig),
-        receiptConfig: JSON.stringify(formData.receiptConfig),
-        printRules: JSON.stringify(formData.printRules),
-        printerInfo: JSON.stringify(formData.printerInfo)
+        deliveryConfig: JSON.stringify(formData.deliveryConfig || {}),
+        billingConfig: JSON.stringify(formData.billingConfig || {}),
+        receiptConfig: JSON.stringify(formData.receiptConfig || {}),
+        printRules: JSON.stringify(formData.printRules || {}),
+        printerInfo: JSON.stringify(formData.printerInfo || {})
       };
 
       const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/${formData.restaurantId}`, {
@@ -926,17 +918,17 @@ export default function SettingsModule() {
                         {!dayData.holiday && (
                           <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px'}}>
                             <div style={{display: 'flex', gap: '14px', alignItems: 'center'}}>
-                              <input type="text" value={dayData.shift1Start} onChange={e => handleHourChange(day, 'shift1Start', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
+                              <input type="text" value={dayData.shift1Start || ''} onChange={e => handleHourChange(day, 'shift1Start', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
                               <span style={{fontWeight: '900', color: '#334155'}}>to</span>
-                              <input type="text" value={dayData.shift1End} onChange={e => handleHourChange(day, 'shift1End', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
+                              <input type="text" value={dayData.shift1End || ''} onChange={e => handleHourChange(day, 'shift1End', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
                             </div>
                             <div style={{textAlign: 'center', fontSize: '12px', fontWeight: '950', color: '#b45309', backgroundColor: '#fef3c7', padding: '8px', borderRadius: '8px', border: '1.5px dashed #f59e0b'}}>
-                              Break {dayData.shift1End}–{dayData.shift2Start} ({breakDuration})
+                              Break {dayData.shift1End || '14:00'}–{dayData.shift2Start || '17:00'} ({breakDuration})
                             </div>
                             <div style={{display: 'flex', gap: '14px', alignItems: 'center'}}>
-                              <input type="text" value={dayData.shift2Start} onChange={e => handleHourChange(day, 'shift2Start', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
+                              <input type="text" value={dayData.shift2Start || ''} onChange={e => handleHourChange(day, 'shift2Start', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
                               <span style={{fontWeight: '900', color: '#334155'}}>to</span>
-                              <input type="text" value={dayData.shift2End} onChange={e => handleHourChange(day, 'shift2End', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
+                              <input type="text" value={dayData.shift2End || ''} onChange={e => handleHourChange(day, 'shift2End', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
                             </div>
                           </div>
                         )}
@@ -976,7 +968,7 @@ export default function SettingsModule() {
                 <div style={styles.noticeBanner}>Every table can have its own QR code. Customers scan it to view the menu and add items directly to the table's order in POS.</div>
 
                 <div style={{display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '10px'}}>
-                  {formData.areasAndTables?.areas?.map(area => (
+                  {(formData.areasAndTables?.areas || []).map(area => (
                     <div key={area.id} style={styles.areaContainer}>
                       <div style={styles.areaHeader}>
                         <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
@@ -1000,7 +992,7 @@ export default function SettingsModule() {
                       )}
 
                       <div style={styles.tablesGrid}>
-                        {area.tables?.map(table => (
+                        {(area.tables || []).map(table => (
                           <div key={table.id} style={styles.tableCard}>
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
                               <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
@@ -1028,7 +1020,7 @@ export default function SettingsModule() {
               </div>
             )}
 
-            {/* TAB 5: USERS (With Edit & Fixed Status Colors) */}
+            {/* TAB 5: USERS */}
             {activeTab === 'users' && (
               <div style={styles.sectionGroup}>
                 <h3 style={styles.sectionTitle}>👥 Users & Floor Staff</h3>
@@ -1036,7 +1028,6 @@ export default function SettingsModule() {
                   Create or edit Captains, Managers, and Staff here. They will appear simultaneously across Tables for assignment and order tracking.
                 </p>
 
-                {/* Add / Edit User Card Form */}
                 <div style={styles.userAddCard}>
                   <h4 style={{margin: '0 0 14px 0', fontSize: '14px', fontWeight: '950', color: '#0f172a'}}>
                     {editingUserId ? '✏️ Edit User / Captain' : '👤 Add User'}
@@ -1044,42 +1035,19 @@ export default function SettingsModule() {
                   <div style={{display: 'grid', gridTemplateColumns: '1.6fr 0.9fr 1fr 1fr auto', gap: '12px', alignItems: 'flex-end'}}>
                     <div style={styles.fieldGroup}>
                       <label style={styles.label}>Name *</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. Ravi Kumar" 
-                        value={newUserForm.name} 
-                        onChange={e => setNewUserForm({...newUserForm, name: e.target.value})} 
-                        style={styles.input} 
-                      />
+                      <input type="text" placeholder="e.g. Ravi Kumar" value={newUserForm.name} onChange={e => setNewUserForm({...newUserForm, name: e.target.value})} style={styles.input} />
                     </div>
                     <div style={styles.fieldGroup}>
                       <label style={styles.label}>User ID *</label>
-                      <input 
-                        type="text" 
-                        placeholder="U01" 
-                        value={newUserForm.userId} 
-                        onChange={e => setNewUserForm({...newUserForm, userId: e.target.value})} 
-                        style={styles.input} 
-                        maxLength="5"
-                      />
+                      <input type="text" placeholder="U01" value={newUserForm.userId} onChange={e => setNewUserForm({...newUserForm, userId: e.target.value})} style={styles.input} maxLength="5" />
                     </div>
                     <div style={styles.fieldGroup}>
                       <label style={styles.label}>Phone No</label>
-                      <input 
-                        type="text" 
-                        placeholder="10-digit mobile" 
-                        value={newUserForm.phone} 
-                        onChange={e => setNewUserForm({...newUserForm, phone: e.target.value})} 
-                        style={styles.input} 
-                      />
+                      <input type="text" placeholder="10-digit mobile" value={newUserForm.phone} onChange={e => setNewUserForm({...newUserForm, phone: e.target.value})} style={styles.input} />
                     </div>
                     <div style={styles.fieldGroup}>
                       <label style={styles.label}>Role</label>
-                      <select 
-                        value={newUserForm.role} 
-                        onChange={e => setNewUserForm({...newUserForm, role: e.target.value})} 
-                        style={styles.input}
-                      >
+                      <select value={newUserForm.role} onChange={e => setNewUserForm({...newUserForm, role: e.target.value})} style={styles.input}>
                         <option value="Captain">Captain</option>
                         <option value="Manager">Manager</option>
                         <option value="Admin">Admin</option>
@@ -1091,19 +1059,12 @@ export default function SettingsModule() {
                         {editingUserId ? 'Update' : '+ Add'}
                       </button>
                       {editingUserId && (
-                        <button 
-                          type="button" 
-                          onClick={() => { setEditingUserId(null); setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' }); }} 
-                          style={styles.cancelInlineBtn}
-                        >
-                          Cancel
-                        </button>
+                        <button type="button" onClick={() => { setEditingUserId(null); setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' }); }} style={styles.cancelInlineBtn}>Cancel</button>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Users List */}
                 <h4 style={{margin: '20px 0 12px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Users ({usersList.length})</h4>
                 
                 {usersList.length === 0 ? (
@@ -1117,9 +1078,7 @@ export default function SettingsModule() {
                       return (
                         <div key={uId || u.name} style={styles.userRowCard}>
                           <div style={{display: 'flex', alignItems: 'center', gap: '14px'}}>
-                            <div style={styles.userAvatar}>
-                              {u.name.charAt(0).toUpperCase()}
-                            </div>
+                            <div style={styles.userAvatar}>{u.name.charAt(0).toUpperCase()}</div>
                             <div>
                               <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                                 <span style={{fontWeight: '950', fontSize: '15px', color: '#0f172a'}}>{u.name}</span>
@@ -1132,34 +1091,11 @@ export default function SettingsModule() {
                           </div>
                           
                           <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                            <span style={{
-                              backgroundColor: isActive ? '#dcfce7' : '#fee2e2',
-                              color: isActive ? '#15803d' : '#991b1b',
-                              padding: '4px 10px',
-                              borderRadius: '8px',
-                              fontSize: '11px',
-                              fontWeight: '950'
-                            }}>
+                            <span style={{backgroundColor: isActive ? '#dcfce7' : '#fee2e2', color: isActive ? '#15803d' : '#991b1b', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '950'}}>
                               {isActive ? 'Active' : 'Inactive'}
                             </span>
-                            <button 
-                              type="button" 
-                              onClick={() => {
-                                setEditingUserId(uId);
-                                setNewUserForm({
-                                  name: u.name || '',
-                                  userId: u.userIdCode || '',
-                                  role: u.role || 'Captain',
-                                  phone: u.phone || ''
-                                });
-                              }} 
-                              style={styles.actionEditBtn}
-                            >
-                              Edit
-                            </button>
-                            <button type="button" onClick={() => handleToggleUserStatus(uId)} style={styles.userToggleBtn}>
-                              {isActive ? 'Deactivate' : 'Activate'}
-                            </button>
+                            <button type="button" onClick={() => { setEditingUserId(uId); setNewUserForm({ name: u.name || '', userId: u.userIdCode || '', role: u.role || 'Captain', phone: u.phone || '' }); }} style={styles.actionEditBtn}>Edit</button>
+                            <button type="button" onClick={() => handleToggleUserStatus(uId)} style={styles.userToggleBtn}>{isActive ? 'Deactivate' : 'Activate'}</button>
                             <button type="button" onClick={() => handleDeleteUser(uId)} style={styles.iconBtn} title="Delete User">🗑️</button>
                           </div>
                         </div>
@@ -1229,7 +1165,7 @@ export default function SettingsModule() {
                 )}
 
                 <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px'}}>
-                  {formData.deliveryConfig?.agents?.map(agent => (
+                  {(formData.deliveryConfig?.agents || []).map(agent => (
                     <div key={agent.id} style={styles.agentCard}>
                       <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
                         <div style={{width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '950', fontSize: '14px'}}>
@@ -1268,7 +1204,7 @@ export default function SettingsModule() {
                       <label style={{fontSize: '12px', fontWeight: '950', color: '#0f172a', display: 'block', marginBottom: '6px'}}>Default Tax Group</label>
                       <select value={formData.billingConfig?.defaultTaxGroup || 'Standard Restaurant (5%)'} onChange={e => handleBillingDefaultChange(e.target.value)} style={styles.input}>
                         <option value="No default">No default</option>
-                        {formData.billingConfig?.taxGroups?.map(tg => (
+                        {(formData.billingConfig?.taxGroups || []).map(tg => (
                           <option key={tg.id} value={tg.name}>{tg.name}</option>
                         ))}
                       </select>
@@ -1288,7 +1224,7 @@ export default function SettingsModule() {
                           </tr>
                         </thead>
                         <tbody>
-                          {formData.billingConfig?.taxGroups?.map(tg => (
+                          {(formData.billingConfig?.taxGroups || []).map(tg => (
                             <tr key={tg.id} style={styles.tableRow}>
                               <td style={styles.td}><strong style={{color: '#0f172a'}}>{tg.name}</strong></td>
                               <td style={styles.td}>{tg.rate}%</td>
