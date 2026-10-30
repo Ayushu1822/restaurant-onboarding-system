@@ -17,11 +17,15 @@ public class StaffController {
     @Autowired
     private StaffRepository staffRepository;
 
-    // Get all staff, optionally filtered by restaurant email
+    // Get all staff, filtered by restaurant email with fallback for legacy data
     @GetMapping
     public List<Staff> getAllStaff(@RequestParam(required = false) String email) {
         if (email != null && !email.trim().isEmpty()) {
-            return staffRepository.findByRestaurantEmail(email);
+            List<Staff> matchingStaff = staffRepository.findByRestaurantEmail(email);
+            if (matchingStaff.isEmpty()) {
+                return staffRepository.findAll();
+            }
+            return matchingStaff;
         }
         return staffRepository.findAll();
     }
@@ -41,7 +45,7 @@ public class StaffController {
         return staffRepository.save(staff);
     }
 
-    // Update existing staff (Fixes the 405 Method Not Allowed error)
+    // Update existing staff (Fixes 405 Method Not Allowed error)
     @PutMapping("/{id}")
     public ResponseEntity<Staff> updateStaff(@PathVariable UUID id, @RequestBody Staff staffDetails) {
         return staffRepository.findById(id)

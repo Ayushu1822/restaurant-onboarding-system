@@ -113,6 +113,19 @@ public class RestaurantProfile {
     @Column(name = "print_rules", columnDefinition = "TEXT")
     private String printRules;
 
+    // ⚙️ System & Printer Settings (Added to fix 500 Error)
+    @Column(name = "printer_info", columnDefinition = "TEXT")
+    private String printerInfo;
+
+    @Column(name = "auto_approval", columnDefinition = "TEXT")
+    private String autoApproval;
+
+    @Column(name = "counter_ordering", columnDefinition = "TEXT")
+    private String counterOrdering;
+
+    @Column(name = "notification_sound", columnDefinition = "TEXT")
+    private String notificationSound;
+
     // ================= Getters and Setters =================
 
     public String getRestaurantId() { return restaurantId; }
@@ -219,4 +232,16 @@ public class RestaurantProfile {
 
     public String getPrintRules() { return printRules; }
     public void setPrintRules(String printRules) { this.printRules = printRules; }
+
+    public String getPrinterInfo() { return printerInfo; }
+    public void setPrinterInfo(String printerInfo) { this.printerInfo = printerInfo; }
+
+    public String getAutoApproval() { return autoApproval; }
+    public void setAutoApproval(String autoApproval) { this.autoApproval = autoApproval; }
+
+    public String getCounterOrdering() { return counterOrdering; }
+    public void setCounterOrdering(String counterOrdering) { this.counterOrdering = counterOrdering; }
+
+    public String getNotificationSound() { return notificationSound; }
+    public void setNotificationSound(String notificationSound) { this.notificationSound = notificationSound; }
 }
