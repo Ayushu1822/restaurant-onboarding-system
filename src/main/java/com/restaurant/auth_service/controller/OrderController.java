@@ -16,7 +16,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,12 +27,9 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = {"https://restaurant-system-sand-gamma.vercel.app", "http://localhost:3000", "http://localhost:5173"}, allowCredentials = "true")
 public class OrderController {
 
-    // ⚠️ CONFIRM: must match the status your staff "Accept" button sends
+    // Matches what the dashboard's Accept button sends
     private static final String STATUS_NEW = "New";
     private static final String STATUS_APPROVED = "Accepted";
-
-    // ⚠️ CONFIRM: channel values your ONLINE orders are saved with (case-insensitive)
-    private static final Set<String> ONLINE_CHANNELS = Set.of("online", "website", "web", "app");
 
     @Autowired
     private OrderRepository orderRepository;
@@ -213,8 +209,20 @@ public class OrderController {
     // ⏱️ AUTO-APPROVAL (online orders only)
     // =====================================================================
 
+    // Same rule the dashboard uses: anything that is not Counter / POS / Walk-in is online.
+    // Table / dine-in orders are also excluded so they are never auto-approved.
     private boolean isOnlineOrder(Order order) {
-        return order.getChannel() != null && ONLINE_CHANNELS.contains(order.getChannel().trim().toLowerCase());
+        String ch = (order.getChannel() != null && !order.getChannel().trim().isEmpty())
+                ? order.getChannel()
+                : (order.getOrderType() != null ? order.getOrderType() : "");
+        ch = ch.toUpperCase();
+        if (ch.contains("COUNTER") || ch.contains("POS") || ch.contains("WALK-IN")) return false;
+        if (ch.contains("TABLE") || ch.contains("DINE")) return false;
+
+        String disp = order.getDisplayId() != null ? order.getDisplayId().toLowerCase() : "";
+        if (disp.startsWith("table ")) return false;
+
+        return true;
     }
 
     /** Called before saving a new order: approves it now, or sets the approve-at time, per the branch's saved setting. */

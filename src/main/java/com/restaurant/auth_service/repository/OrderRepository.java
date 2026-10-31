@@ -18,7 +18,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> { // <--- MU
     // Orders still in the given status whose auto-approve time has passed
     List<Order> findByStatusAndAutoApproveAtLessThanEqual(String status, Instant now);
 
-    // Approves only if the order is STILL "New", so it never overrides a staff accept/reject
+    // Approves only if the order is STILL "New", so it never overrides a staff accept
     @Modifying
     @Transactional
     @Query(value = "UPDATE pg_orders SET status = :approved, auto_approve_at = NULL WHERE order_id = :id AND status = 'New'", nativeQuery = true)
