@@ -89,24 +89,43 @@ export default function Dashboard({ user, onLogout }) {
 
   const [receiptConfig, setReceiptConfig] = useState({
     restaurantName: 'LINGA FOODS',
+    branchName: 'Wonghikal',
     headerText: 'Linga Foods - Wonghikal',
     address: 'LINGA FOODS, No. 1540, Vellore Main Road, Wonghikal, Tiruvannamalai, Tamil Nadu 606604',
     phone: '91234400635',
+    email: '',
     gstin: '37AAFP4128L1ZI',
     fssai: 'FSSAI: 22426260001195',
     footerNote: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***',
     paperSize: '80mm',
     density: 'Compact',
     toggles: {
+      logo: false,
       restaurantName: true,
+      branchName: true,
+      headerText: false,
       address: true,
       phone: true,
+      email: false,
       gstin: true,
       fssai: true,
       invoiceNo: true,
       dateAndTime: true,
+      orderId: true,
+      tokenNumber: true,
+      orderType: true,
+      customerName: true,
+      customerMobile: true,
       itemNameQtyAmt: true,
-      totalTax: true
+      itemRate: true,
+      variants: true,
+      itemNotes: true,
+      discount: true,
+      totalTax: true,
+      taxBreakdown: true,
+      paymentMethod: true,
+      paymentReference: false,
+      footerText: true
     }
   });
 
@@ -124,12 +143,10 @@ export default function Dashboard({ user, onLogout }) {
     setOrderNote(getOrderNote(selectedOrder));
   }, [selectedOrder?.orderId]);
 
-  // 🔔 10-Second Rich Real Chime / Melodic Audio Generator (Web Audio API)
   const playSynthesizedChime = (toneName = 'Classic Ring') => {
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const now = audioCtx.currentTime;
-      const duration = 9.0;
 
       if (toneName === 'Soft Chime') {
         const chords = [
@@ -169,59 +186,7 @@ export default function Dashboard({ user, onLogout }) {
             osc.stop(noteTime + 1.5);
           });
         }
-      } else if (toneName === 'Bell') {
-        for (let i = 0; i < 3; i++) {
-          const startTime = now + (i * 3.0);
-          const osc1 = audioCtx.createOscillator();
-          const osc2 = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc1.type = 'triangle';
-          osc2.type = 'sine';
-          osc1.frequency.setValueAtTime(440, startTime);
-          osc2.frequency.setValueAtTime(880, startTime);
-          gain.gain.setValueAtTime(0.25, startTime);
-          gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.8);
-          osc1.connect(gain);
-          osc2.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc1.start(startTime);
-          osc2.start(startTime);
-          osc1.stop(startTime + 2.8);
-          osc2.stop(startTime + 2.8);
-        }
-      } else if (toneName === 'Ping') {
-        for (let i = 0; i < 12; i++) {
-          const startTime = now + (i * 0.75);
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(1046.50 + (i * 50), startTime);
-          gain.gain.setValueAtTime(0.12, startTime);
-          gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.8);
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.start(startTime);
-          osc.stop(startTime + 0.8);
-        }
-      } else if (toneName === 'Arcade') {
-        const melody = [440, 554.37, 659.25, 880, 987.77, 1108.73];
-        for (let loop = 0; loop < 2; loop++) {
-          melody.forEach((freq, idx) => {
-            const startTime = now + (loop * 4.5) + (idx * 0.6);
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(freq, startTime);
-            gain.gain.setValueAtTime(0.1, startTime);
-            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.5);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(startTime);
-            osc.stop(startTime + 0.5);
-          });
-        }
       } else {
-        // Classic Ring
         for (let i = 0; i < 6; i++) {
           const startTime = now + (i * 1.5);
           const osc1 = audioCtx.createOscillator();
@@ -260,6 +225,20 @@ export default function Dashboard({ user, onLogout }) {
           if (data.notificationSound) {
             const parsedSnd = typeof data.notificationSound === 'string' ? JSON.parse(data.notificationSound) : data.notificationSound;
             setNotificationSoundConfig(prev => ({ ...prev, ...parsedSnd }));
+          }
+          if (data.receiptConfig) {
+            let parsedCfg = data.receiptConfig;
+            if (typeof parsedCfg === 'string') {
+              try { parsedCfg = JSON.parse(parsedCfg); } catch (e) { parsedCfg = {}; }
+            }
+            setReceiptConfig(prev => ({
+              ...prev,
+              ...parsedCfg,
+              toggles: {
+                ...(prev.toggles || {}),
+                ...(parsedCfg.toggles || {})
+              }
+            }));
           }
 
           if (data.areasAndTables) {
@@ -317,8 +296,18 @@ export default function Dashboard({ user, onLogout }) {
           const fetchedId = data.restaurantId || data.restaurant_id || data.id;
           if (fetchedId) setRestaurantId(fetchedId);
           if (data.receiptConfig) {
-            const parsedCfg = typeof data.receiptConfig === 'string' ? JSON.parse(data.receiptConfig) : data.receiptConfig;
-            setReceiptConfig(prev => ({ ...prev, ...parsedCfg }));
+            let parsedCfg = data.receiptConfig;
+            if (typeof parsedCfg === 'string') {
+              try { parsedCfg = JSON.parse(parsedCfg); } catch (e) { parsedCfg = {}; }
+            }
+            setReceiptConfig(prev => ({
+              ...prev,
+              ...parsedCfg,
+              toggles: {
+                ...(prev.toggles || {}),
+                ...(parsedCfg.toggles || {})
+              }
+            }));
           }
           const fetched = {
             businessName: data.businessName || data.business_name || FALLBACK_RESTAURANT_PROFILE.businessName,
@@ -410,7 +399,6 @@ export default function Dashboard({ user, onLogout }) {
           };
         });
 
-        // 🔔 Check for brand new incoming orders
         const newOrdersList = formattedOrders.filter(o => o.status === 'New');
         if (knownOrderIdsRef.current.size > 0) {
           const hasBrandNew = newOrdersList.some(o => !knownOrderIdsRef.current.has(o.orderId));
@@ -527,6 +515,13 @@ export default function Dashboard({ user, onLogout }) {
     }
   };
 
+  const isFieldOn = (key, defVal = true) => {
+    if (receiptConfig.toggles && receiptConfig.toggles[key] !== undefined) {
+      return receiptConfig.toggles[key];
+    }
+    return receiptConfig[key] !== undefined ? receiptConfig[key] : defVal;
+  };
+
   const handlePrintReceipt = () => {
     if (!selectedOrder) return;
     
@@ -536,11 +531,17 @@ export default function Dashboard({ user, onLogout }) {
       return;
     }
 
-    const toggles = receiptConfig.toggles || {};
+    const density = receiptConfig.density || 'Compact';
+    const paperSize = receiptConfig.paperSize || '80mm';
+
     const itemsHtml = selectedOrder.items.map(it => `
-      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-        <span>${it.qty}x ${it.name}</span>
-        <span>₹${(it.price * it.qty).toFixed(2)}</span>
+      <div style="margin-bottom: 6px;">
+        <div style="display: flex; justify-content: space-between; font-weight: bold;">
+          <span>${it.qty}x ${it.name}</span>
+          <span>₹${(it.price * it.qty).toFixed(2)}</span>
+        </div>
+        ${isFieldOn('itemRate', true) ? `<div style="font-size: 9px; color: #555;">Rate: ₹${it.price} each (${it.taxRate || 5}% tax)</div>` : ''}
+        ${isFieldOn('itemNotes', true) && it.desc ? `<div style="font-size: 9px; color: #b45309; font-style: italic;">&nbsp;• ${it.desc}</div>` : ''}
       </div>
     `).join('');
 
@@ -549,7 +550,7 @@ export default function Dashboard({ user, onLogout }) {
         <head>
           <title>Receipt - ${selectedOrder.id}</title>
           <style>
-            body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: ${receiptConfig.paperSize === '58mm' ? '58mm' : '80mm'}; margin: 0 auto; font-size: ${receiptConfig.density === 'Compact' ? '10px' : '12px'}; }
+            body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: ${paperSize === '58mm' ? '58mm' : '80mm'}; margin: 0 auto; font-size: ${density === 'Compact' ? '10px' : '12px'}; line-height: 1.4; }
             .center { text-align: center; }
             .bold { font-weight: bold; }
             .line { border-top: 1px dashed #000; margin: 8px 0; }
@@ -557,28 +558,48 @@ export default function Dashboard({ user, onLogout }) {
           </style>
         </head>
         <body>
-          ${toggles.restaurantName ? `<div class="center bold" style="font-size: 14px;">${receiptConfig.restaurantName}</div>` : ''}
-          ${receiptConfig.headerText ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.headerText}</div>` : ''}
-          ${toggles.address && receiptConfig.address ? `<div class="center" style="font-size: 10px; color: #333; margin: 3px 0;">${receiptConfig.address}</div>` : ''}
-          ${toggles.phone && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>` : ''}
-          ${toggles.gstin && receiptConfig.gstin ? `<div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>` : ''}
-          ${receiptConfig.fssai ? `<div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>` : ''}
+          ${isFieldOn('logo', false) && receiptConfig.logoUrl ? `<div class="center" style="margin-bottom: 6px;"><img src="${receiptConfig.logoUrl}" style="max-width: 50%; max-height: 45px; filter: grayscale(1);" /></div>` : ''}
+          ${isFieldOn('headerText', false) && receiptConfig.headerText ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.headerText}</div>` : ''}
+          ${isFieldOn('restaurantName', true) ? `<div class="center bold" style="font-size: 14px;">${(receiptConfig.restaurantName || 'RESTAURANT').toUpperCase()}</div>` : ''}
+          ${isFieldOn('branchName', true) && receiptConfig.branchName ? `<div class="center" style="font-size: 11px;">${receiptConfig.branchName}</div>` : ''}
+          ${isFieldOn('address', true) && receiptConfig.address ? `<div class="center" style="font-size: 10px; color: #333; margin: 3px 0; white-space: pre-line;">${receiptConfig.address}</div>` : ''}
+          ${isFieldOn('phone', true) && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>` : ''}
+          ${isFieldOn('email', false) && receiptConfig.email ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.email}</div>` : ''}
+          ${isFieldOn('gstin', true) && receiptConfig.gstin ? `<div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>` : ''}
+          ${isFieldOn('fssai', true) && receiptConfig.fssai ? `<div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>` : ''}
+          
           <div class="line"></div>
-          ${toggles.invoiceNo ? `<div><strong>Order ID:</strong> ${selectedOrder.id}</div>` : ''}
-          ${toggles.dateAndTime ? `<div><strong>Date:</strong> ${selectedOrder.time}</div>` : ''}
-          <div><strong>Customer:</strong> ${selectedOrder.customer} (${selectedOrder.phone})</div>
-          <div><strong>Type:</strong> ${selectedOrder.type} (${selectedOrder.channel})</div>
-          <div><strong>Address:</strong> ${selectedOrder.address}</div>
-          ${selectedOrder.customerRequest ? `<div><strong>Note:</strong> <span style="color: #d97706; font-weight: bold;">${selectedOrder.customerRequest}</span></div>` : ''}
+          ${isFieldOn('invoiceNo', true) ? `<div><strong>Receipt No:</strong> ${selectedOrder.id}</div>` : ''}
+          ${isFieldOn('orderId', true) ? `<div><strong>Order ID:</strong> ${selectedOrder.orderId || selectedOrder.id}</div>` : ''}
+          ${isFieldOn('orderType', true) ? `<div><strong>Type:</strong> ${selectedOrder.type} (${selectedOrder.channel})</div>` : ''}
+          ${isFieldOn('dateAndTime', true) ? `<div><strong>Date:</strong> ${selectedOrder.time}</div>` : ''}
+          ${isFieldOn('customerName', true) && selectedOrder.customer ? `<div><strong>Customer:</strong> ${selectedOrder.customer}</div>` : ''}
+          ${isFieldOn('customerMobile', true) && selectedOrder.phone ? `<div><strong>Mobile:</strong> ${selectedOrder.phone}</div>` : ''}
+          ${isFieldOn('address', true) && selectedOrder.address ? `<div><strong>Delivery Address:</strong> ${selectedOrder.address}</div>` : ''}
+          ${selectedOrder.customerRequest ? `<div><strong>Note:</strong> <span style="color: #b45309; font-weight: bold;">${selectedOrder.customerRequest}</span></div>` : ''}
+          
           <div class="line"></div>
           <div class="bold" style="margin-bottom: 6px;">ITEMS:</div>
           ${itemsHtml}
+          
           <div class="line"></div>
           <div class="flex"><span>Subtotal:</span><span>₹${selectedOrder.subtotal.toFixed(2)}</span></div>
-          ${toggles.totalTax ? `<div class="flex"><span>Tax:</span><span>₹${(selectedOrder.totalTax || (selectedOrder.subtotal * 0.05)).toFixed(2)}</span></div>` : ''}
-          <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>Total:</span><span>₹${selectedOrder.total}</span></div>
+          ${isFieldOn('discount', true) && selectedOrder.discount ? `<div class="flex"><span>Discount:</span><span>-₹${Number(selectedOrder.discount).toFixed(2)}</span></div>` : ''}
+          
+          ${isFieldOn('totalTax', true) && !isFieldOn('taxBreakdown', true) ? `<div class="flex"><span>Total Tax:</span><span>₹${(selectedOrder.totalTax || (selectedOrder.subtotal * 0.05)).toFixed(2)}</span></div>` : ''}
+          ${isFieldOn('totalTax', true) && isFieldOn('taxBreakdown', true) ? `
+            <div class="flex"><span>CGST (2.5%):</span><span>₹${((selectedOrder.totalTax || (selectedOrder.subtotal * 0.05)) / 2).toFixed(2)}</span></div>
+            <div class="flex"><span>SGST (2.5%):</span><span>₹${((selectedOrder.totalTax || (selectedOrder.subtotal * 0.05)) / 2).toFixed(2)}</span></div>
+          ` : ''}
+          
+          <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>TOTAL:</span><span>₹${Number(selectedOrder.total).toFixed(2)}</span></div>
+          
           <div class="line"></div>
-          <div class="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptConfig.footerNote}</div>
+          ${isFieldOn('paymentMethod', true) ? `<div><strong>Payment:</strong> PAID Online / ${selectedOrder.channel}</div>` : ''}
+          
+          <div class="line"></div>
+          ${isFieldOn('footerText', true) && receiptConfig.footerNote ? `<div class="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptConfig.footerNote}</div>` : ''}
+          
           <script>
             window.onload = function() {
               window.print();
