@@ -138,7 +138,7 @@ public class RestaurantProfileController {
             profile.setCustomMenus(updatedDetails.getCustomMenus());
         }
 
-        // 🖨️ Printer & Receipt Settings Configuration (Added!)
+        // 🖨️ Printer & Receipt Settings Configuration
         if (updatedDetails.getReceiptConfig() != null) {
             profile.setReceiptConfig(updatedDetails.getReceiptConfig());
         }
@@ -147,8 +147,19 @@ public class RestaurantProfileController {
             profile.setPrintRules(updatedDetails.getPrintRules());
         }
 
+        // ⚙️ System Settings (auto-approval, counter ordering, printer info)
+        if (updatedDetails.getPrinterInfo() != null) {
+            profile.setPrinterInfo(updatedDetails.getPrinterInfo());
+        }
+        if (updatedDetails.getAutoApproval() != null) {
+            profile.setAutoApproval(updatedDetails.getAutoApproval());
+        }
+        if (updatedDetails.getCounterOrdering() != null) {
+            profile.setCounterOrdering(updatedDetails.getCounterOrdering());
+        }
+
         RestaurantProfile saved = profileRepository.save(profile);
-        System.out.println("✅ PROFILE, TABLES, DELIVERY, BILLING, CUSTOM MENUS & RECEIPT CONFIG SUCCESSFULLY SAVED — ID: " + saved.getRestaurantId());
+        System.out.println("✅ PROFILE, TABLES, DELIVERY, BILLING, CUSTOM MENUS, RECEIPT CONFIG & SYSTEM SETTINGS SAVED — ID: " + saved.getRestaurantId());
         return ResponseEntity.ok(saved);
     }
 }

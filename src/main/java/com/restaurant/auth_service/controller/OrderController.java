@@ -2,25 +2,44 @@ package com.restaurant.auth_service.controller;
 
 import com.restaurant.auth_service.model.Order;
 import com.restaurant.auth_service.model.OrderItem;
+import com.restaurant.auth_service.model.RestaurantProfile;
 import com.restaurant.auth_service.repository.OrderRepository;
+import com.restaurant.auth_service.repository.RestaurantProfileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+@EnableScheduling // ✅ turns on @Scheduled for the whole app
 @RestController
 @RequestMapping({"/api/orders", "/api/v1/orders"})
 @CrossOrigin(origins = {"https://restaurant-system-sand-gamma.vercel.app", "http://localhost:3000", "http://localhost:5173"}, allowCredentials = "true")
 public class OrderController {
 
+    // ⚠️ CONFIRM: must match the status your staff "Accept" button sends
+    private static final String STATUS_NEW = "New";
+    private static final String STATUS_APPROVED = "Accepted";
+
+    // ⚠️ CONFIRM: channel values your ONLINE orders are saved with (case-insensitive)
+    private static final Set<String> ONLINE_CHANNELS = Set.of("online", "website", "web", "app");
+
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private RestaurantProfileRepository profileRepository;
 
     // ✅ FETCH ALL ORDERS (Active + Completed) STRICTLY FILTERED BY RESTAURANT EMAIL
     @GetMapping
@@ -45,7 +64,7 @@ public class OrderController {
     @PostMapping
     public Order createOrder(@RequestBody Order newOrder) {
         if (newOrder.getStatus() == null || newOrder.getStatus().trim().isEmpty()) {
-            newOrder.setStatus("New");
+            newOrder.setStatus(STATUS_NEW);
         }
 
         if (newOrder.getCustomerName() == null || newOrder.getCustomerName().trim().isEmpty()) {
@@ -58,7 +77,9 @@ public class OrderController {
                 item.setOrder(newOrder);
             }
         }
-        
+
+        applyAutoApproval(newOrder); // ✅ online orders only
+
         Order savedOrder = orderRepository.save(newOrder);
         System.out.println("✅ NEW ORDER CREATED for restaurant: " + savedOrder.getRestaurantEmail());
         return savedOrder;
@@ -145,6 +166,7 @@ public class OrderController {
                 
                 if (targetStatus != null && !targetStatus.trim().isEmpty()) {
                     order.setStatus(targetStatus);
+                    order.setAutoApproveAt(null); // ✅ staff acted, so cancel any pending auto-approval
                 }
                 
                 if (body != null) {
@@ -185,5 +207,62 @@ public class OrderController {
                 return oid.equalsIgnoreCase(id) || dispId.equalsIgnoreCase(id);
             })
             .findFirst();
+    }
+
+    // =====================================================================
+    // ⏱️ AUTO-APPROVAL (online orders only)
+    // =====================================================================
+
+    private boolean isOnlineOrder(Order order) {
+        return order.getChannel() != null && ONLINE_CHANNELS.contains(order.getChannel().trim().toLowerCase());
+    }
+
+    /** Called before saving a new order: approves it now, or sets the approve-at time, per the branch's saved setting. */
+    private void applyAutoApproval(Order order) {
+        if (!isOnlineOrder(order) || order.getRestaurantEmail() == null) return;
+        if (!STATUS_NEW.equalsIgnoreCase(order.getStatus())) return;
+
+        Optional<RestaurantProfile> profileOpt = profileRepository.findByEmail(order.getRestaurantEmail());
+        if (profileOpt.isEmpty() || profileOpt.get().getAutoApproval() == null) return;
+
+        String cfg = profileOpt.get().getAutoApproval();
+        try {
+            if (!readBool(cfg, "enabled", false)) return;
+
+            if (readBool(cfg, "immediate", false)) {
+                order.setStatus(STATUS_APPROVED);
+                return;
+            }
+            long seconds = readLong(cfg, "minutes", 0) * 60 + readLong(cfg, "seconds", 0);
+            if (seconds > 0) {
+                order.setAutoApproveAt(Instant.now().plusSeconds(seconds));
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ Could not read autoApproval settings for " + order.getRestaurantEmail() + ": " + e.getMessage());
+        }
+    }
+
+    // Reads "key": true/false from a flat JSON string
+    private boolean readBool(String json, String key, boolean def) {
+        Matcher m = Pattern.compile("\"" + key + "\"\\s*:\\s*(true|false)").matcher(json);
+        return m.find() ? Boolean.parseBoolean(m.group(1)) : def;
+    }
+
+    // Reads "key": 123 (or "123") from a flat JSON string
+    private long readLong(String json, String key, long def) {
+        Matcher m = Pattern.compile("\"" + key + "\"\\s*:\\s*\"?(\\d+)\"?").matcher(json);
+        return m.find() ? Long.parseLong(m.group(1)) : def;
+    }
+
+    /** Runs every 5 seconds and approves online orders whose time limit has passed. */
+    @Scheduled(fixedDelay = 5000)
+    public void approveDueOrders() {
+        List<Order> due = orderRepository.findByStatusAndAutoApproveAtLessThanEqual(STATUS_NEW, Instant.now());
+        for (Order o : due) {
+            int updated = orderRepository.approveIfStillNew(o.getOrderId(), STATUS_APPROVED);
+            if (updated > 0) {
+                System.out.println("⏱️ AUTO-APPROVED ORDER: " + o.getOrderId());
+            }
+        }
     }
 }

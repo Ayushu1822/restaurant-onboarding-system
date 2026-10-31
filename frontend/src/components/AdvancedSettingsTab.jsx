@@ -1,8 +1,9 @@
 // FILE: src/components/AdvancedSettingsTab.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const GREEN = '#10b981';
 const GREEN_DARK = '#059669';
+const GREEN_LIGHT = '#86e0bd';
 const RED = '#ef4444';
 const AMBER = '#d97706';
 
@@ -157,6 +158,82 @@ function Radio({ name, checked, onChange, label }) {
   );
 }
 
+/* =====================================================================
+   NOTIFICATION SOUND HELPERS (per device -> localStorage)
+   Import these in your Online Orders page:
+     import { getSoundSettings, playNotificationChime } from './AdvancedSettingsTab';
+   and call playNotificationChime() ONCE per new order id.
+   ===================================================================== */
+
+export const SOUND_STORAGE_KEY = 'foodos.notificationSound';
+
+export const CHIMES = [
+  { id: 'classic', label: 'Classic Ring', desc: 'Two-tone alert — the current default.' },
+  { id: 'soft', label: 'Soft Chime', desc: 'Gentle rising three-note chime.' },
+  { id: 'bell', label: 'Bell', desc: 'Bright bell-like ding.' },
+  { id: 'dingdong', label: 'Ding Dong', desc: 'Classic two-note doorbell.' },
+  { id: 'ping', label: 'Ping', desc: 'Short, crisp single ping.' },
+  { id: 'arcade', label: 'Arcade', desc: 'Playful ascending square-wave riff.' }
+];
+
+// [frequency Hz, start offset s, duration s]
+const CHIME_NOTES = {
+  classic: { type: 'sine', notes: [[880, 0, 0.22], [660, 0.25, 0.35]] },
+  soft: { type: 'sine', notes: [[523.25, 0, 0.25], [659.25, 0.22, 0.25], [783.99, 0.44, 0.45]] },
+  bell: { type: 'triangle', notes: [[1046.5, 0, 0.9]] },
+  dingdong: { type: 'sine', notes: [[659.25, 0, 0.4], [523.25, 0.42, 0.6]] },
+  ping: { type: 'sine', notes: [[1318.5, 0, 0.18]] },
+  arcade: { type: 'square', notes: [[392, 0, 0.1], [523.25, 0.1, 0.1], [659.25, 0.2, 0.1], [783.99, 0.3, 0.1], [1046.5, 0.4, 0.2]] }
+};
+
+export function getSoundSettings() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SOUND_STORAGE_KEY) || '{}');
+    return { enabled: raw.enabled ?? true, soundId: raw.soundId || 'classic' };
+  } catch {
+    return { enabled: true, soundId: 'classic' };
+  }
+}
+
+export function saveSoundSettings(settings) {
+  try {
+    localStorage.setItem(SOUND_STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+let audioCtx = null;
+
+// force = true is used by the Preview button (plays even when muted)
+export function playNotificationChime(soundId, force = false) {
+  const settings = getSoundSettings();
+  if (!force && !settings.enabled) return;
+  const def = CHIME_NOTES[soundId || settings.soundId] || CHIME_NOTES.classic;
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    if (!audioCtx) audioCtx = new Ctx();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t0 = audioCtx.currentTime;
+    def.notes.forEach(([freq, start, dur]) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = def.type;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, t0 + start);
+      gain.gain.exponentialRampToValueAtTime(0.25, t0 + start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + start + dur);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(t0 + start);
+      osc.stop(t0 + start + dur + 0.05);
+    });
+  } catch {
+    /* browser blocked audio until user interaction */
+  }
+}
+
 /* ---------- receipt field definitions ---------- */
 /* valueKey = editable text stored in formData.receiptConfig[valueKey] */
 
@@ -220,6 +297,483 @@ const RULE_GROUPS = [
   { id: 'takeaway', title: 'Takeaway Orders', receiptDefault: 'auto', kotDefault: 'auto', kotAutoLabel: 'Automatically after successful payment' }
 ];
 
+/* =====================================================================
+   SYSTEM TAB
+   ===================================================================== */
+
+const sysInput = (disabled, extra = {}) => ({
+  boxSizing: 'border-box',
+  padding: '9px 11px',
+  fontSize: '13px',
+  fontWeight: '800',
+  color: disabled ? '#94a3b8' : '#0f172a',
+  backgroundColor: disabled ? '#f8fafc' : '#fff',
+  border: '1.5px solid #e2e8f0',
+  borderRadius: '8px',
+  outline: 'none',
+  fontFamily: 'inherit',
+  cursor: disabled ? 'not-allowed' : 'text',
+  ...extra
+});
+
+function SaveBtn({ disabled, saving, onClick, label = 'Save' }) {
+  return (
+    <button
+      type="button"
+      disabled={disabled || saving}
+      onClick={onClick}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        backgroundColor: disabled || saving ? GREEN_LIGHT : GREEN,
+        color: '#fff',
+        border: 'none',
+        borderRadius: '8px',
+        padding: '9px 16px',
+        fontSize: '12px',
+        fontWeight: '950',
+        cursor: disabled || saving ? 'not-allowed' : 'pointer'
+      }}
+    >
+      💾 {saving ? 'Saving...' : label}
+    </button>
+  );
+}
+
+function SectionCard({ icon, title, description, sub, right, children }) {
+  return (
+    <div style={{ ...card, maxWidth: '760px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: '950', color: '#0f172a' }}>
+            <span style={{ color: GREEN_DARK, marginRight: '6px' }}>{icon}</span>
+            {title}
+          </div>
+          {description && <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', marginTop: '4px' }}>{description}</div>}
+          {sub && <div style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: '700', marginTop: '3px' }}>{sub}</div>}
+        </div>
+        {right}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function SettingRow({ title, hint, disabled, control, bordered = true }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '12px',
+        padding: '12px 14px',
+        border: bordered ? '1.5px solid #f1f5f9' : 'none',
+        borderRadius: '10px',
+        backgroundColor: disabled ? '#fafafa' : '#fff',
+        opacity: disabled ? 0.65 : 1
+      }}
+    >
+      <div>
+        <div style={{ fontSize: '12.5px', fontWeight: '950', color: disabled ? '#94a3b8' : '#0f172a' }}>{title}</div>
+        {hint && <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#94a3b8', marginTop: '2px' }}>{hint}</div>}
+      </div>
+      {control}
+    </div>
+  );
+}
+
+function Msg({ msg }) {
+  if (!msg) return null;
+  return (
+    <div style={{ fontSize: '11px', fontWeight: '800', marginTop: '10px', color: msg.type === 'error' ? RED : GREEN_DARK }}>
+      {msg.text}
+    </div>
+  );
+}
+
+function PasswordField({ label, value, onChange, autoComplete }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div style={{ marginBottom: '12px' }}>
+      <label style={{ display: 'block', fontSize: '12px', fontWeight: '950', color: '#0f172a', marginBottom: '6px' }}>{label}</label>
+      <div style={{ position: 'relative' }}>
+        <input
+          type={show ? 'text' : 'password'}
+          value={value}
+          autoComplete={autoComplete}
+          onChange={(e) => onChange(e.target.value)}
+          style={sysInput(false, { width: '100%', paddingRight: '56px' })}
+        />
+        <button
+          type="button"
+          onClick={() => setShow(!show)}
+          style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', fontSize: '11px', fontWeight: '800', color: '#64748b', cursor: 'pointer' }}
+        >
+          {show ? 'Hide' : 'Show'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const clampInt = (v, min, max) => {
+  const n = parseInt(String(v).replace(/\D/g, ''), 10);
+  if (Number.isNaN(n)) return '';
+  return Math.min(max, Math.max(min, n));
+};
+
+function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSaveCounter, onChangePassword }) {
+  /* ---------- 1. ORDER AUTO APPROVAL (per branch, server) ---------- */
+  const initAuto = {
+    enabled: systemSettings?.autoApprove?.enabled ?? false,
+    immediate: systemSettings?.autoApprove?.immediate ?? false,
+    minutes: systemSettings?.autoApprove?.minutes ?? 1,
+    seconds: systemSettings?.autoApprove?.seconds ?? 20
+  };
+  const [autoSaved, setAutoSaved] = useState(initAuto);
+  const [auto, setAuto] = useState(initAuto);
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [autoMsg, setAutoMsg] = useState(null);
+
+  /* ---------- 2. COUNTER ORDERING (per branch, server) ---------- */
+  const initCounter = {
+    allowHold: systemSettings?.counter?.allowHold ?? true,
+    maxHeld: systemSettings?.counter?.maxHeld ?? 5
+  };
+  const [counterSaved, setCounterSaved] = useState(initCounter);
+  const [counter, setCounter] = useState(initCounter);
+  const [counterSaving, setCounterSaving] = useState(false);
+  const [counterMsg, setCounterMsg] = useState(null);
+
+  /* ---------- 3. NOTIFICATION SOUND (per device, localStorage) ---------- */
+  const [soundSaved, setSoundSaved] = useState(getSoundSettings());
+  const [sound, setSound] = useState(getSoundSettings());
+  const [soundMsg, setSoundMsg] = useState(null);
+
+  /* ---------- 4. SECURITY ---------- */
+  const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMsg, setPwMsg] = useState(null);
+
+  // re-sync when server settings arrive/change
+  useEffect(() => {
+    if (!systemSettings) return;
+    if (systemSettings.autoApprove) {
+      const v = { ...initAuto, ...systemSettings.autoApprove };
+      setAutoSaved(v);
+      setAuto(v);
+    }
+    if (systemSettings.counter) {
+      const v = { ...initCounter, ...systemSettings.counter };
+      setCounterSaved(v);
+      setCounter(v);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [systemSettings]);
+
+  /* ----- auto approve logic ----- */
+  const minutesNum = Number(auto.minutes) || 0;
+  const secondsNum = Number(auto.seconds) || 0;
+  const totalSeconds = minutesNum * 60 + secondsNum;
+  const timerInvalid = auto.enabled && !auto.immediate && totalSeconds <= 0;
+  const autoDirty = JSON.stringify(auto) !== JSON.stringify(autoSaved);
+
+  const currentLabel = !autoSaved.enabled
+    ? 'Off — staff accept every order'
+    : autoSaved.immediate
+    ? 'On — orders are approved immediately'
+    : `On — auto-approve after ${autoSaved.minutes || 0} min ${autoSaved.seconds || 0} sec`;
+
+  const saveAuto = async () => {
+    if (timerInvalid) {
+      setAutoMsg({ type: 'error', text: 'Set a wait time greater than 0, or turn on "Approve immediately".' });
+      return;
+    }
+    const payload = {
+      enabled: auto.enabled,
+      immediate: auto.enabled && auto.immediate,
+      minutes: minutesNum,
+      seconds: secondsNum
+    };
+    setAutoSaving(true);
+    setAutoMsg(null);
+    try {
+      if (onSaveAutoApprove) await onSaveAutoApprove(payload);
+      setAutoSaved({ ...auto, ...payload });
+      setAuto({ ...auto, ...payload });
+      setAutoMsg({ type: 'ok', text: 'Auto-approval settings saved.' });
+    } catch (e) {
+      setAutoMsg({ type: 'error', text: e?.message || 'Could not save auto-approval settings.' });
+    } finally {
+      setAutoSaving(false);
+    }
+  };
+
+  /* ----- counter logic ----- */
+  const maxHeldNum = Number(counter.maxHeld);
+  const counterInvalid = counter.allowHold && (!maxHeldNum || maxHeldNum < 1 || maxHeldNum > 20);
+  const counterDirty = JSON.stringify(counter) !== JSON.stringify(counterSaved);
+
+  const saveCounter = async () => {
+    if (counterInvalid) {
+      setCounterMsg({ type: 'error', text: 'Maximum held orders must be between 1 and 20.' });
+      return;
+    }
+    const payload = { allowHold: counter.allowHold, maxHeld: maxHeldNum || counterSaved.maxHeld };
+    setCounterSaving(true);
+    setCounterMsg(null);
+    try {
+      if (onSaveCounter) await onSaveCounter(payload);
+      setCounterSaved(payload);
+      setCounter(payload);
+      setCounterMsg({ type: 'ok', text: 'Counter ordering settings saved.' });
+    } catch (e) {
+      setCounterMsg({ type: 'error', text: e?.message || 'Could not save counter ordering settings.' });
+    } finally {
+      setCounterSaving(false);
+    }
+  };
+
+  /* ----- sound logic ----- */
+  const soundDirty = JSON.stringify(sound) !== JSON.stringify(soundSaved);
+  const saveSound = () => {
+    saveSoundSettings(sound);
+    setSoundSaved(sound);
+    setSoundMsg({ type: 'ok', text: 'Sound preference saved on this device.' });
+  };
+
+  /* ----- password logic ----- */
+  const savePassword = async () => {
+    if (!pw.current) return setPwMsg({ type: 'error', text: 'Enter your current password.' });
+    if (pw.next.length < 8) return setPwMsg({ type: 'error', text: 'New password must be at least 8 characters.' });
+    if (pw.next === pw.current) return setPwMsg({ type: 'error', text: 'New password must be different from the current one.' });
+    if (pw.next !== pw.confirm) return setPwMsg({ type: 'error', text: 'New passwords do not match.' });
+    setPwSaving(true);
+    setPwMsg(null);
+    try {
+      if (!onChangePassword) throw new Error('Password API is not connected yet.');
+      await onChangePassword({ currentPassword: pw.current, newPassword: pw.next });
+      setPw({ current: '', next: '', confirm: '' });
+      setPwMsg({ type: 'ok', text: 'Password updated successfully.' });
+    } catch (e) {
+      setPwMsg({ type: 'error', text: e?.message || 'Could not update password.' });
+    } finally {
+      setPwSaving(false);
+    }
+  };
+
+  const timerDisabled = !auto.enabled || auto.immediate;
+
+  return (
+    <div style={styles.sectionGroup}>
+      <h3 style={styles.sectionTitle}>⚙️ System</h3>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        {/* ===== 1. ORDER AUTO APPROVAL ===== */}
+        <SectionCard
+          icon="🕒"
+          title="Order Auto Approval"
+          description="When on, new online orders are approved automatically if no action is taken before the time limit. When off, every order waits for staff to accept or reject it."
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <SettingRow
+              title="Auto-approve orders"
+              hint="Applies to this branch on every device."
+              control={
+                <Switch
+                  checked={auto.enabled}
+                  onChange={() => setAuto({ ...auto, enabled: !auto.enabled, immediate: auto.enabled ? false : auto.immediate })}
+                />
+              }
+            />
+            <SettingRow
+              title="Approve immediately"
+              hint="No wait time — orders are accepted the moment they arrive."
+              disabled={!auto.enabled}
+              control={<Switch checked={auto.immediate} disabled={!auto.enabled} onChange={() => setAuto({ ...auto, immediate: !auto.immediate })} />}
+            />
+
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', marginTop: '4px', opacity: timerDisabled ? 0.65 : 1 }}>
+              <div>
+                <div style={{ fontSize: '10.5px', fontWeight: '800', color: '#94a3b8', marginBottom: '4px' }}>Minutes</div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  disabled={timerDisabled}
+                  value={auto.minutes}
+                  onChange={(e) => setAuto({ ...auto, minutes: clampInt(e.target.value, 0, 59) })}
+                  style={sysInput(timerDisabled, { width: '70px', textAlign: 'center' })}
+                />
+              </div>
+              <span style={{ fontSize: '12px', fontWeight: '800', color: '#64748b', paddingBottom: '10px' }}>min</span>
+              <div>
+                <div style={{ fontSize: '10.5px', fontWeight: '800', color: '#94a3b8', marginBottom: '4px' }}>Seconds</div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  disabled={timerDisabled}
+                  value={auto.seconds}
+                  onChange={(e) => setAuto({ ...auto, seconds: clampInt(e.target.value, 0, 59) })}
+                  style={sysInput(timerDisabled, { width: '70px', textAlign: 'center' })}
+                />
+              </div>
+              <span style={{ fontSize: '12px', fontWeight: '800', color: '#64748b', paddingBottom: '10px' }}>sec</span>
+            </div>
+            {timerInvalid && (
+              <div style={{ fontSize: '10.5px', fontWeight: '800', color: AMBER }}>ⓘ Wait time must be greater than 0.</div>
+            )}
+
+            <div style={{ fontSize: '11px', fontWeight: '800', color: '#334155' }}>
+              Current: <b style={{ color: '#0f172a' }}>{currentLabel}</b>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+            <SaveBtn disabled={!autoDirty || timerInvalid} saving={autoSaving} onClick={saveAuto} />
+          </div>
+          <Msg msg={autoMsg} />
+        </SectionCard>
+
+        {/* ===== 2. COUNTER ORDERING ===== */}
+        <SectionCard
+          icon="🏪"
+          title="Counter Ordering"
+          description="Configure operational controls for orders created from the Counter POS."
+          sub={branchName ? `Branch: ${branchName}` : undefined}
+          right={<SaveBtn label="Save Changes" disabled={!counterDirty || counterInvalid} saving={counterSaving} onClick={saveCounter} />}
+        >
+          <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '4px 14px' }}>
+            <div style={{ fontSize: '10px', fontWeight: '950', color: '#64748b', padding: '12px 0 8px', borderBottom: '1px solid #f1f5f9' }}>HOLD ORDERS</div>
+            <SettingRow
+              bordered={false}
+              title="Allow Hold Orders"
+              hint="Allow cashiers to temporarily hold an incomplete Counter Order and continue serving another customer."
+              control={<Switch checked={counter.allowHold} onChange={() => setCounter({ ...counter, allowHold: !counter.allowHold })} />}
+            />
+            <div style={{ borderTop: '1px solid #f1f5f9' }} />
+            <SettingRow
+              bordered={false}
+              disabled={!counter.allowHold}
+              title="Maximum Held Orders"
+              hint="Maximum number of Counter Orders that can be held at the same time."
+              control={
+                <div style={{ textAlign: 'right' }}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    disabled={!counter.allowHold}
+                    value={counter.maxHeld}
+                    onChange={(e) => setCounter({ ...counter, maxHeld: clampInt(e.target.value, 0, 20) })}
+                    style={sysInput(!counter.allowHold, { width: '110px' })}
+                  />
+                  <div style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', marginTop: '3px' }}>Maximum 20</div>
+                </div>
+              }
+            />
+          </div>
+          <Msg msg={counterMsg} />
+        </SectionCard>
+
+        {/* ===== 3. NEW ORDER NOTIFICATION SOUND ===== */}
+        <SectionCard
+          icon="🔔"
+          title="New Order Notification Sound"
+          description="Choose the chime that plays when a new online order arrives. Plays once per new order — not on a loop."
+        >
+          <SettingRow
+            title="🔊 Play notification sound"
+            hint="Mute to silence chimes on this device."
+            control={<Switch checked={sound.enabled} onChange={() => setSound({ ...sound, enabled: !sound.enabled })} />}
+          />
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px', marginTop: '10px' }}>
+            {CHIMES.map((c) => {
+              const selected = sound.soundId === c.id;
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => setSound({ ...sound, soundId: c.id })}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '10px',
+                    padding: '12px 14px',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    border: `1.5px solid ${selected ? RED : '#e2e8f0'}`,
+                    backgroundColor: selected ? '#fff5f5' : '#fff'
+                  }}
+                >
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="chime"
+                      checked={selected}
+                      onChange={() => setSound({ ...sound, soundId: c.id })}
+                      style={{ accentColor: RED, marginTop: '3px', cursor: 'pointer' }}
+                    />
+                    <span>
+                      <span style={{ display: 'block', fontSize: '13px', fontWeight: '950', color: '#0f172a' }}>{c.label}</span>
+                      <span style={{ display: 'block', fontSize: '10.5px', fontWeight: '700', color: '#94a3b8', marginTop: '2px' }}>{c.desc}</span>
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    style={outlineBtn}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      playNotificationChime(c.id, true);
+                    }}
+                  >
+                    ▷ Preview
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '14px' }}>
+            <SaveBtn disabled={!soundDirty} onClick={saveSound} />
+          </div>
+          <Msg msg={soundMsg} />
+        </SectionCard>
+
+        {/* ===== 4. SECURITY ===== */}
+        <div style={{ maxWidth: '760px' }}>
+          <div style={{ fontSize: '13px', fontWeight: '950', color: '#0f172a', marginBottom: '8px' }}>Security</div>
+          <div style={card}>
+            <PasswordField label="Current Password" value={pw.current} autoComplete="current-password" onChange={(v) => setPw({ ...pw, current: v })} />
+            <PasswordField label="New Password" value={pw.next} autoComplete="new-password" onChange={(v) => setPw({ ...pw, next: v })} />
+            <PasswordField label="Re-enter New Password" value={pw.confirm} autoComplete="new-password" onChange={(v) => setPw({ ...pw, confirm: v })} />
+            <button
+              type="button"
+              disabled={pwSaving}
+              onClick={savePassword}
+              style={{
+                width: '100%',
+                backgroundColor: pwSaving ? GREEN_LIGHT : GREEN,
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '11px',
+                fontSize: '13px',
+                fontWeight: '950',
+                cursor: pwSaving ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {pwSaving ? 'Updating...' : 'Update Password'}
+            </button>
+            <Msg msg={pwMsg} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- main component ---------- */
 
 export default function AdvancedSettingsTab({
@@ -232,7 +786,13 @@ export default function AdvancedSettingsTab({
   handleToggleReceiptField,
   styles,
   sidebarItems,
-  onSave // optional: pass your save handler to wire the green "Save Changes" button
+  onSave, // optional: pass your save handler to wire the green "Save Changes" button
+  // ---- System tab (all optional) ----
+  systemSettings, // { autoApprove: {enabled, immediate, minutes, seconds}, counter: {allowHold, maxHeld} }
+  branchName, // e.g. "Linga Foods - Vengikkal"
+  onSaveAutoApprove, // async (payload) => void, throw on failure
+  onSaveCounter, // async (payload) => void, throw on failure
+  onChangePassword // async ({currentPassword, newPassword}) => void, throw on failure
 }) {
   const [oneClickOpen, setOneClickOpen] = useState(false);
 
@@ -645,15 +1205,14 @@ export default function AdvancedSettingsTab({
 
       {/* TAB 9: SYSTEM */}
       {activeTab === 'system' && (
-        <div style={styles.sectionGroup}>
-          <h3 style={styles.sectionTitle}>⚙️ System Configuration</h3>
-          <div style={styles.infoBox}>
-            <div style={{ fontWeight: '950', color: '#0f172a', marginBottom: '4px' }}>System Preferences & Maintenance</div>
-            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
-              Manage backend logs, cache clearing, system diagnostics, and hardware integration endpoints.
-            </div>
-          </div>
-        </div>
+        <SystemTab
+          styles={styles}
+          systemSettings={systemSettings}
+          branchName={branchName}
+          onSaveAutoApprove={onSaveAutoApprove}
+          onSaveCounter={onSaveCounter}
+          onChangePassword={onChangePassword}
+        />
       )}
     </>
   );

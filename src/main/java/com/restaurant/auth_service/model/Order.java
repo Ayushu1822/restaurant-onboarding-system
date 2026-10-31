@@ -2,6 +2,7 @@ package com.restaurant.auth_service.model;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -52,6 +53,10 @@ public class Order {
 
     @Column(name = "order_timestamp")
     private String timestamp;
+
+    // ✅ NEW: when the order should be auto-approved (null = no pending auto-approval)
+    @Column(name = "auto_approve_at")
+    private Instant autoApproveAt;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items;
@@ -120,6 +125,9 @@ public class Order {
 
     public String getTimestamp() { return timestamp; }
     public void setTimestamp(String timestamp) { this.timestamp = timestamp; }
+
+    public Instant getAutoApproveAt() { return autoApproveAt; }
+    public void setAutoApproveAt(Instant autoApproveAt) { this.autoApproveAt = autoApproveAt; }
 
     public List<OrderItem> getItems() { return items; }
     public void setItems(List<OrderItem> items) { 
