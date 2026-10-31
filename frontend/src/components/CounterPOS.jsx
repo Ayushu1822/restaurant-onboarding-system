@@ -22,24 +22,41 @@ export default function CounterPOS() {
   // Receipt Configuration state synced with Settings Module
   const [receiptConfig, setReceiptConfig] = useState({
     restaurantName: 'LINGA FOODS',
+    branchName: 'Wonghikal',
     headerText: 'Linga Foods - Wonghikal',
     address: 'LINGA FOODS, No. 1540, Vellore Main Road, Wonghikal, Tiruvannamalai, Tamil Nadu 606604',
     phone: '91234400635',
+    email: '',
     gstin: '37AAFP4128L1ZI',
     fssai: 'FSSAI: 22426260001195',
-    footerNote: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***',
+    footerText: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***',
     paperSize: '80mm',
     density: 'Compact',
     toggles: {
       restaurantName: true,
+      branchName: true,
+      headerText: false,
       address: true,
       phone: true,
+      email: false,
       gstin: true,
       fssai: true,
       invoiceNo: true,
       dateAndTime: true,
+      orderId: true,
+      tokenNumber: true,
+      orderType: true,
+      customerName: true,
+      customerMobile: true,
       itemNameQtyAmt: true,
-      totalTax: true
+      itemRate: true,
+      variants: true,
+      itemNotes: true,
+      discount: true,
+      totalTax: true,
+      taxBreakdown: true,
+      paymentMethod: true,
+      paymentReference: false
     }
   });
   
@@ -76,8 +93,18 @@ export default function CounterPOS() {
       .then(res => res.json())
       .then(data => {
         if (data && data.receiptConfig) {
-          const parsedCfg = typeof data.receiptConfig === 'string' ? JSON.parse(data.receiptConfig) : data.receiptConfig;
-          setReceiptConfig(prev => ({ ...prev, ...parsedCfg }));
+          let parsedCfg = data.receiptConfig;
+          if (typeof parsedCfg === 'string') {
+            try { parsedCfg = JSON.parse(parsedCfg); } catch (e) { parsedCfg = {}; }
+          }
+          setReceiptConfig(prev => ({ 
+            ...prev, 
+            ...parsedCfg,
+            toggles: {
+              ...(prev.toggles || {}),
+              ...(parsedCfg.toggles || {})
+            }
+          }));
         }
       })
       .catch(err => console.log("Profile fetch error:", err));
@@ -269,6 +296,13 @@ export default function CounterPOS() {
       });
   };
 
+  const isFieldOn = (key, defVal = true) => {
+    if (receiptConfig.toggles && receiptConfig.toggles[key] !== undefined) {
+      return receiptConfig.toggles[key];
+    }
+    return receiptConfig[key] !== undefined ? receiptConfig[key] : defVal;
+  };
+
   const handlePrintReceipt = () => {
     if (!lastCompletedOrder) return;
     
@@ -299,27 +333,32 @@ export default function CounterPOS() {
           </style>
         </head>
         <body>
-          ${toggles.restaurantName ? `<div class="center bold" style="font-size: 14px;">${receiptConfig.restaurantName}</div>` : ''}
-          ${receiptConfig.headerText ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.headerText}</div>` : ''}
-          ${toggles.address && receiptConfig.address ? `<div class="center" style="font-size: 10px; color: #333; margin: 3px 0;">${receiptConfig.address}</div>` : ''}
-          ${toggles.phone && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>` : ''}
-          ${toggles.gstin && receiptConfig.gstin ? `<div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>` : ''}
-          ${receiptConfig.fssai ? `<div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>` : ''}
+          ${isFieldOn('restaurantName', true) ? `<div class="center bold" style="font-size: 14px;">${(receiptConfig.restaurantName || 'RESTAURANT').toUpperCase()}</div>` : ''}
+          ${isFieldOn('headerText', false) && receiptConfig.headerText ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.headerText}</div>` : ''}
+          ${isFieldOn('address', true) && receiptConfig.address ? `<div class="center" style="font-size: 10px; color: #333; margin: 3px 0; white-space: pre-line;">${receiptConfig.address}</div>` : ''}
+          ${isFieldOn('phone', true) && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>` : ''}
+          ${isFieldOn('gstin', true) && receiptConfig.gstin ? `<div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>` : ''}
+          ${isFieldOn('fssai', true) && receiptConfig.fssai ? `<div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>` : ''}
+          
           <div class="line"></div>
-          ${toggles.invoiceNo ? `<div><strong>Order ID:</strong> ${lastCompletedOrder.id}</div>` : ''}
-          ${toggles.dateAndTime ? `<div><strong>Date:</strong> ${lastCompletedOrder.timestamp}</div>` : ''}
-          <div><strong>Customer:</strong> ${lastCompletedOrder.customerName} (${lastCompletedOrder.customerPhone})</div>
-          <div><strong>Type:</strong> ${lastCompletedOrder.orderType}</div>
-          <div><strong>Payment:</strong> ${splitPayment ? `Split (${pay1Method} + ${pay2Method})` : lastCompletedOrder.paymentMethod}</div>
+          ${isFieldOn('invoiceNo', true) ? `<div><strong>Order ID:</strong> ${lastCompletedOrder.id}</div>` : ''}
+          ${isFieldOn('dateAndTime', true) ? `<div><strong>Date:</strong> ${lastCompletedOrder.timestamp}</div>` : ''}
+          ${isFieldOn('customerName', true) ? `<div><strong>Customer:</strong> ${lastCompletedOrder.customerName} (${lastCompletedOrder.customerPhone})</div>` : ''}
+          ${isFieldOn('orderType', true) ? `<div><strong>Type:</strong> ${lastCompletedOrder.orderType}</div>` : ''}
+          ${isFieldOn('paymentMethod', true) ? `<div><strong>Payment:</strong> ${splitPayment ? `Split (${pay1Method} + ${pay2Method})` : lastCompletedOrder.paymentMethod}</div>` : ''}
+          
           <div class="line"></div>
           <div class="bold" style="margin-bottom: 6px;">ITEMS:</div>
           ${itemsHtml}
+          
           <div class="line"></div>
           <div class="flex"><span>Subtotal:</span><span>₹${lastCompletedOrder.subtotal.toFixed(2)}</span></div>
-          ${toggles.totalTax ? `<div class="flex"><span>Tax:</span><span>₹${lastCompletedOrder.totalTax.toFixed(2)}</span></div>` : ''}
+          ${isFieldOn('totalTax', true) ? `<div class="flex"><span>Tax:</span><span>₹${lastCompletedOrder.totalTax.toFixed(2)}</span></div>` : ''}
           <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>Total:</span><span>₹${lastCompletedOrder.totalAmount}</span></div>
+          
           <div class="line"></div>
-          <div class="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptConfig.footerNote}</div>
+          ${isFieldOn('footerText', true) && receiptConfig.footerText ? `<div class="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptConfig.footerText}</div>` : ''}
+          
           <script>
             window.onload = function() {
               window.print();
