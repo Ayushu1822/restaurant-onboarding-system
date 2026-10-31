@@ -33,6 +33,7 @@ export default function CounterPOS() {
     paperSize: '80mm',
     density: 'Compact',
     toggles: {
+      logo: false,
       restaurantName: true,
       branchName: true,
       headerText: false,
@@ -56,7 +57,8 @@ export default function CounterPOS() {
       totalTax: true,
       taxBreakdown: true,
       paymentMethod: true,
-      paymentReference: false
+      paymentReference: false,
+      footerText: true
     }
   });
   
@@ -251,6 +253,7 @@ export default function CounterPOS() {
 
     const orderPayload = {
       displayId: `#POS-${Math.floor(1000 + Math.random() * 9000)}`,
+      tokenNumber: Math.floor(100 + Math.random() * 900),
       restaurantEmail: userEmail,
       customerName,
       customerPhone,
@@ -312,11 +315,14 @@ export default function CounterPOS() {
       return;
     }
 
-    const toggles = receiptConfig.toggles || {};
     const itemsHtml = lastCompletedOrder.items.map(it => `
-      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-        <span>${it.quantity}x ${it.itemName}</span>
-        <span>₹${(it.unitPrice * it.quantity).toFixed(2)}</span>
+      <div style="margin-bottom: 6px;">
+        <div style="display: flex; justify-content: space-between; font-weight: bold;">
+          <span>${it.quantity}x ${it.itemName}</span>
+          <span>₹${(it.unitPrice * it.quantity).toFixed(2)}</span>
+        </div>
+        ${isFieldOn('itemRate', true) ? `<div style="font-size: 9px; color: #555;">Rate: ₹${it.unitPrice} each (${it.taxRate}% tax)</div>` : ''}
+        ${isFieldOn('itemNotes', true) && it.itemDescription ? `<div style="font-size: 9px; color: #b45309; font-style: italic;">&nbsp;• ${it.itemDescription}</div>` : ''}
       </div>
     `).join('');
 
@@ -325,7 +331,7 @@ export default function CounterPOS() {
         <head>
           <title>Receipt - ${lastCompletedOrder.id}</title>
           <style>
-            body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: ${receiptConfig.paperSize === '58mm' ? '58mm' : '80mm'}; margin: 0 auto; font-size: ${receiptConfig.density === 'Compact' ? '10px' : '12px'}; }
+            body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: ${receiptConfig.paperSize === '58mm' ? '58mm' : '80mm'}; margin: 0 auto; font-size: ${receiptConfig.density === 'Compact' ? '10px' : '12px'}; line-height: 1.4; }
             .center { text-align: center; }
             .bold { font-weight: bold; }
             .line { border-top: 1px dashed #000; margin: 8px 0; }
@@ -333,19 +339,24 @@ export default function CounterPOS() {
           </style>
         </head>
         <body>
-          ${isFieldOn('restaurantName', true) ? `<div class="center bold" style="font-size: 14px;">${(receiptConfig.restaurantName || 'RESTAURANT').toUpperCase()}</div>` : ''}
+          ${isFieldOn('logo', false) && receiptConfig.logoUrl ? `<div class="center" style="margin-bottom: 6px;"><img src="${receiptConfig.logoUrl}" style="max-width: 50%; max-height: 45px; filter: grayscale(1);" /></div>` : ''}
           ${isFieldOn('headerText', false) && receiptConfig.headerText ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.headerText}</div>` : ''}
+          ${isFieldOn('restaurantName', true) ? `<div class="center bold" style="font-size: 14px;">${(receiptConfig.restaurantName || 'RESTAURANT').toUpperCase()}</div>` : ''}
+          ${isFieldOn('branchName', true) && receiptConfig.branchName ? `<div class="center" style="font-size: 11px;">${receiptConfig.branchName}</div>` : ''}
           ${isFieldOn('address', true) && receiptConfig.address ? `<div class="center" style="font-size: 10px; color: #333; margin: 3px 0; white-space: pre-line;">${receiptConfig.address}</div>` : ''}
           ${isFieldOn('phone', true) && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>` : ''}
+          ${isFieldOn('email', false) && receiptConfig.email ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.email}</div>` : ''}
           ${isFieldOn('gstin', true) && receiptConfig.gstin ? `<div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>` : ''}
           ${isFieldOn('fssai', true) && receiptConfig.fssai ? `<div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>` : ''}
           
           <div class="line"></div>
-          ${isFieldOn('invoiceNo', true) ? `<div><strong>Order ID:</strong> ${lastCompletedOrder.id}</div>` : ''}
+          ${isFieldOn('tokenNumber', true) && lastCompletedOrder.tokenNumber ? `<div class="center" style="font-size: 12px; font-weight: bold; margin-bottom: 4px;">TOKEN: #${lastCompletedOrder.tokenNumber}</div>` : ''}
+          ${isFieldOn('invoiceNo', true) ? `<div><strong>Receipt No:</strong> ${lastCompletedOrder.id}</div>` : ''}
+          ${isFieldOn('orderId', true) ? `<div><strong>Order ID:</strong> ${lastCompletedOrder.id}</div>` : ''}
+          ${isFieldOn('orderType', true) ? `<div><strong>Type:</strong> ${lastCompletedOrder.orderType} (${lastCompletedOrder.deliveryAddress || ''})</div>` : ''}
           ${isFieldOn('dateAndTime', true) ? `<div><strong>Date:</strong> ${lastCompletedOrder.timestamp}</div>` : ''}
-          ${isFieldOn('customerName', true) ? `<div><strong>Customer:</strong> ${lastCompletedOrder.customerName} (${lastCompletedOrder.customerPhone})</div>` : ''}
-          ${isFieldOn('orderType', true) ? `<div><strong>Type:</strong> ${lastCompletedOrder.orderType}</div>` : ''}
-          ${isFieldOn('paymentMethod', true) ? `<div><strong>Payment:</strong> ${splitPayment ? `Split (${pay1Method} + ${pay2Method})` : lastCompletedOrder.paymentMethod}</div>` : ''}
+          ${isFieldOn('customerName', true) && lastCompletedOrder.customerName ? `<div><strong>Customer:</strong> ${lastCompletedOrder.customerName}</div>` : ''}
+          ${isFieldOn('customerMobile', true) && lastCompletedOrder.customerPhone ? `<div><strong>Mobile:</strong> ${lastCompletedOrder.customerPhone}</div>` : ''}
           
           <div class="line"></div>
           <div class="bold" style="margin-bottom: 6px;">ITEMS:</div>
@@ -353,8 +364,18 @@ export default function CounterPOS() {
           
           <div class="line"></div>
           <div class="flex"><span>Subtotal:</span><span>₹${lastCompletedOrder.subtotal.toFixed(2)}</span></div>
-          ${isFieldOn('totalTax', true) ? `<div class="flex"><span>Tax:</span><span>₹${lastCompletedOrder.totalTax.toFixed(2)}</span></div>` : ''}
-          <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>Total:</span><span>₹${lastCompletedOrder.totalAmount}</span></div>
+          ${isFieldOn('discount', true) && lastCompletedOrder.discount ? `<div class="flex"><span>Discount:</span><span>-₹${Number(lastCompletedOrder.discount).toFixed(2)}</span></div>` : ''}
+          
+          ${isFieldOn('totalTax', true) && !isFieldOn('taxBreakdown', true) ? `<div class="flex"><span>Total Tax:</span><span>₹${lastCompletedOrder.totalTax.toFixed(2)}</span></div>` : ''}
+          ${isFieldOn('totalTax', true) && isFieldOn('taxBreakdown', true) ? `
+            <div class="flex"><span>CGST (2.5%):</span><span>₹${(lastCompletedOrder.totalTax / 2).toFixed(2)}</span></div>
+            <div class="flex"><span>SGST (2.5%):</span><span>₹${(lastCompletedOrder.totalTax / 2).toFixed(2)}</span></div>
+          ` : ''}
+          
+          <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>TOTAL:</span><span>₹${Number(lastCompletedOrder.totalAmount).toFixed(2)}</span></div>
+          
+          <div class="line"></div>
+          ${isFieldOn('paymentMethod', true) ? `<div><strong>Payment:</strong> ${splitPayment ? `Split (${pay1Method} + ${pay2Method})` : lastCompletedOrder.paymentMethod}</div>` : ''}
           
           <div class="line"></div>
           ${isFieldOn('footerText', true) && receiptConfig.footerText ? `<div class="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptConfig.footerText}</div>` : ''}
