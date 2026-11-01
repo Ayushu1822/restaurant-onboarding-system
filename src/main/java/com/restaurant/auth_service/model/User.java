@@ -29,11 +29,11 @@ public class User {
     @Column(name = "whatsapp_number")
     private String whatsappNumber;
 
-    @Column(name = "reset_token")
-    private String resetToken;
+    @Column(name = "otp_code")
+    private String otpCode;
 
-    @Column(name = "token_expiry")
-    private LocalDateTime tokenExpiry;
+    @Column(name = "otp_expiry")
+    private LocalDateTime otpExpiry;
 
     // Getters and Setters
     public String getUserId() { return userId; }
@@ -57,9 +57,9 @@ public class User {
     public String getWhatsappNumber() { return whatsappNumber; }
     public void setWhatsappNumber(String whatsappNumber) { this.whatsappNumber = whatsappNumber; }
 
-    public String getResetToken() { return resetToken; }
-    public void setResetToken(String resetToken) { this.resetToken = resetToken; }
+    public String getOtpCode() { return otpCode; }
+    public void setOtpCode(String otpCode) { this.otpCode = otpCode; }
 
-    public LocalDateTime getTokenExpiry() { return tokenExpiry; }
-    public void setTokenExpiry(LocalDateTime tokenExpiry) { this.tokenExpiry = tokenExpiry; }
+    public LocalDateTime getOtpExpiry() { return otpExpiry; }
+    public void setOtpExpiry(LocalDateTime otpExpiry) { this.otpExpiry = otpExpiry; }
 }

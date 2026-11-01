@@ -50,28 +50,29 @@ public class AuthController {
         }
     }
 
-    // --- NEW: Forgot Password Endpoint ---
+    // --- OTP: Forgot Password Endpoint ---
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
         try {
             String email = request.get("email");
             authService.forgotPassword(email);
-            return ResponseEntity.ok(Map.of("message", "If the email exists, a password reset link has been sent."));
+            return ResponseEntity.ok(Map.of("message", "If the email exists, a 6-digit OTP has been sent."));
         } catch (Exception e) {
             e.printStackTrace();
             // Return success even if email is missing to prevent user enumeration attacks
-            return ResponseEntity.ok(Map.of("message", "If the email exists, a password reset link has been sent."));
+            return ResponseEntity.ok(Map.of("message", "If the email exists, a 6-digit OTP has been sent."));
         }
     }
 
-    // --- NEW: Reset Password Endpoint ---
-    @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
+    // --- OTP: Verify and Reset Password Endpoint ---
+    @PostMapping("/reset-password-otp")
+    public ResponseEntity<?> resetPasswordOtp(@RequestBody Map<String, String> request) {
         try {
-            String token = request.get("token");
+            String email = request.get("email");
+            String otp = request.get("otp");
             String newPassword = request.get("newPassword");
             
-            authService.resetPassword(token, newPassword);
+            authService.verifyOtpAndResetPassword(email, otp, newPassword);
             return ResponseEntity.ok(Map.of("message", "Password successfully reset!"));
         } catch (Exception e) {
             e.printStackTrace();

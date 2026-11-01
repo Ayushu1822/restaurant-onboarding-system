@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import './LoginScreen.css';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
@@ -102,23 +102,13 @@ export default function LoginScreen({ onLoginSuccess }) {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [forgotEmail, setForgotEmail] = useState('');
-  const [resetToken, setResetToken] = useState('');
+  const [otpCode, setOtpCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('error');
   const [loading, setLoading] = useState(false);
   const [rememberStation, setRememberStation] = useState(true);
-
-  // Check URL parameters on load for a reset password token (e.g., ?token=XYZ)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
-    if (token) {
-      setResetToken(token);
-      setCurrentView('reset');
-    }
-  }, []);
 
   const openView = (view) => {
     setCurrentView(view);
@@ -148,9 +138,11 @@ export default function LoginScreen({ onLoginSuccess }) {
       }
       await new Promise(resolve => window.setTimeout(resolve, 1000));
       
-      localStorage.setItem('auth_token', data.token);
-      localStorage.setItem('user_email', loginEmail);
-      localStorage.setItem('userEmail', loginEmail); 
+      // Choose storage based on "Remember this station" checkbox
+      const storage = rememberStation ? localStorage : sessionStorage;
+      storage.setItem('auth_token', data.token || data.userId);
+      storage.setItem('user_email', loginEmail);
+      storage.setItem('userEmail', loginEmail); 
       
       onLoginSuccess();
     } catch {
@@ -216,11 +208,12 @@ export default function LoginScreen({ onLoginSuccess }) {
       });
       const data = await response.json();
       if (!response.ok) {
-        setMessage(data.message || 'Unable to reset password for that email.');
+        setMessage(data.message || 'Unable to send OTP.');
         return;
       }
       setMessageType('success');
-      setMessage('If the email exists, a password reset link has been sent.');
+      setMessage('6-digit OTP sent to your email! Enter it below.');
+      setCurrentView('verify-otp');
     } catch {
       setMessage('Could not connect to the server. Please try again.');
     } finally {
@@ -228,15 +221,15 @@ export default function LoginScreen({ onLoginSuccess }) {
     }
   };
 
-  const handleResetPassword = async (event) => {
+  const handleVerifyAndReset = async (event) => {
     event.preventDefault();
     setLoading(true);
     setMessage('');
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/reset-password`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/reset-password-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: resetToken, newPassword })
+        body: JSON.stringify({ email: forgotEmail, otp: otpCode, newPassword })
       });
       const data = await response.json();
       if (!response.ok) {
@@ -245,8 +238,6 @@ export default function LoginScreen({ onLoginSuccess }) {
       }
       setMessageType('success');
       setMessage('Password successfully reset! Please sign in.');
-      // Clear token from URL query string cleanly
-      window.history.replaceState({}, document.title, window.location.pathname);
       setTimeout(() => {
         setCurrentView('signin');
       }, 2000);
@@ -325,18 +316,18 @@ export default function LoginScreen({ onLoginSuccess }) {
                 {currentView === 'signup' 
                   ? 'Restaurant Onboarding' 
                   : currentView === 'forgot' 
-                  ? 'Reset your password' 
-                  : currentView === 'reset'
-                  ? 'Create new password'
+                  ? 'Reset password' 
+                  : currentView === 'verify-otp'
+                  ? 'Enter 6-digit code'
                   : <>Sign In to Orders<span>24</span></>}
               </h2>
               <p>
                 {currentView === 'signup' 
                   ? 'Register your restaurant and configure your administrative profile.' 
                   : currentView === 'forgot' 
-                  ? 'We will help you get back into your restaurant portal.' 
-                  : currentView === 'reset'
-                  ? 'Enter your new secure password below.'
+                  ? 'Enter your email to receive a 6-digit verification code.' 
+                  : currentView === 'verify-otp'
+                  ? 'Enter the OTP sent to your email and your new password.'
                   : 'Log in to your restaurant portal and management console'}
               </p>
             </header>
@@ -396,32 +387,32 @@ export default function LoginScreen({ onLoginSuccess }) {
             {currentView === 'forgot' && (
               <form className="portalAuthForm" onSubmit={handleForgotPassword}>
                 <FormField label="EMAIL ADDRESS" type="email" value={forgotEmail} onChange={(event) => setForgotEmail(event.target.value)} placeholder="operator@restaurant.com" required />
-                <button className="portalSubmit" type="submit" disabled={loading}>{loading ? 'Sending…' : 'SEND RESET INSTRUCTIONS'}</button>
+                <button className="portalSubmit" type="submit" disabled={loading}>{loading ? 'Sending OTP…' : 'SEND 6-DIGIT OTP'}</button>
                 <button type="button" className="backToSignIn" onClick={() => openView('signin')}>← Back to sign in</button>
               </form>
             )}
 
-            {currentView === 'reset' && (
-              <form className="portalAuthForm" onSubmit={handleResetPassword}>
+            {currentView === 'verify-otp' && (
+              <form className="portalAuthForm" onSubmit={handleVerifyAndReset}>
+                <FormField label="ENTER 6-DIGIT OTP" value={otpCode} onChange={(event) => setOtpCode(event.target.value)} placeholder="123456" maxLength={6} required />
                 <PasswordField label="NEW PASSWORD (min 8 chars)" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="••••••••" minLength={8} required />
-                <button className="portalSubmit" type="submit" disabled={loading}>{loading ? 'Updating...' : 'UPDATE PASSWORD'}</button>
+                <button className="portalSubmit" type="submit" disabled={loading}>{loading ? 'Verifying…' : 'UPDATE PASSWORD'}</button>
                 <button type="button" className="backToSignIn" onClick={() => openView('signin')}>← Back to sign in</button>
               </form>
             )}
 
-            {currentView !== 'signup' && currentView !== 'reset' && (
+            {currentView !== 'signup' && currentView !== 'verify-otp' && currentView !== 'forgot' && (
               <>
                 <div className="portalOr"><span>OR SIGN IN WITH</span></div>
                 <button className="portalGoogleButton" type="button" onClick={handleGoogleSignIn}><GoogleIcon />Continue with Google</button>
               </>
             )}
 
-            {currentView !== 'signup' && currentView !== 'reset' && (
+            {currentView !== 'signup' && currentView !== 'verify-otp' && currentView !== 'forgot' && (
               <p className="portalRegisterPrompt">
-                {currentView === 'signup' ? 'Already have a restaurant account?' : 'Don’t have a restaurant account?'}
-                {' '}
-                <button type="button" onClick={() => openView(currentView === 'signup' ? 'signin' : 'signup')}>
-                  {currentView === 'signup' ? 'Sign in' : 'Register your restaurant'}
+                Don’t have a restaurant account?{' '}
+                <button type="button" onClick={() => openView('signup')}>
+                  Register your restaurant
                 </button>
               </p>
             )}

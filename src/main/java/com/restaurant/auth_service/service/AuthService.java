@@ -12,15 +12,13 @@ import com.restaurant.auth_service.repository.RestaurantProfileRepository;
 import com.restaurant.auth_service.repository.AddressRepository;
 import com.restaurant.auth_service.repository.LocationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 
 @Service
@@ -42,7 +40,7 @@ public class AuthService {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private JavaMailSender mailSender; // <-- Added for sending emails
+    private JavaMailSender mailSender;
 
     @Transactional
     public User registerUser(Map<String, Object> request) {
@@ -65,11 +63,11 @@ public class AuthService {
         user.setWhatsappNumber((String) request.get("whatsappNumber"));
         User savedUser = userRepository.save(user);
 
-        // 2. Save Restaurant Profile (Including Email for secure dashboard lookup)
+        // 2. Save Restaurant Profile
         RestaurantProfile profile = new RestaurantProfile();
         profile.setRestaurantId(restaurantId);
         profile.setUserId(userId);
-        profile.setEmail(email); // Crucial for /api/v1/restaurants/email/{email} lookups
+        profile.setEmail(email);
         profile.setBusinessName((String) request.get("businessName"));
         profile.setOwnerName((String) request.get("ownerName"));
         profile.setPhoneNumber((String) request.get("phoneNumber"));
@@ -126,42 +124,44 @@ public class AuthService {
         return response;
     }
 
-    // --- NEW: Forgot Password Logic ---
+    // --- OTP: Generate and Send 6-digit Code ---
     public void forgotPassword(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Generate token and expiry (15 minutes from now)
-        String token = UUID.randomUUID().toString();
-        user.setResetToken(token);
-        user.setTokenExpiry(LocalDateTime.now().plusMinutes(15));
+        // Generate a secure 6-digit random code (e.g., 482910)
+        String otp = String.format("%06d", new Random().nextInt(999999));
+        
+        user.setOtpCode(otp);
+        user.setOtpExpiry(LocalDateTime.now().plusMinutes(10)); // Valid for 10 minutes
         userRepository.save(user);
 
-        // Reset link pointing to your React frontend
-        String resetLink = "http://localhost:5173/reset-password?token=" + token;
-
-        // Send Email
+        // Send Email via Gmail SMTP
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(user.getEmail());
-        message.setSubject("Password Reset Request");
-        message.setText("Click the link below to reset your password:\n" + resetLink + "\n\nThis link expires in 15 minutes.");
+        message.setSubject("Password Reset OTP - Orders24");
+        message.setText("Your verification code to reset your password is: " + otp + "\n\nThis code will expire in 10 minutes.");
         
         mailSender.send(message);
     }
 
-    // --- NEW: Reset Password Logic ---
-    public void resetPassword(String token, String newPassword) {
-        User user = userRepository.findByResetToken(token)
-                .orElseThrow(() -> new RuntimeException("Invalid reset token"));
+    // --- OTP: Verify Code and Update Password ---
+    public void verifyOtpAndResetPassword(String email, String otp, String newPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (user.getTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Reset token has expired");
+        if (user.getOtpCode() == null || !user.getOtpCode().equals(otp)) {
+            throw new RuntimeException("Invalid OTP code.");
         }
 
-        // Update password hash and clear the token fields
+        if (user.getOtpExpiry() == null || LocalDateTime.now().isAfter(user.getOtpExpiry())) {
+            throw new RuntimeException("OTP has expired. Please request a new one.");
+        }
+
+        // Update password hash and clear the OTP fields so it can't be reused
         user.setPasswordHash(passwordEncoder.encode(newPassword));
-        user.setResetToken(null);
-        user.setTokenExpiry(null);
+        user.setOtpCode(null);
+        user.setOtpExpiry(null);
         userRepository.save(user);
     }
 }
