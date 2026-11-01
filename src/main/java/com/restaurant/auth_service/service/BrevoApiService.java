@@ -26,7 +26,8 @@ public class BrevoApiService {
         body.put("subject", "Your Password Reset OTP");
         body.put("htmlContent", "<p>Your 6-digit password reset OTP is: <strong>" + otpCode + "</strong></p>");
 
-        HttpEntity> request = new HttpEntity<>(body, headers);
+        // Using a raw HttpEntity to completely avoid any generic bracket errors
+        HttpEntity request = new HttpEntity(body, headers);
         
         try {
             restTemplate.postForEntity(BREVO_API_URL, request, String.class);
