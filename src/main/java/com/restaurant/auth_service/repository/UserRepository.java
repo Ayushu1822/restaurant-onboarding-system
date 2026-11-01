@@ -6,10 +6,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, String> { // Changed UUID to String
+public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
-    
-    // NEW: Needed for forgot password workflow
-    Optional<User> findByResetToken(String resetToken);
 }
