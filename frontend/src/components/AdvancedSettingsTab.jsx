@@ -160,9 +160,10 @@ function Radio({ name, checked, onChange, label }) {
 
 /* =====================================================================
    NOTIFICATION SOUND HELPERS (per device -> localStorage)
-   Import these in your Online Orders page:
-     import { getSoundSettings, playNotificationChime } from './AdvancedSettingsTab';
-   and call playNotificationChime() ONCE per new order id.
+   Used by the Online Orders page:
+     import { playNotificationChime, unlockNotificationAudio } from './AdvancedSettingsTab';
+   playNotificationChime() is called ONCE per new order id.
+   All sounds are generated live with the Web Audio API (no audio files).
    ===================================================================== */
 
 export const SOUND_STORAGE_KEY = 'foodos.notificationSound';
@@ -176,14 +177,46 @@ export const CHIMES = [
   { id: 'arcade', label: 'Arcade', desc: 'Playful ascending square-wave riff.' }
 ];
 
-// [frequency Hz, start offset s, duration s]
+// Each chime: wave shape, partials [frequency ratio, loudness, decay length],
+// notes [frequency Hz, start s, length s], echo amount, optional lowpass (Hz)
 const CHIME_NOTES = {
-  classic: { type: 'sine', notes: [[880, 0, 0.22], [660, 0.25, 0.35]] },
-  soft: { type: 'sine', notes: [[523.25, 0, 0.25], [659.25, 0.22, 0.25], [783.99, 0.44, 0.45]] },
-  bell: { type: 'triangle', notes: [[1046.5, 0, 0.9]] },
-  dingdong: { type: 'sine', notes: [[659.25, 0, 0.4], [523.25, 0.42, 0.6]] },
-  ping: { type: 'sine', notes: [[1318.5, 0, 0.18]] },
-  arcade: { type: 'square', notes: [[392, 0, 0.1], [523.25, 0.1, 0.1], [659.25, 0.2, 0.1], [783.99, 0.3, 0.1], [1046.5, 0.4, 0.2]] }
+  classic: {
+    wave: 'sine',
+    partials: [[1, 1, 1], [2, 0.35, 0.6], [3, 0.15, 0.4]],
+    notes: [[880, 0, 0.3], [660, 0.28, 0.5]],
+    echo: 0.2
+  },
+  soft: {
+    wave: 'sine',
+    partials: [[1, 1, 1], [2, 0.25, 0.7]],
+    notes: [[523.25, 0, 0.5], [659.25, 0.2, 0.5], [783.99, 0.4, 0.9]],
+    echo: 0.35
+  },
+  bell: {
+    wave: 'sine',
+    partials: [[1, 1, 1], [2.76, 0.5, 0.5], [5.4, 0.3, 0.3], [8.93, 0.15, 0.2]],
+    notes: [[784, 0, 1.6]],
+    echo: 0.3
+  },
+  dingdong: {
+    wave: 'sine',
+    partials: [[1, 1, 1], [2.01, 0.4, 0.6], [3, 0.2, 0.4]],
+    notes: [[659.25, 0, 0.7], [523.25, 0.45, 1.0]],
+    echo: 0.2
+  },
+  ping: {
+    wave: 'triangle',
+    partials: [[1, 1, 1], [3, 0.3, 0.3]],
+    notes: [[1318.5, 0, 0.25]],
+    echo: 0.15
+  },
+  arcade: {
+    wave: 'square',
+    partials: [[1, 1, 1]],
+    notes: [[392, 0, 0.12], [523.25, 0.1, 0.12], [659.25, 0.2, 0.12], [783.99, 0.3, 0.12], [1046.5, 0.4, 0.25]],
+    echo: 0.1,
+    lowpass: 2400 // softens the harsh square wave
+  }
 };
 
 export function getSoundSettings() {
@@ -205,6 +238,18 @@ export function saveSoundSettings(settings) {
 
 let audioCtx = null;
 
+// Call once after the first click/keypress so browsers allow the chime to play later
+export function unlockNotificationAudio() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    if (!audioCtx) audioCtx = new Ctx();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch {
+    /* ignore */
+  }
+}
+
 // force = true is used by the Preview button (plays even when muted)
 export function playNotificationChime(soundId, force = false) {
   const settings = getSoundSettings();
@@ -215,19 +260,50 @@ export function playNotificationChime(soundId, force = false) {
     if (!Ctx) return;
     if (!audioCtx) audioCtx = new Ctx();
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    const t0 = audioCtx.currentTime;
+    const ctx = audioCtx;
+    const t0 = ctx.currentTime;
+
+    // master chain: gain -> lowpass filter -> speakers
+    const master = ctx.createGain();
+    master.gain.value = 0.9;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = def.lowpass || 6000;
+    master.connect(filter);
+    filter.connect(ctx.destination);
+
+    // light echo for a bit of space
+    if (def.echo) {
+      const delay = ctx.createDelay();
+      delay.delayTime.value = 0.18;
+      const feedback = ctx.createGain();
+      feedback.gain.value = def.echo;
+      const wet = ctx.createGain();
+      wet.gain.value = 0.35;
+      filter.connect(delay);
+      delay.connect(feedback);
+      feedback.connect(delay);
+      delay.connect(wet);
+      wet.connect(ctx.destination);
+    }
+
+    // every note = several stacked tones with a soft attack and natural decay
     def.notes.forEach(([freq, start, dur]) => {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = def.type;
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.0001, t0 + start);
-      gain.gain.exponentialRampToValueAtTime(0.25, t0 + start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + start + dur);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start(t0 + start);
-      osc.stop(t0 + start + dur + 0.05);
+      def.partials.forEach(([ratio, level, decay]) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = def.wave;
+        osc.frequency.value = freq * ratio;
+        const begin = t0 + start;
+        const end = begin + dur * decay;
+        gain.gain.setValueAtTime(0.0001, begin);
+        gain.gain.exponentialRampToValueAtTime(0.22 * level, begin + 0.008);
+        gain.gain.exponentialRampToValueAtTime(0.0001, end);
+        osc.connect(gain);
+        gain.connect(master);
+        osc.start(begin);
+        osc.stop(end + 0.05);
+      });
     });
   } catch {
     /* browser blocked audio until user interaction */

@@ -12,6 +12,7 @@ import CounterPOS from './CounterPOS';
 import PromotionsModule from './PromotionsModule';
 import GalleryModule from './GalleryModule';
 import SettingsModule from "./SettingsModule";
+import { playNotificationChime, unlockNotificationAudio } from './AdvancedSettingsTab';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
@@ -82,11 +83,6 @@ export default function Dashboard({ user, onLogout }) {
     whatsappNumber: FALLBACK_RESTAURANT_PROFILE.whatsappNumber
   });
 
-  const [notificationSoundConfig, setNotificationSoundConfig] = useState({
-    enabled: true,
-    selectedTone: 'Classic Ring'
-  });
-
   const [receiptConfig, setReceiptConfig] = useState({
     restaurantName: 'LINGA FOODS',
     branchName: 'Wonghikal',
@@ -138,79 +134,11 @@ export default function Dashboard({ user, onLogout }) {
   const [savingOrderNotes, setSavingOrderNotes] = useState(false);
 
   const knownOrderIdsRef = useRef(new Set());
+  const hasLoadedOrdersRef = useRef(false);
 
   useEffect(() => {
     setOrderNote(getOrderNote(selectedOrder));
   }, [selectedOrder?.orderId]);
-
-  const playSynthesizedChime = (toneName = 'Classic Ring') => {
-    try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const now = audioCtx.currentTime;
-
-      if (toneName === 'Soft Chime') {
-        const chords = [
-          [523.25, 659.25, 783.99],
-          [587.33, 698.46, 880.00],
-          [659.25, 783.99, 987.77]
-        ];
-        chords.forEach((chord, round) => {
-          chord.forEach((freq, noteIdx) => {
-            const startTime = now + (round * 3.0) + (noteIdx * 0.3);
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, startTime);
-            gain.gain.setValueAtTime(0.15, startTime);
-            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.5);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(startTime);
-            osc.stop(startTime + 2.5);
-          });
-        });
-      } else if (toneName === 'Ding Dong') {
-        for (let i = 0; i < 4; i++) {
-          const startTime = now + (i * 2.2);
-          [587.33, 440].forEach((freq, idx) => {
-            const noteTime = startTime + (idx * 0.6);
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, noteTime);
-            gain.gain.setValueAtTime(0.2, noteTime);
-            gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 1.5);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(noteTime);
-            osc.stop(noteTime + 1.5);
-          });
-        }
-      } else {
-        for (let i = 0; i < 6; i++) {
-          const startTime = now + (i * 1.5);
-          const osc1 = audioCtx.createOscillator();
-          const osc2 = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc1.type = 'square';
-          osc2.type = 'sawtooth';
-          osc1.frequency.setValueAtTime(880, startTime);
-          osc2.frequency.setValueAtTime(1320, startTime);
-          gain.gain.setValueAtTime(0.12, startTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 1.2);
-          osc1.connect(gain);
-          osc2.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc1.start(startTime);
-          osc2.start(startTime);
-          osc1.stop(startTime + 1.2);
-          osc2.stop(startTime + 1.2);
-        }
-      }
-    } catch (e) {
-      console.log("Audio play error:", e);
-    }
-  };
 
   const showToast = (text, type = 'success') => {
     setToastMessage({ text, type });
@@ -222,10 +150,6 @@ export default function Dashboard({ user, onLogout }) {
       .then(res => res.json())
       .then(data => {
         if (data) {
-          if (data.notificationSound) {
-            const parsedSnd = typeof data.notificationSound === 'string' ? JSON.parse(data.notificationSound) : data.notificationSound;
-            setNotificationSoundConfig(prev => ({ ...prev, ...parsedSnd }));
-          }
           if (data.receiptConfig) {
             let parsedCfg = data.receiptConfig;
             if (typeof parsedCfg === 'string') {
@@ -399,32 +323,55 @@ export default function Dashboard({ user, onLogout }) {
           };
         });
 
-        const newOrdersList = formattedOrders.filter(o => o.status === 'New');
-        if (knownOrderIdsRef.current.size > 0) {
-          const hasBrandNew = newOrdersList.some(o => !knownOrderIdsRef.current.has(o.orderId));
-          if (hasBrandNew) {
-            if (notificationSoundConfig.enabled !== false) {
-              playSynthesizedChime(notificationSoundConfig.selectedTone || 'Classic Ring');
-            }
-            const latestNewOrder = newOrdersList.find(o => !knownOrderIdsRef.current.has(o.orderId)) || newOrdersList[0];
-            setNewOrderPopup(latestNewOrder);
+        // 🔔 Chime once for orders we haven't seen before (skips the very first load)
+        if (hasLoadedOrdersRef.current) {
+          const freshOrders = formattedOrders.filter(
+            o => !knownOrderIdsRef.current.has(o.orderId) && ['New', 'Accepted'].includes(o.status)
+          );
+          if (freshOrders.length > 0) {
+            playNotificationChime(); // reads this device's mute + chosen chime
+            setNewOrderPopup(freshOrders[0]);
           }
         }
+        hasLoadedOrdersRef.current = true;
         knownOrderIdsRef.current = new Set(formattedOrders.map(o => o.orderId));
 
         setOrders(formattedOrders);
         if (formattedOrders.length > 0) {
-          setSelectedOrder(current => current || formattedOrders[0]);
+          // keep the open order in sync (e.g. after auto-approval)
+          setSelectedOrder(current =>
+            current ? (formattedOrders.find(o => o.orderId === current.orderId) || current) : formattedOrders[0]
+          );
         }
         setLoadingOrders(false);
       })
       .catch(err => {
         console.error("❌ FETCH FAILED:", err);
         setIsOrdersFallback(true);
-        setOrders([]);
         setLoadingOrders(false);
       });
   }, [loggedInEmail, refreshTick]);
+
+  // 🔄 Poll orders every 5 seconds so new orders and auto-approvals appear without pressing refresh
+  useEffect(() => {
+    const id = setInterval(() => setRefreshTick(t => t + 1), 5000);
+    return () => clearInterval(id);
+  }, []);
+
+  // 🔊 Browsers block sound until the first click; unlock audio on first interaction
+  useEffect(() => {
+    const unlock = () => {
+      unlockNotificationAudio();
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+    window.addEventListener('click', unlock);
+    window.addEventListener('keydown', unlock);
+    return () => {
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, []);
 
   const handleSaveProfile = (e) => {
     e.preventDefault();
