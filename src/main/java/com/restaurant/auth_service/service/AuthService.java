@@ -1,7 +1,5 @@
 package com.restaurant.auth_service.service;
 
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import java.time.LocalDateTime;
 import com.restaurant.auth_service.model.User;
 import com.restaurant.auth_service.model.RestaurantProfile;
@@ -40,7 +38,7 @@ public class AuthService {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private JavaMailSender mailSender;
+    private BrevoApiService brevoApiService;
 
     @Transactional
     public User registerUser(Map<String, Object> request) {
@@ -124,7 +122,7 @@ public class AuthService {
         return response;
     }
 
-    // --- OTP: Generate and Send 6-digit Code ---
+    // --- OTP: Generate and Send 6-digit Code via Brevo API ---
     public void forgotPassword(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -134,15 +132,11 @@ public class AuthService {
         
         user.setOtpCode(otp);
         user.setOtpExpiry(LocalDateTime.now().plusMinutes(10)); // Valid for 10 minutes
+        user.saveOtpCodeAndExpiry(); // Or save normally via repository:
         userRepository.save(user);
 
-        // Send Email via Gmail SMTP
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(user.getEmail());
-        message.setSubject("Password Reset OTP - Orders24");
-        message.setText("Your verification code to reset your password is: " + otp + "\n\nThis code will expire in 10 minutes.");
-        
-        mailSender.send(message);
+        // Send Email via Brevo REST API Service
+        brevoApiService.sendOtpEmail(user.getEmail(), otp);
     }
 
     // --- OTP: Verify Code and Update Password ---
