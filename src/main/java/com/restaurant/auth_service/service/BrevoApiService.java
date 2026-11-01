@@ -11,7 +11,7 @@ import java.util.Map;
 public class BrevoApiService {
 
     private static final String BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
-    private static final String API_KEY = "xsmtpsib-8ce57c59e6d693e10765b7b4ce1bf7f2607ee699b558c620d75e18f5422ac295-SBitL7GFyXEsE9ix";
+    private static final String API_KEY = "xsmtpsib-8ce57c59e6d693e10765b7b4ce1bf7f2607ee699b558c620d75e18f5422ac295-Jd7yLlqRPyMvHaam";
 
     public void sendOtpEmail(String recipientEmail, String otpCode) {
         RestTemplate restTemplate = new RestTemplate();
