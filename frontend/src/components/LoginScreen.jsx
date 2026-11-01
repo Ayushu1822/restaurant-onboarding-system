@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './LoginScreen.css';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
@@ -102,11 +102,23 @@ export default function LoginScreen({ onLoginSuccess }) {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [forgotEmail, setForgotEmail] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('error');
   const [loading, setLoading] = useState(false);
   const [rememberStation, setRememberStation] = useState(true);
+
+  // Check URL parameters on load for a reset password token (e.g., ?token=XYZ)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+      setResetToken(token);
+      setCurrentView('reset');
+    }
+  }, []);
 
   const openView = (view) => {
     setCurrentView(view);
@@ -208,7 +220,36 @@ export default function LoginScreen({ onLoginSuccess }) {
         return;
       }
       setMessageType('success');
-      setMessage('Reset instructions have been requested.');
+      setMessage('If the email exists, a password reset link has been sent.');
+    } catch {
+      setMessage('Could not connect to the server. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    setMessage('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: resetToken, newPassword })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setMessage(data.error || 'Failed to reset password.');
+        return;
+      }
+      setMessageType('success');
+      setMessage('Password successfully reset! Please sign in.');
+      // Clear token from URL query string cleanly
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setTimeout(() => {
+        setCurrentView('signin');
+      }, 2000);
     } catch {
       setMessage('Could not connect to the server. Please try again.');
     } finally {
@@ -260,37 +301,6 @@ export default function LoginScreen({ onLoginSuccess }) {
                 <span><strong>Safe &amp; Secure Payments</strong><small>Protected transactions and secure payment processing</small></span>
               </li>
             </ul>
-            <svg className="loginFoodArt" aria-hidden="true" viewBox="0 0 440 460">
-              <defs>
-                <radialGradient id="plate" cx="45%" cy="35%">
-                  <stop offset="0" stopColor="#334138" />
-                  <stop offset=".68" stopColor="#121a16" />
-                  <stop offset=".82" stopColor="#343b34" />
-                  <stop offset="1" stopColor="#080d0b" />
-                </radialGradient>
-                <linearGradient id="steak" x1="0" x2="1" y1="0" y2="1">
-                  <stop stopColor="#f08b43" />
-                  <stop offset=".5" stopColor="#87391e" />
-                  <stop offset="1" stopColor="#351b12" />
-                </linearGradient>
-              </defs>
-              <ellipse cx="280" cy="275" rx="205" ry="190" fill="#06100c" stroke="#576457" strokeWidth="13" />
-              <ellipse cx="280" cy="265" rx="186" ry="171" fill="url(#plate)" />
-              <path d="M188 188c48-51 132-38 154 12 22 51-6 126-69 135-65 9-127-32-118-82 4-25 13-47 33-65Z" fill="url(#steak)" stroke="#24170e" strokeWidth="8" />
-              <path d="m194 232 126-40m-135 68 143-45m-128 76 115-38" stroke="#f3ae68" strokeWidth="6" opacity=".55" />
-              <g fill="#d83e24" stroke="#f58e45" strokeWidth="3">
-                <circle cx="163" cy="246" r="15" /><circle cx="338" cy="286" r="13" /><circle cx="252" cy="345" r="12" /><circle cx="349" cy="226" r="10" />
-              </g>
-              <g fill="#3a9a4e" stroke="#a6cc54" strokeWidth="2">
-                <path d="M97 291c-1-48 27-75 69-71-7 38-29 65-69 71Z" /><path d="M348 149c13-45 46-58 81-42-20 34-47 49-81 42Z" />
-                <path d="M290 369c18-38 50-47 82-26-24 27-51 38-82 26Z" />
-              </g>
-              <path d="M126 282c13-31 22-43 39-55m187-89c-8 22-17 37-32 51m-11 167c15-22 28-34 48-40" fill="none" stroke="#cee382" strokeWidth="3" opacity=".8" />
-              <ellipse cx="79" cy="425" rx="79" ry="64" fill="#1b211c" stroke="#665943" strokeWidth="8" />
-              <g fill="#d6a74d">
-                <circle cx="43" cy="414" r="5" /><circle cx="76" cy="393" r="5" /><circle cx="103" cy="423" r="5" /><circle cx="57" cy="443" r="5" /><circle cx="92" cy="454" r="5" />
-              </g>
-            </svg>
           </div>
         </aside>
 
@@ -311,8 +321,24 @@ export default function LoginScreen({ onLoginSuccess }) {
             )}
 
             <header className="portalFormHeading">
-              <h2>{currentView === 'signup' ? 'Restaurant Onboarding' : currentView === 'forgot' ? 'Reset your password' : <>Sign In to Orders<span>24</span></>}</h2>
-              <p>{currentView === 'signup' ? 'Register your restaurant and configure your administrative profile.' : currentView === 'forgot' ? 'We will help you get back into your restaurant portal.' : 'Log in to your restaurant portal and management console'}</p>
+              <h2>
+                {currentView === 'signup' 
+                  ? 'Restaurant Onboarding' 
+                  : currentView === 'forgot' 
+                  ? 'Reset your password' 
+                  : currentView === 'reset'
+                  ? 'Create new password'
+                  : <>Sign In to Orders<span>24</span></>}
+              </h2>
+              <p>
+                {currentView === 'signup' 
+                  ? 'Register your restaurant and configure your administrative profile.' 
+                  : currentView === 'forgot' 
+                  ? 'We will help you get back into your restaurant portal.' 
+                  : currentView === 'reset'
+                  ? 'Enter your new secure password below.'
+                  : 'Log in to your restaurant portal and management console'}
+              </p>
             </header>
 
             {currentView === 'signin' && (
@@ -375,20 +401,30 @@ export default function LoginScreen({ onLoginSuccess }) {
               </form>
             )}
 
-            {currentView !== 'signup' && (
+            {currentView === 'reset' && (
+              <form className="portalAuthForm" onSubmit={handleResetPassword}>
+                <PasswordField label="NEW PASSWORD (min 8 chars)" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="••••••••" minLength={8} required />
+                <button className="portalSubmit" type="submit" disabled={loading}>{loading ? 'Updating...' : 'UPDATE PASSWORD'}</button>
+                <button type="button" className="backToSignIn" onClick={() => openView('signin')}>← Back to sign in</button>
+              </form>
+            )}
+
+            {currentView !== 'signup' && currentView !== 'reset' && (
               <>
                 <div className="portalOr"><span>OR SIGN IN WITH</span></div>
                 <button className="portalGoogleButton" type="button" onClick={handleGoogleSignIn}><GoogleIcon />Continue with Google</button>
               </>
             )}
 
-            {currentView !== 'signup' && <p className="portalRegisterPrompt">
-              {currentView === 'signup' ? 'Already have a restaurant account?' : 'Don’t have a restaurant account?'}
-              {' '}
-              <button type="button" onClick={() => openView(currentView === 'signup' ? 'signin' : 'signup')}>
-                {currentView === 'signup' ? 'Sign in' : 'Register your restaurant'}
-              </button>
-            </p>}
+            {currentView !== 'signup' && currentView !== 'reset' && (
+              <p className="portalRegisterPrompt">
+                {currentView === 'signup' ? 'Already have a restaurant account?' : 'Don’t have a restaurant account?'}
+                {' '}
+                <button type="button" onClick={() => openView(currentView === 'signup' ? 'signin' : 'signup')}>
+                  {currentView === 'signup' ? 'Sign in' : 'Register your restaurant'}
+                </button>
+              </p>
+            )}
 
             {message && <p className={`portalMessage ${messageType}`} role="status">{message}</p>}
           </div>

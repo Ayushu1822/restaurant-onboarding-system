@@ -1,5 +1,8 @@
 package com.restaurant.auth_service.service;
 
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import java.time.LocalDateTime;
 import com.restaurant.auth_service.model.User;
 import com.restaurant.auth_service.model.RestaurantProfile;
 import com.restaurant.auth_service.model.Address;
@@ -9,10 +12,13 @@ import com.restaurant.auth_service.repository.RestaurantProfileRepository;
 import com.restaurant.auth_service.repository.AddressRepository;
 import com.restaurant.auth_service.repository.LocationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -34,6 +40,9 @@ public class AuthService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JavaMailSender mailSender; // <-- Added for sending emails
 
     @Transactional
     public User registerUser(Map<String, Object> request) {
@@ -115,5 +124,44 @@ public class AuthService {
         response.put("ownerName", user.getOwnerName());
         
         return response;
+    }
+
+    // --- NEW: Forgot Password Logic ---
+    public void forgotPassword(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Generate token and expiry (15 minutes from now)
+        String token = UUID.randomUUID().toString();
+        user.setResetToken(token);
+        user.setTokenExpiry(LocalDateTime.now().plusMinutes(15));
+        userRepository.save(user);
+
+        // Reset link pointing to your React frontend
+        String resetLink = "http://localhost:5173/reset-password?token=" + token;
+
+        // Send Email
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(user.getEmail());
+        message.setSubject("Password Reset Request");
+        message.setText("Click the link below to reset your password:\n" + resetLink + "\n\nThis link expires in 15 minutes.");
+        
+        mailSender.send(message);
+    }
+
+    // --- NEW: Reset Password Logic ---
+    public void resetPassword(String token, String newPassword) {
+        User user = userRepository.findByResetToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid reset token"));
+
+        if (user.getTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Reset token has expired");
+        }
+
+        // Update password hash and clear the token fields
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setResetToken(null);
+        user.setTokenExpiry(null);
+        userRepository.save(user);
     }
 }

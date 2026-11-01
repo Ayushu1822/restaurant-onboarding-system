@@ -49,4 +49,33 @@ public class AuthController {
             return ResponseEntity.status(401).body(body);
         }
     }
+
+    // --- NEW: Forgot Password Endpoint ---
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
+        try {
+            String email = request.get("email");
+            authService.forgotPassword(email);
+            return ResponseEntity.ok(Map.of("message", "If the email exists, a password reset link has been sent."));
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Return success even if email is missing to prevent user enumeration attacks
+            return ResponseEntity.ok(Map.of("message", "If the email exists, a password reset link has been sent."));
+        }
+    }
+
+    // --- NEW: Reset Password Endpoint ---
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
+        try {
+            String token = request.get("token");
+            String newPassword = request.get("newPassword");
+            
+            authService.resetPassword(token, newPassword);
+            return ResponseEntity.ok(Map.of("message", "Password successfully reset!"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Reset failed"));
+        }
+    }
 }

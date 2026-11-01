@@ -1,6 +1,7 @@
 package com.restaurant.auth_service.model;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "pg_users")
@@ -28,6 +29,12 @@ public class User {
     @Column(name = "whatsapp_number")
     private String whatsappNumber;
 
+    @Column(name = "reset_token")
+    private String resetToken;
+
+    @Column(name = "token_expiry")
+    private LocalDateTime tokenExpiry;
+
     // Getters and Setters
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }
@@ -49,4 +56,10 @@ public class User {
 
     public String getWhatsappNumber() { return whatsappNumber; }
     public void setWhatsappNumber(String whatsappNumber) { this.whatsappNumber = whatsappNumber; }
+
+    public String getResetToken() { return resetToken; }
+    public void setResetToken(String resetToken) { this.resetToken = resetToken; }
+
+    public LocalDateTime getTokenExpiry() { return tokenExpiry; }
+    public void setTokenExpiry(LocalDateTime tokenExpiry) { this.tokenExpiry = tokenExpiry; }
 }
