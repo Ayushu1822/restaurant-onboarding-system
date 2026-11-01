@@ -28,7 +28,9 @@ export default function PromotionsModule() {
 
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [showPromoModal, setShowPromoModal] = useState(false);
+  
   const [editingGroup, setEditingGroup] = useState(null);
+  const [editingPromo, setEditingPromo] = useState(null);
 
   const [groupName, setGroupName] = useState('');
   const [groupType, setGroupType] = useState('Festival');
@@ -148,7 +150,44 @@ export default function PromotionsModule() {
     setEditingGroup(null);
   };
 
-  const handleCreatePromo = (e) => {
+  const handleOpenCreatePromo = () => {
+    setEditingPromo(null);
+    setSelectedGroup(groups[0] ? groups[0].name : '');
+    setPromoCode('');
+    setOfferIcon('Percent');
+    setDisplayName('');
+    setDisplayDesc('');
+    setTerms('');
+    setInternalName('');
+    setInternalDesc('');
+    setOfferType('% Off Order');
+    setDiscountVal('10');
+    setMinOrder('0');
+    setMaxDiscount('');
+    setStartDate('2026-10-28');
+    setExpiryDate('2026-11-27');
+    setShowPromoModal(true);
+  };
+
+  const handleOpenEditPromo = (p) => {
+    setEditingPromo(p);
+    setSelectedGroup(p.groupName);
+    setPromoCode(p.code);
+    setOfferIcon(p.icon || 'Percent');
+    setDisplayName(p.displayName);
+    setDisplayDesc(p.displayDesc || '');
+    setTerms(p.terms || '');
+    setInternalName(p.internalName || '');
+    setOfferType(p.offerType || '% Off Order');
+    setDiscountVal(p.discountVal || '10');
+    setMinOrder(p.minOrder || '0');
+    setMaxDiscount(p.maxDiscount || '');
+    setStartDate(p.startDate || '2026-10-28');
+    setExpiryDate(p.expiryDate || '2026-11-27');
+    setShowPromoModal(true);
+  };
+
+  const handleSavePromo = (e) => {
     e.preventDefault();
     if (!promoCode || !displayName) {
       alert('Please fill in required fields (Promo Code and Display Name).');
@@ -156,31 +195,50 @@ export default function PromotionsModule() {
     }
 
     const targetGroup = selectedGroup || (groups[0] ? groups[0].name : 'Default');
-    const newPromo = {
-      id: 'promo_' + Date.now(),
-      groupName: targetGroup,
-      code: promoCode.toUpperCase(),
-      icon: offerIcon,
-      displayName,
-      displayDesc,
-      terms,
-      internalName,
-      offerType,
-      discountVal,
-      minOrder,
-      maxDiscount,
-      startDate,
-      expiryDate,
-      status: 'ACTIVE',
-      restaurantEmail: userEmail
-    };
 
-    setPromotions([newPromo, ...promotions]);
-    showToast('Promotion created & activated successfully!');
+    if (editingPromo) {
+      setPromotions(promotions.map(p => p.id === editingPromo.id ? {
+        ...p,
+        groupName: targetGroup,
+        code: promoCode.toUpperCase(),
+        icon: offerIcon,
+        displayName,
+        displayDesc,
+        terms,
+        internalName,
+        offerType,
+        discountVal,
+        minOrder,
+        maxDiscount,
+        startDate,
+        expiryDate
+      } : p));
+      showToast('Promotion updated successfully!');
+    } else {
+      const newPromo = {
+        id: 'promo_' + Date.now(),
+        groupName: targetGroup,
+        code: promoCode.toUpperCase(),
+        icon: offerIcon,
+        displayName,
+        displayDesc,
+        terms,
+        internalName,
+        offerType,
+        discountVal,
+        minOrder,
+        maxDiscount,
+        startDate,
+        expiryDate,
+        status: 'ACTIVE',
+        restaurantEmail: userEmail
+      };
+      setPromotions([newPromo, ...promotions]);
+      showToast('Promotion created & activated successfully!');
+    }
+
     setShowPromoModal(false);
-    setPromoCode('');
-    setDisplayName('');
-    setDisplayDesc('');
+    setEditingPromo(null);
   };
 
   const handleToggleStatus = (id) => {
@@ -230,7 +288,7 @@ export default function PromotionsModule() {
         </div>
 
         <div className="pm-top-actions">
-          <button className="pm-btn-outline" onClick={() => setShowPromoModal(true)}>
+          <button className="pm-btn-outline" onClick={handleOpenCreatePromo}>
             + Create Promotion
           </button>
           <button className="pm-btn-primary" onClick={handleOpenCreateGroup}>
@@ -328,9 +386,12 @@ export default function PromotionsModule() {
                         <span className="pm-code-badge">CODE: {p.code}</span>
                       </div>
                     </div>
-                    <span className={`pm-status-pill ${p.status === 'INACTIVE' ? 'pm-pill-inactive' : ''}`}>
-                      {p.status || 'ACTIVE'}
-                    </span>
+                    <div className="pm-group-actions-top">
+                      <button className="pm-edit-btn" title="Edit Offer" onClick={() => handleOpenEditPromo(p)}>✏️</button>
+                      <button className={`pm-status-pill ${p.status === 'INACTIVE' ? 'pm-pill-inactive' : ''}`}>
+                        {p.status || 'ACTIVE'}
+                      </button>
+                    </div>
                   </div>
                   <p className="pm-card-desc">{p.displayDesc || p.terms || 'Special discount offer for customers.'}</p>
                   <div className="pm-card-stats">
@@ -421,13 +482,13 @@ export default function PromotionsModule() {
           <div className="pm-modal pm-modal-large pm-animate-modal" onClick={e => e.stopPropagation()}>
             <div className="pm-modal-head">
               <div>
-                <h3 className="pm-modal-title">Create New Promotion</h3>
-                <p className="pm-modal-sub">Create a new promotion and configure code, rules, and calendar validity.</p>
+                <h3 className="pm-modal-title">{editingPromo ? 'Edit Promotion' : 'Create New Promotion'}</h3>
+                <p className="pm-modal-sub">Configure promotion code, rules, and calendar validity.</p>
               </div>
               <button className="pm-close-x" onClick={() => setShowPromoModal(false)}>✕</button>
             </div>
 
-            <form onSubmit={handleCreatePromo} className="pm-form">
+            <form onSubmit={handleSavePromo} className="pm-form">
               <div className="pm-section-title">PROMOTION GROUP</div>
               
               <label className="pm-label">Select Group *</label>
@@ -621,7 +682,7 @@ export default function PromotionsModule() {
 
               <div className="pm-modal-foot" style={{marginTop: '24px'}}>
                 <button type="button" className="pm-btn-cancel" onClick={() => setShowPromoModal(false)}>Cancel</button>
-                <button type="submit" className="pm-btn-activate">Create & Activate</button>
+                <button type="submit" className="pm-btn-activate">{editingPromo ? 'Update Offer' : 'Create & Activate'}</button>
               </div>
             </form>
           </div>
@@ -788,7 +849,7 @@ export default function PromotionsModule() {
         .pm-card-type { font-size: 12px; color: #64748b; font-weight: 700; }
         .pm-code-badge { font-size: 11px; color: #047857; background: #ecfdf5; padding: 2px 6px; border-radius: 6px; font-weight: 800; display: inline-block; margin-top: 3px; }
 
-        .pm-group-actions-top { display: flex; gap: 6px; }
+        .pm-group-actions-top { display: flex; gap: 6px; align-items: center; }
         .pm-edit-btn { background: #f1f5f9; border: 1.5px solid #cbd5e1; padding: 6px; border-radius: 8px; cursor: pointer; }
         .pm-edit-btn:hover { background: #e2e8f0; }
         .pm-delete-btn { background: #fef2f2; border: 1.5px solid #fca5a5; padding: 6px; border-radius: 8px; cursor: pointer; }
