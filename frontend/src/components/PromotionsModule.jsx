@@ -19,6 +19,7 @@ export default function PromotionsModule() {
   const userEmail = localStorage.getItem('userEmail') || 'novio@gmail.com';
 
   const [viewMode, setViewMode] = useState('groups'); // 'groups' or 'offers'
+  const [selectedGroupFilter, setSelectedGroupFilter] = useState(null); // Filter offers by group name
   const [searchQuery, setSearchQuery] = useState('');
   
   const [groups, setGroups] = useState([]);
@@ -64,14 +65,13 @@ export default function PromotionsModule() {
 
   const fetchData = () => {
     setLoading(true);
-    // Fetch promotion groups and promotions from backend
     Promise.all([
       fetch(`${API_BASE_URL}/api/v1/promotion-groups?email=${userEmail}`).then(res => res.json()).catch(() => []),
       fetch(`${API_BASE_URL}/api/v1/promotions?email=${userEmail}`).then(res => res.json()).catch(() => [])
     ]).then(([groupData, promoData]) => {
-      if (Array.isArray(groupData)) setGroups(groupData);
-      else {
-        // Fallback default groups matching your screenshot
+      if (Array.isArray(groupData) && groupData.length > 0) {
+        setGroups(groupData);
+      } else {
         setGroups([
           { id: '1', name: 'Test 2', type: 'Daily', description: 'Daily test promotions group', promotionsCount: 2, activeCount: 0, inactiveCount: 2 },
           { id: '2', name: 'Custom offers', type: 'Festival', description: 'Custom offers group', promotionsCount: 3, activeCount: 1, inactiveCount: 2 },
@@ -81,8 +81,11 @@ export default function PromotionsModule() {
         ]);
       }
 
-      if (Array.isArray(promoData)) setPromotions(promoData);
-      else setPromotions([]);
+      if (Array.isArray(promoData)) {
+        setPromotions(promoData);
+      } else {
+        setPromotions([]);
+      }
       setLoading(false);
     });
   };
@@ -99,7 +102,7 @@ export default function PromotionsModule() {
     }
 
     const newGroup = {
-      id: Date.now().toString(),
+      id: 'group_' + Date.now(),
       name: groupName,
       type: groupType,
       description: groupDesc,
@@ -113,20 +116,25 @@ export default function PromotionsModule() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newGroup)
-    }).then(() => {
-      showToast('Promotion Group created successfully!');
-      setGroups([newGroup, ...groups]);
-      setShowGroupModal(false);
-      setGroupName('');
-      setGroupDesc('');
-    }).catch(() => {
-      // Offline fallback state update
-      setGroups([newGroup, ...groups]);
-      showToast('Promotion Group created successfully!');
-      setShowGroupModal(false);
-      setGroupName('');
-      setGroupDesc('');
-    });
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to save group');
+        return res.json();
+      })
+      .then(saved => {
+        setGroups([saved || newGroup, ...groups]);
+        showToast('Promotion Group created and saved to database!');
+        setShowGroupModal(false);
+        setGroupName('');
+        setGroupDesc('');
+      })
+      .catch(() => {
+        setGroups([newGroup, ...groups]);
+        showToast('Promotion Group created locally (Offline mode)!');
+        setShowGroupModal(false);
+        setGroupName('');
+        setGroupDesc('');
+      });
   };
 
   const handleCreatePromo = (e) => {
@@ -136,9 +144,10 @@ export default function PromotionsModule() {
       return;
     }
 
+    const targetGroup = selectedGroup || (groups[0] ? groups[0].name : 'Default');
     const newPromo = {
-      id: Date.now().toString(),
-      groupName: selectedGroup || (groups[0] ? groups[0].name : 'Default'),
+      id: 'promo_' + Date.now(),
+      groupName: targetGroup,
       code: promoCode.toUpperCase(),
       icon: offerIcon,
       displayName,
@@ -159,22 +168,64 @@ export default function PromotionsModule() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newPromo)
-    }).then(() => {
-      showToast('Promotion created and activated successfully!');
-      setPromotions([newPromo, ...promotions]);
-      setShowPromoModal(false);
-      setPromoCode('');
-      setDisplayName('');
-      setDisplayDesc('');
-    }).catch(() => {
-      setPromotions([newPromo, ...promotions]);
-      showToast('Promotion created and activated successfully!');
-      setShowPromoModal(false);
-      setPromoCode('');
-      setDisplayName('');
-      setDisplayDesc('');
-    });
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to save promotion');
+        return res.json();
+      })
+      .then(saved => {
+        setPromotions([saved || newPromo, ...promotions]);
+        showToast('Promotion created & permanently saved to database!');
+        setShowPromoModal(false);
+        setPromoCode('');
+        setDisplayName('');
+        setDisplayDesc('');
+      })
+      .catch(() => {
+        setPromotions([newPromo, ...promotions]);
+        showToast('Promotion created locally (Offline mode)!');
+        setShowPromoModal(false);
+        setPromoCode('');
+        setDisplayName('');
+        setDisplayDesc('');
+      });
   };
+
+  const handleToggleStatus = (id) => {
+    setPromotions(promotions.map(p => {
+      if (p.id === id) {
+        const nextStatus = p.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+        return { ...p, status: nextStatus };
+      }
+      return p;
+    }));
+    showToast('Promotion status updated!');
+  };
+
+  const handleDeletePromo = (id) => {
+    if (window.confirm('Are you sure you want to delete this promotion?')) {
+      setPromotions(promotions.filter(p => p.id !== id));
+      showToast('Promotion deleted successfully!', 'error');
+    }
+  };
+
+  const handleViewPromotionsForGroup = (groupName) => {
+    setSelectedGroupFilter(groupName);
+    setViewMode('offers');
+  };
+
+  // Filter logic
+  const filteredGroups = groups.filter(g => 
+    g.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (g.type && g.type.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const filteredPromotions = promotions.filter(p => {
+    const matchesSearch = p.displayName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          p.code.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesGroup = selectedGroupFilter ? p.groupName === selectedGroupFilter : true;
+    return matchesSearch && matchesGroup;
+  });
 
   return (
     <div className="pm-container">
@@ -205,7 +256,7 @@ export default function PromotionsModule() {
         <div className="pm-tabs">
           <button 
             className={`pm-tab ${viewMode === 'groups' ? 'is-active' : ''}`}
-            onClick={() => setViewMode('groups')}
+            onClick={() => { setViewMode('groups'); setSelectedGroupFilter(null); }}
           >
             👥 Groups View
           </button>
@@ -213,7 +264,7 @@ export default function PromotionsModule() {
             className={`pm-tab ${viewMode === 'offers' ? 'is-active' : ''}`}
             onClick={() => setViewMode('offers')}
           >
-            🏷️ Offers View
+            🏷️ Offers View {selectedGroupFilter ? `(${selectedGroupFilter})` : ''}
           </button>
         </div>
 
@@ -227,11 +278,21 @@ export default function PromotionsModule() {
         </div>
       </div>
 
+      {/* Sub-banner if filtered by a group */}
+      {viewMode === 'offers' && selectedGroupFilter && (
+        <div className="pm-filter-banner">
+          <span>Showing offers for group: <b>{selectedGroupFilter}</b></span>
+          <button onClick={() => setSelectedGroupFilter(null)}>Show All Offers ✕</button>
+        </div>
+      )}
+
       {/* Content Area */}
       <div className="pm-content">
-        {viewMode === 'groups' ? (
+        {loading ? (
+          <div className="pm-empty">Loading promotions from database...</div>
+        ) : viewMode === 'groups' ? (
           <div className="pm-grid">
-            {groups.map(g => (
+            {filteredGroups.map(g => (
               <div key={g.id} className="pm-card">
                 <div className="pm-card-top">
                   <div className="pm-card-icon-title">
@@ -247,15 +308,15 @@ export default function PromotionsModule() {
                 <p className="pm-card-desc">{g.description || 'Promotion group for branch campaigns'}</p>
 
                 <div className="pm-card-stats">
-                  <div className="pm-stat-item">🏷️ {g.promotionsCount ?? 0} promotions</div>
+                  <div className="pm-stat-item">🏷️ {promotions.filter(p => p.groupName === g.name).length} promotions</div>
                   <div className="pm-stat-row">
-                    <span className="pm-green-dot">🟢 {g.activeCount ?? 0} active</span>
-                    <span className="pm-gray-dot">❌ {g.inactiveCount ?? 0} inactive</span>
+                    <span className="pm-green-dot">🟢 {promotions.filter(p => p.groupName === g.name && p.status === 'ACTIVE').length} active</span>
+                    <span className="pm-gray-dot">❌ {promotions.filter(p => p.groupName === g.name && p.status !== 'ACTIVE').length} inactive</span>
                   </div>
                 </div>
 
                 <div className="pm-card-bottom">
-                  <button className="pm-view-promo-btn" onClick={() => setViewMode('offers')}>
+                  <button className="pm-view-promo-btn" onClick={() => handleViewPromotionsForGroup(g.name)}>
                     View Promotions &gt;
                   </button>
                 </div>
@@ -264,13 +325,13 @@ export default function PromotionsModule() {
           </div>
         ) : (
           <div className="pm-grid">
-            {promotions.length === 0 ? (
+            {filteredPromotions.length === 0 ? (
               <div className="pm-empty">
-                No individual offers created yet. Click <b>+ Create Promotion</b> to add one!
+                No individual offers found {selectedGroupFilter ? `in group "${selectedGroupFilter}"` : ''}. Click <b>+ Create Promotion</b> to add one!
               </div>
             ) : (
-              promotions.map(p => (
-                <div key={p.id} className="pm-card">
+              filteredPromotions.map(p => (
+                <div key={p.id} className="pm-card pm-animate-card">
                   <div className="pm-card-top">
                     <div className="pm-card-icon-title">
                       <div className="pm-mini-icon">{ICON_MAP[p.icon] || '🏷️'}</div>
@@ -279,12 +340,23 @@ export default function PromotionsModule() {
                         <span className="pm-code-badge">CODE: {p.code}</span>
                       </div>
                     </div>
-                    <span className="pm-status-pill">{p.status || 'ACTIVE'}</span>
+                    <span className={`pm-status-pill ${p.status === 'INACTIVE' ? 'pm-pill-inactive' : ''}`}>
+                      {p.status || 'ACTIVE'}
+                    </span>
                   </div>
-                  <p className="pm-card-desc">{p.displayDesc || p.terms}</p>
+                  <p className="pm-card-desc">{p.displayDesc || p.terms || 'Special discount offer for customers.'}</p>
                   <div className="pm-card-stats">
                     <div className="pm-stat-item">Formula: <b>{p.offerType} ({p.discountVal}%)</b></div>
                     <div className="pm-stat-item">Valid: {p.startDate} - {p.expiryDate}</div>
+                    <div className="pm-stat-item" style={{color: '#047857'}}>Group: <b>{p.groupName}</b></div>
+                  </div>
+                  <div className="pm-card-bottom-actions">
+                    <button className="pm-action-toggle" onClick={() => handleToggleStatus(p.id)}>
+                      {p.status === 'INACTIVE' ? 'Activate 🟢' : 'Pause ⏸️'}
+                    </button>
+                    <button className="pm-action-delete" onClick={() => handleDeletePromo(p.id)}>
+                      Delete 🗑️
+                    </button>
                   </div>
                 </div>
               ))
@@ -296,7 +368,7 @@ export default function PromotionsModule() {
       {/* CREATE GROUP MODAL */}
       {showGroupModal && (
         <div className="pm-overlay" onClick={() => setShowGroupModal(false)}>
-          <div className="pm-modal" onClick={e => e.stopPropagation()}>
+          <div className="pm-modal pm-animate-modal" onClick={e => e.stopPropagation()}>
             <div className="pm-modal-head">
               <div>
                 <h3 className="pm-modal-title">Create Promotion Group</h3>
@@ -360,7 +432,7 @@ export default function PromotionsModule() {
       {/* CREATE NEW PROMOTION MODAL */}
       {showPromoModal && (
         <div className="pm-overlay" onClick={() => setShowPromoModal(false)}>
-          <div className="pm-modal pm-modal-large" onClick={e => e.stopPropagation()}>
+          <div className="pm-modal pm-modal-large pm-animate-modal" onClick={e => e.stopPropagation()}>
             <div className="pm-modal-head">
               <div>
                 <h3 className="pm-modal-title">Create New Promotion</h3>
@@ -569,7 +641,7 @@ export default function PromotionsModule() {
 
       {/* Toast */}
       {toast && (
-        <div className="pm-toast">
+        <div className="pm-toast pm-animate-toast">
           {toast.text}
         </div>
       )}
@@ -579,6 +651,20 @@ export default function PromotionsModule() {
 
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap');
+
+@keyframes pmFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pmScaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.pm-animate-card { animation: pmFadeIn 0.3s ease forwards; }
+.pm-animate-modal { animation: pmScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.pm-animate-toast { animation: pmFadeIn 0.2s ease forwards; }
 
 .pm-container {
   font-family: 'Manrope', system-ui, sans-serif;
@@ -614,7 +700,7 @@ const css = `
   cursor: pointer;
   transition: all 0.2s;
 }
-.pm-btn-outline:hover { border-color: #059669; color: #059669; }
+.pm-btn-outline:hover { border-color: #059669; color: #059669; transform: translateY(-1px); }
 
 .pm-btn-primary {
   font-family: inherit;
@@ -629,7 +715,7 @@ const css = `
   box-shadow: 0 4px 12px rgba(5,150,105,0.25);
   transition: all 0.2s;
 }
-.pm-btn-primary:hover { background: #047857; }
+.pm-btn-primary:hover { background: #047857; transform: translateY(-1px); }
 
 .pm-toolbar {
   display: flex;
@@ -637,7 +723,7 @@ const css = `
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 .pm-tabs { display: flex; gap: 8px; background: #e2e8f0; padding: 4px; border-radius: 12px; }
 .pm-tab {
@@ -653,6 +739,29 @@ const css = `
   transition: all 0.2s;
 }
 .pm-tab.is-active { background: #fff; color: #0f172a; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+
+.pm-filter-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ecfdf5;
+  border: 2px solid #6ee7b7;
+  padding: 10px 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: #065f46;
+  font-weight: 700;
+}
+.pm-filter-banner button {
+  background: #fff;
+  border: 1.5px solid #059669;
+  color: #059669;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
 
 .pm-search-box {
   display: flex;
@@ -679,7 +788,7 @@ const css = `
   box-shadow: 0 4px 12px rgba(15,23,42,0.03);
   transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
-.pm-card:hover { transform: translateY(-3px); border-color: #059669; box-shadow: 0 12px 24px rgba(5,150,105,0.12); }
+.pm-card:hover { transform: translateY(-4px); border-color: #059669; box-shadow: 0 12px 24px rgba(5,150,105,0.12); }
 .pm-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
 .pm-card-icon-title { display: flex; gap: 12px; align-items: center; }
 .pm-mini-icon {
@@ -718,7 +827,34 @@ const css = `
 }
 .pm-view-promo-btn:hover { background: #047857; }
 
+.pm-card-bottom-actions { display: flex; gap: 8px; border-top: 1.5px solid #f1f5f9; padding-top: 12px; }
+.pm-action-toggle {
+  flex: 1;
+  background: #f1f5f9;
+  border: 1.5px solid #cbd5e1;
+  color: #334155;
+  font-weight: 800;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.pm-action-toggle:hover { background: #e2e8f0; }
+
+.pm-action-delete {
+  background: #fef2f2;
+  border: 1.5px solid #fca5a5;
+  color: #991b1b;
+  font-weight: 800;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.pm-action-delete:hover { background: #fee2e2; }
+
 .pm-status-pill { background: #ecfdf5; color: #047857; border: 1.5px solid #6ee7b7; padding: 3px 8px; border-radius: 8px; font-size: 11px; font-weight: 900; }
+.pm-pill-inactive { background: #fef2f2; color: #991b1b; border-color: #fca5a5; }
 
 /* Modals */
 .pm-overlay {
@@ -749,9 +885,9 @@ const css = `
 .pm-modal-sub { margin: 4px 0 0 0; font-size: 12px; color: #64748b; font-weight: 600; }
 .pm-close-x { background: #f1f5f9; border: 1.5px solid #cbd5e1; width: 34px; height: 34px; border-radius: 50%; font-weight: 900; cursor: pointer; }
 
-.pm-form { display: flex; flexDirection: column; gap: 4px; }
+.pm-form { display: flex; flex-direction: column; gap: 4px; }
 .pm-label { font-size: 12px; font-weight: 800; color: #334155; margin-bottom: 4px; display: block; }
-.pm-input, .pm-textarea {
+.pm-input, .pm-textarea, select.pm-input {
   width: 100%;
   font-family: inherit;
   padding: 11px 14px;
