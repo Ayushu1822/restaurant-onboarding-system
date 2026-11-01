@@ -132,7 +132,6 @@ public class AuthService {
         
         user.setOtpCode(otp);
         user.setOtpExpiry(LocalDateTime.now().plusMinutes(10)); // Valid for 10 minutes
-        user.saveOtpCodeAndExpiry(); // Or save normally via repository:
         userRepository.save(user);
 
         // Send Email via Brevo REST API Service
