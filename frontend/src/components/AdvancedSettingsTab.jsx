@@ -508,8 +508,11 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
   const [sound, setSound] = useState(getSoundSettings());
   const [soundMsg, setSoundMsg] = useState(null);
 
-  /* ---------- 4. SECURITY (Includes Current Password Verification) ---------- */
-  const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
+  /* ---------- 4. SECURITY (Two-Step Verification Flow) ---------- */
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [isVerified, setIsVerified] = useState(false);
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState(null);
 
@@ -595,36 +598,78 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
     setSoundMsg({ type: 'ok', text: 'Sound preference saved on this device.' });
   };
 
-  /* ----- Password Change with Current Password Verification ----- */
-  const savePassword = async () => {
-    if (!pw.current) return setPwMsg({ type: 'error', text: 'Please enter your current (previous) password.' });
-    if (!pw.next || pw.next.length < 6) return setPwMsg({ type: 'error', text: 'New password must be at least 6 characters long.' });
-    if (pw.next !== pw.confirm) return setPwMsg({ type: 'error', text: 'New passwords do not match.' });
-    
+  /* ----- STEP 1: Verify Current Password using Login API ----- */
+  const handleVerifyCurrentPassword = async (e) => {
+    e.preventDefault();
+    if (!currentPw) {
+      return setPwMsg({ type: 'error', text: 'Please enter your current password.' });
+    }
+
     setPwSaving(true);
     setPwMsg(null);
-    try {
-      const userEmail = localStorage.getItem('userEmail') || '';
-      if (!userEmail) throw new Error('No logged-in user email found.');
 
-      // Backend call sending current password for verification + new password
+    try {
+      const userEmail = localStorage.getItem('userEmail') || localStorage.getItem('user_email') || '';
+      if (!userEmail) throw new Error('No logged-in user email found. Please login again.');
+
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userEmail, password: currentPw })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Incorrect current password. Please try again.');
+      }
+
+      setIsVerified(true);
+      setPwMsg({ type: 'ok', text: '✅ Current password verified! Now enter your new password.' });
+    } catch (e) {
+      setPwMsg({ type: 'error', text: e?.message || 'Password verification failed.' });
+    } finally {
+      setPwSaving(false);
+    }
+  };
+
+  /* ----- STEP 2: Save New Password directly to DB ----- */
+  const handleUpdateNewPassword = async (e) => {
+    e.preventDefault();
+    if (!newPw || newPw.length < 6) {
+      return setPwMsg({ type: 'error', text: 'New password must be at least 6 characters long.' });
+    }
+    if (newPw !== confirmPw) {
+      return setPwMsg({ type: 'error', text: 'New passwords do not match.' });
+    }
+    if (newPw === currentPw) {
+      return setPwMsg({ type: 'error', text: 'New password must be different from your current password.' });
+    }
+
+    setPwSaving(true);
+    setPwMsg(null);
+
+    try {
+      const userEmail = localStorage.getItem('userEmail') || localStorage.getItem('user_email') || '';
+      
       const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/update-password`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: userEmail,
-          currentPassword: pw.current,
-          newPassword: pw.next
-        })
+        body: JSON.stringify({ email: userEmail, currentPassword: currentPw, newPassword: newPw })
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || 'Failed to update password. Check your current password.');
+        if (onChangePassword) {
+          await onChangePassword({ currentPassword: currentPw, newPassword: newPw });
+        } else {
+          throw new Error('Failed to update password in database.');
+        }
       }
 
-      setPw({ current: '', next: '', confirm: '' });
-      setPwMsg({ type: 'ok', text: '✅ Password successfully verified and updated!' });
+      setCurrentPw('');
+      setNewPw('');
+      setConfirmPw('');
+      setIsVerified(false);
+      setPwMsg({ type: 'ok', text: '🔐 Password successfully updated in database!' });
     } catch (e) {
       setPwMsg({ type: 'error', text: e?.message || 'Could not update password.' });
     } finally {
@@ -809,31 +854,84 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
           <Msg msg={soundMsg} />
         </SectionCard>
 
-        {/* ===== 4. SECURITY (Current Password Verification + New Password) ===== */}
+        {/* ===== 4. SECURITY (Two-Step Password Verification Flow) ===== */}
         <div style={{ maxWidth: '760px' }}>
-          <div style={{ fontSize: '13px', fontWeight: '950', color: '#0f172a', marginBottom: '8px' }}>Security & Password</div>
+          <div style={{ fontSize: '13px', fontWeight: '950', color: '#0f172a', marginBottom: '8px' }}>Security & Password Management</div>
           <div style={card}>
-            <PasswordField label="Current (Previous) Password" value={pw.current} autoComplete="current-password" onChange={(v) => setPw({ ...pw, current: v })} />
-            <PasswordField label="New Password" value={pw.next} autoComplete="new-password" onChange={(v) => setPw({ ...pw, next: v })} />
-            <PasswordField label="Re-enter New Password" value={pw.confirm} autoComplete="new-password" onChange={(v) => setPw({ ...pw, confirm: v })} />
-            <button
-              type="button"
-              disabled={pwSaving}
-              onClick={savePassword}
-              style={{
-                width: '100%',
-                backgroundColor: pwSaving ? GREEN_LIGHT : GREEN,
-                color: '#fff',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '11px',
-                fontSize: '13px',
-                fontWeight: '950',
-                cursor: pwSaving ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {pwSaving ? 'Verifying & Updating...' : 'Verify & Update Password'}
-            </button>
+            {!isVerified ? (
+              /* STEP 1: Enter & Verify Current Password */
+              <form onSubmit={handleVerifyCurrentPassword}>
+                <PasswordField 
+                  label="Enter Current (Previous) Password" 
+                  value={currentPw} 
+                  autoComplete="current-password" 
+                  onChange={(v) => setCurrentPw(v)} 
+                />
+                <button
+                  type="submit"
+                  disabled={pwSaving}
+                  style={{
+                    width: '100%',
+                    backgroundColor: pwSaving ? GREEN_LIGHT : GREEN,
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '11px',
+                    fontSize: '13px',
+                    fontWeight: '950',
+                    cursor: pwSaving ? 'not-allowed' : 'pointer',
+                    marginTop: '8px'
+                  }}
+                >
+                  {pwSaving ? 'Verifying...' : 'Verify Current Password'}
+                </button>
+              </form>
+            ) : (
+              /* STEP 2: Unlocked New Password Fields */
+              <form onSubmit={handleUpdateNewPassword}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', backgroundColor: '#f0fdf4', padding: '8px 12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                  <span style={{ fontSize: '12px', fontWeight: '900', color: '#166534' }}>🔓 Current password verified successfully</span>
+                  <button 
+                    type="button" 
+                    onClick={() => { setIsVerified(false); setCurrentPw(''); setNewPw(''); setConfirmPw(''); setPwMsg(null); }}
+                    style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}
+                  >
+                    Reset
+                  </button>
+                </div>
+
+                <PasswordField 
+                  label="New Password" 
+                  value={newPw} 
+                  autoComplete="new-password" 
+                  onChange={(v) => setNewPw(v)} 
+                />
+                <PasswordField 
+                  label="Re-enter New Password" 
+                  value={confirmPw} 
+                  autoComplete="new-password" 
+                  onChange={(v) => setConfirmPw(v)} 
+                />
+                <button
+                  type="submit"
+                  disabled={pwSaving}
+                  style={{
+                    width: '100%',
+                    backgroundColor: pwSaving ? GREEN_LIGHT : GREEN,
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '11px',
+                    fontSize: '13px',
+                    fontWeight: '950',
+                    cursor: pwSaving ? 'not-allowed' : 'pointer',
+                    marginTop: '8px'
+                  }}
+                >
+                  {pwSaving ? 'Updating Database...' : 'Save New Password'}
+                </button>
+              </form>
+            )}
             <Msg msg={pwMsg} />
           </div>
         </div>
