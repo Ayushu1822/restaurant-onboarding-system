@@ -2,23 +2,6 @@ import React, { useState, useEffect } from 'react';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
-const FALLBACK_ORDERS = [
-  {
-    id: 'K01/000001',
-    displayId: '#ORD-001',
-    customer: 'Priya Sharma',
-    phone: '+91 98765 43210',
-    channel: 'WHATSAPP',
-    type: 'Delivery',
-    status: 'Preparing',
-    customerRequest: 'Make it extra spicy please!',
-    items: [
-      { qty: 2, itemName: 'Butter Chicken', itemDescription: 'Medium spicy' },
-      { qty: 4, itemName: 'Butter Naan', itemDescription: '' }
-    ]
-  }
-];
-
 export default function KitchenModule() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +9,6 @@ export default function KitchenModule() {
   const fetchKitchenOrders = () => {
     const userEmail = localStorage.getItem('userEmail') || '';
     
-    // ✅ Strictly fetch orders filtered by logged-in user email
     fetch(`${API_BASE_URL}/api/v1/orders?email=${userEmail}`)
       .then(res => {
         if (!res.ok) throw new Error('Server error');
@@ -36,7 +18,7 @@ export default function KitchenModule() {
         if (Array.isArray(data) && data.length > 0) {
           setOrders(data);
         } else {
-          setOrders([]); // Set empty for new accounts instead of global fallback
+          setOrders([]);
         }
         setLoading(false);
       })
@@ -78,6 +60,64 @@ export default function KitchenModule() {
     fetch(`${API_BASE_URL}/api/v1/orders/${orderId}`, {
       method: 'DELETE'
     }).catch(() => {});
+  };
+
+  // 🖨️ Thermal KOT Slip Print Handler for Kitchen Queue
+  const handlePrintKOT = (order) => {
+    const printWindow = window.open('', '_blank', 'width=450,height=600');
+    if (!printWindow) {
+      alert('Popup blocked! Please allow popups for kitchen printing.');
+      return;
+    }
+
+    const items = order.items || order.orderItems || order.order_items || [];
+    const itemsHtml = items.map(it => `
+      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+        <span>${it.quantity || it.qty || 1}x ${it.itemName || it.item_name || it.name || 'Item'}</span>
+        <span>${it.itemDescription || it.item_description || ''}</span>
+      </div>
+    `).join('');
+
+    const restaurantName = localStorage.getItem('restaurantName') || 'LINGA FOODS';
+    const branchName = localStorage.getItem('branchName') || 'Wonghikal';
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>KOT - ${order.displayId || 'Order'}</title>
+          <style>
+            body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: 80mm; margin: 0 auto; font-size: 12px; }
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+            .line { border-top: 1px dashed #000; margin: 8px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="center bold" style="font-size: 14px;">*** KITCHEN ORDER TICKET ***</div>
+          <div class="center bold" style="font-size: 13px; margin-top: 2px;">${restaurantName.toUpperCase()}</div>
+          <div class="center" style="font-size: 10px; color: #333;">Branch: ${branchName}</div>
+          <div class="line"></div>
+          <div><strong>Order ID:</strong> ${order.displayId || order.id || 'N/A'}</div>
+          <div><strong>Customer / Table:</strong> ${order.customer || order.customerName || 'Walk-In'}</div>
+          <div><strong>Type:</strong> ${order.type || order.orderType || 'Dine-In'}</div>
+          <div><strong>Channel:</strong> ${order.channel || 'COUNTER'}</div>
+          <div><strong>Time:</strong> ${new Date().toLocaleTimeString()}</div>
+          ${order.customerRequest || order.specialNote ? `<div style="margin-top: 6px;"><strong>Note:</strong> ${order.customerRequest || order.specialNote}</div>` : ''}
+          <div class="line"></div>
+          <div class="bold" style="margin-bottom: 6px;">ITEMS:</div>
+          ${itemsHtml}
+          <div class="line"></div>
+          <div class="center" style="font-size: 10px;">*** PREPARE FRESH ***</div>
+          <script>
+            window.onload = function() {
+              window.print();
+              window.close();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const activeOrders = orders.filter(o => {
@@ -135,7 +175,16 @@ export default function KitchenModule() {
                     <span className="kds-id">{displayId}</span>
                     <span className="kds-channel">{channel}</span>
                   </div>
-                  <span className="kds-type">{orderType}</span>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <button 
+                      onClick={() => handlePrintKOT(o)} 
+                      className="kds-print-pill"
+                      title="Print KOT Slip"
+                    >
+                      🖨️ Print KOT
+                    </button>
+                    <span className="kds-type">{orderType}</span>
+                  </div>
                 </div>
 
                 <div className="kds-customer">
@@ -241,7 +290,6 @@ const css = `
 }
 .kds *, .kds *::before, .kds *::after { box-sizing: border-box; }
 
-/* Header */
 .kds-header {
   display: flex;
   justify-content: space-between;
@@ -303,7 +351,6 @@ const css = `
 .kds-refresh:active { transform: translateY(0) scale(0.98); }
 .kds-refresh-icon { display: inline-block; transition: transform 0.4s ease; }
 
-/* Loading / empty */
 .kds-center {
   display: flex;
   flex-direction: column;
@@ -332,14 +379,12 @@ const css = `
 }
 @keyframes kds-spin { to { transform: rotate(360deg); } }
 
-/* Grid */
 .kds-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: 22px;
 }
 
-/* Order card: left stripe shows status */
 .kds-card {
   position: relative;
   display: flex;
@@ -402,6 +447,18 @@ const css = `
   font-size: 11px;
   font-weight: 800;
 }
+.kds-print-pill {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.kds-print-pill:hover { background: #2563eb; color: #fff; transform: translateY(-1px); }
 
 .kds-customer {
   background: #f8fafc;
@@ -427,7 +484,6 @@ const css = `
 }
 .kds-note-label { font-weight: 800; color: #b45309; }
 
-/* Items */
 .kds-items {
   flex: 1;
   margin-bottom: 18px;
@@ -461,7 +517,6 @@ const css = `
 .kds-item-name { font-weight: 700; color: var(--ink); flex: 1; }
 .kds-item-desc { font-size: 12px; color: var(--cooking); font-style: italic; font-weight: 600; }
 
-/* Footer + actions */
 .kds-footer { border-top: 1px solid var(--line); padding-top: 14px; }
 .kds-actions { display: flex; gap: 8px; width: 100%; align-items: center; flex-wrap: wrap; }
 
@@ -479,7 +534,7 @@ const css = `
 
 .kds-btn {
   flex: 1;
-  min-width: 120px;
+  min-width: 110px;
   font-family: inherit;
   color: #fff;
   border: none;
@@ -518,27 +573,11 @@ const css = `
 .kds-btn-clear:hover { background: #fee2e2; border-color: #fca5a5; transform: translateY(-2px); }
 .kds-btn-clear:active { transform: translateY(0) scale(0.95); }
 
-/* Keyboard focus */
-.kds-refresh:focus-visible,
-.kds-btn:focus-visible,
-.kds-btn-clear:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.45);
-  outline-offset: 2px;
-}
-
-/* Responsive */
 @media (max-width: 640px) {
   .kds-header { margin-bottom: 20px; }
   .kds-refresh { width: 100%; justify-content: center; }
   .kds-grid { gap: 16px; }
   .kds-card { padding: 16px 16px 16px 20px; }
   .kds-btn { min-width: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .kds *, .kds *::before, .kds *::after {
-    animation: none !important;
-    transition: none !important;
-  }
 }
 `;
