@@ -62,20 +62,43 @@ export default function KitchenModule() {
     }).catch(() => {});
   };
 
-  // 🖨️ Thermal KOT Slip Print Handler (Pulls live updated settings from localStorage)
-  const handlePrintKOT = (order) => {
+  // 🖨️ Thermal KOT Slip Print Handler (Fetches live updated settings from backend & localStorage)
+  const handlePrintKOT = async (order) => {
+    const userEmail = localStorage.getItem('userEmail') || '';
+    
+    // Default fallback config
     let activeConfig = {
-      restaurantName: 'LINGA FOODS',
-      branchName: 'Wonghikal',
+      restaurantName: 'RESTAURANT',
+      branchName: '',
       paperSize: '80mm',
       density: 'Compact'
     };
+
     try {
+      // 1. Try loading from localStorage first
       const storedCfg = localStorage.getItem('receiptConfig');
       if (storedCfg) {
         activeConfig = { ...activeConfig, ...JSON.parse(storedCfg) };
       }
-    } catch (e) {}
+
+      // 2. Force-fetch latest live profile from backend to ensure updated name
+      if (userEmail) {
+        const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/email/${userEmail}`);
+        if (res.ok) {
+          const profileData = await res.json();
+          if (profileData && profileData.receiptConfig) {
+            let backendCfg = profileData.receiptConfig;
+            if (typeof backendCfg === 'string') {
+              try { backendCfg = JSON.parse(backendCfg); } catch (e) {}
+            }
+            activeConfig = { ...activeConfig, ...backendCfg };
+            localStorage.setItem('receiptConfig', JSON.stringify(activeConfig));
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error fetching live receipt config:", e);
+    }
 
     const printWindow = window.open('', '_blank', 'width=450,height=600');
     if (!printWindow) {
@@ -105,7 +128,7 @@ export default function KitchenModule() {
         <body>
           <div class="center bold" style="font-size: 14px;">*** KITCHEN ORDER TICKET ***</div>
           <div class="center bold" style="font-size: 13px; margin-top: 2px;">${(activeConfig.restaurantName || 'RESTAURANT').toUpperCase()}</div>
-          <div class="center" style="font-size: 10px; color: #333;">Branch: ${activeConfig.branchName || ''}</div>
+          ${activeConfig.branchName ? `<div class="center" style="font-size: 10px; color: #333;">Branch: ${activeConfig.branchName}</div>` : ''}
           <div class="line"></div>
           <div><strong>Order ID:</strong> ${order.displayId || order.id || 'N/A'}</div>
           <div><strong>Customer / Table:</strong> ${order.customer || order.customerName || 'Walk-In'}</div>
