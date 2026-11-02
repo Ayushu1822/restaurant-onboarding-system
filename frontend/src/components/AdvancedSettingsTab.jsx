@@ -600,7 +600,7 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
 
   /* ----- STEP 1: Verify Current Password using Login API ----- */
   const handleVerifyCurrentPassword = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // <-- Prevents page refresh/reload
     if (!currentPw) {
       return setPwMsg({ type: 'error', text: 'Please enter your current password.' });
     }
@@ -634,7 +634,7 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
 
   /* ----- STEP 2: Save New Password directly to DB ----- */
   const handleUpdateNewPassword = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // <-- Prevents page refresh/reload
     if (!newPw || newPw.length < 6) {
       return setPwMsg({ type: 'error', text: 'New password must be at least 6 characters long.' });
     }
