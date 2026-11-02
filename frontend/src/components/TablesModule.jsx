@@ -37,7 +37,6 @@ export default function TablesModule() {
     footerText: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***',
     paperSize: '80mm',
     density: 'Compact',
-    // Toggle fields matching AdvancedSettingsTab
     logo: false,
     restaurantNameToggle: true,
     branchNameToggle: true,
@@ -109,7 +108,6 @@ export default function TablesModule() {
     }
     loadAllData(userEmail);
 
-    // Real-time synchronization with SettingsModule updates
     const handleSettingsUpdate = () => {
       loadAllData(userEmail);
     };
@@ -138,7 +136,6 @@ export default function TablesModule() {
       setFullProfile(data);
       setRestaurantId(data.restaurantId);
 
-      // ✅ Properly parse and merge receiptConfig from backend profile database
       if (data.receiptConfig) {
         let parsedCfg = data.receiptConfig;
         if (typeof parsedCfg === 'string') {
@@ -427,19 +424,23 @@ export default function TablesModule() {
     .catch(err => alert('Error: ' + err.message));
   };
 
+  // 🚀 FIXED KOT & RUNNING TABLE APPEND FUNCTION (Prevents quantity duplication bug)
   const handleSendKOT = (paymentMode = 'Cash/Online') => {
     const subtotal = cartItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
     const totalTax = cartItems.reduce((acc, i) => acc + ((i.price * i.qty * i.taxRate) / 100), 0);
     const totalAmount = Math.round(subtotal + totalTax);
     const userEmail = localStorage.getItem('userEmail') || '';
 
+    const activeOrderId = localStorage.getItem(`table_order_id_${activeOrderTable.id}`);
+    
+    // If table already has an active order, send only the current cart items as incremental/new addition items to avoid multiplying quantities in backend
     const orderPayload = {
       displayId: `Table ${activeOrderTable.name}`,
       restaurantEmail: userEmail,
       customerName: `Table ${activeOrderTable.name} (${activeOrderTable.captain || 'Unassigned'})`,
       channel: 'COUNTER',
       orderType: orderType,
-      status: 'New',
+      status: activeOrderId ? 'Running Addition' : 'New',
       subtotal: subtotal,
       totalAmount: totalAmount,
       items: cartItems.map(i => ({
@@ -451,7 +452,6 @@ export default function TablesModule() {
       }))
     };
 
-    const activeOrderId = localStorage.getItem(`table_order_id_${activeOrderTable.id}`);
     const endpoint = activeOrderId 
       ? `${API_BASE_URL}/api/v1/orders/table/${activeOrderTable.name}/append?email=${userEmail}`
       : `${API_BASE_URL}/api/v1/orders`;
@@ -468,7 +468,7 @@ export default function TablesModule() {
       return res.json();
     })
     .then(data => {
-      const orderId = data.orderId || data.id || `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+      const orderId = data.orderId || data.id || activeOrderId || `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
       
       localStorage.setItem(`table_order_id_${activeOrderTable.id}`, orderId);
       localStorage.setItem(`table_cart_${activeOrderTable.id}`, JSON.stringify(cartItems));
@@ -506,12 +506,11 @@ export default function TablesModule() {
     }
   };
 
-  // Helper function to check if a specific receipt field toggle is enabled
   const isFieldOn = (key, defVal = true) => {
     return receiptConfig[key] !== undefined ? receiptConfig[key] : defVal;
   };
 
-  // 🖨️ Bulletproof Print / Download Handler fully synced with AdvancedSettingsTab configuration
+  // 🖨️ Unified Settings-Synced Receipt Print Handler
   const handlePrintReceipt = () => {
     if (!completedOrderReceipt) return;
     
@@ -1096,7 +1095,6 @@ export default function TablesModule() {
   );
 }
 
-/* ---------- Styles (frontend only) ---------- */
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap');
 
@@ -1137,7 +1135,6 @@ const css = `
 .tb-green { color: var(--green); }
 .tb-mb { margin-bottom: 16px !important; }
 
-/* ---------- Floor header ---------- */
 .tb-header {
   display: flex;
   justify-content: space-between;
@@ -1171,7 +1168,6 @@ const css = `
 .tb-add-btn-full { width: 100%; padding: 15px; margin-top: 10px; font-size: 16px; }
 .tb-captain-save { flex: 1; padding: 14px; text-align: center; }
 
-/* Alerts */
 .tb-alert {
   padding: 14px 18px;
   border-radius: 14px;
@@ -1184,7 +1180,6 @@ const css = `
 .tb-alert.is-success { background: #f0fdf4; color: #166534; border-color: #4ade80; }
 .tb-alert.is-error { background: #fef2f2; color: #991b1b; border-color: #f87171; }
 
-/* Loading / empty */
 .tb-center {
   display: flex;
   flex-direction: column;
@@ -1215,7 +1210,6 @@ const css = `
   border: 2px dashed #cbd5e1;
 }
 
-/* ---------- Areas & tables ---------- */
 .tb-area { margin-bottom: 32px; animation: tb-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .tb-area-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 .tb-area-chip {
@@ -1248,12 +1242,6 @@ const css = `
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
   animation: tb-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.tb-table:nth-child(2) { animation-delay: 0.05s; }
-.tb-table:nth-child(3) { animation-delay: 0.1s; }
-.tb-table:nth-child(4) { animation-delay: 0.15s; }
-.tb-table:nth-child(5) { animation-delay: 0.2s; }
-.tb-table:nth-child(n+6) { animation-delay: 0.25s; }
-
 .tb-table.is-occupied { --accent: #ef4444; }
 .tb-table::before {
   content: '';
@@ -1309,7 +1297,6 @@ const css = `
 }
 .tb-table:hover .tb-table-cta { background: var(--green); color: #fff; letter-spacing: 0.02em; }
 
-/* ---------- Modals ---------- */
 .tb-overlay {
   position: fixed;
   inset: 0;
@@ -1317,7 +1304,6 @@ const css = `
   height: 100vh;
   background: rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1389,7 +1375,6 @@ const css = `
 .tb-input:hover { border-color: #b6c3d4; }
 .tb-input:focus { border-color: var(--green); background: #fff; box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.18); }
 
-/* Table control actions */
 .tb-action-col { display: flex; flex-direction: column; gap: 12px; margin-bottom: 22px; }
 .tb-action-clear,
 .tb-action-open {
@@ -1405,7 +1390,6 @@ const css = `
 .tb-action-open { background: #eff6ff; color: #1d4ed8; border: 2px solid #38bdf8; }
 .tb-action-clear:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(16, 185, 129, 0.25); filter: brightness(0.98); }
 .tb-action-open:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(56, 189, 248, 0.3); filter: brightness(0.98); }
-.tb-action-clear:active, .tb-action-open:active { transform: translateY(0) scale(0.98); }
 
 .tb-modal-foot { display: flex; justify-content: space-between; gap: 10px; border-top: 1.5px solid var(--line); padding-top: 16px; }
 .tb-delete-btn,
@@ -1423,7 +1407,6 @@ const css = `
 .tb-close-btn { background: #f1f5f9; color: var(--ink-soft); border: 2px solid #cbd5e1; }
 .tb-close-btn:hover { background: #e2e8f0; transform: translateY(-2px); }
 
-/* Shared button row */
 .tb-btn-row { display: flex; gap: 12px; }
 .tb-light-btn {
   font-family: inherit;
@@ -1439,7 +1422,6 @@ const css = `
 }
 .tb-light-btn:hover { background: #e2e8f0; transform: translateY(-2px); }
 
-/* Captains modal */
 .tb-cap-list { max-height: 230px; overflow-y: auto; margin-bottom: 18px; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
 .tb-cap-empty { text-align: center; color: #94a3b8; font-size: 14px; font-weight: 700; padding: 24px; background: #f8fafc; border-radius: 14px; border: 2px dashed #cbd5e1; }
 .tb-cap-row {
@@ -1475,7 +1457,6 @@ const css = `
 .tb-cap-form { border-top: 2px solid var(--line); padding-top: 18px; }
 .tb-cap-form-title { margin: 0 0 14px 0; font-size: 16px; font-weight: 800; color: var(--ink-soft); }
 
-/* Receipt modal */
 .tb-receipt {
   background: #f8fafc;
   padding: 18px;
@@ -1486,7 +1467,6 @@ const css = `
   line-height: 1.55;
   font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
   margin-bottom: 22px;
-  animation: tb-rise 0.4s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .tb-receipt-title { text-align: center; font-weight: 800; font-size: 16px; margin-bottom: 4px; }
 .tb-receipt-time { text-align: center; color: var(--ink-faint); margin-bottom: 10px; }
@@ -1524,7 +1504,6 @@ const css = `
   transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 .tb-done-btn:hover { transform: translateY(-2px); filter: brightness(1.07); box-shadow: 0 12px 24px rgba(5, 150, 105, 0.38); }
-.tb-print-btn:active, .tb-done-btn:active { transform: translateY(0) scale(0.97); }
 
 /* ======================== POS TERMINAL ======================== */
 .tb-pos {
@@ -1604,16 +1583,13 @@ const css = `
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-  animation: tb-rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .tb-food:hover { border-color: var(--green); background: #f0fdf9; transform: translateY(-4px); box-shadow: 0 16px 28px -10px rgba(5, 150, 105, 0.28); }
-.tb-food:active { transform: translateY(0) scale(0.97); }
 .tb-food-name { font-size: 16px; font-weight: 800; color: #1e293b; margin-bottom: 10px; }
 .tb-food-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .tb-food-price { font-size: 18px; font-weight: 800; color: var(--green); }
 .tb-food-tax { font-size: 11px; font-weight: 800; background: #f1f5f9; color: #475569; padding: 4px 8px; border-radius: 8px; }
 
-/* Order type */
 .tb-type-row { display: flex; gap: 10px; }
 .tb-type-btn {
   flex: 1;
@@ -1631,7 +1607,6 @@ const css = `
 .tb-type-btn:hover { transform: translateY(-2px); border-color: var(--green); }
 .tb-type-btn.is-active { background: var(--green); color: #fff; border-color: var(--green); box-shadow: 0 8px 18px rgba(5, 150, 105, 0.3); }
 
-/* Cart */
 .tb-cart-list { flex: 1; min-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; padding-right: 2px; }
 .tb-cart-empty {
   text-align: center;
@@ -1649,7 +1624,6 @@ const css = `
   border-radius: 14px;
   border: 1.5px solid var(--line);
   transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
-  animation: tb-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .tb-cart-item:hover { border-color: #a7f3d0; background: #f0fdf9; box-shadow: 0 8px 18px rgba(5, 150, 105, 0.1); }
 .tb-cart-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
@@ -1671,12 +1645,10 @@ const css = `
   transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
 }
 .tb-qty-btn:hover { background: var(--green); color: #fff; border-color: var(--green); transform: scale(1.1); }
-.tb-qty-btn:active { transform: scale(0.92); }
 .tb-qty-num { font-size: 16px; font-weight: 800; width: 26px; text-align: center; }
 .tb-cart-bottom { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--ink-faint); font-weight: 700; }
 .tb-cart-tax { color: var(--green); font-weight: 800; }
 
-/* Totals */
 .tb-totals { border-top: 2px solid var(--line); padding-top: 16px; margin-bottom: 18px; font-size: 15px; font-weight: 800; color: var(--ink-soft); }
 .tb-totals-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
 .tb-totals-row.is-faint { color: var(--ink-faint); margin-bottom: 12px; }
@@ -1705,11 +1677,9 @@ const css = `
 .tb-split-btn { padding: 15px; font-size: 15px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); box-shadow: 0 8px 20px rgba(37, 99, 235, 0.28); }
 .tb-kot-btn:hover:not(:disabled) { transform: translateY(-3px); filter: brightness(1.06); box-shadow: 0 14px 28px rgba(5, 150, 105, 0.4); }
 .tb-split-btn:hover:not(:disabled) { transform: translateY(-3px); filter: brightness(1.06); box-shadow: 0 14px 28px rgba(37, 99, 235, 0.4); }
-.tb-kot-btn:active:not(:disabled), .tb-split-btn:active:not(:disabled) { transform: translateY(0) scale(0.97); }
 .tb-kot-btn:disabled { background: #cbd5e1; box-shadow: none; cursor: not-allowed; }
 .tb-split-btn:disabled { background: #f1f5f9; color: #94a3b8; box-shadow: none; cursor: not-allowed; }
 
-/* Split modal */
 .tb-split-total { font-size: 15px; color: var(--ink-faint); font-weight: 700; margin: 0 0 16px 0; }
 .tb-split-total strong { font-size: 20px; }
 .tb-confirm-btn {
@@ -1727,9 +1697,7 @@ const css = `
   transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 .tb-confirm-btn:hover { transform: translateY(-2px); filter: brightness(1.07); box-shadow: 0 12px 24px rgba(5, 150, 105, 0.38); }
-.tb-confirm-btn:active { transform: translateY(0) scale(0.97); }
 
-/* ---------- Animations ---------- */
 @keyframes tb-rise {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -1745,14 +1713,6 @@ const css = `
 }
 @keyframes tb-spin { to { transform: rotate(360deg); } }
 
-/* ---------- Keyboard focus ---------- */
-.tb button:focus-visible,
-.tb-pos button:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.5);
-  outline-offset: 2px;
-}
-
-/* ---------- Responsive ---------- */
 @media (max-width: 980px) {
   .tb-pos { height: auto; min-height: 100%; overflow-y: auto; }
   .tb-pos-body { flex-direction: column; overflow: visible; }
@@ -1766,14 +1726,5 @@ const css = `
   .tb-menu-panel, .tb-cart-panel { padding: 18px; }
   .tb-btn-row { flex-direction: column; }
   .tb-cap-row { flex-wrap: wrap; }
-}
-
-/* ---------- Reduced motion ---------- */
-@media (prefers-reduced-motion: reduce) {
-  .tb *, .tb *::before, .tb *::after,
-  .tb-pos *, .tb-pos *::before, .tb-pos *::after {
-    animation: none !important;
-    transition: none !important;
-  }
 }
 `;
