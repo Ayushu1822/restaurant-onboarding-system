@@ -508,7 +508,7 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
   const [sound, setSound] = useState(getSoundSettings());
   const [soundMsg, setSoundMsg] = useState(null);
 
-  /* ---------- 4. SECURITY (Two-Step Verification Flow) ---------- */
+  /* ---------- 4. SECURITY (Two-Step Verification Flow without nested forms) ---------- */
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
@@ -599,8 +599,7 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
   };
 
   /* ----- STEP 1: Verify Current Password using Login API ----- */
-  const handleVerifyCurrentPassword = async (e) => {
-    e.preventDefault(); // <-- Prevents page refresh/reload
+  const handleVerifyCurrentPassword = async () => {
     if (!currentPw) {
       return setPwMsg({ type: 'error', text: 'Please enter your current password.' });
     }
@@ -633,8 +632,7 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
   };
 
   /* ----- STEP 2: Save New Password directly to DB ----- */
-  const handleUpdateNewPassword = async (e) => {
-    e.preventDefault(); // <-- Prevents page refresh/reload
+  const handleUpdateNewPassword = async () => {
     if (!newPw || newPw.length < 6) {
       return setPwMsg({ type: 'error', text: 'New password must be at least 6 characters long.' });
     }
@@ -854,13 +852,13 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
           <Msg msg={soundMsg} />
         </SectionCard>
 
-        {/* ===== 4. SECURITY (Two-Step Password Verification Flow) ===== */}
+        {/* ===== 4. SECURITY (Two-Step Password Verification Flow without forms) ===== */}
         <div style={{ maxWidth: '760px' }}>
           <div style={{ fontSize: '13px', fontWeight: '950', color: '#0f172a', marginBottom: '8px' }}>Security & Password Management</div>
           <div style={card}>
             {!isVerified ? (
               /* STEP 1: Enter & Verify Current Password */
-              <form onSubmit={handleVerifyCurrentPassword}>
+              <div>
                 <PasswordField 
                   label="Enter Current (Previous) Password" 
                   value={currentPw} 
@@ -868,8 +866,9 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
                   onChange={(v) => setCurrentPw(v)} 
                 />
                 <button
-                  type="submit"
+                  type="button"
                   disabled={pwSaving}
+                  onClick={handleVerifyCurrentPassword}
                   style={{
                     width: '100%',
                     backgroundColor: pwSaving ? GREEN_LIGHT : GREEN,
@@ -885,10 +884,10 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
                 >
                   {pwSaving ? 'Verifying...' : 'Verify Current Password'}
                 </button>
-              </form>
+              </div>
             ) : (
               /* STEP 2: Unlocked New Password Fields */
-              <form onSubmit={handleUpdateNewPassword}>
+              <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', backgroundColor: '#f0fdf4', padding: '8px 12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
                   <span style={{ fontSize: '12px', fontWeight: '900', color: '#166534' }}>🔓 Current password verified successfully</span>
                   <button 
@@ -913,8 +912,9 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
                   onChange={(v) => setConfirmPw(v)} 
                 />
                 <button
-                  type="submit"
+                  type="button"
                   disabled={pwSaving}
+                  onClick={handleUpdateNewPassword}
                   style={{
                     width: '100%',
                     backgroundColor: pwSaving ? GREEN_LIGHT : GREEN,
@@ -930,7 +930,7 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
                 >
                   {pwSaving ? 'Updating Database...' : 'Save New Password'}
                 </button>
-              </form>
+              </div>
             )}
             <Msg msg={pwMsg} />
           </div>
