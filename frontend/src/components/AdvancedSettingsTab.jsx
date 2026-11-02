@@ -6,6 +6,7 @@ const GREEN_DARK = '#059669';
 const GREEN_LIGHT = '#86e0bd';
 const RED = '#ef4444';
 const AMBER = '#d97706';
+const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
 
 /* ---------- small local helpers ---------- */
 
@@ -160,10 +161,6 @@ function Radio({ name, checked, onChange, label }) {
 
 /* =====================================================================
    NOTIFICATION SOUND HELPERS (per device -> localStorage)
-   Used by the Online Orders page:
-     import { playNotificationChime, unlockNotificationAudio } from './AdvancedSettingsTab';
-   playNotificationChime() is called ONCE per new order id.
-   All sounds are generated live with the Web Audio API (no audio files).
    ===================================================================== */
 
 export const SOUND_STORAGE_KEY = 'foodos.notificationSound';
@@ -177,8 +174,6 @@ export const CHIMES = [
   { id: 'arcade', label: 'Arcade', desc: 'Playful ascending square-wave riff.' }
 ];
 
-// Each chime: wave shape, partials [frequency ratio, loudness, decay length],
-// notes [frequency Hz, start s, length s], echo amount, optional lowpass (Hz)
 const CHIME_NOTES = {
   classic: {
     wave: 'sine',
@@ -215,7 +210,7 @@ const CHIME_NOTES = {
     partials: [[1, 1, 1]],
     notes: [[392, 0, 0.12], [523.25, 0.1, 0.12], [659.25, 0.2, 0.12], [783.99, 0.3, 0.12], [1046.5, 0.4, 0.25]],
     echo: 0.1,
-    lowpass: 2400 // softens the harsh square wave
+    lowpass: 2400
   }
 };
 
@@ -231,26 +226,20 @@ export function getSoundSettings() {
 export function saveSoundSettings(settings) {
   try {
     localStorage.setItem(SOUND_STORAGE_KEY, JSON.stringify(settings));
-  } catch {
-    /* storage unavailable */
-  }
+  } catch {}
 }
 
 let audioCtx = null;
 
-// Call once after the first click/keypress so browsers allow the chime to play later
 export function unlockNotificationAudio() {
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return;
     if (!audioCtx) audioCtx = new Ctx();
     if (audioCtx.state === 'suspended') audioCtx.resume();
-  } catch {
-    /* ignore */
-  }
+  } catch {}
 }
 
-// force = true is used by the Preview button (plays even when muted)
 export function playNotificationChime(soundId, force = false) {
   const settings = getSoundSettings();
   if (!force && !settings.enabled) return;
@@ -263,7 +252,6 @@ export function playNotificationChime(soundId, force = false) {
     const ctx = audioCtx;
     const t0 = ctx.currentTime;
 
-    // master chain: gain -> lowpass filter -> speakers
     const master = ctx.createGain();
     master.gain.value = 0.9;
     const filter = ctx.createBiquadFilter();
@@ -272,7 +260,6 @@ export function playNotificationChime(soundId, force = false) {
     master.connect(filter);
     filter.connect(ctx.destination);
 
-    // light echo for a bit of space
     if (def.echo) {
       const delay = ctx.createDelay();
       delay.delayTime.value = 0.18;
@@ -287,7 +274,6 @@ export function playNotificationChime(soundId, force = false) {
       wet.connect(ctx.destination);
     }
 
-    // every note = several stacked tones with a soft attack and natural decay
     def.notes.forEach(([freq, start, dur]) => {
       def.partials.forEach(([ratio, level, decay]) => {
         const osc = ctx.createOscillator();
@@ -305,13 +291,10 @@ export function playNotificationChime(soundId, force = false) {
         osc.stop(end + 0.05);
       });
     });
-  } catch {
-    /* browser blocked audio until user interaction */
-  }
+  } catch {}
 }
 
 /* ---------- receipt field definitions ---------- */
-/* valueKey = editable text stored in formData.receiptConfig[valueKey] */
 
 const RECEIPT_SECTIONS = [
   {
@@ -501,7 +484,6 @@ const clampInt = (v, min, max) => {
 };
 
 function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSaveCounter, onChangePassword }) {
-  /* ---------- 1. ORDER AUTO APPROVAL (per branch, server) ---------- */
   const initAuto = {
     enabled: systemSettings?.autoApprove?.enabled ?? false,
     immediate: systemSettings?.autoApprove?.immediate ?? false,
@@ -513,7 +495,6 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
   const [autoSaving, setAutoSaving] = useState(false);
   const [autoMsg, setAutoMsg] = useState(null);
 
-  /* ---------- 2. COUNTER ORDERING (per branch, server) ---------- */
   const initCounter = {
     allowHold: systemSettings?.counter?.allowHold ?? true,
     maxHeld: systemSettings?.counter?.maxHeld ?? 5
@@ -523,17 +504,15 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
   const [counterSaving, setCounterSaving] = useState(false);
   const [counterMsg, setCounterMsg] = useState(null);
 
-  /* ---------- 3. NOTIFICATION SOUND (per device, localStorage) ---------- */
   const [soundSaved, setSoundSaved] = useState(getSoundSettings());
   const [sound, setSound] = useState(getSoundSettings());
   const [soundMsg, setSoundMsg] = useState(null);
 
-  /* ---------- 4. SECURITY ---------- */
-  const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
+  /* ---------- 4. SECURITY (Direct DB Password Update without OTP) ---------- */
+  const [pw, setPw] = useState({ next: '', confirm: '' });
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState(null);
 
-  // re-sync when server settings arrive/change
   useEffect(() => {
     if (!systemSettings) return;
     if (systemSettings.autoApprove) {
@@ -546,10 +525,8 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
       setCounterSaved(v);
       setCounter(v);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [systemSettings]);
 
-  /* ----- auto approve logic ----- */
   const minutesNum = Number(auto.minutes) || 0;
   const secondsNum = Number(auto.seconds) || 0;
   const totalSeconds = minutesNum * 60 + secondsNum;
@@ -587,7 +564,6 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
     }
   };
 
-  /* ----- counter logic ----- */
   const maxHeldNum = Number(counter.maxHeld);
   const counterInvalid = counter.allowHold && (!maxHeldNum || maxHeldNum < 1 || maxHeldNum > 20);
   const counterDirty = JSON.stringify(counter) !== JSON.stringify(counterSaved);
@@ -612,7 +588,6 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
     }
   };
 
-  /* ----- sound logic ----- */
   const soundDirty = JSON.stringify(sound) !== JSON.stringify(soundSaved);
   const saveSound = () => {
     saveSoundSettings(sound);
@@ -620,19 +595,37 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
     setSoundMsg({ type: 'ok', text: 'Sound preference saved on this device.' });
   };
 
-  /* ----- password logic ----- */
+  /* ----- Direct Password Change (No OTP) ----- */
   const savePassword = async () => {
-    if (!pw.current) return setPwMsg({ type: 'error', text: 'Enter your current password.' });
-    if (pw.next.length < 8) return setPwMsg({ type: 'error', text: 'New password must be at least 8 characters.' });
-    if (pw.next === pw.current) return setPwMsg({ type: 'error', text: 'New password must be different from the current one.' });
+    if (!pw.next || pw.next.length < 6) return setPwMsg({ type: 'error', text: 'New password must be at least 6 characters long.' });
     if (pw.next !== pw.confirm) return setPwMsg({ type: 'error', text: 'New passwords do not match.' });
+    
     setPwSaving(true);
     setPwMsg(null);
     try {
-      if (!onChangePassword) throw new Error('Password API is not connected yet.');
-      await onChangePassword({ currentPassword: pw.current, newPassword: pw.next });
-      setPw({ current: '', next: '', confirm: '' });
-      setPwMsg({ type: 'ok', text: 'Password updated successfully.' });
+      const userEmail = localStorage.getItem('userEmail') || '';
+      if (!userEmail) throw new Error('No logged-in user email found.');
+
+      // Direct Backend DB Update Call without OTP verification
+      const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/update-password`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: userEmail,
+          newPassword: pw.next
+        })
+      });
+
+      if (!res.ok) {
+        if (onChangePassword) {
+          await onChangePassword({ newPassword: pw.next });
+        } else {
+          throw new Error('Failed to update password in database.');
+        }
+      }
+
+      setPw({ next: '', confirm: '' });
+      setPwMsg({ type: 'ok', text: '✅ Password successfully updated in database!' });
     } catch (e) {
       setPwMsg({ type: 'error', text: e?.message || 'Could not update password.' });
     } finally {
@@ -817,11 +810,10 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
           <Msg msg={soundMsg} />
         </SectionCard>
 
-        {/* ===== 4. SECURITY ===== */}
+        {/* ===== 4. SECURITY (Direct DB Password Update without OTP) ===== */}
         <div style={{ maxWidth: '760px' }}>
-          <div style={{ fontSize: '13px', fontWeight: '950', color: '#0f172a', marginBottom: '8px' }}>Security</div>
+          <div style={{ fontSize: '13px', fontWeight: '950', color: '#0f172a', marginBottom: '8px' }}>Security & Password</div>
           <div style={card}>
-            <PasswordField label="Current Password" value={pw.current} autoComplete="current-password" onChange={(v) => setPw({ ...pw, current: v })} />
             <PasswordField label="New Password" value={pw.next} autoComplete="new-password" onChange={(v) => setPw({ ...pw, next: v })} />
             <PasswordField label="Re-enter New Password" value={pw.confirm} autoComplete="new-password" onChange={(v) => setPw({ ...pw, confirm: v })} />
             <button
@@ -840,7 +832,7 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
                 cursor: pwSaving ? 'not-allowed' : 'pointer'
               }}
             >
-              {pwSaving ? 'Updating...' : 'Update Password'}
+              {pwSaving ? 'Updating...' : 'Update Password in Database'}
             </button>
             <Msg msg={pwMsg} />
           </div>
@@ -862,13 +854,12 @@ export default function AdvancedSettingsTab({
   handleToggleReceiptField,
   styles,
   sidebarItems,
-  onSave, // optional: pass your save handler to wire the green "Save Changes" button
-  // ---- System tab (all optional) ----
-  systemSettings, // { autoApprove: {enabled, immediate, minutes, seconds}, counter: {allowHold, maxHeld} }
-  branchName, // e.g. "Linga Foods - Vengikkal"
-  onSaveAutoApprove, // async (payload) => void, throw on failure
-  onSaveCounter, // async (payload) => void, throw on failure
-  onChangePassword // async ({currentPassword, newPassword}) => void, throw on failure
+  onSave,
+  systemSettings,
+  branchName,
+  onSaveAutoApprove,
+  onSaveCounter,
+  onChangePassword
 }) {
   const [oneClickOpen, setOneClickOpen] = useState(false);
 
@@ -917,7 +908,6 @@ export default function AdvancedSettingsTab({
       {/* TAB 8: PRINTERS & RECEIPTS */}
       {activeTab === 'printers' && (
         <div style={styles.sectionGroup}>
-          {/* header row: title + save */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
             <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🖨️ Printers & Receipts</h3>
             <button
@@ -929,7 +919,6 @@ export default function AdvancedSettingsTab({
             </button>
           </div>
 
-          {/* sub-tabs (segmented pill) */}
           <div
             style={{
               display: 'inline-flex',
@@ -962,7 +951,6 @@ export default function AdvancedSettingsTab({
             ))}
           </div>
 
-          {/* ---------- PRINTERS ---------- */}
           {receiptSubTab === 'printers' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
@@ -981,7 +969,6 @@ export default function AdvancedSettingsTab({
                 </button>
               </div>
 
-              {/* one-click printing (collapsible) */}
               <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
                 <button
                   type="button"
@@ -1009,7 +996,6 @@ export default function AdvancedSettingsTab({
               </div>
 
               <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'stretch' }}>
-                {/* counter printer */}
                 <div style={{ ...card, flex: '1 1 340px', maxWidth: '440px' }}>
                   <div style={{ fontSize: '14px', fontWeight: '950', color: '#0f172a' }}>🖨️ Counter Printer</div>
                   <p style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', margin: '4px 0 12px' }}>
@@ -1055,7 +1041,6 @@ export default function AdvancedSettingsTab({
                   </label>
                 </div>
 
-                {/* kitchen printer */}
                 <div style={{ ...card, flex: '1 1 340px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: '260px' }}>
                   <div style={{ fontSize: '28px', marginBottom: '8px' }}>👨‍🍳</div>
                   <h4 style={{ margin: '0 0 4px', fontSize: '13px', fontWeight: '950', color: '#0f172a' }}>Kitchen Printer</h4>
@@ -1069,7 +1054,6 @@ export default function AdvancedSettingsTab({
             </div>
           )}
 
-          {/* ---------- RECEIPT CONFIGURATION ---------- */}
           {receiptSubTab === 'receipt' && (
             <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
               <div style={{ ...card, flex: '1 1 520px', maxWidth: '720px', backgroundColor: '#fff' }}>
@@ -1117,7 +1101,6 @@ export default function AdvancedSettingsTab({
                 ))}
               </div>
 
-              {/* live preview */}
               <div style={{ ...card, width: '380px', maxWidth: '100%', textAlign: 'center' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                   <h4 style={{ margin: 0, fontSize: '12px', fontWeight: '950', color: '#0f172a' }}>Live Preview</h4>
@@ -1193,7 +1176,7 @@ export default function AdvancedSettingsTab({
                         </div>
                         {row('Test Burger', on('itemRate') ? '2  ₹300.00  ₹620.00' : '2  ₹620.00')}
                         {on('variants') && <div>&nbsp;+ Extra Cheese x1 ₹20.00</div>}
-                        {on('itemNotes') && <div>&nbsp;* Less spicy</div>}
+                        {on('itemNotes') && <div>&nbsp;Less spicy</div>}
                         {row('Test Cola', on('itemRate') ? '1  ₹70.00  ₹70.00' : '1  ₹70.00')}
                       </div>
                     )}
@@ -1232,7 +1215,6 @@ export default function AdvancedSettingsTab({
             </div>
           )}
 
-          {/* ---------- PRINT RULES ---------- */}
           {receiptSubTab === 'rules' && (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', alignItems: 'start' }}>
@@ -1279,7 +1261,6 @@ export default function AdvancedSettingsTab({
         </div>
       )}
 
-      {/* TAB 9: SYSTEM */}
       {activeTab === 'system' && (
         <SystemTab
           styles={styles}
