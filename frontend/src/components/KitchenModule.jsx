@@ -62,8 +62,21 @@ export default function KitchenModule() {
     }).catch(() => {});
   };
 
-  // 🖨️ Thermal KOT Slip Print Handler for Kitchen Queue
+  // 🖨️ Thermal KOT Slip Print Handler (Pulls live updated settings from localStorage)
   const handlePrintKOT = (order) => {
+    let activeConfig = {
+      restaurantName: 'LINGA FOODS',
+      branchName: 'Wonghikal',
+      paperSize: '80mm',
+      density: 'Compact'
+    };
+    try {
+      const storedCfg = localStorage.getItem('receiptConfig');
+      if (storedCfg) {
+        activeConfig = { ...activeConfig, ...JSON.parse(storedCfg) };
+      }
+    } catch (e) {}
+
     const printWindow = window.open('', '_blank', 'width=450,height=600');
     if (!printWindow) {
       alert('Popup blocked! Please allow popups for kitchen printing.');
@@ -78,15 +91,12 @@ export default function KitchenModule() {
       </div>
     `).join('');
 
-    const restaurantName = localStorage.getItem('restaurantName') || 'LINGA FOODS';
-    const branchName = localStorage.getItem('branchName') || 'Wonghikal';
-
     printWindow.document.write(`
       <html>
         <head>
           <title>KOT - ${order.displayId || 'Order'}</title>
           <style>
-            body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: 80mm; margin: 0 auto; font-size: 12px; }
+            body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: ${activeConfig.paperSize === '58mm' ? '58mm' : '80mm'}; margin: 0 auto; font-size: ${activeConfig.density === 'Compact' ? '10px' : '12px'}; }
             .center { text-align: center; }
             .bold { font-weight: bold; }
             .line { border-top: 1px dashed #000; margin: 8px 0; }
@@ -94,8 +104,8 @@ export default function KitchenModule() {
         </head>
         <body>
           <div class="center bold" style="font-size: 14px;">*** KITCHEN ORDER TICKET ***</div>
-          <div class="center bold" style="font-size: 13px; margin-top: 2px;">${restaurantName.toUpperCase()}</div>
-          <div class="center" style="font-size: 10px; color: #333;">Branch: ${branchName}</div>
+          <div class="center bold" style="font-size: 13px; margin-top: 2px;">${(activeConfig.restaurantName || 'RESTAURANT').toUpperCase()}</div>
+          <div class="center" style="font-size: 10px; color: #333;">Branch: ${activeConfig.branchName || ''}</div>
           <div class="line"></div>
           <div><strong>Order ID:</strong> ${order.displayId || order.id || 'N/A'}</div>
           <div><strong>Customer / Table:</strong> ${order.customer || order.customerName || 'Walk-In'}</div>
