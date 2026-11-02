@@ -1,5 +1,5 @@
 // FILE: src/components/SettingsModule.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import AdvancedSettingsTab from './AdvancedSettingsTab';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
@@ -440,7 +440,10 @@ export default function SettingsModule() {
         billingConfig: JSON.stringify(formData.billingConfig || {}),
         receiptConfig: JSON.stringify(formData.receiptConfig || {}),
         printRules: JSON.stringify(formData.printRules || {}),
-        printerInfo: JSON.stringify(formData.printerInfo || {})
+        printerInfo: JSON.stringify(formData.printerInfo || {}),
+        // System settings are saved from the System tab; keep the server's latest copy so this button never reverts them
+        autoApproval: latestData.autoApproval ?? formData.autoApproval,
+        counterOrdering: latestData.counterOrdering ?? formData.counterOrdering
       };
 
       const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/${formData.restaurantId}`, {
@@ -456,6 +459,37 @@ export default function SettingsModule() {
       showMsg(`❌ Error: ${err.message}`, 'error');
     } finally { setSaving(false); }
   };
+
+  // ===== SYSTEM TAB: auto-approval + counter ordering (saved per branch on the server) =====
+  const systemSettings = useMemo(() => {
+    const parse = (v) => {
+      if (!v) return undefined;
+      if (typeof v === 'object') return v;
+      try { return JSON.parse(v); } catch (e) { return undefined; }
+    };
+    return { autoApprove: parse(formData.autoApproval), counter: parse(formData.counterOrdering) };
+  }, [formData.autoApproval, formData.counterOrdering]);
+
+  // Saves ONE field only, so it never touches the rest of the profile
+  const saveSystemField = async (field, payloadObj) => {
+    if (!formData.restaurantId) throw new Error('Restaurant profile is not loaded yet.');
+    const asString = JSON.stringify(payloadObj);
+    const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/${formData.restaurantId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: formData.email, [field]: asString })
+    });
+    if (!res.ok) throw new Error((await res.text()) || 'Failed to save settings');
+
+    const saved = await res.json();
+    if (saved[field] !== asString) {
+      throw new Error('The server did not store this setting. Deploy the updated RestaurantProfileController to the backend.');
+    }
+    setFormData(prev => ({ ...prev, [field]: asString }));
+  };
+
+  const handleSaveAutoApprove = (payload) => saveSystemField('autoApproval', payload);
+  const handleSaveCounter = (payload) => saveSystemField('counterOrdering', payload);
 
   const showMsg = (text, type) => {
     setMessage({ text, type });
@@ -936,6 +970,11 @@ export default function SettingsModule() {
               handleToggleReceiptField={handleToggleReceiptField}
               styles={styles}
               sidebarItems={sidebarItems}
+              onSave={() => handleSave({ preventDefault: () => {} })}
+              systemSettings={systemSettings}
+              branchName={[formData.onlineRestaurantName || formData.businessName, formData.branchDisplayName].filter(Boolean).join(' - ')}
+              onSaveAutoApprove={handleSaveAutoApprove}
+              onSaveCounter={handleSaveCounter}
             />
 
           </form>
