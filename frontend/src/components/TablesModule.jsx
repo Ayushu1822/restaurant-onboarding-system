@@ -22,7 +22,7 @@ export default function TablesModule() {
   const [showCaptainManageModal, setShowCaptainManageModal] = useState(false);
   const [editingCaptain, setEditingCaptain] = useState(null);
 
-  // 🧾 Receipt & Print Modal State & Settings Config (Synced perfectly with AdvancedSettingsTab)
+  // 🧾 Receipt & Print Modal State & Settings Config
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [completedOrderReceipt, setCompletedOrderReceipt] = useState(null);
   const [receiptConfig, setReceiptConfig] = useState({
@@ -81,7 +81,7 @@ export default function TablesModule() {
   const [cartItems, setCartItems] = useState([]);
   const [orderNote, setOrderNote] = useState('');
 
-  // Areas & Tables Structured State (Synced with Settings & Database)
+  // Areas & Tables Structured State
   const [areasAndTables, setAreasAndTables] = useState({
     autoOpenQrScan: true,
     areas: [
@@ -424,16 +424,42 @@ export default function TablesModule() {
     .catch(err => alert('Error: ' + err.message));
   };
 
-  // 🚀 FIXED KOT & RUNNING TABLE APPEND FUNCTION (Prevents quantity duplication bug)
+  // 🚀 INCREMENTAL KOT APPEND FUNCTION (Prevents quantity duplication bug)
   const handleSendKOT = (paymentMode = 'Cash/Online') => {
-    const subtotal = cartItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
-    const totalTax = cartItems.reduce((acc, i) => acc + ((i.price * i.qty * i.taxRate) / 100), 0);
-    const totalAmount = Math.round(subtotal + totalTax);
     const userEmail = localStorage.getItem('userEmail') || '';
-
     const activeOrderId = localStorage.getItem(`table_order_id_${activeOrderTable.id}`);
+    const lastSentCartKey = `table_last_sent_${activeOrderTable.id}`;
     
-    // If table already has an active order, send only the current cart items as incremental/new addition items to avoid multiplying quantities in backend
+    let lastSentItems = [];
+    try {
+      lastSentItems = JSON.parse(localStorage.getItem(lastSentCartKey) || '[]');
+    } catch (e) {
+      lastSentItems = [];
+    }
+
+    let itemsToSend = [];
+    if (activeOrderId && lastSentItems.length > 0) {
+      cartItems.forEach(current => {
+        const previous = lastSentItems.find(p => p.id === current.id);
+        if (!previous) {
+          itemsToSend.push({ ...current });
+        } else if (current.qty > previous.qty) {
+          itemsToSend.push({ ...current, qty: current.qty - previous.qty });
+        }
+      });
+    } else {
+      itemsToSend = [...cartItems];
+    }
+
+    if (itemsToSend.length === 0) {
+      alert('No new items added to send to kitchen!');
+      return;
+    }
+
+    const subtotal = itemsToSend.reduce((acc, i) => acc + (i.price * i.qty), 0);
+    const totalTax = itemsToSend.reduce((acc, i) => acc + ((i.price * i.qty * i.taxRate) / 100), 0);
+    const totalAmount = Math.round(subtotal + totalTax);
+
     const orderPayload = {
       displayId: `Table ${activeOrderTable.name}`,
       restaurantEmail: userEmail,
@@ -443,7 +469,7 @@ export default function TablesModule() {
       status: activeOrderId ? 'Running Addition' : 'New',
       subtotal: subtotal,
       totalAmount: totalAmount,
-      items: cartItems.map(i => ({
+      items: itemsToSend.map(i => ({
         itemName: i.name,
         quantity: i.qty,
         unitPrice: i.price,
@@ -471,6 +497,7 @@ export default function TablesModule() {
       const orderId = data.orderId || data.id || activeOrderId || `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
       
       localStorage.setItem(`table_order_id_${activeOrderTable.id}`, orderId);
+      localStorage.setItem(lastSentCartKey, JSON.stringify(cartItems));
       localStorage.setItem(`table_cart_${activeOrderTable.id}`, JSON.stringify(cartItems));
 
       const receiptData = {
@@ -480,9 +507,9 @@ export default function TablesModule() {
         captain: activeOrderTable.captain || 'Unassigned',
         orderType: orderType,
         items: [...cartItems],
-        subtotal: subtotal,
-        totalTax: totalTax,
-        totalAmount: totalAmount,
+        subtotal: cartItems.reduce((acc, i) => acc + (i.price * i.qty), 0),
+        totalTax: cartItems.reduce((acc, i) => acc + ((i.price * i.qty * i.taxRate) / 100), 0),
+        totalAmount: Math.round(cartItems.reduce((acc, i) => acc + (i.price * i.qty) + ((i.price * i.qty * i.taxRate) / 100), 0)),
         paymentMode: paymentMode,
         timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
       };
@@ -510,7 +537,6 @@ export default function TablesModule() {
     return receiptConfig[key] !== undefined ? receiptConfig[key] : defVal;
   };
 
-  // 🖨️ Unified Settings-Synced Receipt Print Handler
   const handlePrintReceipt = () => {
     if (!completedOrderReceipt) return;
     
@@ -734,14 +760,8 @@ export default function TablesModule() {
               </div>
             )}
 
+            {/* 💳 Split Payment button placed BEFORE Send KOT button */}
             <div className="tb-pay-col">
-              <button 
-                onClick={() => handleSendKOT('Cash/Online')}
-                disabled={cartItems.length === 0}
-                className="tb-kot-btn"
-              >
-                🖨️ Send KOT to Kitchen & Show Receipt
-              </button>
               <button 
                 onClick={() => {
                   setCashAmount('');
@@ -752,6 +772,13 @@ export default function TablesModule() {
                 className="tb-split-btn"
               >
                 💳 Split Cash & Online Checkout
+              </button>
+              <button 
+                onClick={() => handleSendKOT('Cash/Online')}
+                disabled={cartItems.length === 0}
+                className="tb-kot-btn"
+              >
+                🖨️ Send KOT to Kitchen & Show Receipt
               </button>
             </div>
           </div>
