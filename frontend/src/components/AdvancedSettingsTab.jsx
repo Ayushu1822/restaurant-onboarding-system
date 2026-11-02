@@ -508,8 +508,8 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
   const [sound, setSound] = useState(getSoundSettings());
   const [soundMsg, setSoundMsg] = useState(null);
 
-  /* ---------- 4. SECURITY (Direct DB Password Update without OTP) ---------- */
-  const [pw, setPw] = useState({ next: '', confirm: '' });
+  /* ---------- 4. SECURITY (Includes Current Password Verification) ---------- */
+  const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState(null);
 
@@ -595,8 +595,9 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
     setSoundMsg({ type: 'ok', text: 'Sound preference saved on this device.' });
   };
 
-  /* ----- Direct Password Change (No OTP) ----- */
+  /* ----- Password Change with Current Password Verification ----- */
   const savePassword = async () => {
+    if (!pw.current) return setPwMsg({ type: 'error', text: 'Please enter your current (previous) password.' });
     if (!pw.next || pw.next.length < 6) return setPwMsg({ type: 'error', text: 'New password must be at least 6 characters long.' });
     if (pw.next !== pw.confirm) return setPwMsg({ type: 'error', text: 'New passwords do not match.' });
     
@@ -606,26 +607,24 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
       const userEmail = localStorage.getItem('userEmail') || '';
       if (!userEmail) throw new Error('No logged-in user email found.');
 
-      // Direct Backend DB Update Call without OTP verification
+      // Backend call sending current password for verification + new password
       const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/update-password`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: userEmail,
+          currentPassword: pw.current,
           newPassword: pw.next
         })
       });
 
       if (!res.ok) {
-        if (onChangePassword) {
-          await onChangePassword({ newPassword: pw.next });
-        } else {
-          throw new Error('Failed to update password in database.');
-        }
+        const errorText = await res.text();
+        throw new Error(errorText || 'Failed to update password. Check your current password.');
       }
 
-      setPw({ next: '', confirm: '' });
-      setPwMsg({ type: 'ok', text: '✅ Password successfully updated in database!' });
+      setPw({ current: '', next: '', confirm: '' });
+      setPwMsg({ type: 'ok', text: '✅ Password successfully verified and updated!' });
     } catch (e) {
       setPwMsg({ type: 'error', text: e?.message || 'Could not update password.' });
     } finally {
@@ -810,10 +809,11 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
           <Msg msg={soundMsg} />
         </SectionCard>
 
-        {/* ===== 4. SECURITY (Direct DB Password Update without OTP) ===== */}
+        {/* ===== 4. SECURITY (Current Password Verification + New Password) ===== */}
         <div style={{ maxWidth: '760px' }}>
           <div style={{ fontSize: '13px', fontWeight: '950', color: '#0f172a', marginBottom: '8px' }}>Security & Password</div>
           <div style={card}>
+            <PasswordField label="Current (Previous) Password" value={pw.current} autoComplete="current-password" onChange={(v) => setPw({ ...pw, current: v })} />
             <PasswordField label="New Password" value={pw.next} autoComplete="new-password" onChange={(v) => setPw({ ...pw, next: v })} />
             <PasswordField label="Re-enter New Password" value={pw.confirm} autoComplete="new-password" onChange={(v) => setPw({ ...pw, confirm: v })} />
             <button
@@ -832,7 +832,7 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
                 cursor: pwSaving ? 'not-allowed' : 'pointer'
               }}
             >
-              {pwSaving ? 'Updating...' : 'Update Password in Database'}
+              {pwSaving ? 'Verifying & Updating...' : 'Verify & Update Password'}
             </button>
             <Msg msg={pwMsg} />
           </div>
