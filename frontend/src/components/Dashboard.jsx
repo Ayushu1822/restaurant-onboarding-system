@@ -1054,7 +1054,7 @@ export default function Dashboard({ user, onLogout }) {
   .dashRoot .infoRow.addr { grid-column: 1 / -1; }
 }
 @media (max-height: 700px) {
-  .dashRoot .step span { display: none; }
+  .dashRoot .step:not(.now) span { display: none; }
   .dashRoot .bar { margin-bottom: 0; }
   .dashRoot .sumRow { display: none; }
 }
@@ -1076,6 +1076,40 @@ export default function Dashboard({ user, onLogout }) {
 @media (prefers-reduced-motion: reduce) {
   .dashRoot .prepareButton::after, .dashRoot .liveDot, .dashRoot .emptyIcon, .dashRoot .step.now i, .dashRoot .customerRequest { animation: none !important; }
 }
+
+/* ================= v4: single header row, scrolling bill, live dots ================= */
+@keyframes dBlink { 0%, 100% { opacity: 1; } 50% { opacity: .15; } }
+
+/* One merged header row: title + live, pills, all 5 status tabs, search/refresh */
+.dashRoot .ordersBar { flex-wrap: wrap; justify-content: flex-start; gap: 10px 16px; padding: 12px 18px !important; border-bottom: 2px solid #99f6e4; background: linear-gradient(180deg, #fff, #f0fdfa); }
+.dashRoot .ordersBar h1 { display: flex; align-items: center; white-space: nowrap; }
+.dashRoot .liveDot { animation: dBlink 1.1s ease-in-out infinite, dLive 1.8s infinite; }
+.dashRoot .liveTag { font-style: normal; margin-left: 10px; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 900; letter-spacing: .08em; color: #047857; background: #d1fae5; border: 1px solid #6ee7b7; }
+.dashRoot .ordersBar .statusTabs { flex: 1 1 auto; flex-wrap: wrap; overflow: visible !important; width: auto !important; padding: 0; justify-content: center; }
+.dashRoot .ordersBar .orderTools { width: auto !important; margin-left: auto; }
+@media (max-width: 950px) {
+  .dashRoot .ordersBar .statusTabs { flex: 1 1 100%; order: 3; justify-content: flex-start; }
+  .dashRoot .ordersBar .orderTools { order: 2; }
+}
+
+/* Profile "active" dot */
+.dashRoot .profileInitials { position: relative; }
+.dashRoot .activeDot { position: absolute; right: -3px; bottom: -3px; width: 10px; height: 10px; border-radius: 50%; background: #22c55e; border: 2px solid #052d22; animation: dBlink 1.4s ease-in-out infinite, dLive 2s infinite; }
+
+/* Selected order: pinned head + tracker, scrolling body, pinned totals + button */
+.dashRoot .orderDetailCard { border: 2px solid #5eead4 !important; border-top: 4px solid var(--st) !important; box-shadow: 0 14px 34px rgba(15,23,42,.12), 0 0 0 4px rgba(20,184,166,.10), 0 0 22px rgba(20,184,166,.18) !important; }
+.dashRoot .orderDetailCard > .billBody { flex: 1 1 0; min-height: 0; flex-shrink: 1; overflow-y: auto; overscroll-behavior: contain; padding-bottom: var(--p); scrollbar-width: thin; scrollbar-color: #2dd4bf #f0fdfa; }
+.dashRoot .billBody::-webkit-scrollbar { width: 8px; }
+.dashRoot .billBody::-webkit-scrollbar-thumb { background: #2dd4bf; border-radius: 8px; }
+.dashRoot .billBody::-webkit-scrollbar-track { background: #f0fdfa; }
+.dashRoot .billBody .detailItems { flex: none !important; overflow: visible !important; min-height: 0; }
+.dashRoot .billFoot { flex: 0 0 auto; border-top: 1px solid #e2e8f0; background: #fff; box-shadow: 0 -8px 16px rgba(15,23,42,.06); }
+.dashRoot .billFoot .orderTotals { margin-top: 0 !important; border-top: 0; }
+@media (max-width: 680px) {
+  .dashRoot .ordersBar { flex-direction: row !important; align-items: center !important; }
+  .dashRoot .orderDetailCard { overflow: hidden; }
+  .dashRoot .detailPanelColumn { min-height: 80dvh !important; }
+}
       `}</style>
 
       {/* Mobile drawer overlay */}
@@ -1086,14 +1120,6 @@ export default function Dashboard({ user, onLogout }) {
         <button type="button" className="sidebarToggle" aria-label={isNavExpanded ? 'Collapse navigation' : 'Expand navigation'} aria-expanded={isNavExpanded} onClick={() => setIsNavExpanded(expanded => !expanded)}>
           <span></span><span></span><span></span>
         </button>
-        <div style={styles.brandBox}>
-          <span style={styles.logoIcon}>🍽</span>
-          <div>
-            <div style={styles.brandName}>FOODOS</div>
-            <div style={styles.brandSub}>RESTAURANT POS</div>
-          </div>
-        </div>
-
         <ul className="sidebarNavLinks" style={styles.navLinks}>
           {['Online Orders', 'Counter POS', 'Tables', 'Kitchen', 'Menu', 'Reports', 'Promotions', 'Customers', 'Complaints', 'Gallery', 'Settings'].map((tab) => {
             const isActive = activeTab === tab;
@@ -1130,7 +1156,7 @@ export default function Dashboard({ user, onLogout }) {
               <span>♧</span> {alertsEnabled ? 'Alerts enabled' : 'Enable alerts'}
             </button>
             <button className="profileButton" onClick={() => { setShowProfileModal(true); setIsEditingProfile(false); }}>
-              <span className="profileInitials">K6</span>
+              <span className="profileInitials">K6<i className="activeDot" title="Profile active" /></span>
               <span className="profileName"><strong>{profileData.ownerName || 'Admin'}</strong><small>Admin</small></span>
               <span>⌄</span>
             </button>
@@ -1164,53 +1190,36 @@ export default function Dashboard({ user, onLogout }) {
         {/* Dynamic Module Router */}
         {activeTab === 'Online Orders' && (
           <div className="moduleFade" style={styles.onlineOrdersContainer}>
-            <div className="ordersHeading">
-              <h1><span className="liveDot" />Online orders</h1>
-              <div className="availability"><span>Available <b>{orders.filter(o => !['Picked Up', 'Completed'].includes(o.status)).length}</b></span><span>·</span><span>Paused <b className="pausedPill">{pausedCount}</b></span></div>
-            </div>
-
-            <div className="sumRow">
-              {[
-                ['New', '🆕', '#0284c7', countByStatus('New')],
-                ['Preparing', '🍳', '#ea580c', countByStatus('Preparing')],
-                ['Ready', '📦', '#7c3aed', countByStatus('Ready')],
-                ['Active value', '₹', '#d97706', '₹' + Math.round(activeValue).toLocaleString('en-IN')]
-              ].map(([label, icon, c, val]) => (
-                <div className="sumCard" key={label} style={{ '--c': c }}>
-                  <span className="sumIcon">{icon}</span>
-                  <div><b>{val}</b><small>{label}</small></div>
-                </div>
-              ))}
+            <div className="ordersHeading ordersBar">
+              <h1><span className="liveDot" />Online orders<em className="liveTag">LIVE</em></h1>
+              <div className="availability"><span>Available <b>{orders.filter(o => !['Picked Up', 'Completed'].includes(o.status)).length}</b></span><span>·</span><span>Paused <b className="pausedPill">{pausedCount}</b></span><span>·</span><span>Value <b>₹{Math.round(activeValue).toLocaleString('en-IN')}</b></span></div>
+              <div className="statusTabs" role="tablist">
+                {orderStatusTabs.map(status => (
+                  <button
+                    key={status}
+                    type="button"
+                    role="tab"
+                    aria-selected={statusFilter === status}
+                    className={`statusTab${statusFilter === status ? ' selected' : ''}`}
+                    onClick={() => {
+                      setStatusFilter(status);
+                      const matchingOrders = orders.filter(order => order.status.toLowerCase() === status.toLowerCase());
+                      if (matchingOrders.length > 0) setSelectedOrder(matchingOrders[0]);
+                    }}
+                  >
+                    <i>{STATUS_ICONS[status]}</i>{status} <span className="cnt" key={countByStatus(status)}>{countByStatus(status)}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="orderTools">
+                <button title="Refresh orders" onClick={() => { setLoadingOrders(true); setRefreshTick(tick => tick + 1); }}>↻</button>
+                <label className="searchOrders"><span>⌕</span><input value={orderSearch} onChange={event => setOrderSearch(event.target.value)} placeholder="Search orders" /></label>
+                <button className="managePaused" onClick={() => setActiveTab('Menu')}>Manage Paused Items <b>{pausedCount}</b></button>
+              </div>
             </div>
 
             <div className="splitViewWrapper" style={styles.splitViewWrapper}>
               <div className="masterListColumn" style={styles.masterListColumn}>
-                <div className="orderToolbar">
-                  <div className="statusTabs" role="tablist">
-                    {orderStatusTabs.map(status => (
-                      <button
-                        key={status}
-                        type="button"
-                        role="tab"
-                        aria-selected={statusFilter === status}
-                        className={`statusTab${statusFilter === status ? ' selected' : ''}`}
-                        onClick={() => {
-                          setStatusFilter(status);
-                          const matchingOrders = orders.filter(order => order.status.toLowerCase() === status.toLowerCase());
-                          if (matchingOrders.length > 0) setSelectedOrder(matchingOrders[0]);
-                        }}
-                      >
-                        <i>{STATUS_ICONS[status]}</i>{status} <span className="cnt" key={countByStatus(status)}>{countByStatus(status)}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="orderTools">
-                    <button title="Refresh orders" onClick={() => { setLoadingOrders(true); setRefreshTick(tick => tick + 1); }}>↻</button>
-                    <label className="searchOrders"><span>⌕</span><input value={orderSearch} onChange={event => setOrderSearch(event.target.value)} placeholder="Search orders" /></label>
-                    <button className="managePaused" onClick={() => setActiveTab('Menu')}>Manage Paused Items <b>{pausedCount}</b></button>
-                  </div>
-                </div>
-                
                 <div className="scrollCards" style={styles.scrollableCards}>
                   {loadingOrders ? (
                     <>{[0, 1, 2].map(i => <div key={i} className="skeleton" />)}</>
@@ -1283,7 +1292,6 @@ export default function Dashboard({ user, onLogout }) {
                             <h2>{selectedOrder.customer}</h2>
                             <div className="sub">{selectedOrder.id}</div>
                           </div>
-                          <span className={`orderStatus${selectedOrder.status === 'New' ? ' isNew' : ''}`} style={styles.statusBadgeSmall(selectedOrder.status)}>{selectedOrder.status}</span>
                         </div>
 
                         <div className="tracker">
@@ -1301,6 +1309,7 @@ export default function Dashboard({ user, onLogout }) {
                           })}
                         </div>
 
+                        <div className="billBody">
                         <div className="infoGrid">
                           <a className="infoRow" href={`tel:${selectedOrder.phone}`}><i>📞</i><span>{selectedOrder.phone}</span></a>
                           <div className="infoRow"><i>🕒</i><span>{timeAgo(selectedOrder.timestamp, nowTick).text} · {selectedOrder.type} · {selectedOrder.channel}</span></div>
@@ -1345,6 +1354,9 @@ export default function Dashboard({ user, onLogout }) {
                           ))}
                         </div>
 
+                        </div>
+
+                        <div className="billFoot">
                         <div className="orderTotals">
                           <div><span>Subtotal</span><strong>₹{selectedOrder.subtotal.toFixed(2)}</strong></div>
                           <div><span>Tax (Mapped)</span><strong>₹{(selectedOrder.totalTax || (selectedOrder.subtotal * 0.05)).toFixed(2)}</strong></div>
@@ -1359,6 +1371,7 @@ export default function Dashboard({ user, onLogout }) {
                           ) : (
                             <span className="completedMessage">Order completed successfully ✓</span>
                           )}
+                        </div>
                         </div>
                       </div>
                     );
