@@ -45,7 +45,7 @@ const NAVIGATION_ICONS = {
 function NavigationIcon({ tab }) {
   const icon = NAVIGATION_ICONS[tab] || NAVIGATION_ICONS['Online Orders'];
   return (
-    <svg aria-hidden="true" className="navGlyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" className="navGlyph" style={{ '--glow': icon.color }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       {icon.paths.map(path => <path d={path} key={path} />)}
     </svg>
   );
@@ -55,7 +55,8 @@ export default function Dashboard({ user, onLogout }) {
   const loggedInEmail = user?.email || localStorage.getItem('userEmail') || 'novio@gmail.com';
 
   const [activeTab, setActiveTab] = useState('Online Orders');
-  const [isNavExpanded, setIsNavExpanded] = useState(true);
+  // UI: sidebar starts collapsed on phones
+  const [isNavExpanded, setIsNavExpanded] = useState(typeof window !== 'undefined' ? window.innerWidth > 680 : true);
   const [statusFilter, setStatusFilter] = useState('Accepted');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -588,7 +589,7 @@ export default function Dashboard({ user, onLogout }) {
   };
 
   return (
-    <div style={styles.container}>
+    <div className="dashRoot" style={styles.container}>
       <style>{`
         .dashboardSidebar { position: relative; transition: width .18s ease; background-color: #001e16 !important; border-right: 2px solid #0b3328; }
         .sidebarToggle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 36px; height: 36px; margin: 10px 0 8px 16px; padding: 0; border: 2px solid #164535; border-radius: 8px; background: #0b3328; cursor: pointer; flex: 0 0 auto; }
@@ -729,7 +730,190 @@ export default function Dashboard({ user, onLogout }) {
           #printable-thermal-receipt { position: fixed !important; left: 0 !important; top: 0 !important; width: 100% !important; max-width: 100% !important; box-shadow: none !important; border: none !important; background: #fff !important; margin: 0 !important; padding: 24px !important; z-index: 999999 !important; }
           #printable-thermal-receipt .orderNotesEditor { display: none !important; }
         }
+/* DashboardEnhance.css — import AFTER your other styles. Frontend only. */
+.dashRoot {
+  --sp-1: 8px; --sp-2: 12px; --sp-3: 16px; --sp-4: 24px;
+  --ease: cubic-bezier(.22, .8, .3, 1);
+  --shadow-sm: 0 1px 3px rgba(15,23,42,.06);
+  --shadow-md: 0 8px 22px rgba(15,23,42,.10);
+  height: 100vh; height: 100dvh !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- Keyframes ---------- */
+@keyframes dFadeUp   { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes dFadeIn   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dSlideLeft{ from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+@keyframes dSlideRight{from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+@keyframes dPop      { 0% { opacity: 0; transform: scale(.86) translateY(10px); } 70% { transform: scale(1.03); } 100% { opacity: 1; transform: none; } }
+@keyframes dToast    { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes dPulse    { 0% { box-shadow: 0 0 0 0 rgba(3,105,161,.45); } 70% { box-shadow: 0 0 0 9px rgba(3,105,161,0); } 100% { box-shadow: 0 0 0 0 rgba(3,105,161,0); } }
+@keyframes dRing     { 0%,100% { transform: rotate(0); } 15% { transform: rotate(16deg); } 30% { transform: rotate(-14deg); } 45% { transform: rotate(10deg); } 60% { transform: rotate(-6deg); } }
+@keyframes dShimmer  { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* ---------- Page load ---------- */
+.dashRoot .dashboardSidebar { animation: dSlideLeft .5s var(--ease) both; }
+.dashRoot .header           { animation: dFadeUp .5s var(--ease) .05s both; }
+.dashRoot .ordersHeading    { animation: dFadeUp .5s var(--ease) .12s both; }
+.dashRoot .orderToolbar     { animation: dFadeUp .5s var(--ease) .18s both; }
+.dashRoot .tablesBar        { animation: dFadeUp .5s var(--ease) .15s both; }
+.dashRoot .moduleFade       { animation: dFadeIn .35s var(--ease) both; }
+
+/* ---------- Global smoothness ---------- */
+.dashRoot button, .dashRoot li, .dashRoot a, .dashRoot input, .dashRoot textarea,
+.dashRoot .orderSummary, .dashRoot .statusTab, .dashRoot .tablesBar {
+  transition: transform .2s var(--ease), box-shadow .2s var(--ease), background-color .2s var(--ease),
+              border-color .2s var(--ease), color .2s var(--ease), opacity .2s var(--ease);
+}
+.dashRoot button:active { transform: scale(.96) !important; }
+.dashRoot :focus-visible { outline: 3px solid rgba(37,99,235,.45); outline-offset: 2px; }
+
+/* ---------- Sidebar ---------- */
+.dashRoot .dashboardSidebar { transition: width .3s var(--ease); }
+.dashRoot .navItem:hover { background: rgba(255,255,255,.08) !important; transform: translateX(3px); }
+.dashRoot .navItem:hover .navGlyph { transform: scale(1.18); color: #fff; }
+.dashRoot .navGlyph { transition: transform .2s var(--ease), color .2s; }
+.dashRoot .navLabel { animation: dFadeIn .3s ease both; }
+.dashRoot .sidebarToggle:hover { transform: scale(1.08); }
+
+/* ---------- Header ---------- */
+.dashRoot .headerActions { gap: var(--sp-2); }
+.dashRoot .alertButton:hover, .dashRoot .profileButton:hover { background: #0a3d2e; border-color: #22c55e; transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,.25); }
+.dashRoot .headerActions > button:last-child:hover { background: #fecaca; transform: translateY(-2px); }
+
+/* ---------- Tables bar ---------- */
+.dashRoot .tablesBar:hover { background: #e8eefb !important; transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+
+/* ---------- Order cards ---------- */
+.dashRoot .scrollCards { padding: var(--sp-1) 6px var(--sp-3) var(--sp-1) !important; gap: var(--sp-2) !important; }
+.dashRoot .orderSummary { animation: dFadeUp .45s var(--ease) both; }
+.dashRoot .orderSummary:hover { transform: translateY(-4px) scale(1.01); box-shadow: var(--shadow-md) !important; }
+.dashRoot .orderSummary.isSelected { background: #f5f9ff !important; box-shadow: 0 0 0 3px rgba(37,99,235,.15) !important; }
+.dashRoot .orderStatus.isNew { animation: dPulse 1.8s infinite; }
+
+/* ---------- Status tabs / tools ---------- */
+.dashRoot .statusTab:hover { transform: translateY(-2px); border-color: #2563eb; box-shadow: 0 4px 10px rgba(37,99,235,.15); }
+.dashRoot .statusTab.selected { transform: translateY(-1px); }
+.dashRoot .orderTools > button:hover, .dashRoot .detailPrintButton:hover { transform: translateY(-2px) rotate(8deg); box-shadow: var(--shadow-sm); }
+.dashRoot .searchOrders:focus-within { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+.dashRoot .searchOrders input { transition: width .3s var(--ease); }
+.dashRoot .searchOrders input:focus { width: 160px; }
+.dashRoot .statusTabs { scrollbar-width: none; }
+.dashRoot .statusTabs::-webkit-scrollbar { display: none; }
+
+/* ---------- Detail panel ---------- */
+.dashRoot .orderDetailCard { animation: dSlideRight .4s var(--ease) both; padding: var(--sp-4) !important; }
+.dashRoot .detailActionBar { margin: var(--sp-2) calc(var(--sp-4) * -1) calc(var(--sp-4) * -1) !important; padding: var(--sp-3) var(--sp-4) !important; }
+.dashRoot .detailItem { animation: dFadeUp .4s var(--ease) both; }
+.dashRoot .detailItem:nth-child(2) { animation-delay: .05s; } .dashRoot .detailItem:nth-child(3) { animation-delay: .1s; }
+.dashRoot .detailItem:nth-child(4) { animation-delay: .15s; } .dashRoot .detailItem:nth-child(n+5) { animation-delay: .2s; }
+.dashRoot .prepareButton:hover { transform: translateY(-2px); }
+.dashRoot .saveOrderNotesButton:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(5,150,105,.3); }
+.dashRoot .prepTimeControl button:hover { transform: scale(1.12); }
+.dashRoot .emptyDetail, .dashRoot .emptyOrders { animation: dFadeIn .4s ease both; }
+
+/* ---------- Loading skeleton ---------- */
+.dashRoot .skeleton {
+  height: 128px; border-radius: 12px; margin-bottom: var(--sp-2);
+  background: linear-gradient(90deg, #eef2f7 25%, #f8fafc 37%, #eef2f7 63%);
+  background-size: 400% 100%; animation: dShimmer 1.4s linear infinite;
+}
+
+/* ---------- Modals / popup / toast ---------- */
+.dashRoot .modalOverlay { animation: dFadeIn .25s ease both; padding: var(--sp-3); box-sizing: border-box; }
+.dashRoot .popupCard, .dashRoot .profileCard {
+  width: min(92vw, 460px) !important; max-height: 90dvh; overflow-y: auto; box-sizing: border-box;
+  animation: dPop .45s var(--ease) both;
+}
+.dashRoot .popupCard .bell { display: inline-block; font-size: 38px; margin-bottom: 8px; transform-origin: top center; animation: dRing 1.2s ease .3s 2; }
+.dashRoot .toast { animation: dToast .4s var(--ease) both; max-width: calc(100vw - 32px); }
+.dashRoot .profileRow:hover { background: #f1f5f9 !important; transform: translateX(3px); }
+
+/* ---------- Mobile drawer overlay ---------- */
+.dashRoot .navOverlay { display: none; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 950px) {
+  .dashRoot .ordersHeading { padding: var(--sp-3) var(--sp-3) var(--sp-2); }
+  .dashRoot .orderToolbar { gap: var(--sp-2); }
+  .dashRoot .orderTools { flex-wrap: wrap; }
+  .dashRoot .orderTools .managePaused { flex: 1 1 100%; justify-content: center; }
+}
+@media (max-width: 680px) {
+  .dashRoot .navOverlay { display: block; position: fixed; inset: 0; z-index: 900; background: rgba(2,12,9,.55); backdrop-filter: blur(3px); animation: dFadeIn .25s ease both; }
+  .dashRoot .dashboardSidebarExpanded { animation: dSlideLeft .3s var(--ease) both; }
+  .dashRoot .header { height: 58px !important; }
+  .dashRoot .ordersHeading { flex-direction: column; align-items: flex-start; gap: var(--sp-1); }
+  .dashRoot .splitViewWrapper { padding: 0 var(--sp-2) var(--sp-3) !important; gap: var(--sp-3) !important; }
+  .dashRoot .masterListColumn { flex: 0 0 auto !important; max-height: 60dvh; }
+  .dashRoot .detailPanelColumn { padding-top: var(--sp-3) !important; }
+  .dashRoot .orderDetailCard { padding: var(--sp-3) !important; }
+  .dashRoot .detailActionBar { margin: var(--sp-2) calc(var(--sp-3) * -1) calc(var(--sp-3) * -1) !important; padding: var(--sp-2) var(--sp-3) !important; }
+  .dashRoot .detailTopline { flex-direction: column; }
+  .dashRoot .statusTab, .dashRoot .orderTools > button, .dashRoot .searchOrders { min-height: 42px; }
+  .dashRoot .toast { left: 16px; right: 16px; bottom: 16px !important; }
+  .dashRoot .profileRow { flex-direction: column; align-items: flex-start !important; gap: 4px; }
+}
+@media (hover: none) {
+  .dashRoot .orderSummary:hover, .dashRoot .navItem:hover, .dashRoot .statusTab:hover { transform: none; }
+}
+
+/* ---------- Respect reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .dashRoot *, .dashRoot *::before, .dashRoot *::after { animation: none !important; transition: none !important; }
+}
+
+/* ================= GLOW EFFECTS ================= */
+@keyframes dGlow   { 0%,100% { filter: drop-shadow(0 0 3px var(--glow)); } 50% { filter: drop-shadow(0 0 9px var(--glow)) drop-shadow(0 0 16px var(--glow)); } }
+@keyframes dBox    { 0%,100% { box-shadow: 0 0 8px rgba(5,201,138,.45); } 50% { box-shadow: 0 0 20px rgba(5,201,138,.85); } }
+@keyframes dBadge  { 0%,100% { box-shadow: 0 0 0 0 rgba(52,211,153,.7); } 50% { box-shadow: 0 0 12px 3px rgba(52,211,153,.7); } }
+@keyframes dLogo   { 0%,100% { text-shadow: 0 0 6px rgba(240,79,80,.5); } 50% { text-shadow: 0 0 16px rgba(240,79,80,.95); } }
+
+/* Sidebar icons: each tab glows in its own colour (set via --glow) */
+.dashRoot .navItem .navGlyph { color: var(--glow, #91aaa0); opacity: .8; filter: drop-shadow(0 0 3px var(--glow)); animation: dGlow 3s ease-in-out infinite; }
+.dashRoot .navItem:hover .navGlyph { opacity: 1; transform: scale(1.2) rotate(-4deg); filter: drop-shadow(0 0 8px var(--glow)) drop-shadow(0 0 16px var(--glow)); animation: none; }
+.dashRoot .navItem:hover { background: rgba(255,255,255,.07) !important; box-shadow: inset 0 0 14px rgba(255,255,255,.05); }
+.dashRoot .navItem.navItemActive { box-shadow: 0 0 14px rgba(5,201,138,.6); animation: dBox 2.4s ease-in-out infinite; }
+.dashRoot .navItem.navItemActive .navGlyph { color: #003d2b; filter: none; animation: none; opacity: 1; }
+.dashRoot .navItem.navItemActive .navLabel { color: #003d2b; }
+.dashRoot .navBadge { animation: dBadge 1.8s ease-in-out infinite; }
+.dashRoot .sidebarToggle:hover { box-shadow: 0 0 14px rgba(34,197,94,.7); }
+.dashRoot .sidebarToggle span { transition: width .2s, background .2s; }
+.dashRoot .sidebarToggle:hover span { background: #22c55e; }
+
+/* Logo / brand */
+.dashRoot .topBrandMark { animation: dLogo 2.6s ease-in-out infinite; display: inline-block; }
+.dashRoot .topBrand strong { text-shadow: 0 0 10px rgba(52,211,153,.35); }
+.dashRoot .brandBox span { filter: drop-shadow(0 0 8px rgba(52,211,153,.6)); }
+
+/* Header */
+.dashRoot .alertButton:hover, .dashRoot .profileButton:hover { box-shadow: 0 0 16px rgba(34,197,94,.55); }
+.dashRoot .profileInitials { box-shadow: 0 0 10px rgba(52,211,153,.5); }
+.dashRoot .profileButton:hover .profileInitials { box-shadow: 0 0 16px rgba(52,211,153,.9); }
+.dashRoot .headerActions > button:last-child:hover { box-shadow: 0 0 16px rgba(248,113,113,.6); }
+
+/* Orders */
+.dashRoot .statusTab.selected { box-shadow: 0 0 16px rgba(37,99,235,.55); }
+.dashRoot .statusTab:hover { box-shadow: 0 0 12px rgba(37,99,235,.35); }
+.dashRoot .orderSummary:hover, .dashRoot .orderSummary.isSelected { box-shadow: 0 0 0 1px #2563eb, 0 8px 24px rgba(37,99,235,.28) !important; }
+.dashRoot .orderStatus.isNew { box-shadow: 0 0 10px rgba(3,105,161,.5); }
+.dashRoot .tablesBar:hover { box-shadow: 0 0 14px rgba(37,99,235,.25); }
+.dashRoot .prepareButton { box-shadow: 0 0 14px rgba(239,68,68,.45); }
+.dashRoot .prepareButton:hover { box-shadow: 0 0 24px rgba(239,68,68,.8); }
+.dashRoot .saveOrderNotesButton:hover { box-shadow: 0 0 16px rgba(5,150,105,.6); }
+.dashRoot .orderTools > button:hover, .dashRoot .detailPrintButton:hover { box-shadow: 0 0 12px rgba(37,99,235,.4); }
+.dashRoot .primaryModalBtn:hover { box-shadow: 0 0 16px rgba(5,150,105,.6); }
+.dashRoot .popupCard .bell { filter: drop-shadow(0 0 10px rgba(250,204,21,.8)); }
+.dashRoot .completedMessage { box-shadow: 0 0 12px rgba(5,150,105,.25); }
+
+@media (prefers-reduced-motion: reduce) {
+  .dashRoot .navItem .navGlyph, .dashRoot .navItem.navItemActive, .dashRoot .navBadge, .dashRoot .topBrandMark { animation: none !important; }
+}
+
       `}</style>
+
+      {/* Mobile drawer overlay */}
+      {isNavExpanded && <div className="navOverlay" onClick={() => setIsNavExpanded(false)} />}
 
       {/* Sidebar */}
       <div className={`dashboardSidebar${isNavExpanded ? ' dashboardSidebarExpanded' : ''}`} style={{ ...styles.sidebar, width: isNavExpanded ? '230px' : '56px' }}>
@@ -751,7 +935,7 @@ export default function Dashboard({ user, onLogout }) {
             return (
               <li 
                 key={tab}
-                className="navItem"
+                className={`navItem${isActive ? ' navItemActive' : ''}`}
                 style={{ ...styles.navItem, ...(isActive ? styles.navItemActive : {}), ...(isHovered && !isActive ? styles.navItemHover : {}) }}
                 onClick={() => setActiveTab(tab)}
                 onMouseEnter={() => setHoveredTab(tab)}
@@ -770,7 +954,7 @@ export default function Dashboard({ user, onLogout }) {
 
       {/* Main Content */}
       <div style={styles.mainContent}>
-        <div style={styles.header}>
+        <div className="header" style={styles.header}>
           <div className="topBrand">
             <span className="topBrandMark">🍽</span>
             <div><strong>FOODOS</strong><small>Restaurant POS System</small></div>
@@ -792,7 +976,7 @@ export default function Dashboard({ user, onLogout }) {
         </div>
 
         {/* Tables Status Bar */}
-        <div style={styles.tablesStatusBar} onClick={() => setActiveTab('Tables')}>
+        <div className="tablesBar" style={styles.tablesStatusBar} onClick={() => setActiveTab('Tables')}>
           <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800', color: '#1e293b', fontSize: '12px'}}>
             <span>♜</span>
             <span>Tables</span>
@@ -813,14 +997,14 @@ export default function Dashboard({ user, onLogout }) {
 
         {/* Dynamic Module Router */}
         {activeTab === 'Online Orders' && (
-          <div style={styles.onlineOrdersContainer}>
+          <div className="moduleFade" style={styles.onlineOrdersContainer}>
             <div className="ordersHeading">
               <h1>Online orders</h1>
               <div className="availability"><span>Available <b>{orders.filter(o => !['Picked Up', 'Completed'].includes(o.status)).length}</b></span><span>·</span><span>Paused <b className="pausedPill">{pausedCount}</b></span></div>
             </div>
 
-            <div style={styles.splitViewWrapper}>
-              <div style={styles.masterListColumn}>
+            <div className="splitViewWrapper" style={styles.splitViewWrapper}>
+              <div className="masterListColumn" style={styles.masterListColumn}>
                 <div className="orderToolbar">
                   <div className="statusTabs" role="tablist">
                     {orderStatusTabs.map(status => (
@@ -847,20 +1031,20 @@ export default function Dashboard({ user, onLogout }) {
                   </div>
                 </div>
                 
-                <div style={styles.scrollableCards}>
+                <div className="scrollCards" style={styles.scrollableCards}>
                   {loadingOrders ? (
-                    <div style={{padding: '30px', textAlign: 'center', color: '#64748b', fontWeight: '700', fontSize: '13px'}}>Loading live database orders...</div>
+                    <>{[0, 1, 2].map(i => <div key={i} className="skeleton" />)}</>
                   ) : filteredOrders.length === 0 ? (
                     <div className="emptyOrders">{orders.length === 0 ? 'No online orders yet. New orders will appear here.' : 'No orders match this status or search.'}</div>
                   ) : (
-                    filteredOrders.map(order => {
+                    filteredOrders.map((order, idx) => {
                       const isSelected = selectedOrder?.orderId === order.orderId;
                       const isHovered = hoveredCardId === order.orderId;
                       return (
                         <div 
                           key={order.orderId || order.id} 
-                          className="orderSummary"
-                          style={{ ...styles.orderSummaryCard, borderColor: isSelected || isHovered ? '#2563eb' : '#cbd5e1', backgroundColor: '#fff' }}
+                          className={`orderSummary${isSelected ? ' isSelected' : ''}`}
+                          style={{ ...styles.orderSummaryCard, animationDelay: `${Math.min(idx, 8) * 50}ms`, borderColor: isSelected || isHovered ? '#2563eb' : '#cbd5e1', backgroundColor: '#fff' }}
                           onClick={() => setSelectedOrder(order)}
                           onMouseEnter={() => setHoveredCardId(order.orderId)}
                           onMouseLeave={() => setHoveredCardId(null)}
@@ -870,7 +1054,7 @@ export default function Dashboard({ user, onLogout }) {
                               <strong style={{fontSize: '16px', color: '#0f172a', fontWeight: '900'}}>{order.customer}</strong>
                               <div style={{fontSize: '12px', color: '#64748b', fontWeight: '800'}}>{order.id}</div>
                             </div>
-                            <span className="orderStatus" style={styles.statusBadgeSmall(order.status)}>{order.status}</span>
+                            <span className={`orderStatus${order.status === 'New' ? ' isNew' : ''}`} style={styles.statusBadgeSmall(order.status)}>{order.status}</span>
                           </div>
 
                           <div style={{fontSize: '12px', color: '#64748b', marginBottom: '10px', fontWeight: '700'}}>
@@ -878,8 +1062,8 @@ export default function Dashboard({ user, onLogout }) {
                           </div>
 
                           <div className="orderSummaryItems">
-                            {order.items.slice(0, 2).map((it, idx) => (
-                              <div key={idx}><span>{it.name}</span> <strong>×{it.qty}</strong></div>
+                            {order.items.slice(0, 2).map((it, i2) => (
+                              <div key={i2}><span>{it.name}</span> <strong>×{it.qty}</strong></div>
                             ))}
                             {order.items.length > 2 && <small>+ {order.items.length - 2} more</small>}
                           </div>
@@ -894,7 +1078,7 @@ export default function Dashboard({ user, onLogout }) {
                 </div>
               </div>
 
-              <div style={styles.detailPanelColumn}>
+              <div className="detailPanelColumn" style={styles.detailPanelColumn}>
                 <div className="detailPanelHeading">
                   <div style={styles.listHeaderTitle}>Selected order</div>
                   {selectedOrder && (
@@ -903,7 +1087,7 @@ export default function Dashboard({ user, onLogout }) {
                 </div>
 
                 {selectedOrder ? (
-                  <div className="orderDetailCard" id="printable-thermal-receipt">
+                  <div className="orderDetailCard" key={selectedOrder.orderId} id="printable-thermal-receipt">
                     <div className="detailTopline">
                       <div>
                         <h2>{selectedOrder.customer}</h2>
@@ -912,7 +1096,7 @@ export default function Dashboard({ user, onLogout }) {
                           <span className="channelTag">◉ {selectedOrder.channel}</span>
                         </div>
                       </div>
-                      <span className="orderStatus" style={styles.statusBadgeSmall(selectedOrder.status)}>{selectedOrder.status}</span>
+                      <span className={`orderStatus${selectedOrder.status === 'New' ? ' isNew' : ''}`} style={styles.statusBadgeSmall(selectedOrder.status)}>{selectedOrder.status}</span>
                     </div>
 
                     <div className="detailOrderNumber">
@@ -985,23 +1169,27 @@ export default function Dashboard({ user, onLogout }) {
           </div>
         )}
 
-        {activeTab === 'Counter POS' && <CounterPOS />}
-        {activeTab === 'Tables' && <TablesModule />}
-        {activeTab === 'Kitchen' && <KitchenModule />}
-        {activeTab === 'Menu' && <MenuModule />}
-        {activeTab === 'Reports' && <ReportsModule orders={orders} />}
-        {activeTab === 'Customers' && <CustomersModule />}
-        {activeTab === 'Complaints' && <ComplaintsModule />}
-        {activeTab === 'Promotions' && <PromotionsModule />}
-        {activeTab === 'Gallery' && <GalleryModule restaurantId={restaurantId} />}
-        {activeTab === 'Settings' && <SettingsModule />}
+        {activeTab !== 'Online Orders' && (
+          <div className="moduleFade" key={activeTab} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, overflow: 'auto' }}>
+            {activeTab === 'Counter POS' && <CounterPOS />}
+            {activeTab === 'Tables' && <TablesModule />}
+            {activeTab === 'Kitchen' && <KitchenModule />}
+            {activeTab === 'Menu' && <MenuModule />}
+            {activeTab === 'Reports' && <ReportsModule orders={orders} />}
+            {activeTab === 'Customers' && <CustomersModule />}
+            {activeTab === 'Complaints' && <ComplaintsModule />}
+            {activeTab === 'Promotions' && <PromotionsModule />}
+            {activeTab === 'Gallery' && <GalleryModule restaurantId={restaurantId} />}
+            {activeTab === 'Settings' && <SettingsModule />}
+          </div>
+        )}
       </div>
 
       {/* 🔔 Custom Professional New Order Popup Modal */}
       {newOrderPopup && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.popupCard}>
-            <div style={{fontSize: '38px', marginBottom: '8px'}}>🔔</div>
+        <div className="modalOverlay" style={styles.modalOverlay}>
+          <div className="popupCard" style={styles.popupCard}>
+            <div className="bell">🔔</div>
             <h3 style={{margin: '0 0 6px 0', fontSize: '20px', fontWeight: '950', color: '#0f172a'}}>New Online Order Received!</h3>
             <p style={{margin: '0 0 16px 0', fontSize: '13px', color: '#64748b', fontWeight: '800'}}>
               Order <b>{newOrderPopup.id}</b> from <b>{newOrderPopup.customer}</b> (₹{newOrderPopup.total})
@@ -1013,6 +1201,7 @@ export default function Dashboard({ user, onLogout }) {
                   setActiveTab('Online Orders');
                   setNewOrderPopup(null);
                 }} 
+                className="primaryModalBtn"
                 style={styles.primaryModalBtn}
               >
                 View Order
@@ -1030,7 +1219,7 @@ export default function Dashboard({ user, onLogout }) {
 
       {/* 🟢 Custom Toast Banner */}
       {toastMessage && (
-        <div style={{
+        <div className="toast" style={{
           position: 'fixed', bottom: '24px', right: '24px', zIndex: 4000,
           backgroundColor: toastMessage.type === 'error' ? '#fee2e2' : '#ecfdf5',
           color: toastMessage.type === 'error' ? '#991b1b' : '#065f46',
@@ -1044,8 +1233,8 @@ export default function Dashboard({ user, onLogout }) {
 
       {/* Modern Styled Profile Modal */}
       {showProfileModal && (
-        <div style={styles.modalOverlay} onClick={() => setShowProfileModal(false)}>
-          <div style={styles.modernProfileCard} onClick={(e) => e.stopPropagation()}>
+        <div className="modalOverlay" style={styles.modalOverlay} onClick={() => setShowProfileModal(false)}>
+          <div className="profileCard" style={styles.modernProfileCard} onClick={(e) => e.stopPropagation()}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1.5px solid #f1f5f9', paddingBottom: '14px'}}>
               <div>
                 <h3 style={{margin: 0, color: '#0f172a', fontSize: '18px', fontWeight: '950'}}>Admin Profile</h3>
@@ -1062,14 +1251,14 @@ export default function Dashboard({ user, onLogout }) {
             
             {!isEditingProfile ? (
               <div style={{display: 'flex', flexDirection: 'column', gap: '14px'}}>
-                <div style={styles.profileRow}><span>Business Name</span> <strong>{profileData.businessName}</strong></div>
-                <div style={styles.profileRow}><span>Owner / Admin Name</span> <strong style={{color: '#059669'}}>{profileData.ownerName}</strong></div>
-                <div style={styles.profileRow}><span>Login Email</span> <strong>{profileData.email}</strong></div>
-                <div style={styles.profileRow}><span>Phone Number</span> <strong>{profileData.phone}</strong></div>
-                <div style={styles.profileRow}><span>WhatsApp Number</span> <strong>{profileData.whatsappNumber}</strong></div>
+                <div className="profileRow" style={styles.profileRow}><span>Business Name</span> <strong>{profileData.businessName}</strong></div>
+                <div className="profileRow" style={styles.profileRow}><span>Owner / Admin Name</span> <strong style={{color: '#059669'}}>{profileData.ownerName}</strong></div>
+                <div className="profileRow" style={styles.profileRow}><span>Login Email</span> <strong>{profileData.email}</strong></div>
+                <div className="profileRow" style={styles.profileRow}><span>Phone Number</span> <strong>{profileData.phone}</strong></div>
+                <div className="profileRow" style={styles.profileRow}><span>WhatsApp Number</span> <strong>{profileData.whatsappNumber}</strong></div>
 
                 <div style={{display: 'flex', gap: '12px', marginTop: '16px'}}>
-                  <button onClick={() => setIsEditingProfile(true)} style={styles.primaryModalBtn}>Edit Profile</button>
+                  <button onClick={() => setIsEditingProfile(true)} className="primaryModalBtn" style={styles.primaryModalBtn}>Edit Profile</button>
                   <button onClick={() => setShowProfileModal(false)} style={styles.secondaryModalBtn}>Close</button>
                 </div>
               </div>
@@ -1107,7 +1296,7 @@ export default function Dashboard({ user, onLogout }) {
                 />
 
                 <div style={{display: 'flex', gap: '10px', marginTop: '16px'}}>
-                  <button type="submit" style={styles.primaryModalBtn}>Save to Database</button>
+                  <button type="submit" className="primaryModalBtn" style={styles.primaryModalBtn}>Save to Database</button>
                   <button type="button" onClick={() => setIsEditingProfile(false)} style={styles.secondaryModalBtn}>Cancel</button>
                 </div>
               </form>
