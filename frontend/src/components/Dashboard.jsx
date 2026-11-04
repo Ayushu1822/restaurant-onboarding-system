@@ -42,6 +42,23 @@ const NAVIGATION_ICONS = {
   Settings: { color: '#b5bec8', paths: ['M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z', 'M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.5 2.6-.2-.1a1.7 1.7 0 0 0-1.8.4l-.1.1h-3l-.1-.2a1.7 1.7 0 0 0-1.4-1.2h-.2l-2.6-1.5.1-.2a1.7 1.7 0 0 0-.4-1.8l-.1-.1v-3l.2-.1a1.7 1.7 0 0 0 1.2-1.4v-.2l1.5-2.6.2.1a1.7 1.7 0 0 0 1.8-.4l.1-.1h3l.1.2a1.7 1.7 0 0 0 1.4 1.2h.2l2.6 1.5-.1.2a1.7 1.7 0 0 0 .4 1.8l.1.1v3l-.2.1a1.7 1.7 0 0 0-1.2 1.4Z'] }
 };
 
+const STEPS = ['New', 'Accepted', 'Preparing', 'Ready', 'Picked Up'];
+const STATUS_COLORS = { New: '#0284c7', Accepted: '#d97706', Preparing: '#ea580c', Ready: '#7c3aed', 'Picked Up': '#16a34a', Completed: '#16a34a' };
+const STATUS_ICONS = { New: '🆕', Accepted: '👍', Preparing: '🍳', Ready: '📦', 'Picked Up': '✅' };
+const NEXT_STATUS = { New: 'Accepted', Accepted: 'Preparing', Preparing: 'Ready', Ready: 'Picked Up' };
+
+// "5 min ago" label. Falls back to the original text if the timestamp can't be parsed.
+const timeAgo = (value, now) => {
+  const t = Date.parse(value);
+  if (Number.isNaN(t)) return { text: String(value || ''), mins: null };
+  const mins = Math.floor((now - t) / 60000);
+  if (mins < 0 || mins > 60 * 24 * 7) return { text: String(value || ''), mins: null };
+  if (mins < 1) return { text: 'Just now', mins };
+  if (mins < 60) return { text: `${mins} min ago`, mins };
+  if (mins < 1440) return { text: `${Math.floor(mins / 60)} hr ago`, mins };
+  return { text: `${Math.floor(mins / 1440)} d ago`, mins };
+};
+
 function NavigationIcon({ tab }) {
   const icon = NAVIGATION_ICONS[tab] || NAVIGATION_ICONS['Online Orders'];
   return (
@@ -588,6 +605,16 @@ export default function Dashboard({ user, onLogout }) {
     }
   };
 
+  // UI-only helpers (no backend calls)
+  const [nowTick, setNowTick] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 30000);
+    return () => clearInterval(t);
+  }, []);
+  const countByStatus = (s) => orders.filter(o => o.status.toLowerCase() === s.toLowerCase()).length;
+  const activeValue = orders.filter(o => !['Picked Up', 'Completed'].includes(o.status)).reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+  const tablePct = tableStats.total ? Math.round((tableStats.occupied / tableStats.total) * 100) : 0;
+
   return (
     <div className="dashRoot" style={styles.container}>
       <style>{`
@@ -635,7 +662,7 @@ export default function Dashboard({ user, onLogout }) {
         .orderTools { flex-shrink: 0; }
         .statusTab { white-space: nowrap; padding: 8px 14px; background: #fff; border: 2px solid #cbd5e1; border-radius: 24px; font-size: 12px; font-weight: 800; color: #334155; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s; }
         .statusTab span { margin-left: 4px; color: #64748b; font-weight: 900; }
-        .statusTab.selected { color: #fff; background: #2563eb; border-color: #1d4ed8; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25); }
+        .statusTab.selected { color: #fff; background: #0d9488; border-color: #0f766e; box-shadow: 0 4px 10px rgba(13, 148, 136, 0.25); }
         .statusTab.selected span { color: #fff; }
         .orderTools > button, .searchOrders { height: 38px; border: 2px solid #cbd5e1; border-radius: 10px; background: #fff; color: #0f172a; font-weight: 700; }
         .orderTools > button { width: 38px; font-size: 18px; cursor: pointer; display: grid; place-items: center; }
@@ -645,42 +672,42 @@ export default function Dashboard({ user, onLogout }) {
         .orderTools .managePaused { width: auto; height: 36px; flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 2px solid #fecaca; border-radius: 8px; background: #fff; color: #dc2626; font-size: 12px; font-weight: 800; white-space: nowrap; cursor: pointer; }
         .orderTools .managePaused b { background: #fef2f2; color: #dc2626; border-radius: 6px; padding: 2px 6px; border: 1.5px solid #f87171; font-weight: 900; }
         .orderSummary { border-radius: 12px !important; padding: 16px !important; border: 2px solid #cbd5e1 !important; transition: all 0.2s ease; }
-        .orderSummary:hover { border-color: #2563eb !important; box-shadow: 0 6px 15px rgba(37,99,235,0.12) !important; }
+        .orderSummary:hover { border-color: #0d9488 !important; box-shadow: 0 6px 15px rgba(13,148,136,0.12) !important; }
         .orderSummary .orderStatus { padding: 4px 10px !important; font-size: 11px !important; border-radius: 8px !important; font-weight: 900 !important; border: 1.5px solid currentColor !important; }
         .orderTypeTag, .channelTag { display: inline-flex; align-items: center; margin-right: 6px; padding: 4px 10px; border-radius: 14px; font-size: 12px; font-weight: 800; border: 2px solid; }
-        .orderTypeTag { color: #2563eb; background: #eff6ff; border-color: #bfdbfe; }
+        .orderTypeTag { color: #0d9488; background: #f0fdfa; border-color: #99f6e4; }
         .channelTag { color: #059669; background: #ecfdf5; border-color: #a7f3d0; }
         .orderSummaryItems { border-top: 2px solid #e2e8f0; padding-top: 10px; margin-top: 10px; color: #1e293b; font-size: 13px; font-weight: 800; }
         .orderSummaryItems div { margin: 4px 0; display: flex; justify-content: space-between; }
         .orderSummaryItems div span { color: #475569; font-weight: 700; }
         .orderSummaryItems small { color: #64748b; font-size: 12px; font-weight: 800; }
         .orderSummaryFooter { display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #e2e8f0; margin-top: 10px; padding-top: 10px; color: #64748b; font-size: 12px; font-weight: 800; }
-        .orderSummaryFooter strong { color: #2563eb; font-size: 15px; font-weight: 900; }
+        .orderSummaryFooter strong { color: #0d9488; font-size: 15px; font-weight: 900; }
         .emptyOrders, .emptyDetail { display: grid; place-items: center; min-height: 200px; padding: 30px; color: #64748b; font-size: 14px; font-weight: 800; text-align: center; background: #fff; border: 2px dashed #cbd5e1; border-radius: 12px; }
         .detailPanelHeading { min-height: 56px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; padding-top: 4px; }
         .detailPrintButton { width: 38px; height: 38px; border: 2px solid #cbd5e1; border-radius: 10px; background: #fff; font-size: 18px; cursor: pointer; display: grid; place-items: center; color: #334155; }
-        .detailPrintButton:hover { border-color: #2563eb; color: #2563eb; }
+        .detailPrintButton:hover { border-color: #0d9488; color: #0d9488; }
         .detailPanelColumn .listHeaderTitle { margin: 0; color: #0f172a; font-size: 16px; font-weight: 900; }
         .orderDetailCard { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow-y: auto; position: relative; border: 2px solid #cbd5e1; border-radius: 14px; padding: 18px; text-align: left; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
         .detailTopline { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
         .detailTopline h2 { margin: 0 0 8px; font-size: 20px; font-weight: 900; color: #0f172a; }
         .detailTags { display: flex; gap: 6px; }
         .detailOrderNumber { display: flex; align-items: center; gap: 12px; margin-top: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; font-weight: 900; }
-        .detailOrderNumber a { color: #2563eb; font-family: inherit; text-decoration: none; font-weight: 900; border-bottom: 2px dashed #2563eb; padding-bottom: 1px; }
+        .detailOrderNumber a { color: #0d9488; font-family: inherit; text-decoration: none; font-weight: 900; border-bottom: 2px dashed #0d9488; padding-bottom: 1px; }
         .detailMeta, .detailAddress { margin-top: 8px; color: #475569; font-size: 13px; font-weight: 800; }
         .customerRequest { display: flex; flex-direction: column; gap: 6px; margin: 14px 0; padding: 12px 14px; border: 2px solid #fcd34d; border-radius: 10px; background: #fffbeb; color: #92400e; font-size: 13px; font-weight: 800; }
         .customerRequest strong { color: #b45309; font-size: 12px; font-weight: 900; letter-spacing: 0.5px; }
         .orderNotesEditor { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; padding: 12px; border: 2px solid #cbd5e1; border-radius: 10px; background: #f8fafc; }
         .orderNotesEditor label { display: flex; flex-direction: column; gap: 6px; color: #1e293b; font-size: 12px; font-weight: 900; }
         .orderNotesEditor textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 2px solid #94a3b8; border-radius: 8px; background: #fff; color: #0f172a; font: inherit; font-size: 13px; font-weight: 700; resize: vertical; outline: none; }
-        .orderNotesEditor textarea:focus { border-color: #2563eb; }
+        .orderNotesEditor textarea:focus { border-color: #0d9488; }
         .saveOrderNotesButton { align-self: flex-end; padding: 8px 14px; border: 2px solid #047857; border-radius: 8px; background: #059669; color: #fff; font-size: 12px; font-weight: 900; cursor: pointer; box-shadow: 0 2px 5px rgba(5, 150, 105, 0.2); }
         .saveOrderNotesButton:hover { background: #047857; }
         .saveOrderNotesButton:disabled { cursor: wait; opacity: .65; }
         .prepTimeControl { display: flex; justify-content: space-between; align-items: center; min-height: 46px; margin: 12px 0 14px; padding: 6px 12px; border: 2px solid #cbd5e1; border-radius: 10px; color: #1e293b; font-size: 12px; font-weight: 900; background: #f8fafc; }
         .prepTimeControl > div { display: flex; align-items: center; gap: 10px; color: #0f172a; }
         .prepTimeControl button { width: 30px; height: 30px; border: 2px solid #94a3b8; border-radius: 8px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.08); font-size: 16px; font-weight: 900; cursor: pointer; display: grid; place-items: center; }
-        .prepTimeControl button:hover { border-color: #2563eb; color: #2563eb; }
+        .prepTimeControl button:hover { border-color: #0d9488; color: #0d9488; }
         .prepTimeControl small { font-size: 12px; font-weight: 800; color: #475569; }
         .itemsHeading { color: #1e293b; font-size: 13px; font-weight: 900; letter-spacing: 0.5px; margin-top: 6px; }
         .menuOrigin { margin-top: 6px; padding-bottom: 10px; border-bottom: 2px solid #cbd5e1; color: #475569; font-size: 12px; font-weight: 800; }
@@ -694,7 +721,7 @@ export default function Dashboard({ user, onLogout }) {
         .orderTotals > div { display: flex; justify-content: space-between; padding: 6px 0; color: #475569; font-size: 13px; font-weight: 800; }
         .orderTotals > div strong:last-child { color: #0f172a; font-weight: 900; }
         .orderTotals .totalLine { margin-top: 8px; padding-top: 10px; border-top: 2px solid #cbd5e1; color: #0f172a; font-size: 16px; font-weight: 900; }
-        .orderTotals .totalLine strong:last-child { color: #2563eb; font-size: 18px; font-weight: 900; }
+        .orderTotals .totalLine strong:last-child { color: #0d9488; font-size: 18px; font-weight: 900; }
         .detailActionBar { position: sticky; bottom: -18px; margin: 12px -18px -18px; padding: 14px 18px; border-top: 2px solid #cbd5e1; background: #fff; border-radius: 0 0 14px 14px; }
         .prepareButton { width: 100%; min-height: 46px; border: 2px solid #dc2626; border-radius: 10px; background: #ef4444; color: #fff; font-size: 14px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); transition: all 0.2s; }
         .prepareButton:hover { background: #dc2626; box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4); }
@@ -766,7 +793,7 @@ export default function Dashboard({ user, onLogout }) {
               border-color .2s var(--ease), color .2s var(--ease), opacity .2s var(--ease);
 }
 .dashRoot button:active { transform: scale(.96) !important; }
-.dashRoot :focus-visible { outline: 3px solid rgba(37,99,235,.45); outline-offset: 2px; }
+.dashRoot :focus-visible { outline: 3px solid rgba(13,148,136,.45); outline-offset: 2px; }
 
 /* ---------- Sidebar ---------- */
 .dashRoot .dashboardSidebar { transition: width .3s var(--ease); }
@@ -782,20 +809,20 @@ export default function Dashboard({ user, onLogout }) {
 .dashRoot .headerActions > button:last-child:hover { background: #fecaca; transform: translateY(-2px); }
 
 /* ---------- Tables bar ---------- */
-.dashRoot .tablesBar:hover { background: #e8eefb !important; transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.dashRoot .tablesBar:hover { background: #e6f7f5 !important; transform: translateY(-1px); box-shadow: var(--shadow-sm); }
 
 /* ---------- Order cards ---------- */
 .dashRoot .scrollCards { padding: var(--sp-1) 6px var(--sp-3) var(--sp-1) !important; gap: var(--sp-2) !important; }
 .dashRoot .orderSummary { animation: dFadeUp .45s var(--ease) both; }
 .dashRoot .orderSummary:hover { transform: translateY(-4px) scale(1.01); box-shadow: var(--shadow-md) !important; }
-.dashRoot .orderSummary.isSelected { background: #f5f9ff !important; box-shadow: 0 0 0 3px rgba(37,99,235,.15) !important; }
+.dashRoot .orderSummary.isSelected { background: #f0fdfa !important; box-shadow: 0 0 0 3px rgba(13,148,136,.15) !important; }
 .dashRoot .orderStatus.isNew { animation: dPulse 1.8s infinite; }
 
 /* ---------- Status tabs / tools ---------- */
-.dashRoot .statusTab:hover { transform: translateY(-2px); border-color: #2563eb; box-shadow: 0 4px 10px rgba(37,99,235,.15); }
+.dashRoot .statusTab:hover { transform: translateY(-2px); border-color: #0d9488; box-shadow: 0 4px 10px rgba(13,148,136,.15); }
 .dashRoot .statusTab.selected { transform: translateY(-1px); }
 .dashRoot .orderTools > button:hover, .dashRoot .detailPrintButton:hover { transform: translateY(-2px) rotate(8deg); box-shadow: var(--shadow-sm); }
-.dashRoot .searchOrders:focus-within { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+.dashRoot .searchOrders:focus-within { border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13,148,136,.15); }
 .dashRoot .searchOrders input { transition: width .3s var(--ease); }
 .dashRoot .searchOrders input:focus { width: 160px; }
 .dashRoot .statusTabs { scrollbar-width: none; }
@@ -893,15 +920,15 @@ export default function Dashboard({ user, onLogout }) {
 .dashRoot .headerActions > button:last-child:hover { box-shadow: 0 0 16px rgba(248,113,113,.6); }
 
 /* Orders */
-.dashRoot .statusTab.selected { box-shadow: 0 0 16px rgba(37,99,235,.55); }
-.dashRoot .statusTab:hover { box-shadow: 0 0 12px rgba(37,99,235,.35); }
-.dashRoot .orderSummary:hover, .dashRoot .orderSummary.isSelected { box-shadow: 0 0 0 1px #2563eb, 0 8px 24px rgba(37,99,235,.28) !important; }
+.dashRoot .statusTab.selected { box-shadow: 0 0 16px rgba(13,148,136,.55); }
+.dashRoot .statusTab:hover { box-shadow: 0 0 12px rgba(13,148,136,.35); }
+.dashRoot .orderSummary:hover, .dashRoot .orderSummary.isSelected { box-shadow: 0 0 0 1px #0d9488, 0 8px 24px rgba(13,148,136,.28) !important; }
 .dashRoot .orderStatus.isNew { box-shadow: 0 0 10px rgba(3,105,161,.5); }
-.dashRoot .tablesBar:hover { box-shadow: 0 0 14px rgba(37,99,235,.25); }
+.dashRoot .tablesBar:hover { box-shadow: 0 0 14px rgba(13,148,136,.25); }
 .dashRoot .prepareButton { box-shadow: 0 0 14px rgba(239,68,68,.45); }
 .dashRoot .prepareButton:hover { box-shadow: 0 0 24px rgba(239,68,68,.8); }
 .dashRoot .saveOrderNotesButton:hover { box-shadow: 0 0 16px rgba(5,150,105,.6); }
-.dashRoot .orderTools > button:hover, .dashRoot .detailPrintButton:hover { box-shadow: 0 0 12px rgba(37,99,235,.4); }
+.dashRoot .orderTools > button:hover, .dashRoot .detailPrintButton:hover { box-shadow: 0 0 12px rgba(13,148,136,.4); }
 .dashRoot .primaryModalBtn:hover { box-shadow: 0 0 16px rgba(5,150,105,.6); }
 .dashRoot .popupCard .bell { filter: drop-shadow(0 0 10px rgba(250,204,21,.8)); }
 .dashRoot .completedMessage { box-shadow: 0 0 12px rgba(5,150,105,.25); }
@@ -910,6 +937,145 @@ export default function Dashboard({ user, onLogout }) {
   .dashRoot .navItem .navGlyph, .dashRoot .navItem.navItemActive, .dashRoot .navBadge, .dashRoot .topBrandMark { animation: none !important; }
 }
 
+
+/* ================= v3: TEAL + GOLD THEME, ONE-SCREEN LAYOUT ================= */
+.dashRoot { --teal: #0d9488; --teal-d: #0f766e; --teal-l: #14b8a6; --gold: #d97706; --gold-l: #fbbf24; --ink: #0f172a; }
+@keyframes dShine { 0% { transform: translateX(-130%); } 60%, 100% { transform: translateX(330%); } }
+@keyframes dFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes dLive  { 0% { box-shadow: 0 0 0 0 rgba(16,185,129,.7); } 70% { box-shadow: 0 0 0 8px rgba(16,185,129,0); } 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); } }
+@keyframes dLate  { 0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); } 50% { box-shadow: 0 0 16px 2px rgba(245,158,11,.5); } }
+@keyframes dBump  { 0% { transform: scale(1); } 40% { transform: scale(1.3); } 100% { transform: scale(1); } }
+@keyframes dStep  { 0%, 100% { box-shadow: 0 0 6px 1px var(--st); } 50% { box-shadow: 0 0 16px 4px var(--st); } }
+
+/* ---------- Header ---------- */
+.dashRoot .header { box-shadow: 0 6px 22px rgba(0,30,22,.35); border-bottom: 2px solid transparent !important; border-image: linear-gradient(90deg, transparent, var(--teal-l), var(--gold-l), transparent) 1; }
+.dashRoot .topBrand strong { color: var(--gold-l); }
+.dashRoot .navBadge { background: var(--gold-l) !important; color: #422006 !important; }
+@keyframes dBadge { 0%, 100% { box-shadow: 0 0 0 0 rgba(251,191,36,.7); } 50% { box-shadow: 0 0 12px 3px rgba(251,191,36,.7); } }
+
+/* ---------- Sidebar: always fits one screen, never scrolls ---------- */
+.dashRoot .dashboardSidebar { overflow: hidden; height: 100dvh !important; }
+.dashRoot .sidebarNavLinks { flex: 1 1 0 !important; min-height: 0; overflow: hidden !important; overflow-y: hidden !important; justify-content: space-evenly !important; padding: 4px 0 !important; gap: 0 !important; }
+.dashRoot .navItem { flex: 1 1 0; min-height: 0 !important; max-height: 50px; height: auto !important; margin: 2px 6px !important; padding: 0 !important; }
+.dashRoot .dashboardSidebarExpanded .navItem { padding: 0 14px !important; }
+@media (max-height: 760px) {
+  .dashRoot .navGlyph { width: 20px; height: 20px; flex-basis: 20px; }
+  .dashRoot .navLabel { font-size: 12px; }
+  .dashRoot .sidebarToggle { margin: 6px 0 4px 16px; width: 32px; height: 32px; }
+  .dashRoot .brandBox { padding: 10px 16px !important; }
+}
+@media (max-height: 600px) {
+  .dashRoot .brandBox { display: none !important; }
+  .dashRoot .navGlyph { width: 18px; height: 18px; flex-basis: 18px; }
+}
+
+/* ---------- Online orders: heading, summary row, tabs ---------- */
+.dashRoot .liveDot { display: inline-block; width: 9px; height: 9px; margin-right: 10px; border-radius: 50%; background: #10b981; animation: dLive 1.8s infinite; }
+.dashRoot .sumRow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 12px 18px 0; animation: dFadeUp .5s var(--ease) .2s both; }
+.dashRoot .sumCard { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid var(--c); box-shadow: 0 2px 10px rgba(15,23,42,.06); }
+.dashRoot .sumCard:hover { transform: translateY(-3px); box-shadow: 0 0 0 1px var(--c), 0 10px 22px rgba(15,23,42,.12); }
+.dashRoot .sumIcon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; font-size: 17px; font-weight: 900; color: var(--c); background: color-mix(in srgb, var(--c) 14%, #fff); }
+.dashRoot .sumCard b { display: block; font-size: 20px; line-height: 1.1; font-weight: 900; color: var(--ink); }
+.dashRoot .sumCard small { font-size: 11px; font-weight: 800; color: #64748b; }
+.dashRoot .statusTab i { font-style: normal; margin-right: 4px; }
+.dashRoot .statusTab .cnt { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: #f1f5f9; animation: dBump .4s ease; }
+.dashRoot .statusTab.selected .cnt { background: rgba(255,255,255,.25); }
+.dashRoot .scrollCards { scrollbar-width: thin; scrollbar-color: #99f6e4 transparent; }
+
+/* ---------- Order cards ---------- */
+.dashRoot .orderSummary { border-left: 5px solid var(--st, #cbd5e1) !important; box-shadow: 0 2px 10px rgba(15,23,42,.06); }
+.dashRoot .orderSummary.isLate { animation: dFadeUp .45s var(--ease) both, dLate 2.2s ease-in-out .5s infinite; }
+.dashRoot .agoTag { display: inline-flex; align-items: center; gap: 4px; }
+.dashRoot .orderSummaryFooter strong { color: var(--gold); }
+
+/* ---------- Empty states ---------- */
+.dashRoot .emptyOrders, .dashRoot .emptyDetail { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: linear-gradient(180deg, #f0fdfa, #fff); border-color: #99f6e4; }
+.dashRoot .emptyIcon { font-size: 44px; animation: dFloat 3s ease-in-out infinite; }
+
+/* ---------- Tables bar progress ---------- */
+.dashRoot .tblProg { width: 90px; height: 6px; border-radius: 4px; background: #e2e8f0; overflow: hidden; }
+.dashRoot .tblProg i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--teal-l), var(--gold-l)); transition: width .6s var(--ease); }
+
+/* ---------- Selected order (bill) panel: fits one screen ---------- */
+.dashRoot .detailPanelColumn { overflow: hidden !important; }
+.dashRoot .orderDetailCard { --p: clamp(10px, 1.6vh, 18px); padding: 0 !important; gap: 0; overflow: hidden; border: 1px solid #e2e8f0 !important; border-radius: 16px !important; box-shadow: 0 12px 32px rgba(15,23,42,.10), 0 0 0 1px color-mix(in srgb, var(--st) 25%, transparent) !important; }
+.dashRoot .orderDetailCard > * { flex-shrink: 0; }
+.dashRoot .billHead { display: flex; align-items: center; gap: 12px; padding: var(--p) calc(var(--p) + 4px); background: linear-gradient(120deg, color-mix(in srgb, var(--st) 18%, #fff), #fff 70%); border-bottom: 3px solid var(--st); }
+.dashRoot .avatar { display: grid; place-items: center; flex: 0 0 auto; width: clamp(34px, 5vh, 46px); height: clamp(34px, 5vh, 46px); border-radius: 50%; color: #fff; font-weight: 900; font-size: 15px; background: linear-gradient(135deg, var(--st), color-mix(in srgb, var(--st) 55%, #000)); box-shadow: 0 0 0 3px #fff, 0 0 16px var(--st); }
+.dashRoot .billHead h2 { margin: 0 !important; font-size: clamp(15px, 2.3vh, 19px) !important; line-height: 1.2; }
+.dashRoot .billHead .sub { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 800; color: #64748b; }
+.dashRoot .billHead .orderStatus { margin-left: auto; box-shadow: 0 0 14px color-mix(in srgb, var(--st) 55%, transparent); }
+
+.dashRoot .tracker { display: flex; align-items: center; padding: calc(var(--p) * .8) calc(var(--p) + 4px) 0; }
+.dashRoot .step { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 0 0 auto; font-size: 9.5px; font-weight: 800; color: #94a3b8; }
+.dashRoot .step i { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: #e2e8f0; color: #fff; font-style: normal; font-size: 10px; }
+.dashRoot .step.done { color: var(--teal-d); }
+.dashRoot .step.done i { background: var(--teal); }
+.dashRoot .step.now { color: var(--ink); }
+.dashRoot .step.now i { background: var(--st); animation: dStep 1.8s ease-in-out infinite; }
+.dashRoot .bar { flex: 1; height: 3px; margin: 0 2px 12px; border-radius: 2px; background: #e2e8f0; }
+.dashRoot .bar.done { background: linear-gradient(90deg, var(--teal), var(--teal-l)); }
+
+.dashRoot .infoGrid { display: grid; gap: 6px; padding: calc(var(--p) * .8) calc(var(--p) + 4px) 0; }
+.dashRoot .infoRow { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 10px; background: #f8fafc; border: 1px solid #eef2f7; font-size: 12.5px; font-weight: 800; color: #334155; text-decoration: none; }
+.dashRoot a.infoRow:hover { background: #f0fdfa; border-color: #99f6e4; transform: translateX(3px); }
+.dashRoot .infoRow i { font-style: normal; display: grid; place-items: center; flex: 0 0 auto; width: 24px; height: 24px; border-radius: 8px; background: #ccfbf1; font-size: 13px; }
+.dashRoot .infoRow span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.dashRoot .customerRequest { margin: calc(var(--p) * .7) calc(var(--p) + 4px) 0 !important; padding: 8px 12px !important; border-color: var(--gold-l) !important; animation: dLate 2.4s ease-in-out infinite; }
+.dashRoot .orderNotesEditor { margin: calc(var(--p) * .7) calc(var(--p) + 4px) 0 !important; padding: 8px !important; gap: 8px !important; flex-direction: row !important; align-items: flex-end; }
+.dashRoot .orderNotesEditor label { flex: 1; font-size: 11px !important; gap: 3px !important; }
+.dashRoot .orderNotesEditor textarea { resize: none !important; padding: 6px 10px !important; height: 34px; }
+.dashRoot .saveOrderNotesButton { align-self: flex-end !important; white-space: nowrap; }
+.dashRoot .prepTimeControl { margin: calc(var(--p) * .7) calc(var(--p) + 4px) 0 !important; min-height: 0 !important; padding: 5px 10px !important; border-radius: 999px !important; background: #f0fdfa !important; border-color: #99f6e4 !important; }
+.dashRoot .prepTimeControl button { border-radius: 50% !important; width: 26px !important; height: 26px !important; }
+
+.dashRoot .itemsHeading { padding: calc(var(--p) * .8) calc(var(--p) + 4px) 4px; margin: 0 !important; font-size: 11px !important; color: #64748b !important; }
+.dashRoot .menuOrigin { display: none; }
+.dashRoot .detailItems { flex: 1 1 auto !important; min-height: 56px; overflow-y: auto; padding: 0 calc(var(--p) + 4px); gap: 6px; scrollbar-width: none; }
+.dashRoot .detailItems::-webkit-scrollbar { display: none; }
+.dashRoot .detailItem { flex-shrink: 0; padding: 7px 10px !important; border: 1px solid #e2e8f0 !important; border-radius: 10px; background: #fff; box-shadow: 0 1px 4px rgba(15,23,42,.05); }
+.dashRoot .detailItem:hover { border-color: var(--teal) !important; transform: translateX(3px); }
+.dashRoot .detailItemLine > span { display: flex; align-items: center; gap: 8px; }
+.dashRoot .qtyBadge { display: inline-grid; place-items: center; min-width: 26px; height: 22px; padding: 0 6px; border-radius: 7px; background: linear-gradient(135deg, var(--teal), var(--teal-l)); color: #fff; font-size: 11px; font-weight: 900; }
+
+.dashRoot .orderTotals { margin: calc(var(--p) * .6) 0 0 !important; padding: calc(var(--p) * .6) calc(var(--p) + 4px) 0 !important; border-top: 2px dashed #cbd5e1; }
+.dashRoot .orderTotals > div { padding: 2px 0 !important; font-size: 12.5px !important; }
+.dashRoot .orderTotals .totalLine { border-top: 0 !important; margin-top: 2px !important; padding-top: 4px !important; }
+.dashRoot .orderTotals .totalLine strong:last-child { color: var(--gold) !important; font-size: clamp(18px, 3vh, 24px) !important; text-shadow: 0 0 14px rgba(251,191,36,.55); }
+
+.dashRoot .detailActionBar { position: static !important; margin: 0 !important; padding: calc(var(--p) * .7) calc(var(--p) + 4px) calc(var(--p) + 2px) !important; border-top: 0 !important; background: transparent !important; }
+.dashRoot .prepareButton { position: relative; overflow: hidden; min-height: clamp(38px, 6vh, 48px) !important; border: 0 !important; border-radius: 12px !important; letter-spacing: .02em; background: linear-gradient(135deg, var(--st), color-mix(in srgb, var(--st) 60%, #000)) !important; box-shadow: 0 6px 18px color-mix(in srgb, var(--st) 45%, transparent), inset 0 0 0 1px rgba(255,255,255,.15) !important; }
+.dashRoot .prepareButton::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 35%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.45), transparent); animation: dShine 3.2s ease-in-out infinite; }
+.dashRoot .prepareButton:hover { box-shadow: 0 0 26px var(--st) !important; }
+
+@media (max-height: 780px) {
+  .dashRoot .infoGrid { grid-template-columns: 1fr 1fr; }
+  .dashRoot .infoRow.addr { grid-column: 1 / -1; }
+}
+@media (max-height: 700px) {
+  .dashRoot .step span { display: none; }
+  .dashRoot .bar { margin-bottom: 0; }
+  .dashRoot .sumRow { display: none; }
+}
+
+/* ---------- Shadows, glow and focus everywhere ---------- */
+.dashRoot .popupCard, .dashRoot .profileCard { box-shadow: 0 30px 70px rgba(0,0,0,.35), 0 0 40px rgba(20,184,166,.25) !important; }
+.dashRoot .primaryModalBtn { position: relative; overflow: hidden; background: linear-gradient(135deg, var(--teal), var(--teal-l)) !important; box-shadow: 0 6px 16px rgba(13,148,136,.4); }
+.dashRoot .primaryModalBtn:hover { box-shadow: 0 0 22px rgba(20,184,166,.8); transform: translateY(-2px); }
+.dashRoot input:focus, .dashRoot textarea:focus { border-color: var(--teal) !important; box-shadow: 0 0 0 3px rgba(20,184,166,.25) !important; }
+.dashRoot .ordersHeading { box-shadow: 0 4px 14px rgba(15,23,42,.05); }
+.dashRoot .tablesBar { box-shadow: 0 2px 10px rgba(15,23,42,.06); }
+.dashRoot .availability b { animation: dLive 2.4s infinite; }
+
+@media (max-width: 950px) { .dashRoot .sumRow { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px 12px 0; } }
+@media (max-width: 680px) {
+  .dashRoot .orderDetailCard { overflow: visible; }
+  .dashRoot .detailItems { overflow: visible; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashRoot .prepareButton::after, .dashRoot .liveDot, .dashRoot .emptyIcon, .dashRoot .step.now i, .dashRoot .customerRequest { animation: none !important; }
+}
       `}</style>
 
       {/* Mobile drawer overlay */}
@@ -984,9 +1150,9 @@ export default function Dashboard({ user, onLogout }) {
             <span style={{color: '#16a34a'}}>{tableStats.open}/{tableStats.total} open</span>
             <span style={{color: '#cbd5e1'}}>·</span>
             <span>{tableStats.occupied} occupied</span>
-            <span style={{backgroundColor: '#2563eb', color: '#fff', padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '900'}}>{tableStats.billing} billing</span>
+            <span style={{backgroundColor: '#0d9488', color: '#fff', padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '900'}}>{tableStats.billing} billing</span>
           </div>
-          <span style={{color: '#64748b', fontSize: '16px', fontWeight: '900'}}>›</span>
+          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><div className="tblProg" title={`${tablePct}% occupied`}><i style={{width: `${tablePct}%`}} /></div><span style={{color: '#64748b', fontSize: '16px', fontWeight: '900'}}>›</span></div>
         </div>
 
         {isOrdersFallback && activeTab === 'Online Orders' && (
@@ -999,8 +1165,22 @@ export default function Dashboard({ user, onLogout }) {
         {activeTab === 'Online Orders' && (
           <div className="moduleFade" style={styles.onlineOrdersContainer}>
             <div className="ordersHeading">
-              <h1>Online orders</h1>
+              <h1><span className="liveDot" />Online orders</h1>
               <div className="availability"><span>Available <b>{orders.filter(o => !['Picked Up', 'Completed'].includes(o.status)).length}</b></span><span>·</span><span>Paused <b className="pausedPill">{pausedCount}</b></span></div>
+            </div>
+
+            <div className="sumRow">
+              {[
+                ['New', '🆕', '#0284c7', countByStatus('New')],
+                ['Preparing', '🍳', '#ea580c', countByStatus('Preparing')],
+                ['Ready', '📦', '#7c3aed', countByStatus('Ready')],
+                ['Active value', '₹', '#d97706', '₹' + Math.round(activeValue).toLocaleString('en-IN')]
+              ].map(([label, icon, c, val]) => (
+                <div className="sumCard" key={label} style={{ '--c': c }}>
+                  <span className="sumIcon">{icon}</span>
+                  <div><b>{val}</b><small>{label}</small></div>
+                </div>
+              ))}
             </div>
 
             <div className="splitViewWrapper" style={styles.splitViewWrapper}>
@@ -1020,7 +1200,7 @@ export default function Dashboard({ user, onLogout }) {
                           if (matchingOrders.length > 0) setSelectedOrder(matchingOrders[0]);
                         }}
                       >
-                        {status} <span>{orders.filter(order => order.status.toLowerCase() === status.toLowerCase()).length}</span>
+                        <i>{STATUS_ICONS[status]}</i>{status} <span className="cnt" key={countByStatus(status)}>{countByStatus(status)}</span>
                       </button>
                     ))}
                   </div>
@@ -1035,16 +1215,18 @@ export default function Dashboard({ user, onLogout }) {
                   {loadingOrders ? (
                     <>{[0, 1, 2].map(i => <div key={i} className="skeleton" />)}</>
                   ) : filteredOrders.length === 0 ? (
-                    <div className="emptyOrders">{orders.length === 0 ? 'No online orders yet. New orders will appear here.' : 'No orders match this status or search.'}</div>
+                    <div className="emptyOrders"><span className="emptyIcon">{orders.length === 0 ? '🍽️' : '🔍'}</span><span>{orders.length === 0 ? 'No online orders yet. New orders will appear here.' : 'No orders match this status or search.'}</span></div>
                   ) : (
                     filteredOrders.map((order, idx) => {
                       const isSelected = selectedOrder?.orderId === order.orderId;
                       const isHovered = hoveredCardId === order.orderId;
+                      const ago = timeAgo(order.timestamp, nowTick);
+                      const late = ago.mins !== null && ago.mins >= 15 && ['New', 'Accepted'].includes(order.status);
                       return (
                         <div 
                           key={order.orderId || order.id} 
-                          className={`orderSummary${isSelected ? ' isSelected' : ''}`}
-                          style={{ ...styles.orderSummaryCard, animationDelay: `${Math.min(idx, 8) * 50}ms`, borderColor: isSelected || isHovered ? '#2563eb' : '#cbd5e1', backgroundColor: '#fff' }}
+                          className={`orderSummary${isSelected ? ' isSelected' : ''}${late ? ' isLate' : ''}`}
+                          style={{ ...styles.orderSummaryCard, '--st': STATUS_COLORS[order.status] || '#16a34a', animationDelay: `${Math.min(idx, 8) * 50}ms`, borderColor: isSelected || isHovered ? '#0d9488' : '#cbd5e1', backgroundColor: '#fff' }}
                           onClick={() => setSelectedOrder(order)}
                           onMouseEnter={() => setHoveredCardId(order.orderId)}
                           onMouseLeave={() => setHoveredCardId(null)}
@@ -1069,7 +1251,7 @@ export default function Dashboard({ user, onLogout }) {
                           </div>
 
                           <div className="orderSummaryFooter">
-                            <span>{order.time}</span><strong>₹{order.total.toFixed(2)}</strong>
+                            <span className="agoTag">🕒 {ago.text}</span><strong>₹{order.total.toFixed(2)}</strong>
                           </div>
                         </div>
                       );
@@ -1087,82 +1269,102 @@ export default function Dashboard({ user, onLogout }) {
                 </div>
 
                 {selectedOrder ? (
-                  <div className="orderDetailCard" key={selectedOrder.orderId} id="printable-thermal-receipt">
-                    <div className="detailTopline">
-                      <div>
-                        <h2>{selectedOrder.customer}</h2>
-                        <div className="detailTags">
-                          <span className="orderTypeTag">♧ {selectedOrder.type}</span>
-                          <span className="channelTag">◉ {selectedOrder.channel}</span>
-                        </div>
-                      </div>
-                      <span className={`orderStatus${selectedOrder.status === 'New' ? ' isNew' : ''}`} style={styles.statusBadgeSmall(selectedOrder.status)}>{selectedOrder.status}</span>
-                    </div>
-
-                    <div className="detailOrderNumber">
-                      <strong>{selectedOrder.id}</strong>
-                      <a href={`tel:${selectedOrder.phone}`}>♧ {selectedOrder.phone}</a>
-                    </div>
-                    <div className="detailMeta">{selectedOrder.time} · {selectedOrder.type}</div>
-                    <div className="detailAddress">⌖ &nbsp;{selectedOrder.address}</div>
-
-                    {getOrderNote(selectedOrder) && (
-                      <div className="customerRequest">
-                        <strong>▢ &nbsp; ORDER NOTE · SHARED WITH KITCHEN &amp; STAFF</strong>
-                        <span style={{whiteSpace: 'pre-wrap'}}>{getOrderNote(selectedOrder)}</span>
-                      </div>
-                    )}
-                    <div className="orderNotesEditor">
-                      <label>
-                        Order note (visible to kitchen and staff; included on the receipt)
-                        <textarea value={orderNote} onChange={event => setOrderNote(event.target.value)} rows={2} placeholder="Add a note for the kitchen, staff, or customer" />
-                      </label>
-                      <button type="button" className="saveOrderNotesButton" onClick={saveOrderNotes} disabled={savingOrderNotes}>
-                        {savingOrderNotes ? 'Saving…' : 'Save notes'}
-                      </button>
-                    </div>
-
-                    <div className="prepTimeControl">
-                      <span>◷ &nbsp; PREP</span>
-                      <div>
-                        <button aria-label="Decrease prep time" onClick={() => setPrepMinutes(minutes => Math.max(5, minutes - 5))}>−</button>
-                        <strong>{prepMinutes}<small> min</small></strong>
-                        <button aria-label="Increase prep time" onClick={() => setPrepMinutes(minutes => minutes + 5)}>+</button>
-                      </div>
-                    </div>
-
-                    <div className="itemsHeading">ITEMS ({selectedOrder.items.length} LINES · {selectedOrder.items.reduce((sum, item) => sum + item.qty, 0)} QTY)</div>
-                    <div className="menuOrigin">◫ &nbsp;FROM MENU · Default Online Menu</div>
-                    <div className="detailItems">
-                      {selectedOrder.items.map((item, index) => (
-                        <div className="detailItem" key={`${item.name}-${index}`}>
-                          <div className="detailItemLine">
-                            <span>{item.name}</span>
-                            <strong><small>×{item.qty}</small> ₹{(item.price * item.qty).toFixed(2)}</strong>
+                  (() => {
+                    const stc = STATUS_COLORS[selectedOrder.status] || '#16a34a';
+                    const doneStatus = ['Picked Up', 'Completed'].includes(selectedOrder.status);
+                    const stepIdx = doneStatus ? STEPS.length - 1 : Math.max(0, STEPS.indexOf(selectedOrder.status));
+                    const nextColor = STATUS_COLORS[NEXT_STATUS[selectedOrder.status]] || stc;
+                    const initials = String(selectedOrder.customer || '?').split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+                    return (
+                      <div className="orderDetailCard" key={selectedOrder.orderId} id="printable-thermal-receipt" style={{ '--st': stc }}>
+                        <div className="billHead">
+                          <span className="avatar">{initials}</span>
+                          <div style={{ minWidth: 0 }}>
+                            <h2>{selectedOrder.customer}</h2>
+                            <div className="sub">{selectedOrder.id}</div>
                           </div>
-                          {item.desc && <div className="detailItemDescription">{item.desc}</div>}
+                          <span className={`orderStatus${selectedOrder.status === 'New' ? ' isNew' : ''}`} style={styles.statusBadgeSmall(selectedOrder.status)}>{selectedOrder.status}</span>
                         </div>
-                      ))}
-                    </div>
 
-                    <div className="orderTotals">
-                      <div><span>Subtotal</span><strong>₹{selectedOrder.subtotal.toFixed(2)}</strong></div>
-                      <div><span>Tax (Mapped)</span><strong>₹{(selectedOrder.totalTax || (selectedOrder.subtotal * 0.05)).toFixed(2)}</strong></div>
-                      <div className="totalLine"><strong>Total</strong><strong>₹{selectedOrder.total.toFixed(2)}</strong></div>
-                    </div>
+                        <div className="tracker">
+                          {STEPS.map((step, i) => {
+                            const isDone = doneStatus || i < stepIdx;
+                            const isNow = !doneStatus && i === stepIdx;
+                            return (
+                              <React.Fragment key={step}>
+                                <div className={`step${isDone ? ' done' : ''}${isNow ? ' now' : ''}`}>
+                                  <i>{isDone ? '✓' : i + 1}</i><span>{step}</span>
+                                </div>
+                                {i < STEPS.length - 1 && <div className={`bar${i < stepIdx || doneStatus ? ' done' : ''}`} />}
+                              </React.Fragment>
+                            );
+                          })}
+                        </div>
 
-                    <div className="detailActionBar">
-                      {selectedOrder.status !== 'Picked Up' && selectedOrder.status !== 'Completed' ? (
-                        <button onClick={() => updateOrderStatus(selectedOrder.orderId, selectedOrder.status)} className="prepareButton">
-                          ♧ &nbsp;{getNextActionLabel(selectedOrder.status)}
-                        </button>
-                      ) : (
-                        <span className="completedMessage">Order completed successfully ✓</span>
-                      )}
-                    </div>
-                  </div>
+                        <div className="infoGrid">
+                          <a className="infoRow" href={`tel:${selectedOrder.phone}`}><i>📞</i><span>{selectedOrder.phone}</span></a>
+                          <div className="infoRow"><i>🕒</i><span>{timeAgo(selectedOrder.timestamp, nowTick).text} · {selectedOrder.type} · {selectedOrder.channel}</span></div>
+                          <a className="infoRow addr" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedOrder.address || '')}`} target="_blank" rel="noopener noreferrer"><i>📍</i><span>{selectedOrder.address}</span></a>
+                        </div>
+
+                        {getOrderNote(selectedOrder) && (
+                          <div className="customerRequest">
+                            <strong>⚠ ORDER NOTE · SHARED WITH KITCHEN &amp; STAFF</strong>
+                            <span style={{whiteSpace: 'pre-wrap'}}>{getOrderNote(selectedOrder)}</span>
+                          </div>
+                        )}
+                        <div className="orderNotesEditor">
+                          <label>
+                            Order note (kitchen, staff and receipt)
+                            <textarea value={orderNote} onChange={event => setOrderNote(event.target.value)} rows={1} placeholder="Add a note for the kitchen, staff, or customer" />
+                          </label>
+                          <button type="button" className="saveOrderNotesButton" onClick={saveOrderNotes} disabled={savingOrderNotes}>
+                            {savingOrderNotes ? 'Saving…' : 'Save notes'}
+                          </button>
+                        </div>
+
+                        <div className="prepTimeControl">
+                          <span>◷ &nbsp; PREP</span>
+                          <div>
+                            <button aria-label="Decrease prep time" onClick={() => setPrepMinutes(minutes => Math.max(5, minutes - 5))}>−</button>
+                            <strong>{prepMinutes}<small> min</small></strong>
+                            <button aria-label="Increase prep time" onClick={() => setPrepMinutes(minutes => minutes + 5)}>+</button>
+                          </div>
+                        </div>
+
+                        <div className="itemsHeading">ITEMS ({selectedOrder.items.length} LINES · {selectedOrder.items.reduce((sum, item) => sum + item.qty, 0)} QTY)</div>
+                        <div className="detailItems">
+                          {selectedOrder.items.map((item, index) => (
+                            <div className="detailItem" key={`${item.name}-${index}`} style={{ animationDelay: `${Math.min(index, 6) * 60}ms` }}>
+                              <div className="detailItemLine">
+                                <span><b className="qtyBadge">×{item.qty}</b>{item.name}</span>
+                                <strong>₹{(item.price * item.qty).toFixed(2)}</strong>
+                              </div>
+                              {item.desc && <div className="detailItemDescription">{item.desc}</div>}
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="orderTotals">
+                          <div><span>Subtotal</span><strong>₹{selectedOrder.subtotal.toFixed(2)}</strong></div>
+                          <div><span>Tax (Mapped)</span><strong>₹{(selectedOrder.totalTax || (selectedOrder.subtotal * 0.05)).toFixed(2)}</strong></div>
+                          <div className="totalLine"><strong>Total</strong><strong>₹{selectedOrder.total.toFixed(2)}</strong></div>
+                        </div>
+
+                        <div className="detailActionBar">
+                          {!doneStatus ? (
+                            <button onClick={() => updateOrderStatus(selectedOrder.orderId, selectedOrder.status)} className="prepareButton" style={{ '--st': nextColor }}>
+                              ♧ &nbsp;{getNextActionLabel(selectedOrder.status)}
+                            </button>
+                          ) : (
+                            <span className="completedMessage">Order completed successfully ✓</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()
                 ) : (
-                  <div className="emptyDetail">Select an order to view its details.</div>
+                  <div className="emptyDetail"><span className="emptyIcon">🧾</span><span>Select an order to view its details.</span></div>
                 )}
               </div>
             </div>
@@ -1322,7 +1524,7 @@ const styles = {
   badgeCount: { backgroundColor: '#34d399', color: '#022c22', fontSize: '12px', padding: '2px 9px', borderRadius: '12px', fontWeight: '900' },
   mainContent: { flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', minWidth: 0, backgroundColor: '#fff' },
   header: { height: '65px', backgroundColor: '#001e16', borderBottom: '2px solid #0b3328', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 },
-  tablesStatusBar: { backgroundColor: '#f1f5fb', border: '2px solid #cbd5e1', margin: '8px 18px', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', flexShrink: 0, fontSize: '12px', transition: 'background 0.2s', borderRadius: '10px' },
+  tablesStatusBar: { backgroundColor: '#f0fdfa', border: '2px solid #cbd5e1', margin: '8px 18px', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', flexShrink: 0, fontSize: '12px', transition: 'background 0.2s', borderRadius: '10px' },
   fallbackNoticeBar: { backgroundColor: '#fffbe8', border: '2px solid #fcd34d', margin: '8px 18px', padding: '10px 14px', fontSize: '13px', color: '#92400e', textAlign: 'left', flexShrink: 0, borderRadius: '10px', fontWeight: '700' },
   pausedItemsBtn: { backgroundColor: '#fff', border: '2px solid #dc2626', padding: '8px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: '800', color: '#dc2626', cursor: 'pointer', display: 'none', alignItems: 'center', gap: '8px', transition: 'all 0.2s' },
   pausedCountBadge: { backgroundColor: '#dc2626', color: '#fff', fontSize: '11px', padding: '2px 7px', borderRadius: '10px', fontWeight: '900' },
