@@ -47,11 +47,31 @@ const STATUS_COLORS = { New: '#0284c7', Accepted: '#d97706', Preparing: '#ea580c
 const STATUS_ICONS = { New: '🆕', Accepted: '👍', Preparing: '🍳', Ready: '📦', 'Picked Up': '✅' };
 const NEXT_STATUS = { New: 'Accepted', Accepted: 'Preparing', Preparing: 'Ready', Ready: 'Picked Up' };
 
+// Reads "dd/mm/yyyy, hh:mm:ss am" (en-IN) as well as ISO timestamps.
+const parseOrderDate = (value) => {
+  if (!value) return null;
+  const m = String(value).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([ap]m)?)?/i);
+  if (m) {
+    let h = Number(m[4] || 0);
+    const ap = (m[7] || '').toLowerCase();
+    if (ap === 'pm' && h < 12) h += 12;
+    if (ap === 'am' && h === 12) h = 0;
+    return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), h, Number(m[5] || 0), Number(m[6] || 0));
+  }
+  const t = Date.parse(value);
+  return Number.isNaN(t) ? null : new Date(t);
+};
+const istDay = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+const isTodayOrder = (value) => {
+  const d = parseOrderDate(value);
+  return !!d && istDay(d) === istDay(new Date());
+};
+
 // "5 min ago" label. Falls back to the original text if the timestamp can't be parsed.
 const timeAgo = (value, now) => {
-  const t = Date.parse(value);
-  if (Number.isNaN(t)) return { text: String(value || ''), mins: null };
-  const mins = Math.floor((now - t) / 60000);
+  const d = parseOrderDate(value);
+  if (!d) return { text: String(value || ''), mins: null };
+  const mins = Math.floor((now - d.getTime()) / 60000);
   if (mins < 0 || mins > 60 * 24 * 7) return { text: String(value || ''), mins: null };
   if (mins < 1) return { text: 'Just now', mins };
   if (mins < 60) return { text: `${mins} min ago`, mins };
@@ -110,7 +130,7 @@ export default function Dashboard({ user, onLogout }) {
     email: '',
     gstin: '37AAFP4128L1ZI',
     fssai: 'FSSAI: 22426260001195',
-    footerNote: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***',
+    footerNote: 'Thank You For Visiting Us!',
     paperSize: '80mm',
     density: 'Compact',
     toggles: {
@@ -612,7 +632,10 @@ export default function Dashboard({ user, onLogout }) {
     return () => clearInterval(t);
   }, []);
   const countByStatus = (s) => orders.filter(o => o.status.toLowerCase() === s.toLowerCase()).length;
-  const activeValue = orders.filter(o => !['Picked Up', 'Completed'].includes(o.status)).reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+  const todayOrders = orders.filter(o => isTodayOrder(o.timestamp));
+  const todayCount = todayOrders.length;
+  const todayItems = todayOrders.reduce((sum, o) => sum + o.items.reduce((s, it) => s + (Number(it.qty) || 0), 0), 0);
+  const todayRevenue = todayOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
   const tablePct = tableStats.total ? Math.round((tableStats.occupied / tableStats.total) * 100) : 0;
 
   return (
@@ -1110,6 +1133,26 @@ export default function Dashboard({ user, onLogout }) {
   .dashRoot .orderDetailCard { overflow: hidden; }
   .dashRoot .detailPanelColumn { min-height: 80dvh !important; }
 }
+
+/* ================= v5: 2-row header + Today metrics ================= */
+.dashRoot .ordersBar { flex-direction: column !important; align-items: stretch !important; flex-wrap: nowrap; gap: 10px; }
+.dashRoot .barRow { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
+.dashRoot .ordersBar .statusTabs { flex: 1 1 auto; justify-content: flex-start; }
+.dashRoot .ordersBar .orderTools { margin-left: auto; }
+.dashRoot .todayStats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.dashRoot .todayTag { font-size: 10px; font-weight: 900; letter-spacing: .1em; color: #92400e; background: #fef3c7; border: 1px solid #fcd34d; padding: 3px 8px; border-radius: 6px; }
+.dashRoot .todayStat { display: flex; align-items: baseline; gap: 6px; padding: 5px 12px; border-radius: 10px; background: #fff; border: 1px solid #99f6e4; box-shadow: 0 2px 8px rgba(13,148,136,.10); }
+.dashRoot .todayStat b { font-size: 15px; font-weight: 900; color: var(--ink); }
+.dashRoot .todayStat small { font-size: 11px; font-weight: 800; color: #64748b; }
+.dashRoot .todayStat.rev b { color: var(--gold); }
+@media (max-width: 950px) {
+  .dashRoot .ordersBar .statusTabs { flex: 1 1 100%; order: 0; }
+  .dashRoot .ordersBar .orderTools { margin-left: 0; width: 100% !important; }
+}
+@media (max-width: 680px) {
+  .dashRoot .ordersBar { flex-direction: column !important; align-items: stretch !important; }
+  .dashRoot .todayStats { justify-content: flex-start; }
+}
       `}</style>
 
       {/* Mobile drawer overlay */}
@@ -1191,30 +1234,39 @@ export default function Dashboard({ user, onLogout }) {
         {activeTab === 'Online Orders' && (
           <div className="moduleFade" style={styles.onlineOrdersContainer}>
             <div className="ordersHeading ordersBar">
-              <h1><span className="liveDot" />Online orders<em className="liveTag">LIVE</em></h1>
-              <div className="availability"><span>Available <b>{orders.filter(o => !['Picked Up', 'Completed'].includes(o.status)).length}</b></span><span>·</span><span>Paused <b className="pausedPill">{pausedCount}</b></span><span>·</span><span>Value <b>₹{Math.round(activeValue).toLocaleString('en-IN')}</b></span></div>
-              <div className="statusTabs" role="tablist">
-                {orderStatusTabs.map(status => (
-                  <button
-                    key={status}
-                    type="button"
-                    role="tab"
-                    aria-selected={statusFilter === status}
-                    className={`statusTab${statusFilter === status ? ' selected' : ''}`}
-                    onClick={() => {
-                      setStatusFilter(status);
-                      const matchingOrders = orders.filter(order => order.status.toLowerCase() === status.toLowerCase());
-                      if (matchingOrders.length > 0) setSelectedOrder(matchingOrders[0]);
-                    }}
-                  >
-                    <i>{STATUS_ICONS[status]}</i>{status} <span className="cnt" key={countByStatus(status)}>{countByStatus(status)}</span>
-                  </button>
-                ))}
+              <div className="barRow">
+                <h1><span className="liveDot" />Online orders<em className="liveTag">LIVE</em></h1>
+                <div className="todayStats">
+                  <span className="todayTag">TODAY</span>
+                  <div className="todayStat"><b>{todayCount}</b><small>Orders</small></div>
+                  <div className="todayStat"><b>{todayItems}</b><small>Items sold</small></div>
+                  <div className="todayStat rev"><b>₹{Math.round(todayRevenue).toLocaleString('en-IN')}</b><small>Revenue</small></div>
+                </div>
               </div>
-              <div className="orderTools">
-                <button title="Refresh orders" onClick={() => { setLoadingOrders(true); setRefreshTick(tick => tick + 1); }}>↻</button>
-                <label className="searchOrders"><span>⌕</span><input value={orderSearch} onChange={event => setOrderSearch(event.target.value)} placeholder="Search orders" /></label>
-                <button className="managePaused" onClick={() => setActiveTab('Menu')}>Manage Paused Items <b>{pausedCount}</b></button>
+              <div className="barRow">
+                <div className="statusTabs" role="tablist">
+                  {orderStatusTabs.map(status => (
+                    <button
+                      key={status}
+                      type="button"
+                      role="tab"
+                      aria-selected={statusFilter === status}
+                      className={`statusTab${statusFilter === status ? ' selected' : ''}`}
+                      onClick={() => {
+                        setStatusFilter(status);
+                        const matchingOrders = orders.filter(order => order.status.toLowerCase() === status.toLowerCase());
+                        if (matchingOrders.length > 0) setSelectedOrder(matchingOrders[0]);
+                      }}
+                    >
+                      <i>{STATUS_ICONS[status]}</i>{status} <span className="cnt" key={countByStatus(status)}>{countByStatus(status)}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="orderTools">
+                  <button title="Refresh orders" onClick={() => { setLoadingOrders(true); setRefreshTick(tick => tick + 1); }}>↻</button>
+                  <label className="searchOrders"><span>⌕</span><input value={orderSearch} onChange={event => setOrderSearch(event.target.value)} placeholder="Search orders" /></label>
+                  <button className="managePaused" onClick={() => setActiveTab('Menu')}>Manage Paused Items <b>{pausedCount}</b></button>
+                </div>
               </div>
             </div>
 
