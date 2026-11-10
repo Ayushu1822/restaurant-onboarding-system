@@ -96,9 +96,9 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
     setUploading(true);
     
     const formData = new FormData();
-    // Using 'file' (singular) to align with standard Spring Boot @RequestParam("file") expectations
+    // MUST be 'files' (plural) to match backend controller: @RequestParam("files") MultipartFile[] files
     for (let file of safeFiles) {
-      formData.append('file', file);
+      formData.append('files', file);
     }
     formData.append('restaurantId', restaurantId);
 
@@ -129,7 +129,6 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
     const safeSelected = Array.isArray(selectedImageIds) ? selectedImageIds : [];
     if (safeSelected.length === 0) return;
     try {
-      // Loop through all selected images to map them correctly
       for (const imageId of safeSelected) {
         await fetch(`${API_BASE_URL}/api/v1/gallery/map-to-menu`, {
           method: 'POST',
@@ -141,7 +140,6 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
         });
       }
 
-      // Extract names of selected menu items to display instantly on the card
       const selectedNames = menuItems
         .filter(m => selectedMenuItemIds.includes(m.id || m.menuItemId))
         .map(m => m.itemName || m.name || m.dishName || m.dish_name)
