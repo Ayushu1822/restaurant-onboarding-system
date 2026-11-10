@@ -1,6 +1,5 @@
 // FILE: src/components/AdvancedSettingsTab.jsx
 import React, { useState, useEffect } from 'react';
-import { connectUsb, connectSerial, connectBluetooth, disconnectPrinter, getPrinterStatus, testPrint } from './printerService';
 
 const GREEN = '#10b981';
 const GREEN_DARK = '#059669';
