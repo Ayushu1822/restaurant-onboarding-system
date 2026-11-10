@@ -142,11 +142,12 @@
   margin: 0;
   color: #f7f9f6;
   font-family: Georgia, serif;
-  font-size: clamp(32px, 3.5vw, 50px);
+  font-size: clamp(28px, 3.2vw, 42px);
   font-weight: 700;
   letter-spacing: -.035em;
-  line-height: 1.18;
+  line-height: 1.25;
   text-align: left;
+  max-width: 480px;
 }
 
 .portalPitch h1 em {
