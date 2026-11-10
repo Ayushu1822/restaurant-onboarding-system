@@ -76,6 +76,8 @@ function PasswordField({ label, name, value, onChange, required = false, placeho
           onChange={onChange}
           placeholder={placeholder}
           required={required}
+          minLength={8}
+          maxLength={16}
           {...props}
         />
         <button
@@ -88,7 +90,7 @@ function PasswordField({ label, name, value, onChange, required = false, placeho
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             {isVisible
               ? <><path d="M3 3l18 18" /><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" /><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c5 0 8.5 4.2 9.5 7-.3.9-1 2-2 3" /><path d="M6.2 6.2C4.2 7.5 3 9.6 2.5 12c.8 2.4 3.8 7 9.5 7 1.1 0 2.1-.2 3-.5" /></>
-              : <><path d="M2.5 12s3.2-7 9.5-7 9.5 7 9.5 7-3.2 7-9.5 7-9.5-7Z" /><circle cx="12" cy="12" r="2.5" /></>}
+              : <><path d="M2.5 12s3.2-7 9.5-7 9.5 7 9.5 7-3.2 7-9.5 7-9.5-7-9.5-7Z" /><circle cx="12" cy="12" r="2.5" /></>}
           </svg>
         </button>
       </span>
@@ -272,7 +274,7 @@ export default function LoginScreen({ onLoginSuccess }) {
 
             <div className="portalPitch">
               <span className="portalEyebrow">RESTAURANT MANAGEMENT SYSTEM</span>
-              <h1>Good food, great<br className="desktopBreak" /> operations, <em>better dining.</em></h1>
+              <h1>Good food, great operations, <em>better dining.</em></h1>
               <p className="portalTagline">Manage your restaurant, streamline operations, and give your customers an exceptional dining experience.</p>
             </div>
 
@@ -361,7 +363,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                     <FormField label="Business Name" name="businessName" value={formData.businessName} onChange={handleInputChange} placeholder="e.g. Spice Garden" required />
                     <FormField label="Owner Name" name="ownerName" value={formData.ownerName} onChange={handleInputChange} placeholder="e.g. John Doe" required />
                     <FormField label="Email Address" name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="owner@restaurant.com" required />
-                    <PasswordField label="Password (min 8 chars)" name="password" value={formData.password} onChange={handleInputChange} placeholder="••••••••" minLength={8} required />
+                    <PasswordField label="Password (8-16 chars)" name="password" value={formData.password} onChange={handleInputChange} placeholder="••••••••" required />
                     <FormField label="Phone Number (10 digits)" name="phoneNumber" type="tel" value={formData.phoneNumber} onChange={handleInputChange} placeholder="9876543210" required />
                     <FormField label="WhatsApp Number" name="whatsappNumber" type="tel" value={formData.whatsappNumber} onChange={handleInputChange} placeholder="9876543210" />
                   </div>
@@ -393,7 +395,7 @@ export default function LoginScreen({ onLoginSuccess }) {
             {currentView === 'verify-otp' && (
               <form className="portalAuthForm lg-portal-auth-form" onSubmit={handleVerifyAndReset}>
                 <FormField label="ENTER 6-DIGIT OTP" value={otpCode} onChange={(event) => setOtpCode(event.target.value)} placeholder="123456" maxLength={6} required />
-                <PasswordField label="NEW PASSWORD (min 8 chars)" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="••••••••" minLength={8} required />
+                <PasswordField label="NEW PASSWORD (8-16 chars)" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="••••••••" required />
                 <button className="portalSubmit lg-portal-submit" type="submit" disabled={loading}>{loading ? 'Verifying…' : 'UPDATE PASSWORD'}</button>
                 <button type="button" className="backToSignIn" onClick={() => openView('signin')}>← Back to sign in</button>
               </form>
