@@ -1,6 +1,8 @@
 package com.restaurant.auth_service.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -25,9 +27,10 @@ public class GalleryImage {
     @Column(nullable = false)
     private String restaurantId;
 
-    // Stores the raw binary image data directly in PostgreSQL (BYTEA column type)
+    // Forces Hibernate to bind byte[] directly as a BYTEA binary stream in PostgreSQL
     @Lob
     @Column(name = "image_data", columnDefinition = "BYTEA")
+    @JdbcTypeCode(SqlTypes.BINARY)
     private byte[] imageData;
 
     private LocalDateTime uploadedAt = LocalDateTime.now();
