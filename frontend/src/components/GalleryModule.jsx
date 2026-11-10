@@ -94,9 +94,11 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
     const safeFiles = Array.isArray(uploadFiles) ? uploadFiles : [];
     if (safeFiles.length === 0) return;
     setUploading(true);
+    
     const formData = new FormData();
+    // Using 'file' (singular) to align with standard Spring Boot @RequestParam("file") expectations
     for (let file of safeFiles) {
-      formData.append('files', file);
+      formData.append('file', file);
     }
     formData.append('restaurantId', restaurantId);
 
@@ -105,13 +107,19 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
         method: 'POST',
         body: formData
       });
+      
       if (res.ok) {
         setIsUploadModalOpen(false);
         setUploadFiles([]);
         fetchImages();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Upload failed with server status:', res.status, errorData);
+        alert(errorData.message || 'Upload failed on server. Please check application logs.');
       }
     } catch (err) {
-      console.error('Upload failed', err);
+      console.error('Upload network error:', err);
+      alert('Could not connect to the server.');
     } finally {
       setUploading(false);
     }
