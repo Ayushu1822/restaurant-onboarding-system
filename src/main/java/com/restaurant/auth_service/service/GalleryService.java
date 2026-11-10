@@ -49,11 +49,16 @@ public class GalleryService {
                 image.setFileSize((file.getSize() / 1024) + " KB");
                 image.setRestaurantId(restaurantId);
                 
-                // Store binary bytes directly in the database instead of local file path
+                // Store binary bytes directly in the database
                 image.setImageData(file.getBytes());
 
-                // Set fileUrl to point to your new database-streaming endpoint
+                // Set a temporary value to satisfy @Column(nullable = false) on first save
+                image.setFileUrl("/temp");
+
+                // Save to generate the ID/UUID
                 GalleryImage saved = galleryRepository.save(image);
+                
+                // Update with the actual streaming endpoint URL using the generated ID
                 saved.setFileUrl("/api/v1/gallery/image/" + saved.getId());
                 savedImages.add(galleryRepository.save(saved));
             }
