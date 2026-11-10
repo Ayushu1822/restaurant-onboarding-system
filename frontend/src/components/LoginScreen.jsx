@@ -2,7 +2,6 @@ import { useState } from 'react';
 import './LoginScreen.css';
 
 const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
-
 const GOOGLE_AUTH_URL = import.meta.env.VITE_GOOGLE_AUTH_URL;
 
 const INITIAL_FORM = {
@@ -23,7 +22,7 @@ const INITIAL_FORM = {
 
 function GoogleIcon() {
   return (
-    <svg aria-hidden="true" viewBox="0 0 48 48" width="18" height="18">
+    <svg aria-hidden="true" viewBox="0 0 48 48" width="20" height="20">
       <path fill="#FFC107" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11a9.4 9.4 0 0 1-4.1 6.2v5.1h6.6c3.9-3.6 6.1-8.8 6.1-15Z" />
       <path fill="#34A853" d="M24 44c5.5 0 10.1-1.8 13.5-4.8l-6.6-5.1c-1.8 1.2-4 1.9-6.9 1.9-5.3 0-9.8-3.6-11.4-8.4H5.8v5.3A20 20 0 0 0 24 44Z" />
       <path fill="#4A90E2" d="M12.6 27.6a12 12 0 0 1 0-7.2v-5.3H5.8a20 20 0 0 0 0 17.8l6.8-5.3Z" />
@@ -48,7 +47,7 @@ function FeatureIcon({ type }) {
 
 function FormField({ label, name, value, onChange, type = 'text', required = false, placeholder = '', className = '', ...props }) {
   return (
-    <label className={`authField ${className}`.trim()}>
+    <label className={`authField lg-field ${className}`.trim()}>
       <span>{label}{required && <i> *</i>}</span>
       <input
         name={name}
@@ -67,7 +66,7 @@ function PasswordField({ label, name, value, onChange, required = false, placeho
   const [isVisible, setIsVisible] = useState(false);
 
   return (
-    <label className="authField">
+    <label className="authField lg-field">
       {label && <span>{label}{required && <i> *</i>}</span>}
       <span className="authPasswordControl">
         <input
@@ -136,9 +135,8 @@ export default function LoginScreen({ onLoginSuccess }) {
         setMessage(data.message || 'Invalid email or password.');
         return;
       }
-      await new Promise(resolve => window.setTimeout(resolve, 1000));
+      await new Promise(resolve => window.setTimeout(resolve, 800));
       
-      // Choose storage based on "Remember this station" checkbox
       const storage = rememberStation ? localStorage : sessionStorage;
       storage.setItem('auth_token', data.token || data.userId);
       storage.setItem('user_email', loginEmail);
@@ -258,13 +256,13 @@ export default function LoginScreen({ onLoginSuccess }) {
   };
 
   return (
-    <main className="authPage">
-      <section className={`authPortal${currentView === 'signup' ? ' signupMode' : ''}`} aria-label="Orders24 restaurant portal">
+    <main className="authPage lg-auth-page">
+      <section className={`authPortal lg-auth-portal${currentView === 'signup' ? ' signupMode lg-signup-mode' : ''}`} aria-label="Orders24 restaurant portal">
         
         {/* Left Intro Banner Panel */}
-        <aside className="portalIntro">
-          <div className="portalIntroContent">
-            <div className="portalBrand">
+        <aside className="portalIntro lg-portal-intro">
+          <div className="portalIntroContent lg-portal-intro-content">
+            <div className="portalBrand lg-portal-brand">
               <svg aria-hidden="true" viewBox="0 0 64 64" className="portalBrandMark">
                 <circle cx="31" cy="32" r="25" fill="none" stroke="currentColor" strokeWidth="7" strokeDasharray="130 30" transform="rotate(-42 31 32)" />
                 <path d="m17 32 10 10 23-27" fill="none" stroke="#ff5b12" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
@@ -278,7 +276,7 @@ export default function LoginScreen({ onLoginSuccess }) {
               <p className="portalTagline">Manage your restaurant, streamline operations, and give your customers an exceptional dining experience.</p>
             </div>
 
-            <ul className="portalFeatures">
+            <ul className="portalFeatures lg-portal-features">
               <li>
                 <span className="featureIcon"><FeatureIcon type="sync" /></span>
                 <span><strong>100% Real-Time Table Sync</strong><small>Instant order flow between floor and kitchen</small></span>
@@ -296,14 +294,14 @@ export default function LoginScreen({ onLoginSuccess }) {
         </aside>
 
         {/* Right Form Panel */}
-        <section className="portalFormPanel signinPanel">
+        <section className="portalFormPanel signinPanel lg-portal-form-panel">
           {currentView !== 'signup' && (
             <div className="portalPromise">
               <span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3v8m3-8v8M5 3v5a4 4 0 0 0 8 0V3m-4 9v9m8-18v18m0-18c3 2 4 6 0 8" /></svg></span>
               <small>Smart Restaurant.<br />Better Tomorrow.</small>
             </div>
           )}
-          <div className="portalFormContent">
+          <div className="portalFormContent lg-portal-form-content">
             {currentView === 'signup' && (
               <div className="authTabs" role="tablist" aria-label="Choose sign in or create account">
                 <button type="button" role="tab" aria-selected={false} onClick={() => openView('signin')}>Sign In</button>
@@ -340,26 +338,26 @@ export default function LoginScreen({ onLoginSuccess }) {
             )}
 
             {currentView === 'signin' && (
-              <form className="portalAuthForm" onSubmit={handleLogin}>
+              <form className="portalAuthForm lg-portal-auth-form" onSubmit={handleLogin}>
                 <FormField className="signinEmailField" label="EMAIL ADDRESS" type="email" value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} placeholder="operator@restaurant.com" required autoComplete="email" />
                 <div className="passwordLabelRow">
                   <span className="portalFieldLabel">PASSWORD <i>*</i></span>
                   <button type="button" className="inlineFormLink" onClick={() => openView('forgot')}>Forgot Password?</button>
                 </div>
                 <PasswordField label="" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} placeholder="••••••••••••" required autoComplete="current-password" />
-                <label className="rememberStation">
+                <label className="rememberStation lg-remember-station">
                   <input type="checkbox" checked={rememberStation} onChange={(event) => setRememberStation(event.target.checked)} />
                   <span>Remember this station / Keep me signed in</span>
                 </label>
-                <button className="portalSubmit" type="submit" disabled={loading}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5M10 17l5-5-5-5m5 5H3" /></svg>{loading ? 'Signing in…' : 'SIGN IN TO PORTAL'}</button>
+                <button className="portalSubmit lg-portal-submit" type="submit" disabled={loading}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5M10 17l5-5-5-5m5 5H3" /></svg>{loading ? 'Signing in…' : 'SIGN IN TO PORTAL'}</button>
               </form>
             )}
 
             {currentView === 'signup' && (
-              <form className="portalAuthForm signupForm" onSubmit={handleRegister}>
+              <form className="portalAuthForm signupForm lg-portal-auth-form lg-signup-form" onSubmit={handleRegister}>
                 <div className="signupSection">
                   <h3>Business &amp; Owner Information</h3>
-                  <div className="signupFields">
+                  <div className="signupFields lg-signup-fields">
                     <FormField label="Business Name" name="businessName" value={formData.businessName} onChange={handleInputChange} placeholder="e.g. Spice Garden" required />
                     <FormField label="Owner Name" name="ownerName" value={formData.ownerName} onChange={handleInputChange} placeholder="e.g. John Doe" required />
                     <FormField label="Email Address" name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="owner@restaurant.com" required />
@@ -370,7 +368,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                 </div>
                 <div className="signupSection">
                   <h3>Address &amp; GPS Location</h3>
-                  <div className="signupFields">
+                  <div className="signupFields lg-signup-fields">
                     <FormField className="signupWideField" label="Address Line 1" name="line1" value={formData.line1} onChange={handleInputChange} placeholder="Street address or building name" required />
                     <FormField label="Address Line 2" name="line2" value={formData.line2} onChange={handleInputChange} placeholder="Suite, floor, etc. (optional)" />
                     <FormField label="Area" name="area" value={formData.area} onChange={handleInputChange} placeholder="Locality or neighborhood" />
@@ -380,23 +378,23 @@ export default function LoginScreen({ onLoginSuccess }) {
                     <FormField label="Longitude" name="longitude" type="number" step="any" value={formData.longitude} onChange={handleInputChange} placeholder="e.g. 77.2090" required />
                   </div>
                 </div>
-                <button className="portalSubmit" type="submit" disabled={loading}>{loading ? 'Submitting…' : 'Complete Registration'}</button>
+                <button className="portalSubmit lg-portal-submit" type="submit" disabled={loading}>{loading ? 'Submitting…' : 'Complete Registration'}</button>
               </form>
             )}
 
             {currentView === 'forgot' && (
-              <form className="portalAuthForm" onSubmit={handleForgotPassword}>
+              <form className="portalAuthForm lg-portal-auth-form" onSubmit={handleForgotPassword}>
                 <FormField label="EMAIL ADDRESS" type="email" value={forgotEmail} onChange={(event) => setForgotEmail(event.target.value)} placeholder="operator@restaurant.com" required />
-                <button className="portalSubmit" type="submit" disabled={loading}>{loading ? 'Sending OTP…' : 'SEND 6-DIGIT OTP'}</button>
+                <button className="portalSubmit lg-portal-submit" type="submit" disabled={loading}>{loading ? 'Sending OTP…' : 'SEND 6-DIGIT OTP'}</button>
                 <button type="button" className="backToSignIn" onClick={() => openView('signin')}>← Back to sign in</button>
               </form>
             )}
 
             {currentView === 'verify-otp' && (
-              <form className="portalAuthForm" onSubmit={handleVerifyAndReset}>
+              <form className="portalAuthForm lg-portal-auth-form" onSubmit={handleVerifyAndReset}>
                 <FormField label="ENTER 6-DIGIT OTP" value={otpCode} onChange={(event) => setOtpCode(event.target.value)} placeholder="123456" maxLength={6} required />
                 <PasswordField label="NEW PASSWORD (min 8 chars)" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="••••••••" minLength={8} required />
-                <button className="portalSubmit" type="submit" disabled={loading}>{loading ? 'Verifying…' : 'UPDATE PASSWORD'}</button>
+                <button className="portalSubmit lg-portal-submit" type="submit" disabled={loading}>{loading ? 'Verifying…' : 'UPDATE PASSWORD'}</button>
                 <button type="button" className="backToSignIn" onClick={() => openView('signin')}>← Back to sign in</button>
               </form>
             )}
@@ -404,7 +402,7 @@ export default function LoginScreen({ onLoginSuccess }) {
             {currentView !== 'signup' && currentView !== 'verify-otp' && currentView !== 'forgot' && (
               <>
                 <div className="portalOr"><span>OR SIGN IN WITH</span></div>
-                <button className="portalGoogleButton" type="button" onClick={handleGoogleSignIn}><GoogleIcon />Continue with Google</button>
+                <button className="portalGoogleButton lg-google-btn" type="button" onClick={handleGoogleSignIn}><GoogleIcon />Continue with Google</button>
               </>
             )}
 
