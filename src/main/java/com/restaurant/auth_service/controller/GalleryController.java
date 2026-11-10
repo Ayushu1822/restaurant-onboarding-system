@@ -29,7 +29,7 @@ public class GalleryController {
         return ResponseEntity.ok(galleryService.getImages(restaurantId, search));
     }
 
-    // 🖼️ NEW: Endpoint to stream the binary image bytes from the database
+    // Endpoint to stream the binary image bytes from the database
     @GetMapping("/image/{id}")
     public ResponseEntity<byte[]> getImageData(@PathVariable String id) {
         GalleryImage image = galleryService.getImageById(id);
@@ -47,7 +47,7 @@ public class GalleryController {
     @PostMapping("/upload")
     public ResponseEntity<List<GalleryImage>> uploadImages(
             @RequestParam("files") MultipartFile[] files,
-            @RequestParam String restaurantId) {
+            @RequestParam(value = "restaurantId", defaultValue = "ae41c831-372b-4f56-8905-f67a93b8045b") String restaurantId) {
         List<GalleryImage> uploadedImages = galleryService.uploadImages(files, restaurantId);
         return ResponseEntity.ok(uploadedImages);
     }
