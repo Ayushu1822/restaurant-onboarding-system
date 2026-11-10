@@ -698,6 +698,39 @@
   color: #8de0b4;
 }
 
+/* =========================================================
+   FULL-SCREEN REGISTRATION MODE (Hides Left Panel)
+   ========================================================= */
+.authPage.signup-active {
+  display: block !important;
+  overflow-y: auto !important;
+}
+
+.authPage.signup-active .authPortal {
+  display: block !important;
+  height: auto !important;
+  min-height: 100vh !important;
+}
+
+.authPage.signup-active .portalIntro {
+  display: none !important;
+}
+
+.authPage.signup-active .portalFormPanel {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  min-height: 100vh !important;
+  padding: 40px 20px !important;
+  box-sizing: border-box !important;
+}
+
+.authPage.signup-active .portalFormContent {
+  width: min(980px, 95vw) !important;
+  max-width: 980px !important;
+  margin: 0 auto !important;
+  padding: 44px 52px !important;
+}
+
 @media (max-width: 1200px) {
   .authPortal, .authPortal.signupMode {
     grid-template-columns: 1.1fr 1fr;
