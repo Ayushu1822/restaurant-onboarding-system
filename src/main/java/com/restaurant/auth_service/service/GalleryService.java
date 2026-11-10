@@ -8,13 +8,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,7 +17,6 @@ public class GalleryService {
 
     private final GalleryRepository galleryRepository;
     private final MenuRepository menuRepository;
-    private final String UPLOAD_DIR = "uploads/gallery/";
 
     public GalleryService(GalleryRepository galleryRepository, MenuRepository menuRepository) {
         this.galleryRepository = galleryRepository;
@@ -36,31 +30,35 @@ public class GalleryService {
         return galleryRepository.findByRestaurantIdAndSearch(restaurantId, search);
     }
 
+    public GalleryImage getImageById(String id) {
+        return galleryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Image not found with id: " + id));
+    }
+
     public List<GalleryImage> uploadImages(MultipartFile[] files, String restaurantId) {
         List<GalleryImage> savedImages = new ArrayList<>();
         try {
-            Path uploadPath = Paths.get(UPLOAD_DIR);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
-
             for (MultipartFile file : files) {
+                if (file.isEmpty()) continue;
+
                 String originalFilename = file.getOriginalFilename();
-                String uniqueFilename = UUID.randomUUID().toString() + "_" + originalFilename;
-                Path filePath = uploadPath.resolve(uniqueFilename);
-                Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
                 GalleryImage image = new GalleryImage();
                 image.setFileName(originalFilename);
-                image.setFileUrl("/uploads/gallery/" + uniqueFilename);
                 image.setFileType(file.getContentType());
                 image.setFileSize((file.getSize() / 1024) + " KB");
                 image.setRestaurantId(restaurantId);
+                
+                // Store binary bytes directly in the database instead of local file path
+                image.setImageData(file.getBytes());
 
-                savedImages.add(galleryRepository.save(image));
+                // Set fileUrl to point to your new database-streaming endpoint
+                GalleryImage saved = galleryRepository.save(image);
+                saved.setFileUrl("/api/v1/gallery/image/" + saved.getId());
+                savedImages.add(galleryRepository.save(saved));
             }
         } catch (IOException e) {
-            throw new RuntimeException("Failed to store uploaded files", e);
+            throw new RuntimeException("Failed to read uploaded files", e);
         }
         return savedImages;
     }
@@ -69,7 +67,6 @@ public class GalleryService {
         GalleryImage image = galleryRepository.findById(imageId)
                 .orElseThrow(() -> new RuntimeException("Gallery image not found"));
 
-        // Convert string IDs from frontend to Long to match MenuRepository
         List<Long> longIds = menuItemIds.stream()
                 .map(Long::valueOf)
                 .collect(Collectors.toList());

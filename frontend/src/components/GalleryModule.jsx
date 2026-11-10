@@ -79,9 +79,9 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
     if (safeSelected.length === 0) return;
     if (!window.confirm(`Delete ${safeSelected.length} selected image(s)?`)) return;
     try {
-      for (const id of safeSelected) {
-        await fetch(`${API_BASE_URL}/api/v1/gallery/${id}`, { method: 'DELETE' });
-      }
+      await Promise.all(
+        safeSelected.map(id => fetch(`${API_BASE_URL}/api/v1/gallery/${id}`, { method: 'DELETE' }))
+      );
       setSelectedImageIds([]);
       fetchImages();
     } catch (err) {
@@ -121,14 +121,17 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
     const safeSelected = Array.isArray(selectedImageIds) ? selectedImageIds : [];
     if (safeSelected.length === 0) return;
     try {
-      await fetch(`${API_BASE_URL}/api/v1/gallery/map-to-menu`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageId: safeSelected[0],
-          menuItemIds: selectedMenuItemIds
-        })
-      });
+      // Loop through all selected images to map them correctly
+      for (const imageId of safeSelected) {
+        await fetch(`${API_BASE_URL}/api/v1/gallery/map-to-menu`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageId: imageId,
+            menuItemIds: selectedMenuItemIds
+          })
+        });
+      }
 
       // Extract names of selected menu items to display instantly on the card
       const selectedNames = menuItems
@@ -136,10 +139,13 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
         .map(m => m.itemName || m.name || m.dishName || m.dish_name)
         .filter(Boolean);
 
-      setImageMenuMap(prev => ({
-        ...prev,
-        [safeSelected[0]]: selectedNames
-      }));
+      setImageMenuMap(prev => {
+        const nextMap = { ...prev };
+        for (const imageId of safeSelected) {
+          nextMap[imageId] = selectedNames;
+        }
+        return nextMap;
+      });
 
       setIsMapModalOpen(false);
       setSelectedImageIds([]);
@@ -207,7 +213,6 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
           const rawUrl = img.fileUrl || img.file_url || '';
           const imageUrl = rawUrl.startsWith('http') ? rawUrl : `${API_BASE_URL}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
           
-          // Get mapped menu items for this image
           const mappedNames = img.menuItemNames || img.menuItems || imageMenuMap[img.id] || [];
           const displayNames = Array.isArray(mappedNames)
             ? mappedNames.map(m => typeof m === 'object' ? (m.itemName || m.name || m.dishName) : m).filter(Boolean)
@@ -233,7 +238,6 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
                 <strong className="gl-card-title">{img.fileName || img.file_name}</strong>
                 <small className="gl-card-subtitle">{img.fileType?.split('/')[1]?.toUpperCase() || 'JPEG'} · {img.fileSize || '45 KB'}</small>
                 
-                {/* 🏷️ Mapped Menu Item Badges */}
                 {displayNames.length > 0 && (
                   <div className="gl-mapped-wrap">
                     {displayNames.map((name, i) => (
@@ -310,7 +314,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
             <div className="gl-modal-header">
               <div>
                 <h3 className="gl-modal-title">Map images to menu items</h3>
-                <p className="gl-modal-sub">Pick an image, then choose the menu items it should appear on.</p>
+                <p className="gl-modal-sub">Pick images, then choose the menu items they should appear on.</p>
               </div>
               <button className="gl-close-btn" onClick={() => setIsMapModalOpen(false)}>✕</button>
             </div>
@@ -390,7 +394,6 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
   );
 }
 
-/* ---------- Styles (frontend only) ---------- */
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap');
 

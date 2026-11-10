@@ -25,6 +25,11 @@ public class GalleryImage {
     @Column(nullable = false)
     private String restaurantId;
 
+    // Stores the raw binary image data directly in PostgreSQL (BYTEA column type)
+    @Lob
+    @Column(name = "image_data", columnDefinition = "BYTEA")
+    private byte[] imageData;
+
     private LocalDateTime uploadedAt = LocalDateTime.now();
 
     @ManyToMany
@@ -55,6 +60,9 @@ public class GalleryImage {
 
     public String getRestaurantId() { return restaurantId; }
     public void setRestaurantId(String restaurantId) { this.restaurantId = restaurantId; }
+
+    public byte[] getImageData() { return imageData; }
+    public void setImageData(byte[] imageData) { this.imageData = imageData; }
 
     public LocalDateTime getUploadedAt() { return uploadedAt; }
     public void setUploadedAt(LocalDateTime uploadedAt) { this.uploadedAt = uploadedAt; }

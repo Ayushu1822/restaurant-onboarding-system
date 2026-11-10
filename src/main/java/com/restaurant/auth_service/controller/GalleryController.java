@@ -2,6 +2,8 @@ package com.restaurant.auth_service.controller;
 
 import com.restaurant.auth_service.model.GalleryImage;
 import com.restaurant.auth_service.service.GalleryService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,6 +27,21 @@ public class GalleryController {
             @RequestParam String restaurantId,
             @RequestParam(required = false) String search) {
         return ResponseEntity.ok(galleryService.getImages(restaurantId, search));
+    }
+
+    // 🖼️ NEW: Endpoint to stream the binary image bytes from the database
+    @GetMapping("/image/{id}")
+    public ResponseEntity<byte[]> getImageData(@PathVariable String id) {
+        GalleryImage image = galleryService.getImageById(id);
+
+        if (image.getImageData() == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(image.getFileType() != null ? image.getFileType() : "image/jpeg"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + image.getFileName() + "\"")
+                .body(image.getImageData());
     }
 
     @PostMapping("/upload")

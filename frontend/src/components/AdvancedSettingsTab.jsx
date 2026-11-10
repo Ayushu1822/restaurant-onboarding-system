@@ -1,5 +1,6 @@
 // FILE: src/components/AdvancedSettingsTab.jsx
 import React, { useState, useEffect } from 'react';
+import { connectUsb, connectSerial, connectBluetooth, disconnectPrinter, getPrinterStatus, testPrint } from './printerService';
 
 const GREEN = '#10b981';
 const GREEN_DARK = '#059669';
@@ -972,6 +973,36 @@ export default function AdvancedSettingsTab({
   const setPrinterInfo = (patch) => setFormData({ ...formData, printerInfo: { ...printerInfo, ...patch } });
   const setReceiptConfig = (patch) => setFormData({ ...formData, receiptConfig: { ...receiptConfig, ...patch } });
 
+  /* ---------- real printer connection (see printerService.js) ---------- */
+  const [printerStatus, setPrinterStatus] = useState(getPrinterStatus());
+  const [printerMsg, setPrinterMsg] = useState(null);
+
+  const connectWith = async (fn) => {
+    setPrinterMsg(null);
+    try {
+      const name = await fn();
+      setPrinterStatus(getPrinterStatus());
+      setPrinterInfo({ printerName: name });
+      setPrinterMsg({ type: 'ok', text: `Connected: ${name}` });
+    } catch (e) {
+      setPrinterMsg({ type: 'error', text: e?.name === 'NotFoundError' ? 'No device selected.' : e?.message || 'Could not connect.' });
+    }
+  };
+
+  const handleTestPrint = async () => {
+    setPrinterMsg(null);
+    try {
+      const r = await testPrint(receiptConfig);
+      setPrinterMsg(
+        r.printed
+          ? { type: 'ok', text: 'Test receipt sent to the printer.' }
+          : { type: 'error', text: 'No printer is connected. A text preview was written to the browser console (F12).' }
+      );
+    } catch (e) {
+      setPrinterMsg({ type: 'error', text: e?.message || 'Test print failed.' });
+    }
+  };
+
   const getRule = (group, field, fallback) => printRules?.[group]?.[field] ?? fallback;
   const setRule = (group, field, value) =>
     setFormData({
@@ -1000,6 +1031,8 @@ export default function AdvancedSettingsTab({
     </div>
   );
   const on = (key) => isOn(RECEIPT_SECTIONS.flatMap((s) => s.fields).find((f) => f.key === key));
+
+  const knownPrinterNames = ['System-Default', 'Thermal-80mm', 'Thermal-58mm'];
 
   return (
     <>
@@ -1062,7 +1095,7 @@ export default function AdvancedSettingsTab({
                     </div>
                   </div>
                 </div>
-                <button type="button" onClick={() => alert('Refreshing connected printers...')} style={{ ...outlineBtn, flexShrink: 0 }}>
+                <button type="button" onClick={() => setPrinterStatus(getPrinterStatus())} style={{ ...outlineBtn, flexShrink: 0 }}>
                   🔄 Refresh printers
                 </button>
               </div>
@@ -1116,15 +1149,38 @@ export default function AdvancedSettingsTab({
                     <option value="System-Default">Default System Printer</option>
                     <option value="Thermal-80mm">Thermal 80mm USB</option>
                     <option value="Thermal-58mm">Thermal 58mm USB</option>
+                    {printerInfo.printerName && !knownPrinterNames.includes(printerInfo.printerName) && (
+                      <option value={printerInfo.printerName}>{printerInfo.printerName}</option>
+                    )}
                   </select>
 
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', margin: '12px 0 8px' }}>
-                    <button type="button" style={outlineBtn} onClick={() => alert('Connect USB printer')}>🔌 Connect USB printer</button>
-                    <button type="button" style={outlineBtn} onClick={() => alert('Connect serial / Bluetooth (classic)')}>📶 Connect serial / Bluetooth (classic)</button>
-                    <button type="button" style={outlineBtn} onClick={() => alert('Connect Bluetooth (BLE)')}>🔵 Connect Bluetooth (BLE)</button>
-                    <button type="button" style={outlineBtn} onClick={() => alert('Add network printer')}>🌐 Add network printer</button>
+                    <button type="button" style={outlineBtn} onClick={() => connectWith(connectUsb)}>🔌 Connect USB printer</button>
+                    <button type="button" style={outlineBtn} onClick={() => connectWith(connectSerial)}>📶 Connect serial / Bluetooth (classic)</button>
+                    <button type="button" style={outlineBtn} onClick={() => connectWith(connectBluetooth)}>🔵 Connect Bluetooth (BLE)</button>
+                    <button type="button" style={outlineBtn} onClick={() => alert('Network printers need a small print service on the backend. Not available yet.')}>🌐 Add network printer</button>
                   </div>
-                  <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700', marginBottom: '14px' }}>
+                  {printerStatus.connected ? (
+                    <div style={{ fontSize: '11px', fontWeight: '800', color: GREEN_DARK, marginBottom: '8px' }}>
+                      ● Connected: {printerStatus.name} ({printerStatus.type}){' '}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await disconnectPrinter();
+                          setPrinterStatus(getPrinterStatus());
+                        }}
+                        style={{ background: 'none', border: 'none', color: RED, fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                  ) : hasPrinter ? (
+                    <div style={{ fontSize: '11px', fontWeight: '800', color: AMBER, marginBottom: '8px' }}>
+                      ⓘ Saved printer "{printerInfo.printerName}" is not connected on this device. Click a Connect button again.
+                    </div>
+                  ) : null}
+                  <Msg msg={printerMsg} />
+                  <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700', margin: '10px 0 14px' }}>
                     The browser can't list this computer's installed printers by name. Choose "This computer's printer (via browser)" to use them, or connect a USB, serial or network printer above.
                   </div>
 
@@ -1146,7 +1202,7 @@ export default function AdvancedSettingsTab({
                   <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '700', marginBottom: '14px' }}>
                     Optional — a single Counter Printer can print both receipts and KOTs.
                   </div>
-                  <button type="button" style={outlineBtn} onClick={() => alert('Configure Kitchen Printer')}>＋ Configure Kitchen Printer</button>
+                  <button type="button" style={outlineBtn} onClick={() => alert('Kitchen printer setup is not available yet.')}>＋ Configure Kitchen Printer</button>
                 </div>
               </div>
             </div>
@@ -1302,13 +1358,17 @@ export default function AdvancedSettingsTab({
 
                 <button
                   type="button"
-                  disabled={!hasPrinter}
-                  onClick={() => alert('Sending test print...')}
-                  style={{ ...outlineBtn, width: '100%', marginTop: '14px', padding: '9px', opacity: hasPrinter ? 1 : 0.55, cursor: hasPrinter ? 'pointer' : 'not-allowed' }}
+                  onClick={handleTestPrint}
+                  style={{ ...outlineBtn, width: '100%', marginTop: '14px', padding: '9px' }}
                 >
                   🖨️ Test Print
                 </button>
-                {!hasPrinter && <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700', marginTop: '6px' }}>Configure a Counter Printer first.</div>}
+                {!printerStatus.connected && (
+                  <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700', marginTop: '6px' }}>
+                    No printer connected: a text preview goes to the browser console (F12).
+                  </div>
+                )}
+                <Msg msg={printerMsg} />
               </div>
             </div>
           )}
