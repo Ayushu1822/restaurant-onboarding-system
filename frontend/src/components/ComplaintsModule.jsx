@@ -9,6 +9,8 @@ export default function ComplaintsModule() {
   const [statusFilter, setStatusFilter] = useState('All statuses');
   const [typeFilter, setTypeFilter] = useState('All types');
   const [channelFilter, setChannelFilter] = useState('All channels');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [selectedOrderToLink, setSelectedOrderToLink] = useState(null);
@@ -74,7 +76,7 @@ export default function ComplaintsModule() {
       ...newComplaint,
       complaintId: `CMP-${Math.floor(1000 + Math.random() * 9000)}`,
       status: 'Open',
-      restaurantEmail: userEmail // ✅ Tied strictly to logged-in account
+      restaurantEmail: userEmail
     };
 
     fetch(`${API_BASE_URL}/api/v1/complaints`, {
@@ -106,6 +108,13 @@ export default function ComplaintsModule() {
     }).then(() => fetchComplaints());
   };
 
+  // Metrics calculation
+  const totalCount = complaints.length;
+  const openCount = complaints.filter(c => c.status === 'Open').length;
+  const followingUpCount = complaints.filter(c => c.status === 'Following Up').length;
+  const closedCount = complaints.filter(c => c.status === 'Closed').length;
+
+  // Filter logic
   const filteredComplaints = complaints.filter(c => {
     const matchesSearch = 
       (c.orderId || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -119,13 +128,11 @@ export default function ComplaintsModule() {
     return matchesSearch && matchesStatus && matchesType && matchesChannel;
   });
 
-  // Filter orders based on user typing in the search/select box
   const matchingOrdersForDropdown = orders.filter(o => {
     const q = orderSearchQuery.toLowerCase().trim();
     const oId = (o.displayId || o.orderId || '').toLowerCase();
     const cName = (o.customerName || '').toLowerCase();
     const cPhone = (o.customerPhone || '').toLowerCase();
-    // If query is empty, show top recent orders, otherwise filter by match
     if (!q) return true;
     return oId.includes(q) || cName.includes(q) || cPhone.includes(q);
   });
@@ -133,7 +140,35 @@ export default function ComplaintsModule() {
   return (
     <div style={{ padding: '28px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'system-ui, sans-serif' }}>
       
-      {/* Top Bar */}
+      {/* Top Metric Cards Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '14px', marginBottom: '24px' }}>
+        <div style={styles.metricCard}>
+          <span style={styles.metricTitle}>TOTAL COMPLAINTS</span>
+          <h2 style={styles.metricValue}>{totalCount}</h2>
+        </div>
+        <div style={styles.metricCard}>
+          <span style={{ ...styles.metricTitle, color: '#ef4444' }}>OPEN</span>
+          <h2 style={{ ...styles.metricValue, color: '#ef4444' }}>{openCount}</h2>
+        </div>
+        <div style={styles.metricCard}>
+          <span style={{ ...styles.metricTitle, color: '#f59e0b' }}>FOLLOWING UP</span>
+          <h2 style={{ ...styles.metricValue, color: '#f59e0b' }}>{followingUpCount}</h2>
+        </div>
+        <div style={styles.metricCard}>
+          <span style={{ ...styles.metricTitle, color: '#10b981' }}>CLOSED</span>
+          <h2 style={{ ...styles.metricValue, color: '#10b981' }}>{closedCount}</h2>
+        </div>
+        <div style={styles.metricCard}>
+          <span style={styles.metricTitle}>TODAY</span>
+          <h2 style={styles.metricValue}>{totalCount}</h2>
+        </div>
+        <div style={styles.metricCard}>
+          <span style={styles.metricTitle}>AVG. RESOLUTION</span>
+          <h2 style={{ ...styles.metricValue, fontSize: '20px' }}>709m</h2>
+        </div>
+      </div>
+
+      {/* Top Search Bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '15px', flexWrap: 'wrap' }}>
         <input 
           type="text" 
@@ -150,8 +185,8 @@ export default function ComplaintsModule() {
         </button>
       </div>
 
-      {/* Filters Bar */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap', background: '#fff', padding: '16px', borderRadius: '14px', border: '1.5px solid #e2e8f0' }}>
+      {/* Filters Bar with Date Pickers */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap', background: '#fff', padding: '16px', borderRadius: '14px', border: '1.5px solid #e2e8f0', alignItems: 'center' }}>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={styles.select}>
           <option>All statuses</option>
           <option>Open</option>
@@ -178,6 +213,12 @@ export default function ComplaintsModule() {
           <option>Swiggy</option>
           <option>Counter</option>
         </select>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+          <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} style={styles.dateInput} />
+          <span style={{ fontSize: '12px', fontWeight: '800', color: '#64748b' }}>to</span>
+          <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} style={styles.dateInput} />
+        </div>
       </div>
 
       {/* Complaints Cards Grid */}
@@ -218,8 +259,8 @@ export default function ComplaintsModule() {
               )}
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#94a3b8', borderTop: '1px solid #f1f5f9', paddingTop: '10px', fontWeight: '800' }}>
-                <span>🕒 Logged</span>
-                <span style={{ color: statusColor }}>● {c.status}</span>
+                <span>🕒 2h ago</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>💬 {c.notes ? '1' : '0'}</span>
               </div>
             </div>
           );
@@ -236,8 +277,6 @@ export default function ComplaintsModule() {
             </div>
 
             <form onSubmit={handleCreateComplaint} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              
-              {/* Order Search & Select Dropdown + Manual Fallback */}
               <div style={{ position: 'relative' }}>
                 <label style={{ fontSize: '11px', fontWeight: '950', color: '#64748b', display: 'block', marginBottom: '4px' }}>SEARCH ORDER FROM DB OR TYPE MANUALLY</label>
                 <input 
@@ -248,7 +287,6 @@ export default function ComplaintsModule() {
                   onChange={e => {
                     setOrderSearchQuery(e.target.value);
                     setShowOrderDropdown(true);
-                    // Allow manual typing fallback into orderId
                     setNewComplaint(prev => ({ ...prev, orderId: e.target.value }));
                   }}
                   style={styles.input}
@@ -329,7 +367,11 @@ export default function ComplaintsModule() {
 }
 
 const styles = {
+  metricCard: { background: '#fff', padding: '16px', borderRadius: '14px', border: '1.5px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '4px' },
+  metricTitle: { fontSize: '10px', fontWeight: '950', color: '#64748b', letterSpacing: '0.5px' },
+  metricValue: { margin: 0, fontSize: '24px', fontWeight: '950', color: '#0f172a' },
   select: { padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '13px', fontWeight: '800', background: '#f8fafc', outline: 'none', cursor: 'pointer' },
+  dateInput: { padding: '9px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '12px', fontWeight: '800', background: '#f8fafc', outline: 'none', color: '#334155' },
   input: { width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '13px', outline: 'none', background: '#f8fafc', boxSizing: 'border-box', fontWeight: '800' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
   modalCard: { width: '440px', background: '#fff', padding: '26px', borderRadius: '20px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '1.5px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto' },
