@@ -7,7 +7,7 @@ export default function ReportsModule({ orders: parentOrders }) {
   const [closedComplaints, setClosedComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Receipt Configuration state synced with Settings Module (Cleaned footer default)
+  // Receipt Configuration state synced with Settings Module (Clean footer default)
   const [receiptConfig, setReceiptConfig] = useState({
     restaurantName: 'LINGA FOODS',
     headerText: 'Linga Foods - Wonghikal',
@@ -334,30 +334,65 @@ export default function ReportsModule({ orders: parentOrders }) {
     printWindow.document.close();
   };
 
-  // 📊 Excel / CSV Export Utility (Fully capturing active list)
-  const exportToExcelCSV = (dataList, filename) => {
+  // 📊 Professional Styled Excel (.xls) Export Utility
+  const exportToExcelXLS = (dataList, filename) => {
     if (!dataList || dataList.length === 0) {
       alert('No data available to export.');
       return;
     }
-    const headers = ['Order ID', 'Customer Name', 'Channel', 'Status', 'Total Amount', 'Timestamp'];
-    const rows = dataList.map(o => [
-      `"${o.displayId || o.orderId || ''}"`,
-      `"${o.customerName || 'Walk-In'}"`,
-      `"${o.channel || 'COUNTER'}"`,
-      `"${o.status || ''}"`,
-      o.totalAmount || 0,
-      `"${o.timestamp || new Date().toISOString()}"`
-    ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const rowsHtml = dataList.map(o => `
+      <tr>
+        <td style="border: 1px solid #cbd5e1; padding: 8px; mso-number-format:'\@';">${o.displayId || o.orderId || ''}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${o.customerName || 'Walk-In'}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${o.channel || 'COUNTER'}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${o.status || ''}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px; mso-number-format:'Currency';">₹${o.totalAmount || 0}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${o.timestamp || new Date().toISOString()}</td>
+      </tr>
+    `).join('');
+
+    const htmlTemplate = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            table { border-collapse: collapse; width: 100%; font-family: Calibri, sans-serif; font-size: 11pt; }
+            th { background-color: #059669; color: #ffffff; font-weight: bold; border: 1px solid #047857; padding: 10px; text-align: left; }
+            td { vertical-align: middle; }
+          </style>
+        </head>
+        <body>
+          <h2>${receiptConfig.restaurantName} - Report Export</h2>
+          <p>Generated on: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Customer Name</th>
+                <th>Channel</th>
+                <th>Status</th>
+                <th>Total Amount</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    const blob = new Blob([htmlTemplate], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `${filename}_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.href = url;
+    link.download = `${filename}_${new Date().toISOString().slice(0, 10)}.xls`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Simple Print for Active Orders
@@ -580,7 +615,7 @@ export default function ReportsModule({ orders: parentOrders }) {
               <p className="rp-section-desc">Live operational queue showing all pending & preparing orders</p>
             </div>
             <div className="rp-tools">
-              <button onClick={() => exportToExcelCSV(activeBreakdownOrders, 'Active_Orders')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
+              <button onClick={() => exportToExcelXLS(activeBreakdownOrders, 'Active_Orders')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
               <button onClick={printSimpleActiveOrders} className="rp-pill-btn">🖨️ Simple Print</button>
             </div>
           </div>
@@ -663,7 +698,7 @@ export default function ReportsModule({ orders: parentOrders }) {
                 <option value="month">Last Month</option>
                 <option value="year">Year</option>
               </select>
-              <button onClick={() => exportToExcelCSV(completedHistoryOrders, 'Completed_Orders_History')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
+              <button onClick={() => exportToExcelXLS(completedHistoryOrders, 'Completed_Orders_History')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
               <button onClick={printBulkHistory} className="rp-pill-btn">🖨️ Print Whole Ledger</button>
             </div>
           </div>
@@ -746,7 +781,7 @@ export default function ReportsModule({ orders: parentOrders }) {
               <p className="rp-section-desc">Synced historical log of all successfully closed customer complaints</p>
             </div>
             <div className="rp-tools">
-              <button onClick={() => exportToExcelCSV(closedComplaints, 'Resolved_Complaints')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
+              <button onClick={() => exportToExcelXLS(closedComplaints, 'Resolved_Complaints')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
               <button onClick={printComplaintsReport} className="rp-pill-btn">🖨️ Print Complaints</button>
             </div>
           </div>
@@ -792,7 +827,7 @@ export default function ReportsModule({ orders: parentOrders }) {
                 <option value="year">Year</option>
                 <option value="all">All Time</option>
               </select>
-              <button onClick={() => exportToExcelCSV(analyticsOrders, 'Revenue_Analytics')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
+              <button onClick={() => exportToExcelXLS(analyticsOrders, 'Revenue_Analytics')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
               <button onClick={printRevenueReport} className="rp-pill-btn">🖨️ Print Analytics</button>
             </div>
           </div>
@@ -846,7 +881,7 @@ export default function ReportsModule({ orders: parentOrders }) {
                 🧑‍✈️ Captain Ledger: {selectedCaptainDetails.name} ({selectedCaptainDetails.orders.length} Orders)
               </h3>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button onClick={() => exportToExcelCSV(selectedCaptainDetails.orders, `Captain_${selectedCaptainDetails.name}`)} className="rp-pill-btn" style={{ padding: '8px 12px', fontSize: '12px', background: '#059669' }}>📊 Excel</button>
+                <button onClick={() => exportToExcelXLS(selectedCaptainDetails.orders, `Captain_${selectedCaptainDetails.name}`)} className="rp-pill-btn" style={{ padding: '8px 12px', fontSize: '12px', background: '#059669' }}>📊 Excel</button>
                 <button onClick={() => printCaptainLedger(selectedCaptainDetails.name, selectedCaptainDetails.orders)} className="rp-pill-btn" style={{ padding: '8px 12px', fontSize: '12px' }}>🖨️ Print</button>
                 <button onClick={() => setSelectedCaptainDetails(null)} className="rp-close-x">✕</button>
               </div>
