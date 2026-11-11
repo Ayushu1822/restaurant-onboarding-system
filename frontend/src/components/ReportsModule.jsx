@@ -91,12 +91,9 @@ export default function ReportsModule({ orders: parentOrders }) {
       .catch(err => console.error("Error fetching complaints for reports:", err));
   };
 
-  // 🔍 Robust timestamp parser supporting Counter POS dd/mm/yyyy format and backend ISO strings
   const getSafeTimestamp = (order, index) => {
     if (order.timestamp) {
       let ts = String(order.timestamp);
-
-      // Counter POS format: "29/10/2026, 5:32:15 am" (dd/mm/yyyy)
       const m = ts.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)$/i);
       if (m) {
         let h = Number(m[4]) % 12;
@@ -104,8 +101,6 @@ export default function ReportsModule({ orders: parentOrders }) {
         const parsed = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), h, Number(m[5]), Number(m[6] || 0));
         if (!isNaN(parsed.getTime())) return parsed;
       }
-
-      // ISO format from the backend
       ts = ts.replace(/\.(\d{3})\d+/, '.$1');
       const d = new Date(ts);
       if (!isNaN(d.getTime())) return d;
@@ -147,7 +142,6 @@ export default function ReportsModule({ orders: parentOrders }) {
     return true;
   };
 
-  // 1. Active Orders Filtering (Keeps active queue visible in Reports Active section)
   const filteredOrders = orders.filter((o, idx) => {
     const st = (o.status || 'New').toLowerCase();
     const isSettledOrDone = st === 'completed' || st === 'delivered' || st === 'settled' || st === 'paid' || st === 'picked up';
@@ -183,7 +177,6 @@ export default function ReportsModule({ orders: parentOrders }) {
 
   const activeBreakdownOrders = filteredOrders;
 
-  // 2. Completed & Processed History Filtering (Strictly for fully finished / settled orders)
   const completedHistoryOrders = orders.filter((o, idx) => {
     const st = (o.status || 'New').toLowerCase();
     const isFinished = st === 'completed' || st === 'delivered' || st === 'picked up' || st === 'settled' || st === 'paid';
@@ -206,7 +199,6 @@ export default function ReportsModule({ orders: parentOrders }) {
     return matchesDate && matchesChannel;
   });
 
-  // 3. Analytics Filtering
   const analyticsOrders = orders.filter((o, idx) => {
     const orderDate = getSafeTimestamp(o, idx);
     let matchesDate = checkDateMatch(orderDate, analyticsDateRange);
@@ -249,7 +241,6 @@ export default function ReportsModule({ orders: parentOrders }) {
     ? `conic-gradient(#059669 0% ${p1}%, #2563eb ${p1}% ${p2}%, #d97706 ${p2}% 100%)`
     : '#e2e8f0';
 
-  // 4. Captains Mapping
   const captainMap = {};
   orders.forEach((o, idx) => {
     const capName = extractCaptain(o.customerName);
@@ -272,7 +263,7 @@ export default function ReportsModule({ orders: parentOrders }) {
     return a.localeCompare(b);
   });
 
-  // 🖨️ Synchronized Settings-Based Receipt Printer Utility
+  // 🖨️ Thermal Receipt Printer Utility
   const printSingleReceipt = (o, index) => {
     let dateStr = o.timestamp;
     if (!dateStr) {
@@ -343,6 +334,32 @@ export default function ReportsModule({ orders: parentOrders }) {
     printWindow.document.close();
   };
 
+  // 📊 Excel / CSV Export Utility
+  const exportToExcelCSV = (dataList, filename) => {
+    if (!dataList || dataList.length === 0) {
+      alert('No data available to export.');
+      return;
+    }
+    const headers = ['Order ID', 'Customer Name', 'Channel', 'Status', 'Total Amount', 'Timestamp'];
+    const rows = dataList.map(o => [
+      `"${o.displayId || o.orderId || ''}"`,
+      `"${o.customerName || 'Walk-In'}"`,
+      `"${o.channel || 'COUNTER'}"`,
+      `"${o.status || ''}"`,
+      o.totalAmount || 0,
+      `"${o.timestamp || new Date().toISOString()}"`
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `${filename}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const printBulkHistory = () => {
     let printWin = window.open('', '_blank', 'width=800,height=600');
     if (!printWin) return;
@@ -385,6 +402,110 @@ export default function ReportsModule({ orders: parentOrders }) {
     setTimeout(() => { printWin.print(); }, 250);
   };
 
+  // Captain Ledger Print
+  const printCaptainLedger = (captainName, capOrders) => {
+    let printWin = window.open('', '_blank', 'width=800,height=600');
+    if (!printWin) return;
+    
+    const rowsHtml = capOrders.map((o) => `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.displayId || o.orderId}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.customerName || 'Walk-In'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.channel || 'COUNTER'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.status || 'Completed'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: bold;">₹${o.totalAmount || 0}</td>
+      </tr>
+    `).join('');
+
+    printWin.document.write(`
+      <html>
+        <head><title>Captain Ledger - ${captainName}</title></head>
+        <body style="font-family: 'Inter', sans-serif; padding: 30px; color: #1e293b;">
+          <h2 style="margin-bottom: 5px;">Captain Report: ${captainName}</h2>
+          <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">Generated on: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+            <thead>
+              <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                <th style="padding: 10px;">Order ID</th>
+                <th style="padding: 10px;">Customer</th>
+                <th style="padding: 10px;">Channel</th>
+                <th style="padding: 10px;">Status</th>
+                <th style="padding: 10px;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(() => { printWin.print(); }, 250);
+  };
+
+  // Complaints Print
+  const printComplaintsReport = () => {
+    let printWin = window.open('', '_blank', 'width=800,height=600');
+    if (!printWin) return;
+    const rowsHtml = closedComplaints.map(c => `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${c.complaintId}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${c.orderId}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${c.customerName || 'Guest'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${c.complaintType}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd; color: #10b981; font-weight: bold;">Closed</td>
+      </tr>
+    `).join('');
+
+    printWin.document.write(`
+      <html>
+        <head><title>Resolved Complaints Report</title></head>
+        <body style="font-family: 'Inter', sans-serif; padding: 30px; color: #1e293b;">
+          <h2>Resolved Complaints Archive</h2>
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; margin-top: 15px;">
+            <thead>
+              <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                <th style="padding: 10px;">Complaint ID</th>
+                <th style="padding: 10px;">Order ID</th>
+                <th style="padding: 10px;">Customer</th>
+                <th style="padding: 10px;">Type</th>
+                <th style="padding: 10px;">Status</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(() => { printWin.print(); }, 250);
+  };
+
+  // Revenue Report Print
+  const printRevenueReport = () => {
+    let printWin = window.open('', '_blank', 'width=800,height=600');
+    if (!printWin) return;
+    printWin.document.write(`
+      <html>
+        <head><title>Revenue Distribution & Analytics</title></head>
+        <body style="font-family: 'Inter', sans-serif; padding: 30px; color: #1e293b;">
+          <h2>Revenue Distribution & Analytics Report</h2>
+          <p><strong>Total Revenue:</strong> ₹${totalRevenue.toFixed(2)}</p>
+          <p><strong>Total Orders Count:</strong> ${totalOrdersCount}</p>
+          <p><strong>Dine-In Revenue:</strong> ₹${tableRev.toFixed(2)} (${tablePct.toFixed(1)}%)</p>
+          <p><strong>Counter Revenue:</strong> ₹${counterRev.toFixed(2)} (${counterPct.toFixed(1)}%)</p>
+          <p><strong>Online Revenue:</strong> ₹${onlineRev.toFixed(2)} (${onlinePct.toFixed(1)}%)</p>
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(() => { printWin.print(); }, 250);
+  };
+
   const customerHistoryMap = {};
   orders.forEach(o => {
     const name = o.customerName || 'Walk-In Guest';
@@ -396,16 +517,13 @@ export default function ReportsModule({ orders: parentOrders }) {
     <div className="rp">
       <style>{css}</style>
 
-      {/* Top Header */}
+      {/* Top Header (Cleaned up: removed full dashboard print button) */}
       <div className="rp-header">
         <div>
           <h2 className="rp-title">Reports & Analytics Hub</h2>
           <p className="rp-subtitle">
             Enterprise-grade kitchen synchronized operational metrics, audits, and real-time ledger
           </p>
-        </div>
-        <div className="rp-header-tools">
-          <button onClick={() => window.print()} className="rp-export-btn">🖨️ Print Full Dashboard</button>
         </div>
       </div>
 
@@ -419,7 +537,7 @@ export default function ReportsModule({ orders: parentOrders }) {
               <p className="rp-section-desc">Live operational queue showing all pending & preparing orders</p>
             </div>
             <div className="rp-tools">
-              <button onClick={() => window.print()} className="rp-pill-btn">🖨️ Print Active Orders</button>
+              <button onClick={() => exportToExcelCSV(activeBreakdownOrders, 'Active_Orders')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
             </div>
           </div>
 
@@ -457,7 +575,7 @@ export default function ReportsModule({ orders: parentOrders }) {
                     <th>Captain</th>
                     <th>Status</th>
                     <th>Total Amount</th>
-                    <th>Action</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -473,7 +591,8 @@ export default function ReportsModule({ orders: parentOrders }) {
                         </span>
                       </td>
                       <td className="rp-amount">₹{o.totalAmount || 0}</td>
-                      <td>
+                      <td style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button onClick={() => printSingleReceipt(o, idx)} className="rp-receipt-btn" title="Print Receipt">🖨️ Receipt</button>
                         <button onClick={() => setSelectedCustomerHistory(o.customerName)} className="rp-history-btn">🔍 History</button>
                       </td>
                     </tr>
@@ -500,6 +619,7 @@ export default function ReportsModule({ orders: parentOrders }) {
                 <option value="month">Last Month</option>
                 <option value="year">Year</option>
               </select>
+              <button onClick={() => exportToExcelCSV(completedHistoryOrders, 'Completed_Orders_History')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
               <button onClick={printBulkHistory} className="rp-pill-btn">🖨️ Print Whole Ledger</button>
             </div>
           </div>
@@ -538,14 +658,16 @@ export default function ReportsModule({ orders: parentOrders }) {
               <h3 className="rp-section-title">🧑‍✈️ Captains Performance & Analytics</h3>
               <p className="rp-section-desc">Click any captain card to inspect complete past & present assigned orders</p>
             </div>
-            <select value={captainDateRange} onChange={e => setCaptainDateRange(e.target.value)} className="rp-select">
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="week">Last Week</option>
-              <option value="month">Last Month</option>
-              <option value="year">Year</option>
-              <option value="all">All Time</option>
-            </select>
+            <div className="rp-tools">
+              <select value={captainDateRange} onChange={e => setCaptainDateRange(e.target.value)} className="rp-select">
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="week">Last Week</option>
+                <option value="month">Last Month</option>
+                <option value="year">Year</option>
+                <option value="all">All Time</option>
+              </select>
+            </div>
           </div>
 
           {sortedCaptainKeys.length === 0 ? (
@@ -578,6 +700,10 @@ export default function ReportsModule({ orders: parentOrders }) {
             <div>
               <h3 className="rp-section-title">✅ Closed & Resolved Complaints Archive</h3>
               <p className="rp-section-desc">Synced historical log of all successfully closed customer complaints</p>
+            </div>
+            <div className="rp-tools">
+              <button onClick={() => exportToExcelCSV(closedComplaints, 'Resolved_Complaints')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
+              <button onClick={printComplaintsReport} className="rp-pill-btn">🖨️ Print Complaints</button>
             </div>
           </div>
 
@@ -622,6 +748,8 @@ export default function ReportsModule({ orders: parentOrders }) {
                 <option value="year">Year</option>
                 <option value="all">All Time</option>
               </select>
+              <button onClick={() => exportToExcelCSV(analyticsOrders, 'Revenue_Analytics')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
+              <button onClick={printRevenueReport} className="rp-pill-btn">🖨️ Print Analytics</button>
             </div>
           </div>
 
@@ -673,7 +801,11 @@ export default function ReportsModule({ orders: parentOrders }) {
               <h3 className="rp-modal-title">
                 🧑‍✈️ Captain Ledger: {selectedCaptainDetails.name} ({selectedCaptainDetails.orders.length} Orders)
               </h3>
-              <button onClick={() => setSelectedCaptainDetails(null)} className="rp-close-x">✕</button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button onClick={() => exportToExcelCSV(selectedCaptainDetails.orders, `Captain_${selectedCaptainDetails.name}`)} className="rp-pill-btn" style={{ padding: '8px 12px', fontSize: '12px', background: '#059669' }}>📊 Excel</button>
+                <button onClick={() => printCaptainLedger(selectedCaptainDetails.name, selectedCaptainDetails.orders)} className="rp-pill-btn" style={{ padding: '8px 12px', fontSize: '12px' }}>🖨️ Print</button>
+                <button onClick={() => setSelectedCaptainDetails(null)} className="rp-close-x">✕</button>
+              </div>
             </div>
 
             <div className="rp-modal-list rp-modal-list-420">
@@ -763,7 +895,6 @@ const css = `
 }
 .rp *, .rp *::before, .rp *::after { box-sizing: border-box; }
 
-/* ---------- Header ---------- */
 .rp-header {
   display: flex;
   justify-content: space-between;
@@ -780,25 +911,7 @@ const css = `
   color: var(--ink);
 }
 .rp-subtitle { margin: 8px 0 0 0; color: var(--ink-faint); font-size: 15px; font-weight: 600; }
-.rp-header-tools { display: flex; gap: 12px; }
 
-.rp-export-btn {
-  font-family: inherit;
-  background: linear-gradient(135deg, #10b981, #047857);
-  color: #fff;
-  border: none;
-  padding: 14px 24px;
-  border-radius: 14px;
-  font-weight: 800;
-  font-size: 15px;
-  cursor: pointer;
-  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.28);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
-}
-.rp-export-btn:hover { transform: translateY(-3px); filter: brightness(1.06); box-shadow: 0 14px 28px rgba(5, 150, 105, 0.36); }
-.rp-export-btn:active { transform: translateY(0) scale(0.97); }
-
-/* ---------- Sections ---------- */
 .rp-stack { display: flex; flex-direction: column; gap: 30px; }
 
 .rp-section {
@@ -808,18 +921,8 @@ const css = `
   border: 1px solid var(--line);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 14px 34px -16px rgba(15, 23, 42, 0.14);
   transition: box-shadow 0.25s ease, border-color 0.25s ease;
-  animation: rp-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.rp-section:nth-child(2) { animation-delay: 0.08s; }
-.rp-section:nth-child(3) { animation-delay: 0.16s; }
-.rp-section:nth-child(4) { animation-delay: 0.24s; }
-.rp-section:nth-child(5) { animation-delay: 0.32s; }
 .rp-section:hover { border-color: #d3dcea; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05), 0 22px 44px -18px rgba(15, 23, 42, 0.2); }
-
-@keyframes rp-rise {
-  from { opacity: 0; transform: translateY(22px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
 
 .rp-section-head {
   display: flex;
@@ -833,38 +936,35 @@ const css = `
 .rp-section-desc { margin: 5px 0 0 0; font-size: 14px; color: var(--ink-faint); font-weight: 600; }
 .rp-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
-/* ---------- Buttons ---------- */
 .rp-pill-btn {
   font-family: inherit;
   background: var(--ink);
   color: #fff;
   border: none;
-  padding: 13px 20px;
+  padding: 11px 18px;
   border-radius: 12px;
   font-weight: 800;
   font-size: 14px;
   cursor: pointer;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.22);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+  transition: transform 0.2s ease, filter 0.2s ease;
 }
-.rp-pill-btn:hover { transform: translateY(-2px); background: #1e293b; box-shadow: 0 12px 24px rgba(15, 23, 42, 0.3); }
-.rp-pill-btn:active { transform: translateY(0) scale(0.97); }
+.rp-pill-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
 
 .rp-receipt-btn {
   font-family: inherit;
   background: linear-gradient(135deg, #10b981, #047857);
   color: #fff;
   border: none;
-  padding: 10px 16px;
+  padding: 9px 14px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  transition: transform 0.2s ease, filter 0.2s ease;
 }
-.rp-receipt-btn:hover { transform: translateY(-2px); filter: brightness(1.07); box-shadow: 0 10px 20px rgba(5, 150, 105, 0.35); }
-.rp-receipt-btn:active { transform: translateY(0) scale(0.96); }
+.rp-receipt-btn:hover { transform: translateY(-2px); filter: brightness(1.07); }
 .rp-receipt-btn.rp-mt { margin-top: 10px; }
 
 .rp-history-btn {
@@ -872,23 +972,21 @@ const css = `
   background: #ecfdf5;
   color: var(--green-dark);
   border: 1.5px solid #10b981;
-  padding: 9px 15px;
+  padding: 8px 14px;
   border-radius: 10px;
   font-weight: 800;
   cursor: pointer;
-  font-size: 14px;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  font-size: 13px;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
-.rp-history-btn:hover { background: #10b981; color: #fff; transform: translateY(-2px); box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3); }
-.rp-history-btn:active { transform: translateY(0) scale(0.96); }
+.rp-history-btn:hover { background: #10b981; color: #fff; transform: translateY(-2px); }
 
-/* ---------- Filters ---------- */
 .rp-filters { display: flex; gap: 14px; margin-bottom: 22px; flex-wrap: wrap; align-items: center; }
 .rp-search {
   flex: 1;
   min-width: 240px;
   font-family: inherit;
-  padding: 14px 18px;
+  padding: 13px 18px;
   border-radius: 12px;
   border: 2px solid #d5dde8;
   font-size: 15px;
@@ -896,81 +994,44 @@ const css = `
   color: var(--ink);
   background: #f8fafc;
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
-.rp-search::placeholder { color: #94a3b8; font-weight: 600; }
-.rp-search:hover { border-color: #b6c3d4; }
 .rp-search:focus { border-color: var(--blue); background: #fff; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15); }
 
 .rp-select {
   font-family: inherit;
-  padding: 14px 18px;
+  padding: 13px 16px;
   border-radius: 12px;
   border: 2px solid #d5dde8;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   background: #f8fafc;
   outline: none;
   cursor: pointer;
   color: var(--ink-soft);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 .rp-select:hover { border-color: #b6c3d4; background: #fff; }
-.rp-select:focus { border-color: var(--blue); background: #fff; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15); }
 
-/* ---------- Table ---------- */
 .rp-table-wrap { overflow-x: auto; border-radius: 16px; border: 1px solid var(--line); }
 .rp-table { width: 100%; border-collapse: collapse; font-size: 15px; min-width: 760px; }
 .rp-table thead tr { background: #f1f5f9; }
-.rp-table th {
-  padding: 16px 18px;
-  font-weight: 800;
-  font-size: 14px;
-  color: #475569;
-  text-align: left;
-  white-space: nowrap;
-  border-bottom: 2px solid var(--line);
-}
-.rp-table td { padding: 17px 18px; color: var(--ink-soft); font-weight: 700; border-bottom: 1px solid #eef2f7; }
-.rp-table tbody tr { transition: background 0.18s ease, box-shadow 0.18s ease; animation: rp-fade 0.4s ease both; }
-.rp-table tbody tr:hover { background: #eff6ff; box-shadow: inset 4px 0 0 var(--blue); }
-.rp-table tbody tr:last-child td { border-bottom: none; }
-
-@keyframes rp-fade { from { opacity: 0; } to { opacity: 1; } }
+.rp-table th { padding: 16px 18px; font-weight: 800; font-size: 14px; color: #475569; text-align: left; border-bottom: 2px solid var(--line); }
+.rp-table td { padding: 16px 18px; color: var(--ink-soft); font-weight: 700; border-bottom: 1px solid #eef2f7; }
+.rp-table tbody tr:hover { background: #eff6ff; }
 
 .rp-strong { color: var(--ink); font-weight: 800; }
 .rp-captain-cell { color: var(--blue) !important; font-weight: 800 !important; }
 .rp-amount { color: var(--green) !important; font-weight: 800 !important; font-size: 16px; }
 
-.rp-status {
-  display: inline-block;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 800;
-  color: #b45309;
-  background: #fef3c7;
-}
+.rp-status { display: inline-block; padding: 5px 10px; border-radius: 999px; font-size: 13px; font-weight: 800; color: #b45309; background: #fef3c7; }
 .rp-status.is-ready { color: var(--blue); background: #dbeafe; }
 
-.rp-badge {
-  display: inline-block;
-  background: #e0f2fe;
-  color: #0369a1;
-  padding: 6px 12px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 800;
-  border: 1.5px solid #bae6fd;
-}
+.rp-badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 5px 10px; border-radius: 8px; font-size: 13px; font-weight: 800; border: 1.5px solid #bae6fd; }
 
-/* ---------- Lists (history + complaints) ---------- */
-.rp-list { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding: 4px 6px 4px 2px; }
+.rp-list { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding: 4px; }
 .rp-list-400 { max-height: 440px; }
 .rp-list-350 { max-height: 390px; }
 
-.rp-hist-row,
-.rp-complaint-row {
+.rp-hist-row, .rp-complaint-row {
   background: #f8fafc;
   border: 1.5px solid var(--line);
   border-radius: 16px;
@@ -980,17 +1041,10 @@ const css = `
   align-items: center;
   flex-wrap: wrap;
   gap: 14px;
-  transition: transform 0.22s ease, border-color 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
-  animation: rp-fade 0.4s ease both;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
-.rp-hist-row { cursor: pointer; }
-.rp-hist-row:hover {
-  border-color: var(--green);
-  background: #f0fdf4;
-  transform: translateY(-3px);
-  box-shadow: 0 12px 26px rgba(5, 150, 105, 0.14);
-}
-.rp-complaint-row:hover { border-color: #a7f3d0; background: #f0fdf9; transform: translateY(-2px); box-shadow: 0 10px 22px rgba(16, 185, 129, 0.12); }
+.rp-hist-row:hover { border-color: var(--green); background: #f0fdf4; transform: translateY(-2px); }
+.rp-complaint-row:hover { border-color: #a7f3d0; background: #f0fdf9; }
 
 .rp-row-left { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .rp-row-right { display: flex; align-items: center; gap: 18px; }
@@ -999,10 +1053,9 @@ const css = `
 .rp-hist-status { font-size: 14px; color: var(--green); font-weight: 800; }
 .rp-hist-amount { font-weight: 800; color: var(--green); font-size: 19px; }
 
-.rp-complaint-type { background: #d1fae5; color: #065f46; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 800; }
+.rp-complaint-type { background: #d1fae5; color: #065f46; padding: 5px 10px; border-radius: 8px; font-size: 13px; font-weight: 800; }
 .rp-closed { font-size: 13px; color: #10b981; font-weight: 800; }
 
-/* ---------- Captain cards ---------- */
 .rp-cap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 18px; }
 .rp-cap-card {
   background: #f8fafc;
@@ -1010,42 +1063,28 @@ const css = `
   border-radius: 18px;
   border: 1.5px solid var(--line);
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
-  transition: transform 0.22s ease, border-color 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
-  animation: rp-fade 0.4s ease both;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
-.rp-cap-card:hover {
-  border-color: var(--blue);
-  background: #eff6ff;
-  transform: translateY(-5px);
-  box-shadow: 0 16px 32px rgba(37, 99, 235, 0.16);
-}
-.rp-cap-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
+.rp-cap-card:hover { border-color: var(--blue); background: #eff6ff; transform: translateY(-4px); }
+.rp-cap-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .rp-cap-name { font-size: 18px; font-weight: 800; color: var(--ink); }
-.rp-cap-inspect { font-size: 14px; color: var(--blue); font-weight: 800; transition: transform 0.2s ease; white-space: nowrap; }
-.rp-cap-card:hover .rp-cap-inspect { transform: translateX(5px); }
+.rp-cap-inspect { font-size: 14px; color: var(--blue); font-weight: 800; }
 .rp-cap-line { font-size: 15px; color: var(--ink-faint); font-weight: 700; margin-top: 5px; }
 .rp-blue { color: var(--blue); font-size: 17px; }
 .rp-green { color: var(--green); font-weight: 800; }
-.rp-cap-line .rp-green { font-size: 17px; }
 
-/* ---------- Metrics ---------- */
 .rp-metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 20px; margin-bottom: 26px; }
 .rp-metric {
   background: linear-gradient(145deg, #f8fafc, #eef2f7);
-  padding: 26px;
+  padding: 24px;
   border-radius: 20px;
   border: 1.5px solid var(--line);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
-  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
 }
-.rp-metric:hover { transform: translateY(-5px); border-color: #cbd5e1; box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12); }
-.rp-metric-title { font-size: 14px; font-weight: 800; color: var(--ink-faint); margin-bottom: 10px; }
-.rp-metric-value { font-size: clamp(30px, 3.4vw, 40px); font-weight: 800; color: var(--green); letter-spacing: -0.03em; }
+.rp-metric-title { font-size: 14px; font-weight: 800; color: var(--ink-faint); margin-bottom: 8px; }
+.rp-metric-value { font-size: clamp(28px, 3.2vw, 38px); font-weight: 800; color: var(--green); }
 .rp-metric-value.is-blue { color: var(--blue); }
 .rp-metric-value.is-amber { color: var(--amber); }
 
-/* ---------- Chart ---------- */
 .rp-chart {
   background: #f8fafc;
   padding: 32px 24px;
@@ -1056,191 +1095,73 @@ const css = `
   align-items: center;
 }
 .rp-pie {
-  width: 210px;
-  height: 210px;
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 22px;
-  animation: rp-pie-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-.rp-pie:hover { transform: scale(1.05) rotate(4deg); box-shadow: 0 22px 44px rgba(15, 23, 42, 0.22); }
-@keyframes rp-pie-in {
-  from { opacity: 0; transform: scale(0.6) rotate(-120deg); }
-  to   { opacity: 1; transform: scale(1) rotate(0); }
+  box-shadow: 0 12px 30px rgba(0,0,0,0.1);
 }
 .rp-pie-center {
-  width: 118px;
-  height: 118px;
+  width: 110px;
+  height: 110px;
   background: #fff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
-  font-size: 19px;
-  color: var(--ink);
-  box-shadow: inset 0 2px 8px rgba(15, 23, 42, 0.08);
+  font-size: 18px;
 }
-.rp-legend { display: flex; gap: 14px 24px; font-size: 15px; font-weight: 800; flex-wrap: wrap; justify-content: center; }
-.rp-legend-item { padding: 8px 14px; border-radius: 999px; background: #fff; border: 1.5px solid var(--line); transition: transform 0.2s ease, box-shadow 0.2s ease; }
-.rp-legend-item:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(15, 23, 42, 0.1); }
+.rp-legend { display: flex; gap: 12px 20px; font-size: 14px; font-weight: 800; flex-wrap: wrap; justify-content: center; }
+.rp-legend-item { padding: 6px 12px; border-radius: 999px; background: #fff; border: 1px solid var(--line); }
 .rp-legend-item.is-dine { color: #059669; }
 .rp-legend-item.is-counter { color: #2563eb; }
 .rp-legend-item.is-online { color: #d97706; }
 
-/* ---------- Empty state ---------- */
-.rp-empty {
-  text-align: center;
-  padding: 44px 24px;
-  color: #64748b;
-  font-size: 16px;
-  font-weight: 700;
-  background: #f8fafc;
-  border: 2px dashed #cbd5e1;
-  border-radius: 18px;
-}
-.rp-chart .rp-empty { width: 100%; }
+.rp-empty { text-align: center; padding: 40px; color: #64748b; font-size: 15px; font-weight: 700; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 16px; }
 
-/* ---------- Modals ---------- */
 .rp-overlay {
   position: fixed;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
   background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(6px);
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 16px;
   z-index: 1000;
-  animation: rp-fade 0.25s ease both;
 }
 .rp-modal {
   width: min(500px, 100%);
-  max-height: 92vh;
+  max-height: 90vh;
   overflow-y: auto;
   background: #fff;
-  padding: clamp(18px, 3vw, 32px);
+  padding: 26px;
   border-radius: 24px;
   border: 1px solid var(--line);
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
-  animation: rp-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.25);
 }
-.rp-modal-lg { width: min(680px, 100%); }
-@keyframes rp-pop {
-  from { opacity: 0; transform: translateY(18px) scale(0.95); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.rp-modal-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 18px;
-  padding-bottom: 14px;
-  border-bottom: 2px solid var(--line);
-}
-.rp-modal-title { margin: 0; color: var(--ink); font-weight: 800; font-size: 20px; line-height: 1.3; }
-.rp-close-x {
-  font-family: inherit;
-  background: #f1f5f9;
-  border: none;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  font-size: 17px;
-  font-weight: 800;
-  color: #64748b;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.25s ease;
-}
-.rp-close-x:hover { background: #fee2e2; color: #dc2626; transform: rotate(90deg); }
-
-.rp-modal-list { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; margin-bottom: 22px; padding-right: 4px; }
-.rp-modal-list-420 { max-height: 420px; }
+.rp-modal-lg { width: min(700px, 100%); }
+.rp-modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--line); }
+.rp-modal-title { margin: 0; color: var(--ink); font-weight: 800; font-size: 19px; }
+.rp-close-x { background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; font-size: 16px; font-weight: 800; color: #64748b; cursor: pointer; }
+.rp-modal-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; margin-bottom: 18px; }
+.rp-modal-list-420 { max-height: 400px; }
 .rp-modal-list-300 { max-height: 300px; }
-
-.rp-modal-row {
-  background: #f8fafc;
-  padding: 18px 20px;
-  border-radius: 16px;
-  border: 1.5px solid var(--line);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-}
-.rp-modal-row:hover { border-color: var(--green); background: #f0fdf4; transform: translateX(4px); box-shadow: 0 8px 18px rgba(5, 150, 105, 0.12); }
-.rp-mr-id { font-weight: 800; color: var(--ink); font-size: 17px; }
-.rp-mr-customer { font-size: 15px; color: var(--ink-soft); font-weight: 700; margin-top: 5px; }
-.rp-mr-meta { font-size: 14px; color: var(--ink-faint); font-weight: 600; margin-top: 4px; }
-.rp-mr-status { font-size: 14px; color: var(--ink-faint); font-weight: 600; margin-top: 2px; }
+.rp-modal-row { background: #f8fafc; padding: 14px 18px; border-radius: 14px; border: 1.5px solid var(--line); display: flex; justifyContent: space-between; align-items: center; gap: 10px; }
+.rp-mr-id { font-weight: 800; color: var(--ink); font-size: 16px; }
+.rp-mr-customer { font-size: 14px; color: var(--ink-soft); font-weight: 700; margin-top: 3px; }
+.rp-mr-meta { font-size: 13px; color: var(--ink-faint); font-weight: 600; margin-top: 2px; }
 .rp-mr-right { text-align: right; }
-.rp-mr-amount { font-weight: 800; color: var(--green); font-size: 21px; }
-.rp-mr-amount.is-small { font-size: 18px; }
+.rp-mr-amount { font-weight: 800; color: var(--green); font-size: 18px; }
+.rp-modal-close { width: 100%; font-family: inherit; padding: 14px; background: var(--ink); color: #fff; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; font-size: 15px; }
 
-.rp-modal-close {
-  width: 100%;
-  font-family: inherit;
-  padding: 15px;
-  background: var(--ink);
-  color: #fff;
-  border: none;
-  border-radius: 14px;
-  font-weight: 800;
-  cursor: pointer;
-  font-size: 16px;
-  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
-}
-.rp-modal-close:hover { background: #1e293b; transform: translateY(-2px); box-shadow: 0 12px 24px rgba(15, 23, 42, 0.3); }
-.rp-modal-close:active { transform: translateY(0) scale(0.98); }
-
-/* ---------- Keyboard focus ---------- */
-.rp-export-btn:focus-visible,
-.rp-pill-btn:focus-visible,
-.rp-receipt-btn:focus-visible,
-.rp-history-btn:focus-visible,
-.rp-close-x:focus-visible,
-.rp-modal-close:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.5);
-  outline-offset: 2px;
-}
-
-/* ---------- Responsive ---------- */
-@media (max-width: 720px) {
-  .rp-header-tools, .rp-export-btn { width: 100%; }
-  .rp-tools { width: 100%; }
-  .rp-tools .rp-select, .rp-tools .rp-pill-btn { flex: 1; min-width: 140px; }
-  .rp-select, .rp-search { width: 100%; }
-  .rp-hist-row, .rp-complaint-row { padding: 16px; }
-  .rp-row-right { width: 100%; justify-content: space-between; }
-  .rp-pie { width: 180px; height: 180px; }
-  .rp-pie-center { width: 100px; height: 100px; font-size: 17px; }
-}
-
-/* ---------- Print ---------- */
 @media print {
   body * { visibility: hidden !important; }
   .printable-report-area, .printable-report-area * { visibility: visible !important; }
   .printable-report-area { position: absolute; left: 0; top: 0; width: 100%; background: #fff !important; }
-  .rp-section, .rp-pie, .rp-table tbody tr { animation: none !important; }
-}
-
-/* ---------- Reduced motion ---------- */
-@media (prefers-reduced-motion: reduce) {
-  .rp *, .rp *::before, .rp *::after {
-    animation: none !important;
-    transition: none !important;
-  }
 }
 `;
