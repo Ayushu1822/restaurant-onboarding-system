@@ -508,14 +508,6 @@ function makeDoc(width) {
   };
 }
 
-/*
-  order = {
-    id, timestamp, type, customer, phone, note, token,
-    items: [{ name, qty, price, taxRate, note }],
-    subtotal, totalTax, discount, total, paymentMethod
-  }
-  cfg = your receiptConfig (uses its toggles, paperSize, restaurant details and footerText)
-*/
 export function buildReceipt(o, cfg = {}) {
   const t = cfg.toggles || {};
   const flag = (k, d = true) => (t[k] !== undefined ? t[k] : d);
@@ -557,8 +549,8 @@ export function buildReceipt(o, cfg = {}) {
 
   (o.items || []).forEach((it) => {
     d.lr(`${it.qty}x ${it.name}`, money(it.price * it.qty));
-    if (flag('itemRate')) d.line(`   @ ${money(it.price)}` + (it.taxRate ? ` (${it.taxRate}% tax)` : ''));
-    if (flag('itemNotes') && it.note) d.wrap('   * ' + it.note);
+    if (flag('itemRate')) d.line(`    @ ${money(it.price)}` + (it.taxRate ? ` (${it.taxRate}% tax)` : ''));
+    if (flag('itemNotes') && it.note) d.wrap('    * ' + it.note);
   });
   d.rule();
 
@@ -586,8 +578,6 @@ export function buildReceipt(o, cfg = {}) {
   return d.done();
 }
 
-// Returns true if the receipt was sent to the connected printer.
-// Returns false if no printer is connected or sending failed, so the caller can fall back to window.print().
 export async function sendReceiptToPrinter(order, cfg) {
   if (!conn) return false;
   try {
@@ -606,7 +596,6 @@ export async function sendReceiptToPrinter(order, cfg) {
   }
 }
 
-// Prints a sample receipt. With no printer connected it only writes a text preview to the browser console.
 export async function testPrint(cfg) {
   const sample = {
     id: 'TEST-001',
@@ -792,38 +781,13 @@ function Msg({ msg }) {
   );
 }
 
-function PasswordField({ label, value, onChange, autoComplete }) {
-  const [show, setShow] = useState(false);
-  return (
-    <div style={{ marginBottom: '12px' }}>
-      <label style={{ display: 'block', fontSize: '12px', fontWeight: '950', color: '#0f172a', marginBottom: '6px' }}>{label}</label>
-      <div style={{ position: 'relative' }}>
-        <input
-          type={show ? 'text' : 'password'}
-          value={value}
-          autoComplete={autoComplete}
-          onChange={(e) => onChange(e.target.value)}
-          style={sysInput(false, { width: '100%', paddingRight: '56px' })}
-        />
-        <button
-          type="button"
-          onClick={() => setShow(!show)}
-          style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', fontSize: '11px', fontWeight: '800', color: '#64748b', cursor: 'pointer' }}
-        >
-          {show ? 'Hide' : 'Show'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 const clampInt = (v, min, max) => {
   const n = parseInt(String(v).replace(/\D/g, ''), 10);
   if (Number.isNaN(n)) return '';
   return Math.min(max, Math.max(min, n));
 };
 
-function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSaveCounter, onChangePassword }) {
+function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSaveCounter, onOpenForgotPassword }) {
   const initAuto = {
     enabled: systemSettings?.autoApprove?.enabled ?? false,
     immediate: systemSettings?.autoApprove?.immediate ?? false,
@@ -847,14 +811,6 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
   const [soundSaved, setSoundSaved] = useState(getSoundSettings());
   const [sound, setSound] = useState(getSoundSettings());
   const [soundMsg, setSoundMsg] = useState(null);
-
-  /* ---------- 4. SECURITY (Two-Step Verification Flow without nested forms) ---------- */
-  const [currentPw, setCurrentPw] = useState('');
-  const [newPw, setNewPw] = useState('');
-  const [confirmPw, setConfirmPw] = useState('');
-  const [isVerified, setIsVerified] = useState(false);
-  const [pwSaving, setPwSaving] = useState(false);
-  const [pwMsg, setPwMsg] = useState(null);
 
   useEffect(() => {
     if (!systemSettings) return;
@@ -936,83 +892,6 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
     saveSoundSettings(sound);
     setSoundSaved(sound);
     setSoundMsg({ type: 'ok', text: 'Sound preference saved on this device.' });
-  };
-
-  /* ----- STEP 1: Verify Current Password using Login API ----- */
-  const handleVerifyCurrentPassword = async () => {
-    if (!currentPw) {
-      return setPwMsg({ type: 'error', text: 'Please enter your current password.' });
-    }
-
-    setPwSaving(true);
-    setPwMsg(null);
-
-    try {
-      const userEmail = localStorage.getItem('userEmail') || localStorage.getItem('user_email') || '';
-      if (!userEmail) throw new Error('No logged-in user email found. Please login again.');
-
-      const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: userEmail, password: currentPw })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Incorrect current password. Please try again.');
-      }
-
-      setIsVerified(true);
-      setPwMsg({ type: 'ok', text: '✅ Current password verified! Now enter your new password.' });
-    } catch (e) {
-      setPwMsg({ type: 'error', text: e?.message || 'Password verification failed.' });
-    } finally {
-      setPwSaving(false);
-    }
-  };
-
-  /* ----- STEP 2: Save New Password directly to DB ----- */
-  const handleUpdateNewPassword = async () => {
-    if (!newPw || newPw.length < 6) {
-      return setPwMsg({ type: 'error', text: 'New password must be at least 6 characters long.' });
-    }
-    if (newPw !== confirmPw) {
-      return setPwMsg({ type: 'error', text: 'New passwords do not match.' });
-    }
-    if (newPw === currentPw) {
-      return setPwMsg({ type: 'error', text: 'New password must be different from your current password.' });
-    }
-
-    setPwSaving(true);
-    setPwMsg(null);
-
-    try {
-      const userEmail = localStorage.getItem('userEmail') || localStorage.getItem('user_email') || '';
-      
-      const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/update-password`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: userEmail, currentPassword: currentPw, newPassword: newPw })
-      });
-
-      if (!res.ok) {
-        if (onChangePassword) {
-          await onChangePassword({ currentPassword: currentPw, newPassword: newPw });
-        } else {
-          throw new Error('Failed to update password in database.');
-        }
-      }
-
-      setCurrentPw('');
-      setNewPw('');
-      setConfirmPw('');
-      setIsVerified(false);
-      setPwMsg({ type: 'ok', text: '🔐 Password successfully updated in database!' });
-    } catch (e) {
-      setPwMsg({ type: 'error', text: e?.message || 'Could not update password.' });
-    } finally {
-      setPwSaving(false);
-    }
   };
 
   const timerDisabled = !auto.enabled || auto.immediate;
@@ -1192,87 +1071,34 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
           <Msg msg={soundMsg} />
         </SectionCard>
 
-        {/* ===== 4. SECURITY (Two-Step Password Verification Flow without forms) ===== */}
+        {/* ===== 4. SECURITY & PASSWORD MANAGEMENT (Redirect to Login Forgot Password) ===== */}
         <div style={{ maxWidth: '760px' }}>
           <div style={{ fontSize: '13px', fontWeight: '950', color: '#0f172a', marginBottom: '8px' }}>Security & Password Management</div>
           <div style={card}>
-            {!isVerified ? (
-              /* STEP 1: Enter & Verify Current Password */
-              <div>
-                <PasswordField 
-                  label="Enter Current (Previous) Password" 
-                  value={currentPw} 
-                  autoComplete="current-password" 
-                  onChange={(v) => setCurrentPw(v)} 
-                />
-                <button
-                  type="button"
-                  disabled={pwSaving}
-                  onClick={handleVerifyCurrentPassword}
-                  style={{
-                    width: '100%',
-                    backgroundColor: pwSaving ? GREEN_LIGHT : GREEN,
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    padding: '11px',
-                    fontSize: '13px',
-                    fontWeight: '950',
-                    cursor: pwSaving ? 'not-allowed' : 'pointer',
-                    marginTop: '8px'
-                  }}
-                >
-                  {pwSaving ? 'Verifying...' : 'Verify Current Password'}
-                </button>
-              </div>
-            ) : (
-              /* STEP 2: Unlocked New Password Fields */
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', backgroundColor: '#f0fdf4', padding: '8px 12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-                  <span style={{ fontSize: '12px', fontWeight: '900', color: '#166534' }}>🔓 Current password verified successfully</span>
-                  <button 
-                    type="button" 
-                    onClick={() => { setIsVerified(false); setCurrentPw(''); setNewPw(''); setConfirmPw(''); setPwMsg(null); }}
-                    style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}
-                  >
-                    Reset
-                  </button>
-                </div>
-
-                <PasswordField 
-                  label="New Password" 
-                  value={newPw} 
-                  autoComplete="new-password" 
-                  onChange={(v) => setNewPw(v)} 
-                />
-                <PasswordField 
-                  label="Re-enter New Password" 
-                  value={confirmPw} 
-                  autoComplete="new-password" 
-                  onChange={(v) => setConfirmPw(v)} 
-                />
-                <button
-                  type="button"
-                  disabled={pwSaving}
-                  onClick={handleUpdateNewPassword}
-                  style={{
-                    width: '100%',
-                    backgroundColor: pwSaving ? GREEN_LIGHT : GREEN,
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    padding: '11px',
-                    fontSize: '13px',
-                    fontWeight: '950',
-                    cursor: pwSaving ? 'not-allowed' : 'pointer',
-                    marginTop: '8px'
-                  }}
-                >
-                  {pwSaving ? 'Updating Database...' : 'Save New Password'}
-                </button>
-              </div>
-            )}
-            <Msg msg={pwMsg} />
+            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700', marginBottom: '14px', lineHeight: 1.5 }}>
+              Need to change or reset your account password? You can securely trigger a password reset via email verification.
+            </div>
+            <button
+              type="button"
+              onClick={onOpenForgotPassword}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                width: '100%',
+                backgroundColor: RED,
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px',
+                fontSize: '13px',
+                fontWeight: '950',
+                cursor: 'pointer'
+              }}
+            >
+              🔐 Reset Password
+            </button>
           </div>
         </div>
       </div>
@@ -1297,7 +1123,7 @@ export default function AdvancedSettingsTab({
   branchName,
   onSaveAutoApprove,
   onSaveCounter,
-  onChangePassword
+  onOpenForgotPassword
 }) {
   const [oneClickOpen, setOneClickOpen] = useState(false);
 
@@ -1312,7 +1138,6 @@ export default function AdvancedSettingsTab({
   const setPrinterInfo = (patch) => setFormData({ ...formData, printerInfo: { ...printerInfo, ...patch } });
   const setReceiptConfig = (patch) => setFormData({ ...formData, receiptConfig: { ...receiptConfig, ...patch } });
 
-  /* ---------- real printer connection (code is in this same file, above) ---------- */
   const [printerStatus, setPrinterStatus] = useState(getPrinterStatus());
   const [printerMsg, setPrinterMsg] = useState(null);
 
@@ -1668,8 +1493,8 @@ export default function AdvancedSettingsTab({
                           <span>{on('itemRate') ? 'Qty  Rate  Amount' : 'Qty  Amount'}</span>
                         </div>
                         {row('Test Burger', on('itemRate') ? '2  ₹300.00  ₹620.00' : '2  ₹620.00')}
-                        {on('variants') && <div>&nbsp;+ Extra Cheese x1 ₹20.00</div>}
-                        {on('itemNotes') && <div>&nbsp;Less spicy</div>}
+                        {on('variants') && <div> + Extra Cheese x1 ₹20.00</div>}
+                        {on('itemNotes') && <div> Less spicy</div>}
                         {row('Test Cola', on('itemRate') ? '1  ₹70.00  ₹70.00' : '1  ₹70.00')}
                       </div>
                     )}
@@ -1765,7 +1590,7 @@ export default function AdvancedSettingsTab({
           branchName={branchName}
           onSaveAutoApprove={onSaveAutoApprove}
           onSaveCounter={onSaveCounter}
-          onChangePassword={onChangePassword}
+          onOpenForgotPassword={onOpenForgotPassword}
         />
       )}
     </>
