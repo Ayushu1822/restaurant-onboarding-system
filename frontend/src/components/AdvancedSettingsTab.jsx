@@ -1043,13 +1043,14 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
           <div style={{ fontSize: '13px', fontWeight: '950', color: '#0f172a', marginBottom: '8px' }}>Security & Password Management</div>
           <div style={card}>
             <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700', marginBottom: '14px', lineHeight: 1.5 }}>
-              Need to change or reset your account password? Click below to go to the password recovery screen.
+              Need to change or reset your account password? Click below to go straight to the password recovery screen.
             </div>
             <button
               type="button"
               onClick={() => {
                 localStorage.removeItem('auth_token');
                 localStorage.removeItem('userEmail');
+                localStorage.setItem('open_forgot_password', 'true');
                 window.location.reload();
               }}
               style={{
