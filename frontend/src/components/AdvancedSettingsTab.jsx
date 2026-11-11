@@ -294,6 +294,346 @@ export function playNotificationChime(soundId, force = false) {
   } catch {}
 }
 
+/* =====================================================================
+   PRINTER CONNECTION + ESC/POS RECEIPT
+   Direct thermal-printer support from the browser (no installer).
+   Works in Chrome / Edge on HTTPS (or localhost). Not supported in Safari / iPhone.
+   The connection lives in this module, so every screen shares the same connected printer.
+   After a page reload the printer must be connected again (the browser asks for a click).
+   Other screens print with:  import { sendReceiptToPrinter } from './AdvancedSettingsTab';
+   ===================================================================== */
+
+let conn = null; // { type, name, write(bytes), close() }
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+export const isPrinterConnected = () => !!conn;
+export const getPrinterStatus = () =>
+  conn ? { connected: true, type: conn.type, name: conn.name } : { connected: false };
+
+export async function disconnectPrinter() {
+  if (!conn) return;
+  const c = conn;
+  conn = null;
+  try {
+    await c.close();
+  } catch {
+    /* ignore */
+  }
+}
+
+// Serial ports, including Bluetooth (classic) printers after they are paired in the OS
+export async function connectSerial(baudRate = 9600) {
+  if (!navigator.serial) throw new Error('Serial printing is not supported here. Use Chrome or Edge.');
+  const port = await navigator.serial.requestPort();
+  await disconnectPrinter();
+  await port.open({ baudRate });
+  const writer = port.writable.getWriter();
+  conn = {
+    type: 'Serial / Bluetooth',
+    name: 'Serial printer',
+    write: async (bytes) => {
+      await writer.write(bytes);
+    },
+    close: async () => {
+      try {
+        writer.releaseLock();
+      } catch {
+        /* ignore */
+      }
+      await port.close();
+    }
+  };
+  return conn.name;
+}
+
+// USB cable
+export async function connectUsb() {
+  if (!navigator.usb) throw new Error('USB printing is not supported here. Use Chrome or Edge.');
+  const device = await navigator.usb.requestDevice({ filters: [] });
+  await disconnectPrinter();
+  await device.open();
+  if (device.configuration === null) await device.selectConfiguration(1);
+
+  const find = (printerClassOnly) => {
+    for (const i of device.configuration.interfaces) {
+      for (const alt of i.alternates) {
+        if (printerClassOnly && alt.interfaceClass !== 7) continue;
+        const out = alt.endpoints.find((e) => e.direction === 'out' && e.type === 'bulk');
+        if (out) return { num: i.interfaceNumber, ep: out.endpointNumber };
+      }
+    }
+    return null;
+  };
+  const found = find(true) || find(false);
+  if (!found) {
+    await device.close();
+    throw new Error('This USB device has no printable endpoint.');
+  }
+  try {
+    await device.claimInterface(found.num);
+  } catch (e) {
+    await device.close().catch(() => {});
+    throw new Error(
+      'Windows is using this printer with its own driver, so the browser cannot open it. Try the Serial option, or switch the printer to a generic (WinUSB) driver.'
+    );
+  }
+  conn = {
+    type: 'USB',
+    name: device.productName || 'USB printer',
+    write: async (bytes) => {
+      for (let i = 0; i < bytes.length; i += 4096) {
+        await device.transferOut(found.ep, bytes.slice(i, i + 4096));
+      }
+    },
+    close: async () => {
+      try {
+        await device.releaseInterface(found.num);
+      } catch {
+        /* ignore */
+      }
+      await device.close();
+    }
+  };
+  return conn.name;
+}
+
+// Bluetooth Low Energy printers. Only these common printer service ids are searched.
+const BLE_SERVICES = [
+  '000018f0-0000-1000-8000-00805f9b34fb',
+  'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+  '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+  '0000ff00-0000-1000-8000-00805f9b34fb',
+  '0000fff0-0000-1000-8000-00805f9b34fb',
+  '0000ffe0-0000-1000-8000-00805f9b34fb',
+  '0000ae30-0000-1000-8000-00805f9b34fb'
+];
+
+export async function connectBluetooth() {
+  if (!navigator.bluetooth) throw new Error('Bluetooth printing is not supported here. Use Chrome or Edge.');
+  const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: BLE_SERVICES });
+  await disconnectPrinter();
+  const server = await device.gatt.connect();
+  let ch = null;
+  const services = await server.getPrimaryServices();
+  for (const s of services) {
+    const chars = await s.getCharacteristics();
+    ch = chars.find((c) => c.properties.writeWithoutResponse || c.properties.write);
+    if (ch) break;
+  }
+  if (!ch) {
+    server.disconnect();
+    throw new Error('Could not find a writable printer channel on this Bluetooth device. It may not be a BLE printer.');
+  }
+  const noResponse = !!ch.properties.writeWithoutResponse;
+  conn = {
+    type: 'Bluetooth (BLE)',
+    name: device.name || 'Bluetooth printer',
+    write: async (bytes) => {
+      for (let i = 0; i < bytes.length; i += 100) {
+        const chunk = bytes.slice(i, i + 100);
+        if (noResponse) await ch.writeValueWithoutResponse(chunk);
+        else await ch.writeValue(chunk);
+        await sleep(20);
+      }
+    },
+    close: async () => {
+      if (device.gatt.connected) device.gatt.disconnect();
+    }
+  };
+  return conn.name;
+}
+
+// Most thermal printers cannot print the rupee sign or non-English letters as text
+const clean = (s) => String(s ?? '').replace(/₹/g, 'Rs.').replace(/[^\x20-\x7E]/g, '?');
+
+function makeDoc(width) {
+  const out = [];
+  const plain = [];
+  const raw = (...b) => out.push(...b);
+
+  const line = (s = '') => {
+    const c = clean(s);
+    for (let i = 0; i < c.length; i++) out.push(c.charCodeAt(i));
+    out.push(0x0a);
+    plain.push(c);
+  };
+
+  const wrap = (s, w = width) => {
+    String(s ?? '')
+      .split('\n')
+      .forEach((para) => {
+        let cur = '';
+        clean(para)
+          .split(/\s+/)
+          .filter(Boolean)
+          .forEach((word0) => {
+            let word = word0;
+            while (word.length > w) {
+              if (cur) {
+                line(cur);
+                cur = '';
+              }
+              line(word.slice(0, w));
+              word = word.slice(w);
+            }
+            if (!cur) cur = word;
+            else if ((cur + ' ' + word).length <= w) cur += ' ' + word;
+            else {
+              line(cur);
+              cur = word;
+            }
+          });
+        line(cur);
+      });
+  };
+
+  const lr = (l0, r0) => {
+    let l = clean(l0);
+    const r = clean(r0);
+    if (l.length + r.length + 1 > width) l = l.slice(0, Math.max(1, width - r.length - 1));
+    line(l + ' '.repeat(Math.max(1, width - l.length - r.length)) + r);
+  };
+
+  return {
+    init: () => raw(0x1b, 0x40),
+    align: (n) => raw(0x1b, 0x61, n), // 0 left, 1 center, 2 right
+    bold: (isOn) => raw(0x1b, 0x45, isOn ? 1 : 0),
+    line,
+    wrap,
+    lr,
+    rule: () => line('-'.repeat(width)),
+    cut: () => raw(0x0a, 0x0a, 0x0a, 0x1d, 0x56, 0x42, 0x00),
+    done: () => ({ bytes: new Uint8Array(out), plain: plain.join('\n') })
+  };
+}
+
+/*
+  order = {
+    id, timestamp, type, customer, phone, note, token,
+    items: [{ name, qty, price, taxRate, note }],
+    subtotal, totalTax, discount, total, paymentMethod
+  }
+  cfg = your receiptConfig (uses its toggles, paperSize, restaurant details and footerText)
+*/
+export function buildReceipt(o, cfg = {}) {
+  const t = cfg.toggles || {};
+  const flag = (k, d = true) => (t[k] !== undefined ? t[k] : d);
+  const money = (v) => 'Rs.' + Number(v || 0).toFixed(2);
+  const width = cfg.paperSize === '58mm' ? 32 : 48;
+  const d = makeDoc(width);
+
+  d.init();
+  d.align(1);
+  if (flag('headerText', false) && cfg.headerText) d.wrap(cfg.headerText);
+  if (flag('restaurantName')) {
+    d.bold(true);
+    d.wrap((cfg.restaurantName || 'RESTAURANT').toUpperCase());
+    d.bold(false);
+  }
+  if (flag('branchName') && cfg.branchName) d.wrap(cfg.branchName);
+  if (flag('address') && cfg.address) d.wrap(cfg.address);
+  if (flag('phone') && cfg.phone) d.line('Ph: ' + cfg.phone);
+  if (flag('email', false) && cfg.email) d.line(cfg.email);
+  if (flag('gstin') && cfg.gstin) d.line('GSTIN: ' + cfg.gstin);
+  if (flag('fssai') && cfg.fssai) d.line(cfg.fssai);
+  d.align(0);
+  d.rule();
+
+  if (flag('tokenNumber') && o.token) {
+    d.align(1);
+    d.bold(true);
+    d.line('TOKEN: #' + o.token);
+    d.bold(false);
+    d.align(0);
+  }
+  if (flag('invoiceNo')) d.line('Receipt: ' + (o.id || ''));
+  if (flag('orderType') && o.type) d.line('Type: ' + o.type);
+  if (flag('dateAndTime')) d.line('Date: ' + (o.timestamp || ''));
+  if (flag('customerName') && o.customer) d.line('Customer: ' + o.customer);
+  if (flag('customerMobile') && o.phone) d.line('Mobile: ' + o.phone);
+  if (o.note) d.wrap('Note: ' + o.note);
+  d.rule();
+
+  (o.items || []).forEach((it) => {
+    d.lr(`${it.qty}x ${it.name}`, money(it.price * it.qty));
+    if (flag('itemRate')) d.line(`   @ ${money(it.price)}` + (it.taxRate ? ` (${it.taxRate}% tax)` : ''));
+    if (flag('itemNotes') && it.note) d.wrap('   * ' + it.note);
+  });
+  d.rule();
+
+  d.lr('Subtotal', money(o.subtotal));
+  if (flag('discount') && o.discount) d.lr('Discount', '-' + money(o.discount));
+  if (flag('totalTax')) {
+    if (flag('taxBreakdown')) {
+      d.lr('CGST', money((o.totalTax || 0) / 2));
+      d.lr('SGST', money((o.totalTax || 0) / 2));
+    } else {
+      d.lr('Total Tax', money(o.totalTax));
+    }
+  }
+  d.bold(true);
+  d.lr('TOTAL', money(o.total));
+  d.bold(false);
+  d.rule();
+
+  if (flag('paymentMethod') && o.paymentMethod) d.line('Payment: ' + o.paymentMethod);
+  if (flag('footerText') && cfg.footerText) {
+    d.align(1);
+    d.wrap(cfg.footerText);
+  }
+  d.cut();
+  return d.done();
+}
+
+// Returns true if the receipt was sent to the connected printer.
+// Returns false if no printer is connected or sending failed, so the caller can fall back to window.print().
+export async function sendReceiptToPrinter(order, cfg) {
+  if (!conn) return false;
+  try {
+    await conn.write(buildReceipt(order, cfg).bytes);
+    return true;
+  } catch (e) {
+    console.warn('Printer write failed:', e);
+    const c = conn;
+    conn = null;
+    try {
+      await c.close();
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+}
+
+// Prints a sample receipt. With no printer connected it only writes a text preview to the browser console.
+export async function testPrint(cfg) {
+  const sample = {
+    id: 'TEST-001',
+    timestamp: new Date().toLocaleString('en-IN'),
+    type: 'Takeaway',
+    customer: 'Test Guest',
+    phone: '9999999999',
+    token: 101,
+    note: 'Test print',
+    items: [
+      { name: 'Test Burger', qty: 2, price: 150, taxRate: 5, note: 'Less spicy' },
+      { name: 'Test Cola', qty: 1, price: 70, taxRate: 5 }
+    ],
+    subtotal: 370,
+    totalTax: 18.5,
+    total: 388.5,
+    paymentMethod: 'UPI'
+  };
+  const { bytes, plain } = buildReceipt(sample, cfg);
+  if (!conn) {
+    console.log(plain);
+    return { printed: false, plain };
+  }
+  await conn.write(bytes);
+  return { printed: true, plain };
+}
+
 /* ---------- receipt field definitions ---------- */
 
 const RECEIPT_SECTIONS = [
@@ -972,7 +1312,7 @@ export default function AdvancedSettingsTab({
   const setPrinterInfo = (patch) => setFormData({ ...formData, printerInfo: { ...printerInfo, ...patch } });
   const setReceiptConfig = (patch) => setFormData({ ...formData, receiptConfig: { ...receiptConfig, ...patch } });
 
-  /* ---------- real printer connection (see printerService.js) ---------- */
+  /* ---------- real printer connection (code is in this same file, above) ---------- */
   const [printerStatus, setPrinterStatus] = useState(getPrinterStatus());
   const [printerMsg, setPrinterMsg] = useState(null);
 
