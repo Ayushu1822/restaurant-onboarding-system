@@ -7,7 +7,7 @@ export default function ReportsModule({ orders: parentOrders }) {
   const [closedComplaints, setClosedComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Receipt Configuration state synced with Settings Module
+  // Receipt Configuration state synced with Settings Module (Cleaned footer default)
   const [receiptConfig, setReceiptConfig] = useState({
     restaurantName: 'LINGA FOODS',
     headerText: 'Linga Foods - Wonghikal',
@@ -15,7 +15,7 @@ export default function ReportsModule({ orders: parentOrders }) {
     phone: '91234400635',
     gstin: '37AAFP4128L1ZI',
     fssai: 'FSSAI: 22426260001195',
-    footerNote: 'Thank You For Visiting Us!\n*** TEST PRINT ***\n*** NOT A VALID BILL / INVOICE ***',
+    footerNote: 'Thank You For Visiting Us!\nHave a wonderful dining experience with us.',
     paperSize: '80mm',
     density: 'Compact',
     toggles: {
@@ -334,7 +334,7 @@ export default function ReportsModule({ orders: parentOrders }) {
     printWindow.document.close();
   };
 
-  // 📊 Excel / CSV Export Utility
+  // 📊 Excel / CSV Export Utility (Fully capturing active list)
   const exportToExcelCSV = (dataList, filename) => {
     if (!dataList || dataList.length === 0) {
       alert('No data available to export.');
@@ -358,6 +358,49 @@ export default function ReportsModule({ orders: parentOrders }) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Simple Print for Active Orders
+  const printSimpleActiveOrders = () => {
+    let printWin = window.open('', '_blank', 'width=800,height=600');
+    if (!printWin) return;
+    
+    const rowsHtml = activeBreakdownOrders.map((o) => `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.displayId || o.orderId}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.customerName || 'Walk-In'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.channel || 'COUNTER'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.status || 'New'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: bold;">₹${o.totalAmount || 0}</td>
+      </tr>
+    `).join('');
+
+    printWin.document.write(`
+      <html>
+        <head><title>Active Orders Report</title></head>
+        <body style="font-family: 'Inter', sans-serif; padding: 30px; color: #1e293b;">
+          <h2 style="margin-bottom: 5px;">${receiptConfig.restaurantName} - Active Orders Report</h2>
+          <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">Generated on: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} (IST)</p>
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+            <thead>
+              <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                <th style="padding: 10px;">Order ID</th>
+                <th style="padding: 10px;">Customer</th>
+                <th style="padding: 10px;">Channel</th>
+                <th style="padding: 10px;">Status</th>
+                <th style="padding: 10px;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(() => { printWin.print(); }, 250);
   };
 
   const printBulkHistory = () => {
@@ -517,7 +560,7 @@ export default function ReportsModule({ orders: parentOrders }) {
     <div className="rp">
       <style>{css}</style>
 
-      {/* Top Header (Cleaned up: removed full dashboard print button) */}
+      {/* Top Header */}
       <div className="rp-header">
         <div>
           <h2 className="rp-title">Reports & Analytics Hub</h2>
@@ -538,6 +581,7 @@ export default function ReportsModule({ orders: parentOrders }) {
             </div>
             <div className="rp-tools">
               <button onClick={() => exportToExcelCSV(activeBreakdownOrders, 'Active_Orders')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
+              <button onClick={printSimpleActiveOrders} className="rp-pill-btn">🖨️ Simple Print</button>
             </div>
           </div>
 
@@ -1151,7 +1195,7 @@ const css = `
 .rp-modal-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; margin-bottom: 18px; }
 .rp-modal-list-420 { max-height: 400px; }
 .rp-modal-list-300 { max-height: 300px; }
-.rp-modal-row { background: #f8fafc; padding: 14px 18px; border-radius: 14px; border: 1.5px solid var(--line); display: flex; justifyContent: space-between; align-items: center; gap: 10px; }
+.rp-modal-row { background: #f8fafc; padding: 14px 18px; border-radius: 14px; border: 1.5px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .rp-mr-id { font-weight: 800; color: var(--ink); font-size: 16px; }
 .rp-mr-customer { font-size: 14px; color: var(--ink-soft); font-weight: 700; margin-top: 3px; }
 .rp-mr-meta { font-size: 13px; color: var(--ink-faint); font-weight: 600; margin-top: 2px; }
