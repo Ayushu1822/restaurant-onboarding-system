@@ -296,14 +296,9 @@ export function playNotificationChime(soundId, force = false) {
 
 /* =====================================================================
    PRINTER CONNECTION + ESC/POS RECEIPT
-   Direct thermal-printer support from the browser (no installer).
-   Works in Chrome / Edge on HTTPS (or localhost). Not supported in Safari / iPhone.
-   The connection lives in this module, so every screen shares the same connected printer.
-   After a page reload the printer must be connected again (the browser asks for a click).
-   Other screens print with:  import { sendReceiptToPrinter } from './AdvancedSettingsTab';
    ===================================================================== */
 
-let conn = null; // { type, name, write(bytes), close() }
+let conn = null;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -317,12 +312,9 @@ export async function disconnectPrinter() {
   conn = null;
   try {
     await c.close();
-  } catch {
-    /* ignore */
-  }
+  } catch {}
 }
 
-// Serial ports, including Bluetooth (classic) printers after they are paired in the OS
 export async function connectSerial(baudRate = 9600) {
   if (!navigator.serial) throw new Error('Serial printing is not supported here. Use Chrome or Edge.');
   const port = await navigator.serial.requestPort();
@@ -332,22 +324,15 @@ export async function connectSerial(baudRate = 9600) {
   conn = {
     type: 'Serial / Bluetooth',
     name: 'Serial printer',
-    write: async (bytes) => {
-      await writer.write(bytes);
-    },
+    write: async (bytes) => { await writer.write(bytes); },
     close: async () => {
-      try {
-        writer.releaseLock();
-      } catch {
-        /* ignore */
-      }
+      try { writer.releaseLock(); } catch {}
       await port.close();
     }
   };
   return conn.name;
 }
 
-// USB cable
 export async function connectUsb() {
   if (!navigator.usb) throw new Error('USB printing is not supported here. Use Chrome or Edge.');
   const device = await navigator.usb.requestDevice({ filters: [] });
@@ -374,9 +359,7 @@ export async function connectUsb() {
     await device.claimInterface(found.num);
   } catch (e) {
     await device.close().catch(() => {});
-    throw new Error(
-      'Windows is using this printer with its own driver, so the browser cannot open it. Try the Serial option, or switch the printer to a generic (WinUSB) driver.'
-    );
+    throw new Error('Windows is using this printer with its own driver.');
   }
   conn = {
     type: 'USB',
@@ -387,26 +370,17 @@ export async function connectUsb() {
       }
     },
     close: async () => {
-      try {
-        await device.releaseInterface(found.num);
-      } catch {
-        /* ignore */
-      }
+      try { await device.releaseInterface(found.num); } catch {}
       await device.close();
     }
   };
   return conn.name;
 }
 
-// Bluetooth Low Energy printers. Only these common printer service ids are searched.
 const BLE_SERVICES = [
   '000018f0-0000-1000-8000-00805f9b34fb',
   'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
-  '49535343-fe7d-4ae5-8fa9-9fafd205e455',
-  '0000ff00-0000-1000-8000-00805f9b34fb',
-  '0000fff0-0000-1000-8000-00805f9b34fb',
-  '0000ffe0-0000-1000-8000-00805f9b34fb',
-  '0000ae30-0000-1000-8000-00805f9b34fb'
+  '49535343-fe7d-4ae5-8fa9-9fafd205e455'
 ];
 
 export async function connectBluetooth() {
@@ -423,7 +397,7 @@ export async function connectBluetooth() {
   }
   if (!ch) {
     server.disconnect();
-    throw new Error('Could not find a writable printer channel on this Bluetooth device. It may not be a BLE printer.');
+    throw new Error('Could not find a writable printer channel on this Bluetooth device.');
   }
   const noResponse = !!ch.properties.writeWithoutResponse;
   conn = {
@@ -444,7 +418,6 @@ export async function connectBluetooth() {
   return conn.name;
 }
 
-// Most thermal printers cannot print the rupee sign or non-English letters as text
 const clean = (s) => String(s ?? '').replace(/₹/g, 'Rs.').replace(/[^\x20-\x7E]/g, '?');
 
 function makeDoc(width) {
@@ -497,7 +470,7 @@ function makeDoc(width) {
 
   return {
     init: () => raw(0x1b, 0x40),
-    align: (n) => raw(0x1b, 0x61, n), // 0 left, 1 center, 2 right
+    align: (n) => raw(0x1b, 0x61, n),
     bold: (isOn) => raw(0x1b, 0x45, isOn ? 1 : 0),
     line,
     wrap,
@@ -585,13 +558,7 @@ export async function sendReceiptToPrinter(order, cfg) {
     return true;
   } catch (e) {
     console.warn('Printer write failed:', e);
-    const c = conn;
     conn = null;
-    try {
-      await c.close();
-    } catch {
-      /* ignore */
-    }
     return false;
   }
 }
@@ -787,7 +754,7 @@ const clampInt = (v, min, max) => {
   return Math.min(max, Math.max(min, n));
 };
 
-function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSaveCounter, onOpenForgotPassword }) {
+function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSaveCounter }) {
   const initAuto = {
     enabled: systemSettings?.autoApprove?.enabled ?? false,
     immediate: systemSettings?.autoApprove?.immediate ?? false,
@@ -1071,16 +1038,20 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
           <Msg msg={soundMsg} />
         </SectionCard>
 
-        {/* ===== 4. SECURITY & PASSWORD MANAGEMENT (Redirect to Login Forgot Password) ===== */}
+        {/* ===== 4. SECURITY & PASSWORD MANAGEMENT ===== */}
         <div style={{ maxWidth: '760px' }}>
           <div style={{ fontSize: '13px', fontWeight: '950', color: '#0f172a', marginBottom: '8px' }}>Security & Password Management</div>
           <div style={card}>
             <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700', marginBottom: '14px', lineHeight: 1.5 }}>
-              Need to change or reset your account password? You can securely trigger a password reset via email verification.
+              Need to change or reset your account password? Click below to go to the password recovery screen.
             </div>
             <button
               type="button"
-              onClick={onOpenForgotPassword}
+              onClick={() => {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('userEmail');
+                window.location.reload();
+              }}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1122,8 +1093,7 @@ export default function AdvancedSettingsTab({
   systemSettings,
   branchName,
   onSaveAutoApprove,
-  onSaveCounter,
-  onOpenForgotPassword
+  onSaveCounter
 }) {
   const [oneClickOpen, setOneClickOpen] = useState(false);
 
@@ -1590,7 +1560,6 @@ export default function AdvancedSettingsTab({
           branchName={branchName}
           onSaveAutoApprove={onSaveAutoApprove}
           onSaveCounter={onSaveCounter}
-          onOpenForgotPassword={onOpenForgotPassword}
         />
       )}
     </>
