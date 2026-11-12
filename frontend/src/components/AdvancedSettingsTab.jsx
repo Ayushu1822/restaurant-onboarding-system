@@ -1051,6 +1051,7 @@ function SystemTab({ styles, systemSettings, branchName, onSaveAutoApprove, onSa
                 localStorage.removeItem('auth_token');
                 localStorage.removeItem('userEmail');
                 localStorage.setItem('open_forgot_password', 'true');
+                window.location.href = window.location.pathname + '#forgot';
                 window.location.reload();
               }}
               style={{
