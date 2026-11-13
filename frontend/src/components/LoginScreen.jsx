@@ -352,7 +352,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                 <PasswordField label="" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} placeholder="••••••••••••" required autoComplete="current-password" />
                 <label className="rememberStation lg-remember-station">
                   <input type="checkbox" checked={rememberStation} onChange={(event) => setRememberStation(event.target.checked)} />
-                  <span>Remember this station / Keep me signed in</span>
+                  <span>Remember this station 12/ Keep me signed in</span>
                 </label>
                 <button className="portalSubmit lg-portal-submit" type="submit" disabled={loading}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5M10 17l5-5-5-5m5 5H3" /></svg>{loading ? 'Signing in…' : 'SIGN IN TO PORTAL'}</button>
               </form>
@@ -397,7 +397,7 @@ export default function LoginScreen({ onLoginSuccess }) {
 
             {currentView === 'verify-otp' && (
               <form className="portalAuthForm lg-portal-auth-form" onSubmit={handleVerifyAndReset}>
-                <FormField label="ENTERrr 6-DIGIT OTP" value={otpCode} onChange={(event) => setOtpCode(event.target.value)} placeholder="123456" maxLength={6} required />
+                <FormField label="ENTER 6-DIGIT OTP" value={otpCode} onChange={(event) => setOtpCode(event.target.value)} placeholder="123456" maxLength={6} required />
                 <PasswordField label="NEW PASSWORD (8-16 chars)" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="••••••••" required />
                 <button className="portalSubmit lg-portal-submit" type="submit" disabled={loading}>{loading ? 'Verifying…' : 'UPDATE PASSWORD'}</button>
                 <button type="button" className="backToSignIn" onClick={() => openView('signin')}>← Back to sign in</button>
