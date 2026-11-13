@@ -35,3 +35,6 @@ build/
 ### Local Configuration & Secrets ###
 src/main/resources/application.properties
 .env
+
+**/application.properties
+**/application.yml
