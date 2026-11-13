@@ -352,7 +352,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                 <PasswordField label="" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} placeholder="••••••••••••" required autoComplete="current-password" />
                 <label className="rememberStation lg-remember-station">
                   <input type="checkbox" checked={rememberStation} onChange={(event) => setRememberStation(event.target.checked)} />
-                  <span>Remember this station for alll / Keep me signed in</span>
+                  <span>Remember this station for / Keep me signed in</span>
                 </label>
                 <button className="portalSubmit lg-portal-submit" type="submit" disabled={loading}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5M10 17l5-5-5-5m5 5H3" /></svg>{loading ? 'Signing in…' : 'SIGN IN TO PORTAL'}</button>
               </form>
