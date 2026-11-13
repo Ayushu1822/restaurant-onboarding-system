@@ -397,7 +397,7 @@ export default function LoginScreen({ onLoginSuccess }) {
 
             {currentView === 'verify-otp' && (
               <form className="portalAuthForm lg-portal-auth-form" onSubmit={handleVerifyAndReset}>
-                <FormField label="ENTER 6-DIGIT OTP" value={otpCode} onChange={(event) => setOtpCode(event.target.value)} placeholder="123456" maxLength={6} required />
+                <FormField label="ENTERrr 6-DIGIT OTP" value={otpCode} onChange={(event) => setOtpCode(event.target.value)} placeholder="123456" maxLength={6} required />
                 <PasswordField label="NEW PASSWORD (8-16 chars)" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="••••••••" required />
                 <button className="portalSubmit lg-portal-submit" type="submit" disabled={loading}>{loading ? 'Verifying…' : 'UPDATE PASSWORD'}</button>
                 <button type="button" className="backToSignIn" onClick={() => openView('signin')}>← Back to sign in</button>
