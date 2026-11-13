@@ -303,7 +303,7 @@ export default function LoginScreen({ onLoginSuccess }) {
           {currentView !== 'signup' && (
             <div className="portalPromise">
               <span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3v8m3-8v8M5 3v5a4 4 0 0 0 8 0V3m-4 9v9m8-18v18m0-18c3 2 4 6 0 8" /></svg></span>
-              <small>Smart Restaurant owner.<br />Better Tomorrow.</small>
+              <small>Smart Restaurant.<br />Better Tomorrow.</small>
             </div>
           )}
           <div className="portalFormContent lg-portal-form-content">
@@ -352,7 +352,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                 <PasswordField label="" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} placeholder="••••••••••••" required autoComplete="current-password" />
                 <label className="rememberStation lg-remember-station">
                   <input type="checkbox" checked={rememberStation} onChange={(event) => setRememberStation(event.target.checked)} />
-                  <span>Remember this station/ Keep me signed in</span>
+                  <span>Remember this station 45/ Keep me signed in</span>
                 </label>
                 <button className="portalSubmit lg-portal-submit" type="submit" disabled={loading}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5M10 17l5-5-5-5m5 5H3" /></svg>{loading ? 'Signing in…' : 'SIGN IN TO PORTAL'}</button>
               </form>
