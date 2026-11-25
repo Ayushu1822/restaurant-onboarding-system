@@ -140,7 +140,7 @@ export default function SettingsModule() {
     website: '', gstnNumber: '', businessRegistrationNumber: '', businessLicenseNumber: '', addressLine1: '',
     addressLine2: '', area: '', city: '', state: '', pinCode: '', latitude: '', longitude: '',
     onlineRestaurantName: '', branchDisplayName: '', businessShortCode: '', branchShortCode: '',
-    whatsappBannerUrl: '', defaultItemImageUrl: '', firstName: '', lastName: '', preferredLanguage: 'Telugu',
+    whatsappBannerUrl: '', defaultItemImageUrl: '', firstName: '', lastName: '', preferredLanguage: 'English',
     serviceHours: {
       Monday: { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' },
       Tuesday: { open: true, holiday: false, shift1Start: '09:00', shift1End: '14:00', shift2Start: '17:00', shift2End: '22:00' },
@@ -234,7 +234,7 @@ export default function SettingsModule() {
 
       setFormData(prev => {
         const cachedLang = localStorage.getItem('preferredLanguage');
-        const resolvedLang = cachedLang || data.preferredLanguage || prev.preferredLanguage || 'Telugu';
+        const resolvedLang = cachedLang || data.preferredLanguage || prev.preferredLanguage || 'English';
         setLanguage(resolvedLang);
 
         return {
@@ -709,7 +709,7 @@ export default function SettingsModule() {
                   <div style={styles.fieldGroup}><label style={styles.label}>{t('mobileNumber')}</label><input type="text" name="phoneNumber" value={formData.phoneNumber || ''} onChange={handleChange} style={styles.input} /></div>
                   <div style={styles.fieldGroup}>
                     <label style={styles.label}>{t('preferredLanguage')}</label>
-                    <select name="preferredLanguage" value={formData.preferredLanguage || 'Telugu'} onChange={handleChange} style={styles.input}>
+                    <select name="preferredLanguage" value={formData.preferredLanguage || 'English'} onChange={handleChange} style={styles.input}>
                       <option value="English">English</option>
                       <option value="Telugu">Telugu</option>
                       <option value="Hindi">Hindi</option>
