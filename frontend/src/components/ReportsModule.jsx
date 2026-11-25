@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from './LanguageContext';
 
-const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
+const API_BASE_URL = 'http://localhost:8080';
 
 export default function ReportsModule({ orders: parentOrders }) {
+  const { t, translateDbValue, getLocalizedField } = useLanguage();
   const [orders, setOrders] = useState(parentOrders || []);
   const [closedComplaints, setClosedComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Receipt Configuration state synced with Settings Module (Clean footer default)
   const [receiptConfig, setReceiptConfig] = useState({
     restaurantName: 'LINGA FOODS',
@@ -30,12 +32,12 @@ export default function ReportsModule({ orders: parentOrders }) {
       totalTax: true
     }
   });
-  
+
   // Filter States
   const [dateRange, setDateRange] = useState('today');
   const [orderChannelFilter, setOrderChannelFilter] = useState('ALL');
   const [selectedCaptainFilter, setSelectedCaptainFilter] = useState('ALL');
-  
+
   const [historyDateRange, setHistoryDateRange] = useState('all');
   const [historyChannelFilter, setHistoryChannelFilter] = useState('ALL');
 
@@ -142,7 +144,7 @@ export default function ReportsModule({ orders: parentOrders }) {
     return true;
   };
 
-  const filteredOrders = orders.filter((o, idx) => {
+  const filteredOrders = orders.filter((o) => {
     const st = (o.status || 'New').toLowerCase();
     const isSettledOrDone = st === 'completed' || st === 'delivered' || st === 'settled' || st === 'paid' || st === 'picked up';
     if (isSettledOrDone) return false;
@@ -237,7 +239,7 @@ export default function ReportsModule({ orders: parentOrders }) {
 
   const p1 = tablePct;
   const p2 = tablePct + counterPct;
-  const dynamicPieBackground = totalRevenue > 0 
+  const dynamicPieBackground = totalRevenue > 0
     ? `conic-gradient(#059669 0% ${p1}%, #2563eb ${p1}% ${p2}%, #d97706 ${p2}% 100%)`
     : '#e2e8f0';
 
@@ -263,6 +265,12 @@ export default function ReportsModule({ orders: parentOrders }) {
     return a.localeCompare(b);
   });
 
+  const formatCaptainDisplay = (capName) => {
+    if (!capName) return t('tbUnassignedLabel');
+    if (capName.toLowerCase() === 'unassigned') return t('tbUnassignedLabel');
+    return capName;
+  };
+
   // 🖨️ Thermal Receipt Printer Utility
   const printSingleReceipt = (o, index) => {
     let dateStr = o.timestamp;
@@ -276,21 +284,25 @@ export default function ReportsModule({ orders: parentOrders }) {
 
     let printWindow = window.open('', '_blank', 'width=450,height=600');
     if (!printWindow) {
-      alert('Popup blocked! Please allow popups for printing.');
+      alert(t('popupBlockedToast'));
       return;
     }
 
-    const itemsHtml = items.map(it => `
-      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-        <span>${it.quantity || it.qty || 1}x ${it.itemName || it.name || 'Item'}</span>
-        <span>₹${((Number(it.unitPrice || it.price) || 0) * (Number(it.quantity || it.qty) || 1)).toFixed(2)}</span>
-      </div>
-    `).join('');
+    const itemsHtml = items.map(it => {
+      const rawName = it.itemName || it.name || t('defaultFoodItem');
+      const itemLabel = getLocalizedField(it, 'itemName') || getLocalizedField(it, 'name') || rawName;
+      return `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+          <span>${it.quantity || it.qty || 1}x ${itemLabel}</span>
+          <span>₹${((Number(it.unitPrice || it.price) || 0) * (Number(it.quantity || it.qty) || 1)).toFixed(2)}</span>
+        </div>
+      `;
+    }).join('');
 
     printWindow.document.write(`
       <html>
         <head>
-          <title>Receipt - ${o.displayId || o.orderId || 'Order'}</title>
+          <title>${t('receiptTitlePrefix')} - ${o.displayId || o.orderId || t('orderWord')}</title>
           <style>
             body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: ${receiptConfig.paperSize === '58mm' ? '58mm' : '80mm'}; margin: 0 auto; font-size: ${receiptConfig.density === 'Compact' ? '10px' : '12px'}; }
             .center { text-align: center; }
@@ -303,25 +315,25 @@ export default function ReportsModule({ orders: parentOrders }) {
           ${toggles.restaurantName ? `<div class="center bold" style="font-size: 14px;">${receiptConfig.restaurantName}</div>` : ''}
           ${receiptConfig.headerText ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.headerText}</div>` : ''}
           ${toggles.address && receiptConfig.address ? `<div class="center" style="font-size: 10px; color: #333; margin: 3px 0;">${receiptConfig.address}</div>` : ''}
-          ${toggles.phone && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>` : ''}
+          ${toggles.phone && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">${t('receiptPhoneShort')}: ${receiptConfig.phone}</div>` : ''}
           ${toggles.gstin && receiptConfig.gstin ? `<div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>` : ''}
           ${receiptConfig.fssai ? `<div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>` : ''}
-          <div class="line"></div>
-          ${toggles.invoiceNo ? `<div><strong>Order ID:</strong> ${o.displayId || o.orderId || 'N/A'}</div>` : ''}
-          ${toggles.dateAndTime ? `<div><strong>Date:</strong> ${dateStr}</div>` : ''}
-          <div><strong>Customer:</strong> ${o.customerName || 'Walk-In'}</div>
-          <div><strong>Captain:</strong> ${extractCaptain(o.customerName) || 'Unassigned'}</div>
-          <div><strong>Channel:</strong> ${o.channel || 'COUNTER'}</div>
-          <div><strong>Status:</strong> ${o.status || 'Completed'}</div>
-          <div class="line"></div>
-          <div class="bold" style="margin-bottom: 6px;">ITEMS:</div>
+          <div className="line"></div>
+          ${toggles.invoiceNo ? `<div><strong>${t('receiptOrderId')}:</strong> ${o.displayId || o.orderId || 'N/A'}</div>` : ''}
+          ${toggles.dateAndTime ? `<div><strong>${t('receiptDate')}:</strong> ${dateStr}</div>` : ''}
+          <div><strong>${t('receiptCustomer')}:</strong> ${o.customerName || t('kdsWalkIn')}</div>
+          <div><strong>${t('tbCaptainLabel')}:</strong> ${formatCaptainDisplay(extractCaptain(o.customerName))}</div>
+          <div><strong>${t('rpChannelCol')}:</strong> ${translateDbValue(o.channel || 'COUNTER')}</div>
+          <div><strong>${t('rpStatusCol')}:</strong> ${translateDbValue(o.status || 'Completed')}</div>
+          <div className="line"></div>
+          <div className="bold" style="margin-bottom: 6px;">${t('receiptItemsHeading')}:</div>
           ${itemsHtml}
-          <div class="line"></div>
-          <div class="flex"><span>Subtotal:</span><span>₹${(o.subtotal || o.totalAmount || 0).toFixed(2)}</span></div>
-          ${toggles.totalTax ? `<div class="flex"><span>Tax:</span><span>₹${(o.totalTax || 0).toFixed(2)}</span></div>` : ''}
-          <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>Total:</span><span>₹${o.totalAmount || 0}</span></div>
-          <div class="line"></div>
-          <div class="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptConfig.footerNote}</div>
+          <div className="line"></div>
+          <div className="flex"><span>${t('subtotal')}:</span><span>₹${(o.subtotal || o.totalAmount || 0).toFixed(2)}</span></div>
+          ${toggles.totalTax ? `<div className="flex"><span>${t('posTaxLabel')}:</span><span>₹${(o.totalTax || 0).toFixed(2)}</span></div>` : ''}
+          <div className="flex bold" style="font-size: 13px; margin-top: 6px;"><span>${t('total')}:</span><span>₹${o.totalAmount || 0}</span></div>
+          <div className="line"></div>
+          <div className="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptConfig.footerNote}</div>
           <script>
             window.onload = function() {
               window.print();
@@ -337,16 +349,16 @@ export default function ReportsModule({ orders: parentOrders }) {
   // 📊 Professional Styled Excel (.xls) Export Utility
   const exportToExcelXLS = (dataList, filename) => {
     if (!dataList || dataList.length === 0) {
-      alert('No data available to export.');
+      alert(t('rpNoExportDataAlert'));
       return;
     }
 
     const rowsHtml = dataList.map(o => `
       <tr>
         <td style="border: 1px solid #cbd5e1; padding: 8px; mso-number-format:'\@';">${o.displayId || o.orderId || ''}</td>
-        <td style="border: 1px solid #cbd5e1; padding: 8px;">${o.customerName || 'Walk-In'}</td>
-        <td style="border: 1px solid #cbd5e1; padding: 8px;">${o.channel || 'COUNTER'}</td>
-        <td style="border: 1px solid #cbd5e1; padding: 8px;">${o.status || ''}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${o.customerName || t('kdsWalkIn')}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${translateDbValue(o.channel || 'COUNTER')}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 8px;">${translateDbValue(o.status || '')}</td>
         <td style="border: 1px solid #cbd5e1; padding: 8px; mso-number-format:'Currency';">₹${o.totalAmount || 0}</td>
         <td style="border: 1px solid #cbd5e1; padding: 8px;">${o.timestamp || new Date().toISOString()}</td>
       </tr>
@@ -363,17 +375,17 @@ export default function ReportsModule({ orders: parentOrders }) {
           </style>
         </head>
         <body>
-          <h2>${receiptConfig.restaurantName} - Report Export</h2>
-          <p>Generated on: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+          <h2>${receiptConfig.restaurantName} - ${t('rpReportExportSuffix')}</h2>
+          <p>${t('rpGeneratedOnLabel')}: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
           <table>
             <thead>
               <tr>
-                <th>Order ID</th>
-                <th>Customer Name</th>
-                <th>Channel</th>
-                <th>Status</th>
-                <th>Total Amount</th>
-                <th>Timestamp</th>
+                <th>${t('receiptOrderId')}</th>
+                <th>${t('rpCustomerNameCol')}</th>
+                <th>${t('rpChannelCol')}</th>
+                <th>${t('rpStatusCol')}</th>
+                <th>${t('rpTotalAmountCol')}</th>
+                <th>${t('rpTimestampCol')}</th>
               </tr>
             </thead>
             <tbody>
@@ -399,31 +411,31 @@ export default function ReportsModule({ orders: parentOrders }) {
   const printSimpleActiveOrders = () => {
     let printWin = window.open('', '_blank', 'width=800,height=600');
     if (!printWin) return;
-    
+
     const rowsHtml = activeBreakdownOrders.map((o) => `
       <tr>
         <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.displayId || o.orderId}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.customerName || 'Walk-In'}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.channel || 'COUNTER'}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.status || 'New'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.customerName || t('kdsWalkIn')}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${translateDbValue(o.channel || 'COUNTER')}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${translateDbValue(o.status || 'New')}</td>
         <td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: bold;">₹${o.totalAmount || 0}</td>
       </tr>
     `).join('');
 
     printWin.document.write(`
       <html>
-        <head><title>Active Orders Report</title></head>
+        <head><title>${t('rpActiveOrdersPrintTitle')}</title></head>
         <body style="font-family: 'Inter', sans-serif; padding: 30px; color: #1e293b;">
-          <h2 style="margin-bottom: 5px;">${receiptConfig.restaurantName} - Active Orders Report</h2>
-          <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">Generated on: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} (IST)</p>
+          <h2 style="margin-bottom: 5px;">${receiptConfig.restaurantName} - ${t('rpActiveOrdersPrintTitle')}</h2>
+          <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">${t('rpGeneratedOnLabel')}: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} (IST)</p>
           <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
             <thead>
               <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
-                <th style="padding: 10px;">Order ID</th>
-                <th style="padding: 10px;">Customer</th>
-                <th style="padding: 10px;">Channel</th>
-                <th style="padding: 10px;">Status</th>
-                <th style="padding: 10px;">Total</th>
+                <th style="padding: 10px;">${t('receiptOrderId')}</th>
+                <th style="padding: 10px;">${t('receiptCustomer')}</th>
+                <th style="padding: 10px;">${t('rpChannelCol')}</th>
+                <th style="padding: 10px;">${t('rpStatusCol')}</th>
+                <th style="padding: 10px;">${t('total')}</th>
               </tr>
             </thead>
             <tbody>
@@ -441,31 +453,31 @@ export default function ReportsModule({ orders: parentOrders }) {
   const printBulkHistory = () => {
     let printWin = window.open('', '_blank', 'width=800,height=600');
     if (!printWin) return;
-    
+
     const rowsHtml = completedHistoryOrders.map((o) => `
       <tr>
         <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.displayId || o.orderId}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.customerName || 'Walk-In'}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.channel || 'COUNTER'}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.status || 'Completed'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.customerName || t('kdsWalkIn')}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${translateDbValue(o.channel || 'COUNTER')}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${translateDbValue(o.status || 'Completed')}</td>
         <td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: bold;">₹${o.totalAmount || 0}</td>
       </tr>
     `).join('');
 
     printWin.document.write(`
       <html>
-        <head><title>Completed Orders History Report</title></head>
+        <head><title>${t('rpCompletedHistoryPrintTitle')}</title></head>
         <body style="font-family: 'Inter', sans-serif; padding: 30px; color: #1e293b;">
-          <h2 style="margin-bottom: 5px;">${receiptConfig.restaurantName} - Completed Orders Report</h2>
-          <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">Generated on: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} (IST)</p>
+          <h2 style="margin-bottom: 5px;">${receiptConfig.restaurantName} - ${t('rpCompletedHistoryPrintTitle')}</h2>
+          <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">${t('rpGeneratedOnLabel')}: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} (IST)</p>
           <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
             <thead>
               <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
-                <th style="padding: 10px;">Order ID</th>
-                <th style="padding: 10px;">Customer</th>
-                <th style="padding: 10px;">Channel</th>
-                <th style="padding: 10px;">Status</th>
-                <th style="padding: 10px;">Total</th>
+                <th style="padding: 10px;">${t('receiptOrderId')}</th>
+                <th style="padding: 10px;">${t('receiptCustomer')}</th>
+                <th style="padding: 10px;">${t('rpChannelCol')}</th>
+                <th style="padding: 10px;">${t('rpStatusCol')}</th>
+                <th style="padding: 10px;">${t('total')}</th>
               </tr>
             </thead>
             <tbody>
@@ -484,31 +496,31 @@ export default function ReportsModule({ orders: parentOrders }) {
   const printCaptainLedger = (captainName, capOrders) => {
     let printWin = window.open('', '_blank', 'width=800,height=600');
     if (!printWin) return;
-    
+
     const rowsHtml = capOrders.map((o) => `
       <tr>
         <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.displayId || o.orderId}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.customerName || 'Walk-In'}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.channel || 'COUNTER'}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.status || 'Completed'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${o.customerName || t('kdsWalkIn')}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${translateDbValue(o.channel || 'COUNTER')}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${translateDbValue(o.status || 'Completed')}</td>
         <td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: bold;">₹${o.totalAmount || 0}</td>
       </tr>
     `).join('');
 
     printWin.document.write(`
       <html>
-        <head><title>Captain Ledger - ${captainName}</title></head>
+        <head><title>${t('rpCaptainReportPrefix')}: ${captainName}</title></head>
         <body style="font-family: 'Inter', sans-serif; padding: 30px; color: #1e293b;">
-          <h2 style="margin-bottom: 5px;">Captain Report: ${captainName}</h2>
-          <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">Generated on: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+          <h2 style="margin-bottom: 5px;">${t('rpCaptainReportPrefix')}: ${captainName}</h2>
+          <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">${t('rpGeneratedOnLabel')}: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
           <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
             <thead>
               <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
-                <th style="padding: 10px;">Order ID</th>
-                <th style="padding: 10px;">Customer</th>
-                <th style="padding: 10px;">Channel</th>
-                <th style="padding: 10px;">Status</th>
-                <th style="padding: 10px;">Total</th>
+                <th style="padding: 10px;">${t('receiptOrderId')}</th>
+                <th style="padding: 10px;">${t('receiptCustomer')}</th>
+                <th style="padding: 10px;">${t('rpChannelCol')}</th>
+                <th style="padding: 10px;">${t('rpStatusCol')}</th>
+                <th style="padding: 10px;">${t('total')}</th>
               </tr>
             </thead>
             <tbody>
@@ -531,25 +543,25 @@ export default function ReportsModule({ orders: parentOrders }) {
       <tr>
         <td style="padding: 10px; border-bottom: 1px solid #ddd;">${c.complaintId}</td>
         <td style="padding: 10px; border-bottom: 1px solid #ddd;">${c.orderId}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${c.customerName || 'Guest'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd;">${c.customerName || t('rpGuestWord')}</td>
         <td style="padding: 10px; border-bottom: 1px solid #ddd;">${c.complaintType}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd; color: #10b981; font-weight: bold;">Closed</td>
+        <td style="padding: 10px; border-bottom: 1px solid #ddd; color: #10b981; font-weight: bold;">${t('rpClosedLabel')}</td>
       </tr>
     `).join('');
 
     printWin.document.write(`
       <html>
-        <head><title>Resolved Complaints Report</title></head>
+        <head><title>${t('rpResolvedComplaintsPrintTitle')}</title></head>
         <body style="font-family: 'Inter', sans-serif; padding: 30px; color: #1e293b;">
-          <h2>Resolved Complaints Archive</h2>
+          <h2>${t('rpResolvedComplaintsPrintTitle')}</h2>
           <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; margin-top: 15px;">
             <thead>
               <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
-                <th style="padding: 10px;">Complaint ID</th>
-                <th style="padding: 10px;">Order ID</th>
-                <th style="padding: 10px;">Customer</th>
-                <th style="padding: 10px;">Type</th>
-                <th style="padding: 10px;">Status</th>
+                <th style="padding: 10px;">${t('rpComplaintIdCol')}</th>
+                <th style="padding: 10px;">${t('receiptOrderId')}</th>
+                <th style="padding: 10px;">${t('receiptCustomer')}</th>
+                <th style="padding: 10px;">${t('rpTypeCol')}</th>
+                <th style="padding: 10px;">${t('rpStatusCol')}</th>
               </tr>
             </thead>
             <tbody>${rowsHtml}</tbody>
@@ -568,14 +580,14 @@ export default function ReportsModule({ orders: parentOrders }) {
     if (!printWin) return;
     printWin.document.write(`
       <html>
-        <head><title>Revenue Distribution & Analytics</title></head>
+        <head><title>${t('rpRevenueAnalyticsPrintTitle')}</title></head>
         <body style="font-family: 'Inter', sans-serif; padding: 30px; color: #1e293b;">
-          <h2>Revenue Distribution & Analytics Report</h2>
-          <p><strong>Total Revenue:</strong> ₹${totalRevenue.toFixed(2)}</p>
-          <p><strong>Total Orders Count:</strong> ${totalOrdersCount}</p>
-          <p><strong>Dine-In Revenue:</strong> ₹${tableRev.toFixed(2)} (${tablePct.toFixed(1)}%)</p>
-          <p><strong>Counter Revenue:</strong> ₹${counterRev.toFixed(2)} (${counterPct.toFixed(1)}%)</p>
-          <p><strong>Online Revenue:</strong> ₹${onlineRev.toFixed(2)} (${onlinePct.toFixed(1)}%)</p>
+          <h2>${t('rpRevenueAnalyticsPrintTitle')}</h2>
+          <p><strong>${t('rpTotalRevenueMetric')}:</strong> ₹${totalRevenue.toFixed(2)}</p>
+          <p><strong>${t('rpTotalOrdersMetric')}:</strong> ${totalOrdersCount}</p>
+          <p><strong>${t('rpDineInTableRevLabel')}:</strong> ₹${tableRev.toFixed(2)} (${tablePct.toFixed(1)}%)</p>
+          <p><strong>${t('rpCounterRevLabel')}:</strong> ₹${counterRev.toFixed(2)} (${counterPct.toFixed(1)}%)</p>
+          <p><strong>${t('rpOnlineRevLabel')}:</strong> ₹${onlineRev.toFixed(2)} (${onlinePct.toFixed(1)}%)</p>
         </body>
       </html>
     `);
@@ -586,7 +598,7 @@ export default function ReportsModule({ orders: parentOrders }) {
 
   const customerHistoryMap = {};
   orders.forEach(o => {
-    const name = o.customerName || 'Walk-In Guest';
+    const name = o.customerName || t('kdsWalkInGuest');
     if (!customerHistoryMap[name]) customerHistoryMap[name] = [];
     customerHistoryMap[name].push(o);
   });
@@ -598,81 +610,81 @@ export default function ReportsModule({ orders: parentOrders }) {
       {/* Top Header */}
       <div className="rp-header">
         <div>
-          <h2 className="rp-title">Reports & Analytics Hub</h2>
+          <h2 className="rp-title">{t('rpHubTitle')}</h2>
           <p className="rp-subtitle">
-            Enterprise-grade kitchen synchronized operational metrics, audits, and real-time ledger
+            {t('rpHubSubtitle')}
           </p>
         </div>
       </div>
 
       <div className="printable-report-area rp-stack">
-        
+
         {/* SECTION 1: ACTIVE ORDERS REPORT */}
         <div className="rp-section">
           <div className="rp-section-head">
             <div>
-              <h3 className="rp-section-title">📋 Active Orders & Live Breakdown</h3>
-              <p className="rp-section-desc">Live operational queue showing all pending & preparing orders</p>
+              <h3 className="rp-section-title">📋 {t('rpActiveOrdersTitle')}</h3>
+              <p className="rp-section-desc">{t('rpActiveOrdersDesc')}</p>
             </div>
             <div className="rp-tools">
-              <button onClick={() => exportToExcelXLS(activeBreakdownOrders, 'Active_Orders')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
-              <button onClick={printSimpleActiveOrders} className="rp-pill-btn">🖨️ Simple Print</button>
+              <button onClick={() => exportToExcelXLS(activeBreakdownOrders, 'Active_Orders')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 {t('rpExportExcelBtn')}</button>
+              <button onClick={printSimpleActiveOrders} className="rp-pill-btn">🖨️ {t('rpSimplePrintBtn')}</button>
             </div>
           </div>
 
           <div className="rp-filters">
-            <input 
-              type="text" 
-              placeholder="🔍 Search customer name or order ID..." 
+            <input
+              type="text"
+              placeholder={`🔍 ${t('rpSearchCustomerOrderPlaceholder')}`}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="rp-search"
             />
             <select value={orderChannelFilter} onChange={e => setOrderChannelFilter(e.target.value)} className="rp-select">
-              <option value="ALL">All Channels</option>
-              <option value="TABLE">Table Orders</option>
-              <option value="COUNTER">Counter POS</option>
-              <option value="ONLINE">Online (Zomato/Swiggy)</option>
+              <option value="ALL">{t('rpAllChannelsOpt')}</option>
+              <option value="TABLE">{t('rpTableOrdersOpt')}</option>
+              <option value="COUNTER">{t('rpCounterPosOpt')}</option>
+              <option value="ONLINE">{t('rpOnlineAggregatorsOpt')}</option>
             </select>
             <select value={selectedCaptainFilter} onChange={e => setSelectedCaptainFilter(e.target.value)} className="rp-select">
               {allCaptains.map((cap, cIdx) => (
-                <option key={cIdx} value={cap}>{cap === 'ALL' ? 'All Captains' : cap}</option>
+                <option key={cIdx} value={cap}>{cap === 'ALL' ? t('rpAllCaptainsOpt') : formatCaptainDisplay(cap)}</option>
               ))}
             </select>
           </div>
 
           {activeBreakdownOrders.length === 0 ? (
-            <div className="rp-empty">No active orders matching your filter criteria.</div>
+            <div className="rp-empty">{t('rpNoActiveOrdersFilter')}</div>
           ) : (
             <div className="rp-table-wrap">
               <table className="rp-table">
                 <thead>
                   <tr>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Channel / Type</th>
-                    <th>Captain</th>
-                    <th>Status</th>
-                    <th>Total Amount</th>
-                    <th>Actions</th>
+                    <th>{t('receiptOrderId')}</th>
+                    <th>{t('receiptCustomer')}</th>
+                    <th>{t('rpChannelTypeCol')}</th>
+                    <th>{t('tbCaptainLabel')}</th>
+                    <th>{t('rpStatusCol')}</th>
+                    <th>{t('rpTotalAmountCol')}</th>
+                    <th>{t('rpActionsCol')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {activeBreakdownOrders.map((o, idx) => (
                     <tr key={idx}>
                       <td><strong className="rp-strong">{o.displayId || o.orderId}</strong></td>
-                      <td>{o.customerName || 'Walk-In'}</td>
-                      <td><span className="rp-badge">{o.channel || 'COUNTER'}</span></td>
-                      <td className="rp-captain-cell">{extractCaptain(o.customerName) || 'Unassigned'}</td>
+                      <td>{o.customerName || t('kdsWalkIn')}</td>
+                      <td><span className="rp-badge">{translateDbValue(o.channel || 'COUNTER')}</span></td>
+                      <td className="rp-captain-cell">{formatCaptainDisplay(extractCaptain(o.customerName))}</td>
                       <td>
                         <span className={`rp-status ${(o.status || 'New').toLowerCase() === 'ready' ? 'is-ready' : ''}`}>
-                          {o.status || 'New'}
+                          {translateDbValue(o.status || 'New')}
                         </span>
                       </td>
                       <td className="rp-amount">₹{o.totalAmount || 0}</td>
                       <td style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <button onClick={() => printSingleReceipt(o, idx)} className="rp-receipt-btn" title="Print Receipt">🖨️ Receipt</button>
-                        <button onClick={() => setSelectedCustomerHistory(o.customerName)} className="rp-history-btn">🔍 History</button>
+                        <button onClick={() => printSingleReceipt(o, idx)} className="rp-receipt-btn" title={t('rpPrintReceiptTitle')}>🖨️ {t('rpReceiptShortBtn')}</button>
+                        <button onClick={() => setSelectedCustomerHistory(o.customerName || t('kdsWalkInGuest'))} className="rp-history-btn">🔍 {t('rpHistoryBtn')}</button>
                       </td>
                     </tr>
                   ))}
@@ -686,43 +698,43 @@ export default function ReportsModule({ orders: parentOrders }) {
         <div className="rp-section">
           <div className="rp-section-head">
             <div>
-              <h3 className="rp-section-title">📦 Past Orders & History Archive</h3>
-              <p className="rp-section-desc">All past and completed orders are permanently retained here</p>
+              <h3 className="rp-section-title">📦 {t('rpPastOrdersTitle')}</h3>
+              <p className="rp-section-desc">{t('rpPastOrdersDesc')}</p>
             </div>
             <div className="rp-tools">
               <select value={historyDateRange} onChange={e => setHistoryDateRange(e.target.value)} className="rp-select">
-                <option value="all">All Time (Default)</option>
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="week">Last Week</option>
-                <option value="month">Last Month</option>
-                <option value="year">Year</option>
+                <option value="all">{t('rpAllTimeDefaultOpt')}</option>
+                <option value="today">{t('rpRangeToday')}</option>
+                <option value="yesterday">{t('rpRangeYesterday')}</option>
+                <option value="week">{t('rpRangeWeek')}</option>
+                <option value="month">{t('rpRangeMonth')}</option>
+                <option value="year">{t('rpRangeYear')}</option>
               </select>
-              <button onClick={() => exportToExcelXLS(completedHistoryOrders, 'Completed_Orders_History')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
-              <button onClick={printBulkHistory} className="rp-pill-btn">🖨️ Print Whole Ledger</button>
+              <button onClick={() => exportToExcelXLS(completedHistoryOrders, 'Completed_Orders_History')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 {t('rpExportExcelBtn')}</button>
+              <button onClick={printBulkHistory} className="rp-pill-btn">🖨️ {t('rpPrintWholeLedgerBtn')}</button>
             </div>
           </div>
 
           {completedHistoryOrders.length === 0 ? (
-            <div className="rp-empty">No past completed orders found.</div>
+            <div className="rp-empty">{t('rpNoPastCompletedOrders')}</div>
           ) : (
             <div className="rp-list rp-list-400">
               {completedHistoryOrders.map((o, idx) => (
-                <div 
-                  key={idx} 
+                <div
+                  key={idx}
                   className="rp-hist-row"
                   onMouseEnter={() => setHoveredCard(`hist-${idx}`)}
                   onMouseLeave={() => setHoveredCard(null)}
                 >
                   <div className="rp-row-left">
                     <span className="rp-hist-id">{o.displayId || o.orderId}</span>
-                    <span className="rp-badge">{o.channel || 'COUNTER'}</span>
-                    <span className="rp-hist-customer">👤 {o.customerName || 'Walk-In'}</span>
-                    <span className="rp-hist-status">Status: {o.status}</span>
+                    <span className="rp-badge">{translateDbValue(o.channel || 'COUNTER')}</span>
+                    <span className="rp-hist-customer">👤 {o.customerName || t('kdsWalkIn')}</span>
+                    <span className="rp-hist-status">{t('kdsStatusLabel')} {translateDbValue(o.status)}</span>
                   </div>
                   <div className="rp-row-right">
                     <span className="rp-hist-amount">₹{o.totalAmount || 0}</span>
-                    <button onClick={() => printSingleReceipt(o, idx)} className="rp-receipt-btn">🖨️ Receipt</button>
+                    <button onClick={() => printSingleReceipt(o, idx)} className="rp-receipt-btn">🖨️ {t('rpReceiptShortBtn')}</button>
                   </div>
                 </div>
               ))}
@@ -734,41 +746,44 @@ export default function ReportsModule({ orders: parentOrders }) {
         <div className="rp-section">
           <div className="rp-section-head">
             <div>
-              <h3 className="rp-section-title">🧑‍✈️ Captains Performance & Analytics</h3>
-              <p className="rp-section-desc">Click any captain card to inspect complete past & present assigned orders</p>
+              <h3 className="rp-section-title">🧑‍✈️ {t('rpCaptainsPerfTitle')}</h3>
+              <p className="rp-section-desc">{t('rpCaptainsPerfDesc')}</p>
             </div>
             <div className="rp-tools">
               <select value={captainDateRange} onChange={e => setCaptainDateRange(e.target.value)} className="rp-select">
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="week">Last Week</option>
-                <option value="month">Last Month</option>
-                <option value="year">Year</option>
-                <option value="all">All Time</option>
+                <option value="today">{t('rpRangeToday')}</option>
+                <option value="yesterday">{t('rpRangeYesterday')}</option>
+                <option value="week">{t('rpRangeWeek')}</option>
+                <option value="month">{t('rpRangeMonth')}</option>
+                <option value="year">{t('rpRangeYear')}</option>
+                <option value="all">{t('rpRangeAllTime')}</option>
               </select>
             </div>
           </div>
 
           {sortedCaptainKeys.length === 0 ? (
-            <div className="rp-empty">No captain assignments recorded for this period.</div>
+            <div className="rp-empty">{t('rpNoCaptainAssignments')}</div>
           ) : (
             <div className="rp-cap-grid">
-              {sortedCaptainKeys.map((capName, cIdx) => (
-                <div 
-                  key={cIdx} 
-                  onClick={() => setSelectedCaptainDetails({ name: capName, orders: captainMap[capName].orders })}
-                  className="rp-cap-card"
-                  onMouseEnter={() => setHoveredCard(`cap-${cIdx}`)}
-                  onMouseLeave={() => setHoveredCard(null)}
-                >
-                  <div className="rp-cap-top">
-                    <span className="rp-cap-name">🧑‍✈️ {capName}</span>
-                    <span className="rp-cap-inspect">Inspect ›</span>
+              {sortedCaptainKeys.map((capName, cIdx) => {
+                const capDisplay = formatCaptainDisplay(capName);
+                return (
+                  <div
+                    key={cIdx}
+                    onClick={() => setSelectedCaptainDetails({ name: capDisplay, orders: captainMap[capName].orders })}
+                    className="rp-cap-card"
+                    onMouseEnter={() => setHoveredCard(`cap-${cIdx}`)}
+                    onMouseLeave={() => setHoveredCard(null)}
+                  >
+                    <div className="rp-cap-top">
+                      <span className="rp-cap-name">🧑‍✈️ {capDisplay}</span>
+                      <span className="rp-cap-inspect">{t('rpInspectWord')} ›</span>
+                    </div>
+                    <div className="rp-cap-line">{t('rpOrdersManagedLabel')}: <strong className="rp-blue">{captainMap[capName].orderCount}</strong></div>
+                    <div className="rp-cap-line">{t('rpRevenueGeneratedLabel')}: <strong className="rp-green">₹{captainMap[capName].revenue}</strong></div>
                   </div>
-                  <div className="rp-cap-line">Orders Managed: <strong className="rp-blue">{captainMap[capName].orderCount}</strong></div>
-                  <div className="rp-cap-line">Revenue Generated: <strong className="rp-green">₹{captainMap[capName].revenue}</strong></div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -777,17 +792,17 @@ export default function ReportsModule({ orders: parentOrders }) {
         <div className="rp-section">
           <div className="rp-section-head">
             <div>
-              <h3 className="rp-section-title">✅ Closed & Resolved Complaints Archive</h3>
-              <p className="rp-section-desc">Synced historical log of all successfully closed customer complaints</p>
+              <h3 className="rp-section-title">✅ {t('rpClosedComplaintsTitle')}</h3>
+              <p className="rp-section-desc">{t('rpClosedComplaintsDesc')}</p>
             </div>
             <div className="rp-tools">
-              <button onClick={() => exportToExcelXLS(closedComplaints, 'Resolved_Complaints')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
-              <button onClick={printComplaintsReport} className="rp-pill-btn">🖨️ Print Complaints</button>
+              <button onClick={() => exportToExcelXLS(closedComplaints, 'Resolved_Complaints')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 {t('rpExportExcelBtn')}</button>
+              <button onClick={printComplaintsReport} className="rp-pill-btn">🖨️ {t('rpPrintComplaintsBtn')}</button>
             </div>
           </div>
 
           {closedComplaints.length === 0 ? (
-            <div className="rp-empty">No closed complaints archived yet.</div>
+            <div className="rp-empty">{t('rpNoClosedComplaints')}</div>
           ) : (
             <div className="rp-list rp-list-350">
               {closedComplaints.map((c, idx) => (
@@ -795,10 +810,10 @@ export default function ReportsModule({ orders: parentOrders }) {
                   <div className="rp-row-left">
                     <span className="rp-hist-id">{c.complaintId}</span>
                     <span className="rp-badge">{c.orderId}</span>
-                    <span className="rp-hist-customer">👤 {c.customerName || 'Guest'}</span>
+                    <span className="rp-hist-customer">👤 {c.customerName || t('rpGuestWord')}</span>
                     <span className="rp-complaint-type">{c.complaintType}</span>
                   </div>
-                  <span className="rp-closed">● Closed</span>
+                  <span className="rp-closed">● {t('rpClosedLabel')}</span>
                 </div>
               ))}
             </div>
@@ -809,40 +824,40 @@ export default function ReportsModule({ orders: parentOrders }) {
         <div className="rp-section">
           <div className="rp-section-head">
             <div>
-              <h3 className="rp-section-title">📊 Revenue Distribution & Analytics</h3>
-              <p className="rp-section-desc">Visual breakdown by dining channels and revenue generation</p>
+              <h3 className="rp-section-title">📊 {t('rpRevenueAnalyticsTitle')}</h3>
+              <p className="rp-section-desc">{t('rpRevenueAnalyticsDesc')}</p>
             </div>
             <div className="rp-tools">
               <select value={analyticsCategoryFilter} onChange={e => setAnalyticsCategoryFilter(e.target.value)} className="rp-select">
-                <option value="ALL">All Categories</option>
-                <option value="TABLE">Table Orders</option>
-                <option value="COUNTER">Counter POS</option>
-                <option value="ONLINE">Online</option>
+                <option value="ALL">{t('rpAllCategoriesOpt')}</option>
+                <option value="TABLE">{t('rpTableOrdersOpt')}</option>
+                <option value="COUNTER">{t('rpCounterPosOpt')}</option>
+                <option value="ONLINE">{t('rpOnlineOpt')}</option>
               </select>
               <select value={analyticsDateRange} onChange={e => setAnalyticsDateRange(e.target.value)} className="rp-select">
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="week">Last Week</option>
-                <option value="month">Last Month</option>
-                <option value="year">Year</option>
-                <option value="all">All Time</option>
+                <option value="today">{t('rpRangeToday')}</option>
+                <option value="yesterday">{t('rpRangeYesterday')}</option>
+                <option value="week">{t('rpRangeWeek')}</option>
+                <option value="month">{t('rpRangeMonth')}</option>
+                <option value="year">{t('rpRangeYear')}</option>
+                <option value="all">{t('rpRangeAllTime')}</option>
               </select>
-              <button onClick={() => exportToExcelXLS(analyticsOrders, 'Revenue_Analytics')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 Export Excel</button>
-              <button onClick={printRevenueReport} className="rp-pill-btn">🖨️ Print Analytics</button>
+              <button onClick={() => exportToExcelXLS(analyticsOrders, 'Revenue_Analytics')} className="rp-pill-btn" style={{ background: '#059669' }}>📊 {t('rpExportExcelBtn')}</button>
+              <button onClick={printRevenueReport} className="rp-pill-btn">🖨️ {t('rpPrintAnalyticsBtn')}</button>
             </div>
           </div>
 
           <div className="rp-metrics">
             <div className="rp-metric">
-              <div className="rp-metric-title">Total Revenue</div>
+              <div className="rp-metric-title">{t('rpTotalRevenueMetric')}</div>
               <div className="rp-metric-value">₹{totalRevenue.toFixed(2)}</div>
             </div>
             <div className="rp-metric">
-              <div className="rp-metric-title">Total Orders Count</div>
+              <div className="rp-metric-title">{t('rpTotalOrdersMetric')}</div>
               <div className="rp-metric-value is-blue">{totalOrdersCount}</div>
             </div>
             <div className="rp-metric">
-              <div className="rp-metric-title">Avg Order Value</div>
+              <div className="rp-metric-title">{t('rpAvgOrderValueMetric')}</div>
               <div className="rp-metric-value is-amber">
                 ₹{totalOrdersCount > 0 ? (totalRevenue / totalOrdersCount).toFixed(2) : '0.00'}
               </div>
@@ -852,7 +867,7 @@ export default function ReportsModule({ orders: parentOrders }) {
           {/* Dynamic Pie Chart Visual */}
           <div className="rp-chart">
             {analyticsOrders.length === 0 ? (
-              <div className="rp-empty">No revenue distribution data available for this range.</div>
+              <div className="rp-empty">{t('rpNoRevenueData')}</div>
             ) : (
               <>
                 <div className="rp-pie" style={{ background: dynamicPieBackground }}>
@@ -861,9 +876,9 @@ export default function ReportsModule({ orders: parentOrders }) {
                   </div>
                 </div>
                 <div className="rp-legend">
-                  <span className="rp-legend-item is-dine">■ Dine-In / Table ({tablePct.toFixed(1)}%)</span>
-                  <span className="rp-legend-item is-counter">■ Takeaway / Counter ({counterPct.toFixed(1)}%)</span>
-                  <span className="rp-legend-item is-online">■ Online Aggregators ({onlinePct.toFixed(1)}%)</span>
+                  <span className="rp-legend-item is-dine">■ {t('rpLegendDineIn')} ({tablePct.toFixed(1)}%)</span>
+                  <span className="rp-legend-item is-counter">■ {t('rpLegendCounter')} ({counterPct.toFixed(1)}%)</span>
+                  <span className="rp-legend-item is-online">■ {t('rpLegendOnline')} ({onlinePct.toFixed(1)}%)</span>
                 </div>
               </>
             )}
@@ -878,11 +893,11 @@ export default function ReportsModule({ orders: parentOrders }) {
           <div className="rp-modal rp-modal-lg" onClick={e => e.stopPropagation()}>
             <div className="rp-modal-head">
               <h3 className="rp-modal-title">
-                🧑‍✈️ Captain Ledger: {selectedCaptainDetails.name} ({selectedCaptainDetails.orders.length} Orders)
+                🧑‍✈️ {t('rpCaptainLedgerPrefix')}: {selectedCaptainDetails.name} ({selectedCaptainDetails.orders.length} {t('statOrders')})
               </h3>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button onClick={() => exportToExcelXLS(selectedCaptainDetails.orders, `Captain_${selectedCaptainDetails.name}`)} className="rp-pill-btn" style={{ padding: '8px 12px', fontSize: '12px', background: '#059669' }}>📊 Excel</button>
-                <button onClick={() => printCaptainLedger(selectedCaptainDetails.name, selectedCaptainDetails.orders)} className="rp-pill-btn" style={{ padding: '8px 12px', fontSize: '12px' }}>🖨️ Print</button>
+                <button onClick={() => exportToExcelXLS(selectedCaptainDetails.orders, `Captain_${selectedCaptainDetails.name}`)} className="rp-pill-btn" style={{ padding: '8px 12px', fontSize: '12px', background: '#059669' }}>📊 {t('rpExcelShort')}</button>
+                <button onClick={() => printCaptainLedger(selectedCaptainDetails.name, selectedCaptainDetails.orders)} className="rp-pill-btn" style={{ padding: '8px 12px', fontSize: '12px' }}>🖨️ {t('rpPrintShort')}</button>
                 <button onClick={() => setSelectedCaptainDetails(null)} className="rp-close-x">✕</button>
               </div>
             </div>
@@ -891,23 +906,23 @@ export default function ReportsModule({ orders: parentOrders }) {
               {selectedCaptainDetails.orders.map((ord, oIdx) => (
                 <div key={oIdx} className="rp-modal-row">
                   <div>
-                    <div className="rp-mr-id">{ord.displayId || ord.orderId || 'Order'}</div>
+                    <div className="rp-mr-id">{ord.displayId || ord.orderId || t('orderWord')}</div>
                     <div className="rp-mr-customer">
-                      👤 {ord.customerName || 'Walk-In'} {ord.customerPhone ? `• 📞 ${ord.customerPhone}` : ''}
+                      👤 {ord.customerName || t('kdsWalkIn')} {ord.customerPhone ? `• 📞 ${ord.customerPhone}` : ''}
                     </div>
                     <div className="rp-mr-meta">
-                      Status: <span className="rp-green">{ord.status || 'Completed'}</span> · Channel: {ord.channel || 'COUNTER'}
+                      {t('kdsStatusLabel')} <span className="rp-green">{translateDbValue(ord.status || 'Completed')}</span> · {t('rpChannelCol')}: {translateDbValue(ord.channel || 'COUNTER')}
                     </div>
                   </div>
                   <div className="rp-mr-right">
                     <div className="rp-mr-amount">₹{ord.totalAmount || 0}</div>
-                    <button onClick={() => printSingleReceipt(ord, oIdx)} className="rp-receipt-btn rp-mt">🖨️ Receipt</button>
+                    <button onClick={() => printSingleReceipt(ord, oIdx)} className="rp-receipt-btn rp-mt">🖨️ {t('rpReceiptShortBtn')}</button>
                   </div>
                 </div>
               ))}
             </div>
 
-            <button onClick={() => setSelectedCaptainDetails(null)} className="rp-modal-close">Close Captain Ledger</button>
+            <button onClick={() => setSelectedCaptainDetails(null)} className="rp-modal-close">{t('rpCloseCaptainLedgerBtn')}</button>
           </div>
         </div>
       )}
@@ -917,15 +932,15 @@ export default function ReportsModule({ orders: parentOrders }) {
         <div className="rp-overlay" onClick={() => setSelectedCustomerHistory(null)}>
           <div className="rp-modal" onClick={e => e.stopPropagation()}>
             <div className="rp-modal-head">
-              <h3 className="rp-modal-title">👤 Customer History: {selectedCustomerHistory}</h3>
+              <h3 className="rp-modal-title">👤 {t('rpCustomerHistoryPrefix')}: {selectedCustomerHistory}</h3>
               <button onClick={() => setSelectedCustomerHistory(null)} className="rp-close-x">✕</button>
             </div>
             <div className="rp-modal-list rp-modal-list-300">
               {(customerHistoryMap[selectedCustomerHistory] || []).map((pastOrder, pIdx) => (
                 <div key={pIdx} className="rp-modal-row">
                   <div>
-                    <div className="rp-mr-id">{pastOrder.displayId || 'Order'}</div>
-                    <div className="rp-mr-status">{pastOrder.status}</div>
+                    <div className="rp-mr-id">{pastOrder.displayId || t('orderWord')}</div>
+                    <div className="rp-mr-status">{translateDbValue(pastOrder.status)}</div>
                   </div>
                   <div className="rp-mr-right">
                     <div className="rp-mr-amount is-small">₹{pastOrder.totalAmount}</div>
@@ -933,7 +948,7 @@ export default function ReportsModule({ orders: parentOrders }) {
                 </div>
               ))}
             </div>
-            <button onClick={() => setSelectedCustomerHistory(null)} className="rp-modal-close">Close</button>
+            <button onClick={() => setSelectedCustomerHistory(null)} className="rp-modal-close">{t('closeBtn')}</button>
           </div>
         </div>
       )}

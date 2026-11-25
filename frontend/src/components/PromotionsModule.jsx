@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from './LanguageContext';
 
-const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
+const API_BASE_URL = 'http://localhost:8080';
 
 const ICON_MAP = {
   Percent: '%',
@@ -16,19 +17,20 @@ const ICON_MAP = {
 };
 
 export default function PromotionsModule() {
+  const { t, translateDbValue, getLocalizedField } = useLanguage();
   const userEmail = localStorage.getItem('userEmail') || 'novio@gmail.com';
 
   const [viewMode, setViewMode] = useState('groups');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const [groups, setGroups] = useState([]);
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [showPromoModal, setShowPromoModal] = useState(false);
-  
+
   const [editingGroup, setEditingGroup] = useState(null);
   const [editingPromo, setEditingPromo] = useState(null);
 
@@ -51,10 +53,10 @@ export default function PromotionsModule() {
   const [discountVal, setDiscountVal] = useState('10');
   const [minOrder, setMinOrder] = useState('0');
   const [maxDiscount, setMaxDiscount] = useState('');
-  
+
   const [startDate, setStartDate] = useState('2026-10-28');
   const [expiryDate, setExpiryDate] = useState('2026-11-27');
-  
+
   const [totalRedemptions, setTotalRedemptions] = useState('Unlimited');
   const [redemptionsPerCust, setRedemptionsPerCust] = useState('Unlimited');
 
@@ -106,29 +108,29 @@ export default function PromotionsModule() {
 
   const handleOpenEditGroup = (g) => {
     setEditingGroup(g);
-    setGroupName(g.name);
+    setGroupName(g.name || '');
     setGroupType(g.type || 'Festival');
     setGroupDesc(g.description || '');
     setShowGroupModal(true);
   };
 
   const handleDeleteGroup = (id, name) => {
-    if (window.confirm(`Are you sure you want to delete group "${name}"?`)) {
+    if (window.confirm(t('pmDeleteGroupConfirm').replace('{name}', name || ''))) {
       setGroups(groups.filter(g => g.id !== id));
-      showToast('Promotion group deleted successfully!', 'error');
+      showToast(t('pmGroupDeletedToast'), 'error');
     }
   };
 
   const handleSaveGroup = (e) => {
     e.preventDefault();
     if (groupName.trim().length < 2) {
-      alert('Name must be at least 2 characters.');
+      alert(t('pmMinTwoCharsAlert'));
       return;
     }
 
     if (editingGroup) {
       setGroups(groups.map(g => g.id === editingGroup.id ? { ...g, name: groupName, type: groupType, description: groupDesc } : g));
-      showToast('Promotion group updated successfully!');
+      showToast(t('pmGroupUpdatedToast'));
     } else {
       const newGroup = {
         id: 'group_' + Date.now(),
@@ -141,7 +143,7 @@ export default function PromotionsModule() {
         restaurantEmail: userEmail
       };
       setGroups([newGroup, ...groups]);
-      showToast('Promotion Group created successfully!');
+      showToast(t('pmGroupCreatedToast'));
     }
 
     setShowGroupModal(false);
@@ -171,13 +173,14 @@ export default function PromotionsModule() {
 
   const handleOpenEditPromo = (p) => {
     setEditingPromo(p);
-    setSelectedGroup(p.groupName);
-    setPromoCode(p.code);
+    setSelectedGroup(p.groupName || '');
+    setPromoCode(p.code || '');
     setOfferIcon(p.icon || 'Percent');
-    setDisplayName(p.displayName);
+    setDisplayName(p.displayName || '');
     setDisplayDesc(p.displayDesc || '');
     setTerms(p.terms || '');
     setInternalName(p.internalName || '');
+    setInternalDesc(p.internalDesc || '');
     setOfferType(p.offerType || '% Off Order');
     setDiscountVal(p.discountVal || '10');
     setMinOrder(p.minOrder || '0');
@@ -190,7 +193,7 @@ export default function PromotionsModule() {
   const handleSavePromo = (e) => {
     e.preventDefault();
     if (!promoCode || !displayName) {
-      alert('Please fill in required fields (Promo Code and Display Name).');
+      alert(t('pmRequiredPromoAlert'));
       return;
     }
 
@@ -206,6 +209,7 @@ export default function PromotionsModule() {
         displayDesc,
         terms,
         internalName,
+        internalDesc,
         offerType,
         discountVal,
         minOrder,
@@ -213,7 +217,7 @@ export default function PromotionsModule() {
         startDate,
         expiryDate
       } : p));
-      showToast('Promotion updated successfully!');
+      showToast(t('pmPromoUpdatedToast'));
     } else {
       const newPromo = {
         id: 'promo_' + Date.now(),
@@ -224,6 +228,7 @@ export default function PromotionsModule() {
         displayDesc,
         terms,
         internalName,
+        internalDesc,
         offerType,
         discountVal,
         minOrder,
@@ -234,7 +239,7 @@ export default function PromotionsModule() {
         restaurantEmail: userEmail
       };
       setPromotions([newPromo, ...promotions]);
-      showToast('Promotion created & activated successfully!');
+      showToast(t('pmPromoCreatedToast'));
     }
 
     setShowPromoModal(false);
@@ -249,13 +254,13 @@ export default function PromotionsModule() {
       }
       return p;
     }));
-    showToast('Promotion status updated!');
+    showToast(t('pmStatusUpdatedToast'));
   };
 
   const handleDeletePromo = (id) => {
-    if (window.confirm('Are you sure you want to delete this promotion?')) {
+    if (window.confirm(t('pmDeletePromoConfirm'))) {
       setPromotions(promotions.filter(p => p.id !== id));
-      showToast('Promotion deleted successfully!', 'error');
+      showToast(t('pmPromoDeletedToast'), 'error');
     }
   };
 
@@ -264,14 +269,17 @@ export default function PromotionsModule() {
     setViewMode('offers');
   };
 
-  const filteredGroups = groups.filter(g => 
-    g.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (g.type && g.type.toLowerCase().includes(searchQuery.toLowerCase()))
+  const q = (searchQuery || '').toLowerCase();
+
+  const filteredGroups = groups.filter(g =>
+    (g.name || '').toLowerCase().includes(q) ||
+    (g.type && g.type.toLowerCase().includes(q))
   );
 
   const filteredPromotions = promotions.filter(p => {
-    const matchesSearch = p.displayName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          p.code.toLowerCase().includes(searchQuery.toLowerCase());
+    const pName = (p.displayName || p.name || '').toLowerCase();
+    const pCode = (p.code || p.promoCode || '').toLowerCase();
+    const matchesSearch = pName.includes(q) || pCode.includes(q);
     const matchesGroup = selectedGroupFilter ? p.groupName === selectedGroupFilter : true;
     return matchesSearch && matchesGroup;
   });
@@ -282,41 +290,41 @@ export default function PromotionsModule() {
         <div>
           <div className="pm-title-row">
             <span className="pm-folder-icon">📁</span>
-            <h1 className="pm-title">Promotions</h1>
+            <h1 className="pm-title">{t('navPromotions')}</h1>
           </div>
-          <p className="pm-sub">Manage promotion groups, discounts and campaigns</p>
+          <p className="pm-sub">{t('pmSubtitle')}</p>
         </div>
 
         <div className="pm-top-actions">
           <button className="pm-btn-outline" onClick={handleOpenCreatePromo}>
-            + Create Promotion
+            + {t('pmCreatePromotionBtn')}
           </button>
           <button className="pm-btn-primary" onClick={handleOpenCreateGroup}>
-            + Create Group
+            + {t('pmCreateGroupBtn')}
           </button>
         </div>
       </div>
 
       <div className="pm-toolbar">
         <div className="pm-tabs">
-          <button 
+          <button
             className={`pm-tab ${viewMode === 'groups' ? 'is-active' : ''}`}
             onClick={() => { setViewMode('groups'); setSelectedGroupFilter(null); }}
           >
-            👥 Groups View
+            👥 {t('pmGroupsViewTab')}
           </button>
-          <button 
+          <button
             className={`pm-tab ${viewMode === 'offers' ? 'is-active' : ''}`}
             onClick={() => setViewMode('offers')}
           >
-            🏷️ Offers View {selectedGroupFilter ? `(${selectedGroupFilter})` : ''}
+            🏷️ {t('pmOffersViewTab')} {selectedGroupFilter ? `(${selectedGroupFilter})` : ''}
           </button>
         </div>
 
         <div className="pm-search-box">
           <span className="pm-search-icon">🔍</span>
-          <input 
-            placeholder="Search groups or codes..."
+          <input
+            placeholder={t('pmSearchPlaceholder')}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
@@ -325,90 +333,103 @@ export default function PromotionsModule() {
 
       {viewMode === 'offers' && selectedGroupFilter && (
         <div className="pm-filter-banner">
-          <span>Showing offers for group: <b>{selectedGroupFilter}</b></span>
-          <button onClick={() => setSelectedGroupFilter(null)}>Show All Offers ✕</button>
+          <span>{t('pmShowingOffersFor')}: <b>{selectedGroupFilter}</b></span>
+          <button onClick={() => setSelectedGroupFilter(null)}>{t('pmShowAllOffersBtn')} ✕</button>
         </div>
       )}
 
       <div className="pm-content">
         {loading ? (
-          <div className="pm-empty">Loading promotions...</div>
+          <div className="pm-empty">{t('pmLoadingText')}</div>
         ) : viewMode === 'groups' ? (
           <div className="pm-grid">
-            {filteredGroups.map(g => (
-              <div key={g.id} className="pm-card pm-animate-card">
-                <div className="pm-card-top">
-                  <div className="pm-card-icon-title">
-                    <div className="pm-mini-icon">☀️</div>
-                    <div>
-                      <h3 className="pm-card-name">{g.name}</h3>
-                      <span className="pm-card-type">{g.type}</span>
+            {filteredGroups.map(g => {
+              const gName = getLocalizedField(g, 'name') || g.name;
+              const gDesc = getLocalizedField(g, 'description') || g.description || t('pmDefaultGroupDesc');
+              const groupPromos = promotions.filter(p => p.groupName === g.name);
+              const activePromos = groupPromos.filter(p => p.status === 'ACTIVE').length;
+              const inactivePromos = groupPromos.filter(p => p.status !== 'ACTIVE').length;
+
+              return (
+                <div key={g.id} className="pm-card pm-animate-card">
+                  <div className="pm-card-top">
+                    <div className="pm-card-icon-title">
+                      <div className="pm-mini-icon">☀️</div>
+                      <div>
+                        <h3 className="pm-card-name">{gName}</h3>
+                        <span className="pm-card-type">{translateDbValue(g.type)}</span>
+                      </div>
+                    </div>
+                    <div className="pm-group-actions-top">
+                      <button className="pm-edit-btn" title={t('pmEditGroupTitle')} onClick={() => handleOpenEditGroup(g)}>✏️</button>
+                      <button className="pm-delete-btn" title={t('pmDeleteGroupTitle')} onClick={() => handleDeleteGroup(g.id, gName)}>🗑️</button>
                     </div>
                   </div>
-                  <div className="pm-group-actions-top">
-                    <button className="pm-edit-btn" title="Edit Group" onClick={() => handleOpenEditGroup(g)}>✏️</button>
-                    <button className="pm-delete-btn" title="Delete Group" onClick={() => handleDeleteGroup(g.id, g.name)}>🗑️</button>
+
+                  <p className="pm-card-desc">{gDesc}</p>
+
+                  <div className="pm-card-stats">
+                    <div className="pm-stat-item">🏷️ {groupPromos.length} {t('pmPromotionsWord')}</div>
+                    <div className="pm-stat-row">
+                      <span className="pm-green-dot">🟢 {activePromos} {t('pmActiveWord')}</span>
+                      <span className="pm-gray-dot">❌ {inactivePromos} {t('pmInactiveWord')}</span>
+                    </div>
+                  </div>
+
+                  <div className="pm-card-bottom">
+                    <button className="pm-view-promo-btn" onClick={() => handleViewPromotionsForGroup(g.name)}>
+                      {t('pmViewPromotionsBtn')} {'>'}
+                    </button>
                   </div>
                 </div>
-
-                <p className="pm-card-desc">{g.description || 'Promotion group for branch campaigns'}</p>
-
-                <div className="pm-card-stats">
-                  <div className="pm-stat-item">🏷️ {promotions.filter(p => p.groupName === g.name).length} promotions</div>
-                  <div className="pm-stat-row">
-                    <span className="pm-green-dot">🟢 {promotions.filter(p => p.groupName === g.name && p.status === 'ACTIVE').length} active</span>
-                    <span className="pm-gray-dot">❌ {promotions.filter(p => p.groupName === g.name && p.status !== 'ACTIVE').length} inactive</span>
-                  </div>
-                </div>
-
-                <div className="pm-card-bottom">
-                  <button className="pm-view-promo-btn" onClick={() => handleViewPromotionsForGroup(g.name)}>
-                    View Promotions &gt;
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="pm-grid">
             {filteredPromotions.length === 0 ? (
               <div className="pm-empty">
-                No individual offers found {selectedGroupFilter ? `in group "${selectedGroupFilter}"` : ''}. Click <b>+ Create Promotion</b> to add one!
+                {t('pmNoOffersFound')} {selectedGroupFilter ? `${t('pmInGroupWord')} "${selectedGroupFilter}"` : ''}. {t('pmClickCreatePromoHint')}
               </div>
             ) : (
-              filteredPromotions.map(p => (
-                <div key={p.id} className="pm-card pm-animate-card">
-                  <div className="pm-card-top">
-                    <div className="pm-card-icon-title">
-                      <div className="pm-mini-icon">{ICON_MAP[p.icon] || '🏷️'}</div>
-                      <div>
-                        <h3 className="pm-card-name">{p.displayName}</h3>
-                        <span className="pm-code-badge">CODE: {p.code}</span>
+              filteredPromotions.map(p => {
+                const pTitle = getLocalizedField(p, 'displayName') || p.displayName || p.name || '';
+                const pDesc = getLocalizedField(p, 'displayDesc') || p.displayDesc || p.terms || t('pmDefaultOfferDesc');
+
+                return (
+                  <div key={p.id} className="pm-card pm-animate-card">
+                    <div className="pm-card-top">
+                      <div className="pm-card-icon-title">
+                        <div className="pm-mini-icon">{ICON_MAP[p.icon] || '🏷️'}</div>
+                        <div>
+                          <h3 className="pm-card-name">{pTitle}</h3>
+                          <span className="pm-code-badge">{t('pmCodePrefix')}: {p.code}</span>
+                        </div>
+                      </div>
+                      <div className="pm-group-actions-top">
+                        <button className="pm-edit-btn" title={t('pmEditOfferTitle')} onClick={() => handleOpenEditPromo(p)}>✏️</button>
+                        <button className={`pm-status-pill ${p.status === 'INACTIVE' ? 'pm-pill-inactive' : ''}`}>
+                          {translateDbValue(p.status || 'ACTIVE')}
+                        </button>
                       </div>
                     </div>
-                    <div className="pm-group-actions-top">
-                      <button className="pm-edit-btn" title="Edit Offer" onClick={() => handleOpenEditPromo(p)}>✏️</button>
-                      <button className={`pm-status-pill ${p.status === 'INACTIVE' ? 'pm-pill-inactive' : ''}`}>
-                        {p.status || 'ACTIVE'}
+                    <p className="pm-card-desc">{pDesc}</p>
+                    <div className="pm-card-stats">
+                      <div className="pm-stat-item">{t('pmFormulaLabel')}: <b>{translateDbValue(p.offerType)} ({p.discountVal}%)</b></div>
+                      <div className="pm-stat-item">{t('pmValidLabel')}: {p.startDate} {t('pmToWord')} {p.expiryDate}</div>
+                      <div className="pm-stat-item" style={{ color: '#047857' }}>{t('pmGroupLabel')}: <b>{p.groupName}</b></div>
+                    </div>
+                    <div className="pm-card-bottom-actions">
+                      <button className="pm-action-toggle" onClick={() => handleToggleStatus(p.id)}>
+                        {p.status === 'INACTIVE' ? `${t('pmActivateBtn')} 🟢` : `${t('pmPauseBtn')} ⏸️`}
+                      </button>
+                      <button className="pm-action-delete" onClick={() => handleDeletePromo(p.id)}>
+                        {t('tbDeleteBtn')} 🗑️
                       </button>
                     </div>
                   </div>
-                  <p className="pm-card-desc">{p.displayDesc || p.terms || 'Special discount offer for customers.'}</p>
-                  <div className="pm-card-stats">
-                    <div className="pm-stat-item">Formula: <b>{p.offerType} ({p.discountVal}%)</b></div>
-                    <div className="pm-stat-item">Valid: {p.startDate} to {p.expiryDate}</div>
-                    <div className="pm-stat-item" style={{color: '#047857'}}>Group: <b>{p.groupName}</b></div>
-                  </div>
-                  <div className="pm-card-bottom-actions">
-                    <button className="pm-action-toggle" onClick={() => handleToggleStatus(p.id)}>
-                      {p.status === 'INACTIVE' ? 'Activate 🟢' : 'Pause ⏸️'}
-                    </button>
-                    <button className="pm-action-delete" onClick={() => handleDeletePromo(p.id)}>
-                      Delete 🗑️
-                    </button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
@@ -419,58 +440,58 @@ export default function PromotionsModule() {
           <div className="pm-modal pm-animate-modal" onClick={e => e.stopPropagation()}>
             <div className="pm-modal-head">
               <div>
-                <h3 className="pm-modal-title">{editingGroup ? 'Edit Promotion Group' : 'Create Promotion Group'}</h3>
-                <p className="pm-modal-sub">Configure promotion group details for this branch.</p>
+                <h3 className="pm-modal-title">{editingGroup ? t('pmEditGroupModalTitle') : t('pmCreateGroupModalTitle')}</h3>
+                <p className="pm-modal-sub">{t('pmGroupModalSub')}</p>
               </div>
               <button className="pm-close-x" onClick={() => setShowGroupModal(false)}>✕</button>
             </div>
 
             <form onSubmit={handleSaveGroup} className="pm-form">
-              <label className="pm-label">Group Name</label>
-              <input 
+              <label className="pm-label">{t('pmGroupNameLabel')}</label>
+              <input
                 className="pm-input"
-                placeholder="e.g., Festival Offers"
+                placeholder={t('pmGroupNamePlaceholder')}
                 value={groupName}
                 onChange={e => setGroupName(e.target.value)}
                 required
               />
               {groupName.length > 0 && groupName.length < 2 && (
-                <div className="pm-error-txt">Name must be at least 2 characters.</div>
+                <div className="pm-error-txt">{t('pmMinTwoCharsAlert')}</div>
               )}
-              <span className="pm-hint">Use a clear name staff can recognize.</span>
+              <span className="pm-hint">{t('pmGroupNameHint')}</span>
 
-              <label className="pm-label" style={{marginTop: '16px'}}>Type</label>
+              <label className="pm-label" style={{ marginTop: '16px' }}>{t('pmTypeLabel')}</label>
               <div className="pm-dropdown-wrap">
                 <div className="pm-select-box" onClick={() => setGroupTypeOpen(!groupTypeOpen)}>
-                  <span>{groupType}</span>
+                  <span>{translateDbValue(groupType)}</span>
                   <span>▼</span>
                 </div>
                 {groupTypeOpen && (
                   <div className="pm-dropdown-menu">
-                    {['Festival', 'Daily', 'Special', 'Custom'].map(t => (
-                      <div key={t} className="pm-dropdown-item" onClick={() => { setGroupType(t); setGroupTypeOpen(false); }}>
-                        {t}
+                    {['Festival', 'Daily', 'Special', 'Custom'].map(tp => (
+                      <div key={tp} className="pm-dropdown-item" onClick={() => { setGroupType(tp); setGroupTypeOpen(false); }}>
+                        {translateDbValue(tp)}
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-              <span className="pm-hint">Stored as backend enum value: festival, daily, special, custom.</span>
+              <span className="pm-hint">{t('pmGroupTypeHint')}</span>
 
-              <label className="pm-label" style={{marginTop: '16px'}}>Description (optional)</label>
-              <textarea 
+              <label className="pm-label" style={{ marginTop: '16px' }}>{t('pmDescOptionalLabel')}</label>
+              <textarea
                 className="pm-textarea"
-                placeholder="Short summary of the group..."
+                placeholder={t('pmGroupDescPlaceholder')}
                 value={groupDesc}
                 onChange={e => setGroupDesc(e.target.value)}
                 maxLength={500}
               />
               <div className="pm-counter">{groupDesc.length}/500</div>
-              <span className="pm-hint">Optional summary shown to staff.</span>
+              <span className="pm-hint">{t('pmGroupDescHint')}</span>
 
               <div className="pm-modal-foot">
-                <button type="button" className="pm-btn-cancel" onClick={() => setShowGroupModal(false)}>Cancel</button>
-                <button type="submit" className="pm-btn-submit">{editingGroup ? 'Update Group' : 'Create Group'}</button>
+                <button type="button" className="pm-btn-cancel" onClick={() => setShowGroupModal(false)}>{t('cancelBtn')}</button>
+                <button type="submit" className="pm-btn-submit">{editingGroup ? t('pmUpdateGroupBtn') : t('pmCreateGroupBtn')}</button>
               </div>
             </form>
           </div>
@@ -482,17 +503,17 @@ export default function PromotionsModule() {
           <div className="pm-modal pm-modal-large pm-animate-modal" onClick={e => e.stopPropagation()}>
             <div className="pm-modal-head">
               <div>
-                <h3 className="pm-modal-title">{editingPromo ? 'Edit Promotion' : 'Create New Promotion'}</h3>
-                <p className="pm-modal-sub">Configure promotion code, rules, and calendar validity.</p>
+                <h3 className="pm-modal-title">{editingPromo ? t('pmEditPromoModalTitle') : t('pmCreatePromoModalTitle')}</h3>
+                <p className="pm-modal-sub">{t('pmPromoModalSub')}</p>
               </div>
               <button className="pm-close-x" onClick={() => setShowPromoModal(false)}>✕</button>
             </div>
 
             <form onSubmit={handleSavePromo} className="pm-form">
-              <div className="pm-section-title">PROMOTION GROUP</div>
-              
-              <label className="pm-label">Select Group *</label>
-              <select 
+              <div className="pm-section-title">{t('pmSectionPromoGroup')}</div>
+
+              <label className="pm-label">{t('pmSelectGroupRequired')}</label>
+              <select
                 className="pm-input"
                 value={selectedGroup}
                 onChange={e => setSelectedGroup(e.target.value)}
@@ -500,23 +521,23 @@ export default function PromotionsModule() {
                 {groups.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
               </select>
 
-              <div className="pm-section-title" style={{marginTop: '16px'}}>CUSTOMER FACING</div>
+              <div className="pm-section-title" style={{ marginTop: '16px' }}>{t('pmSectionCustomerFacing')}</div>
 
               <div className="pm-row-2">
                 <div>
-                  <label className="pm-label">Promo Code *</label>
-                  <input 
+                  <label className="pm-label">{t('pmPromoCodeRequired')}</label>
+                  <input
                     className="pm-input"
-                    placeholder="E.G., WEEKEND20"
+                    placeholder={t('pmPromoCodePlaceholder')}
                     value={promoCode}
                     onChange={e => setPromoCode(e.target.value)}
                     required
                   />
-                  <span className="pm-hint">Uppercase, alphanumeric, max 15 characters</span>
+                  <span className="pm-hint">{t('pmPromoCodeHint')}</span>
                 </div>
 
                 <div>
-                  <label className="pm-label">Offer Icon</label>
+                  <label className="pm-label">{t('pmOfferIconLabel')}</label>
                   <div className="pm-dropdown-wrap">
                     <div className="pm-select-box" onClick={() => setOfferIconOpen(!offerIconOpen)}>
                       <span>{ICON_MAP[offerIcon]} {offerIcon}</span>
@@ -532,73 +553,73 @@ export default function PromotionsModule() {
                       </div>
                     )}
                   </div>
-                  <span className="pm-hint">Icons only displayed if UI supports</span>
+                  <span className="pm-hint">{t('pmOfferIconHint')}</span>
                 </div>
               </div>
 
-              <label className="pm-label" style={{marginTop: '12px'}}>Display Name *</label>
-              <input 
+              <label className="pm-label" style={{ marginTop: '12px' }}>{t('pmDisplayNameRequired')}</label>
+              <input
                 className="pm-input"
-                placeholder="e.g., 20% Off Weekend Special"
+                placeholder={t('pmDisplayNamePlaceholder')}
                 value={displayName}
                 onChange={e => setDisplayName(e.target.value)}
                 required
               />
 
-              <label className="pm-label" style={{marginTop: '12px'}}>Display Description *</label>
-              <textarea 
+              <label className="pm-label" style={{ marginTop: '12px' }}>{t('pmDisplayDescRequired')}</label>
+              <textarea
                 className="pm-textarea"
-                placeholder="Describe the offer for customers..."
+                placeholder={t('pmDisplayDescPlaceholder')}
                 value={displayDesc}
                 onChange={e => setDisplayDesc(e.target.value)}
                 rows={2}
               />
 
-              <label className="pm-label" style={{marginTop: '12px'}}>Terms & Conditions</label>
-              <textarea 
+              <label className="pm-label" style={{ marginTop: '12px' }}>{t('pmTermsLabel')}</label>
+              <textarea
                 className="pm-textarea"
-                placeholder="e.g., Valid only on weekends..."
+                placeholder={t('pmTermsPlaceholder')}
                 value={terms}
                 onChange={e => setTerms(e.target.value)}
                 rows={2}
               />
 
-              <div className="pm-section-title" style={{marginTop: '16px'}}>INTERNAL</div>
+              <div className="pm-section-title" style={{ marginTop: '16px' }}>{t('pmSectionInternal')}</div>
               <div className="pm-row-2">
                 <div>
-                  <label className="pm-label">Internal Name *</label>
-                  <input 
+                  <label className="pm-label">{t('pmInternalNameRequired')}</label>
+                  <input
                     className="pm-input"
-                    placeholder="e.g., weekend_20_percent"
+                    placeholder={t('pmInternalNamePlaceholder')}
                     value={internalName}
                     onChange={e => setInternalName(e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="pm-label">Internal Description</label>
-                  <input 
+                  <label className="pm-label">{t('pmInternalDescLabel')}</label>
+                  <input
                     className="pm-input"
-                    placeholder="Optional notes..."
+                    placeholder={t('pmOptionalNotesPlaceholder')}
                     value={internalDesc}
                     onChange={e => setInternalDesc(e.target.value)}
                   />
                 </div>
               </div>
 
-              <div className="pm-section-title" style={{marginTop: '16px'}}>REDEMPTION FORMULA</div>
+              <div className="pm-section-title" style={{ marginTop: '16px' }}>{t('pmSectionRedemptionFormula')}</div>
               <div className="pm-row-2">
                 <div>
-                  <label className="pm-label">Offer Type *</label>
+                  <label className="pm-label">{t('pmOfferTypeRequired')}</label>
                   <div className="pm-dropdown-wrap">
                     <div className="pm-select-box" onClick={() => setOfferTypeOpen(!offerTypeOpen)}>
-                      <span>{offerType}</span>
+                      <span>{translateDbValue(offerType)}</span>
                       <span>▼</span>
                     </div>
                     {offerTypeOpen && (
                       <div className="pm-dropdown-menu">
                         {['% Off Order', 'Flat Off Order', '% Off Delivery', 'Flat Off Delivery', 'Free Delivery'].map(ot => (
                           <div key={ot} className="pm-dropdown-item" onClick={() => { setOfferType(ot); setOfferTypeOpen(false); }}>
-                            {ot}
+                            {translateDbValue(ot)}
                           </div>
                         ))}
                       </div>
@@ -606,8 +627,8 @@ export default function PromotionsModule() {
                   </div>
                 </div>
                 <div>
-                  <label className="pm-label">Discount Percentage *</label>
-                  <input 
+                  <label className="pm-label">{t('pmDiscountPctRequired')}</label>
+                  <input
                     className="pm-input"
                     value={discountVal}
                     onChange={e => setDiscountVal(e.target.value)}
@@ -615,32 +636,32 @@ export default function PromotionsModule() {
                 </div>
               </div>
 
-              <div className="pm-row-2" style={{marginTop: '12px'}}>
+              <div className="pm-row-2" style={{ marginTop: '12px' }}>
                 <div>
-                  <label className="pm-label">Minimum Order Value</label>
-                  <input 
+                  <label className="pm-label">{t('pmMinOrderValueLabel')}</label>
+                  <input
                     className="pm-input"
                     value={minOrder}
                     onChange={e => setMinOrder(e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="pm-label">Max Discount Cap *</label>
-                  <input 
+                  <label className="pm-label">{t('pmMaxDiscountCapRequired')}</label>
+                  <input
                     className="pm-input"
-                    placeholder="₹ e.g. 100"
+                    placeholder={t('pmMaxDiscountPlaceholder')}
                     value={maxDiscount}
                     onChange={e => setMaxDiscount(e.target.value)}
                   />
-                  <span className="pm-hint">Maximum rupee discount allowed</span>
+                  <span className="pm-hint">{t('pmMaxDiscountHint')}</span>
                 </div>
               </div>
 
-              <div className="pm-section-title" style={{marginTop: '16px'}}>VALIDITY PERIOD</div>
+              <div className="pm-section-title" style={{ marginTop: '16px' }}>{t('pmSectionValidityPeriod')}</div>
               <div className="pm-row-2">
                 <div>
-                  <label className="pm-label">Start Date *</label>
-                  <input 
+                  <label className="pm-label">{t('pmStartDateRequired')}</label>
+                  <input
                     type="date"
                     className="pm-input pm-calendar-input"
                     value={startDate}
@@ -649,8 +670,8 @@ export default function PromotionsModule() {
                   />
                 </div>
                 <div>
-                  <label className="pm-label">Expiry Date *</label>
-                  <input 
+                  <label className="pm-label">{t('pmExpiryDateRequired')}</label>
+                  <input
                     type="date"
                     className="pm-input pm-calendar-input"
                     value={expiryDate}
@@ -660,19 +681,19 @@ export default function PromotionsModule() {
                 </div>
               </div>
 
-              <div className="pm-section-title" style={{marginTop: '16px'}}>REDEMPTION LIMITS</div>
+              <div className="pm-section-title" style={{ marginTop: '16px' }}>{t('pmSectionRedemptionLimits')}</div>
               <div className="pm-row-2">
                 <div>
-                  <label className="pm-label">Total Redemptions Allowed</label>
-                  <input 
+                  <label className="pm-label">{t('pmTotalRedemptionsLabel')}</label>
+                  <input
                     className="pm-input"
                     value={totalRedemptions}
                     onChange={e => setTotalRedemptions(e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="pm-label">Redemptions per Customer</label>
-                  <input 
+                  <label className="pm-label">{t('pmRedemptionsPerCustLabel')}</label>
+                  <input
                     className="pm-input"
                     value={redemptionsPerCust}
                     onChange={e => setRedemptionsPerCust(e.target.value)}
@@ -680,9 +701,9 @@ export default function PromotionsModule() {
                 </div>
               </div>
 
-              <div className="pm-modal-foot" style={{marginTop: '24px'}}>
-                <button type="button" className="pm-btn-cancel" onClick={() => setShowPromoModal(false)}>Cancel</button>
-                <button type="submit" className="pm-btn-activate">{editingPromo ? 'Update Offer' : 'Create & Activate'}</button>
+              <div className="pm-modal-foot" style={{ marginTop: '24px' }}>
+                <button type="button" className="pm-btn-cancel" onClick={() => setShowPromoModal(false)}>{t('cancelBtn')}</button>
+                <button type="submit" className="pm-btn-activate">{editingPromo ? t('pmUpdateOfferBtn') : t('pmCreateActivateBtn')}</button>
               </div>
             </form>
           </div>

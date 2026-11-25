@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useLanguage } from './LanguageContext';
 
-const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
+const API_BASE_URL = 'http://localhost:8080';
 
 export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-f67a93b8045b' }) {
+  const { t, getLocalizedField } = useLanguage();
   const [images, setImages] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedImageIds, setSelectedImageIds] = useState([]);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-  
+
   // Upload modal state
   const [uploadFiles, setUploadFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -77,7 +79,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
   const handleDeleteSelected = async () => {
     const safeSelected = Array.isArray(selectedImageIds) ? selectedImageIds : [];
     if (safeSelected.length === 0) return;
-    if (!window.confirm(`Delete ${safeSelected.length} selected image(s)?`)) return;
+    if (!window.confirm(t('glDeleteSelectedConfirm').replace('{count}', String(safeSelected.length)))) return;
     try {
       await Promise.all(
         safeSelected.map(id => fetch(`${API_BASE_URL}/api/v1/gallery/${id}`, { method: 'DELETE' }))
@@ -94,9 +96,8 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
     const safeFiles = Array.isArray(uploadFiles) ? uploadFiles : [];
     if (safeFiles.length === 0) return;
     setUploading(true);
-    
+
     const formData = new FormData();
-    // MUST be 'files' (plural) to match backend controller: @RequestParam("files") MultipartFile[] files
     for (let file of safeFiles) {
       formData.append('files', file);
     }
@@ -107,7 +108,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
         method: 'POST',
         body: formData
       });
-      
+
       if (res.ok) {
         setIsUploadModalOpen(false);
         setUploadFiles([]);
@@ -115,11 +116,11 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
       } else {
         const errorData = await res.json().catch(() => ({}));
         console.error('Upload failed with server status:', res.status, errorData);
-        alert(errorData.message || 'Upload failed on server. Please check application logs.');
+        alert(errorData.message || t('glUploadServerFailAlert'));
       }
     } catch (err) {
       console.error('Upload network error:', err);
-      alert('Could not connect to the server.');
+      alert(t('glConnectServerFailAlert'));
     } finally {
       setUploading(false);
     }
@@ -142,7 +143,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
 
       const selectedNames = menuItems
         .filter(m => selectedMenuItemIds.includes(m.id || m.menuItemId))
-        .map(m => m.itemName || m.name || m.dishName || m.dish_name)
+        .map(m => getLocalizedField(m, 'itemName') || getLocalizedField(m, 'name') || m.itemName || m.name || m.dishName || m.dish_name)
         .filter(Boolean);
 
       setImageMenuMap(prev => {
@@ -157,10 +158,10 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
       setSelectedImageIds([]);
       setSelectedMenuItemIds([]);
       fetchImages();
-      alert('Images successfully mapped to menu items!');
+      alert(t('glMapSuccessAlert'));
     } catch (err) {
       console.error('Mapping failed', err);
-      alert('Error mapping images to menu items.');
+      alert(t('glMapErrorAlert'));
     }
   };
 
@@ -168,7 +169,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
   const safeMenuItems = Array.isArray(menuItems) ? menuItems : [];
   const safeSelectedIds = Array.isArray(selectedImageIds) ? selectedImageIds : [];
   const safeSelectedMenuIds = Array.isArray(selectedMenuItemIds) ? selectedMenuItemIds : [];
-  
+
   const activeImage = safeImages.find(img => img.id === safeSelectedIds[0]) || safeImages[0] || { fileName: 'image.png', fileUrl: '' };
 
   return (
@@ -178,11 +179,11 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
       {/* Header */}
       <div className="gl-header">
         <div className="gl-title-area">
-          <h2 className="gl-title">Gallery</h2>
-          <span className="gl-badge">{safeImages.length} images</span>
+          <h2 className="gl-title">{t('navGallery')}</h2>
+          <span className="gl-badge">{safeImages.length} {t('glImagesWord')}</span>
         </div>
         <button className="gl-upload-btn" onClick={() => setIsUploadModalOpen(true)}>
-          ↑ Upload Images
+          ↑ {t('glUploadImagesBtn')}
         </button>
       </div>
 
@@ -192,14 +193,14 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
           <span>🔍</span>
           <input
             type="text"
-            placeholder="Search images by file name..."
+            placeholder={t('glSearchFilePlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="gl-search-input"
           />
         </div>
         <div className="gl-toolbar-right">
-          <span className="gl-library-info">{safeImages.length} images in your library</span>
+          <span className="gl-library-info">{t('glInLibraryInfo').replace('{count}', String(safeImages.length))}</span>
           <label className="gl-select-all">
             <input
               type="checkbox"
@@ -207,7 +208,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
               checked={safeSelectedIds.length === safeImages.length && safeImages.length > 0}
               className="gl-check-accent"
             />
-            Select all
+            {t('glSelectAllLabel')}
           </label>
         </div>
       </div>
@@ -218,10 +219,10 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
           const isSelected = safeSelectedIds.includes(img.id);
           const rawUrl = img.fileUrl || img.file_url || '';
           const imageUrl = rawUrl.startsWith('http') ? rawUrl : `${API_BASE_URL}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
-          
+
           const mappedNames = img.menuItemNames || img.menuItems || imageMenuMap[img.id] || [];
           const displayNames = Array.isArray(mappedNames)
-            ? mappedNames.map(m => typeof m === 'object' ? (m.itemName || m.name || m.dishName) : m).filter(Boolean)
+            ? mappedNames.map(m => typeof m === 'object' ? (getLocalizedField(m, 'itemName') || getLocalizedField(m, 'name') || m.itemName || m.name || m.dishName) : m).filter(Boolean)
             : [];
 
           return (
@@ -231,7 +232,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
               onClick={() => toggleSelectImage(img.id)}
             >
               <div className="gl-card-img-wrap">
-                <img src={imageUrl} alt={img.fileName || img.file_name || 'Gallery Image'} className="gl-card-img" onError={(e) => { e.target.src = 'https://placehold.co/300x180?text=Image+Not+Found'; }} />
+                <img src={imageUrl} alt={img.fileName || img.file_name || t('glGalleryImageAlt')} className="gl-card-img" onError={(e) => { e.target.src = 'https://placehold.co/300x180?text=Image+Not+Found'; }} />
                 <input
                   type="checkbox"
                   className="gl-card-checkbox"
@@ -243,7 +244,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
               <div className="gl-card-footer">
                 <strong className="gl-card-title">{img.fileName || img.file_name}</strong>
                 <small className="gl-card-subtitle">{img.fileType?.split('/')[1]?.toUpperCase() || 'JPEG'} · {img.fileSize || '45 KB'}</small>
-                
+
                 {displayNames.length > 0 && (
                   <div className="gl-mapped-wrap">
                     {displayNames.map((name, i) => (
@@ -262,11 +263,11 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
       {/* Floating Action Bar */}
       {safeSelectedIds.length > 0 && (
         <div className="gl-floating">
-          <span className="gl-floating-text">{safeSelectedIds.length} image selected</span>
+          <span className="gl-floating-text">{t('glImageSelectedText').replace('{count}', String(safeSelectedIds.length))}</span>
           <div className="gl-floating-buttons">
-            <button className="gl-clear-btn" onClick={() => setSelectedImageIds([])}>✕ Clear</button>
-            <button className="gl-map-btn" onClick={() => setIsMapModalOpen(true)}>🔗 Map to Menu</button>
-            <button className="gl-delete-btn" onClick={handleDeleteSelected}>🗑️ Delete</button>
+            <button className="gl-clear-btn" onClick={() => setSelectedImageIds([])}>✕ {t('glClearBtn')}</button>
+            <button className="gl-map-btn" onClick={() => setIsMapModalOpen(true)}>🔗 {t('glMapToMenuBtn')}</button>
+            <button className="gl-delete-btn" onClick={handleDeleteSelected}>🗑️ {t('tbDeleteBtn')}</button>
           </div>
         </div>
       )}
@@ -277,12 +278,12 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
           <div className="gl-modal">
             <div className="gl-modal-header">
               <div>
-                <h3 className="gl-modal-title">Upload images</h3>
-                <p className="gl-modal-sub">PNG or JPEG, up to 5MB each and 10 at a time.</p>
+                <h3 className="gl-modal-title">{t('glUploadModalTitle')}</h3>
+                <p className="gl-modal-sub">{t('glUploadModalSub')}</p>
               </div>
               <button className="gl-close-btn" onClick={() => setIsUploadModalOpen(false)}>✕</button>
             </div>
-            
+
             <div className="gl-dropzone">
               <input
                 type="file"
@@ -294,19 +295,19 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
               />
               <label htmlFor="fileInputHidden" className="gl-drop-label">
                 <div className="gl-drop-icon">⬆</div>
-                <strong>Drop images here, or click to browse</strong>
-                <span className="gl-drop-count">{uploadFiles.length}/10 selected</span>
+                <strong>{t('glDropPrompt')}</strong>
+                <span className="gl-drop-count">{uploadFiles.length}/10 {t('glSelectedWord')}</span>
               </label>
             </div>
 
             <div className="gl-modal-footer">
-              <button className="gl-secondary-btn" onClick={() => setIsUploadModalOpen(false)}>Cancel</button>
+              <button className="gl-secondary-btn" onClick={() => setIsUploadModalOpen(false)}>{t('cancelBtn')}</button>
               <button
                 className="gl-primary-btn"
                 onClick={handleUploadSubmit}
                 disabled={uploading || uploadFiles.length === 0}
               >
-                {uploading ? 'Uploading...' : 'Upload'}
+                {uploading ? t('glUploadingDots') : t('glUploadBtn')}
               </button>
             </div>
           </div>
@@ -319,8 +320,8 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
           <div className="gl-modal gl-modal-wide">
             <div className="gl-modal-header">
               <div>
-                <h3 className="gl-modal-title">Map images to menu items</h3>
-                <p className="gl-modal-sub">Pick images, then choose the menu items they should appear on.</p>
+                <h3 className="gl-modal-title">{t('glMapModalTitle')}</h3>
+                <p className="gl-modal-sub">{t('glMapModalSub')}</p>
               </div>
               <button className="gl-close-btn" onClick={() => setIsMapModalOpen(false)}>✕</button>
             </div>
@@ -329,12 +330,12 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
               {(() => {
                 const rawPrevUrl = activeImage.fileUrl || activeImage.file_url || '';
                 const prevUrl = rawPrevUrl.startsWith('http') ? rawPrevUrl : `${API_BASE_URL}${rawPrevUrl.startsWith('/') ? '' : '/'}${rawPrevUrl}`;
-                return <img src={prevUrl} alt="preview" className="gl-preview-img" onError={(e) => { e.target.src = 'https://placehold.co/50x50?text=Img'; }} />;
+                return <img src={prevUrl} alt={t('glPreviewAlt')} className="gl-preview-img" onError={(e) => { e.target.src = 'https://placehold.co/50x50?text=Img'; }} />;
               })()}
               <div className="gl-preview-text">
                 <strong className="gl-preview-name">{activeImage.fileName || activeImage.file_name}</strong>
                 <span className="gl-preview-meta">
-                  {safeSelectedMenuIds.length === 0 ? 'No menu items selected' : `${safeSelectedMenuIds.length} menu items selected`}
+                  {safeSelectedMenuIds.length === 0 ? t('glNoMenuItemsSelected') : t('glMenuItemsSelectedCount').replace('{count}', String(safeSelectedMenuIds.length))}
                 </span>
               </div>
             </div>
@@ -343,7 +344,7 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
               <span>🔍</span>
               <input
                 type="text"
-                placeholder="Search menu items..."
+                placeholder={t('glSearchMenuItemsPlaceholder')}
                 value={menuSearch}
                 onChange={(e) => setMenuSearch(e.target.value)}
                 className="gl-search-input"
@@ -353,12 +354,12 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
             <div className="gl-checklist">
               {safeMenuItems
                 .filter(item => {
-                  const itemName = item?.itemName || item?.name || item?.dishName || item?.dish_name || '';
+                  const itemName = getLocalizedField(item, 'itemName') || getLocalizedField(item, 'name') || item?.itemName || item?.name || item?.dishName || item?.dish_name || '';
                   return itemName.toLowerCase().includes((menuSearch || '').toLowerCase());
                 })
                 .map(item => {
                   const itemId = item.id || item.menuItemId;
-                  const itemName = item.itemName || item.name || item.dishName || item.dish_name || 'Unnamed Dish';
+                  const itemName = getLocalizedField(item, 'itemName') || getLocalizedField(item, 'name') || item.itemName || item.name || item.dishName || item.dish_name || t('glUnnamedDish');
                   const isChecked = safeSelectedMenuIds.includes(itemId);
                   return (
                     <label
@@ -371,8 +372,8 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
                         onChange={() => {
                           setSelectedMenuItemIds(prev => {
                             const safePrev = Array.isArray(prev) ? prev : [];
-                            return safePrev.includes(itemId) 
-                              ? safePrev.filter(id => id !== itemId) 
+                            return safePrev.includes(itemId)
+                              ? safePrev.filter(id => id !== itemId)
                               : [...safePrev, itemId];
                           });
                         }}
@@ -386,11 +387,11 @@ export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-
 
             <div className="gl-modal-footer">
               <span className="gl-footer-note">
-                {safeSelectedMenuIds.length === 0 ? 'Nothing to map yet' : `${safeSelectedMenuIds.length} mapped`}
+                {safeSelectedMenuIds.length === 0 ? t('glNothingToMapYet') : t('glMappedCountText').replace('{count}', String(safeSelectedMenuIds.length))}
               </span>
               <div className="gl-footer-btns">
-                <button className="gl-secondary-btn" onClick={() => setIsMapModalOpen(false)}>Cancel</button>
-                <button className="gl-primary-btn" onClick={handleMapSubmit}>Map Images</button>
+                <button className="gl-secondary-btn" onClick={() => setIsMapModalOpen(false)}>{t('cancelBtn')}</button>
+                <button className="gl-primary-btn" onClick={handleMapSubmit}>{t('glMapImagesBtn')}</button>
               </div>
             </div>
           </div>

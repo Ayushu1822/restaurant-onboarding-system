@@ -1,9 +1,11 @@
 // FILE: src/components/TablesModule.jsx
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from './LanguageContext';
 
-const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
+const API_BASE_URL = 'http://localhost:8080';
 
 export default function TablesModule() {
+  const { t, translateDbValue, getLocalizedField } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
@@ -102,7 +104,7 @@ export default function TablesModule() {
   useEffect(() => {
     const userEmail = localStorage.getItem('userEmail');
     if (!userEmail) {
-      alert('No logged-in user found! Please login first.');
+      alert(t('tbNoLoggedInUserAlert'));
       setLoading(false);
       return;
     }
@@ -118,7 +120,7 @@ export default function TablesModule() {
       window.removeEventListener('settingsUpdated', handleSettingsUpdate);
       window.removeEventListener('storage', handleSettingsUpdate);
     };
-  }, []);
+  }, [t]);
 
   const loadAllData = (email) => {
     fetchProfile(email);
@@ -157,17 +159,17 @@ export default function TablesModule() {
       if (parsedAreas && parsedAreas.areas) {
         parsedAreas.areas = parsedAreas.areas.map(area => ({
           ...area,
-          tables: (area.tables || []).map(t => ({
-            ...t,
-            status: t.status || 'Available',
-            captain: t.captain || 'Unassigned'
+          tables: (area.tables || []).map(tbl => ({
+            ...tbl,
+            status: tbl.status || 'Available',
+            captain: tbl.captain || 'Unassigned'
           }))
         }));
         setAreasAndTables(parsedAreas);
       }
     } catch (err) {
       console.error('Error fetching profile:', err);
-      showMsg('Failed to load tables from database.', 'error');
+      showMsg(t('tbLoadTablesError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -199,11 +201,16 @@ export default function TablesModule() {
               taxRate = Number(match[1]);
             }
 
+            const rawName = item.name || item.itemName || item.dishName || item.title || 'Unnamed Item';
+            const localizedName = getLocalizedField(item, 'itemName') || getLocalizedField(item, 'name') || rawName;
+            const rawCat = item.category || item.foodType || item.menuType || 'Main Course';
+            const localizedCat = getLocalizedField(item, 'category') || rawCat;
+
             return {
               id: item.id || item.menuId || idx,
-              name: item.name || item.itemName || item.dishName || item.title || 'Unnamed Item',
+              name: localizedName,
               price: isNaN(parsedPrice) ? 0 : parsedPrice,
-              category: item.category || item.foodType || item.menuType || 'Main Course',
+              category: localizedCat,
               taxGroup: taxGroupName,
               taxRate: taxRate
             };
@@ -237,10 +244,10 @@ export default function TablesModule() {
       if (!res.ok) throw new Error('Failed to save changes to database');
       const updated = await res.json();
       setFullProfile(updated);
-      showMsg('✅ Changes synced with database!', 'success');
+      showMsg(t('tbSyncedToast'), 'success');
     } catch (err) {
       console.error('Error saving changes:', err);
-      showMsg('❌ Error saving to database.', 'error');
+      showMsg(t('tbSaveDbErrorToast'), 'error');
     } finally {
       setSaving(false);
     }
@@ -253,15 +260,15 @@ export default function TablesModule() {
         if (area.id === targetAreaId) {
           return {
             ...area,
-            tables: area.tables.map(t => {
-              if (t.id === targetTableId) {
+            tables: area.tables.map(tbl => {
+              if (tbl.id === targetTableId) {
                 return {
-                  ...t,
+                  ...tbl,
                   status: newStatus,
                   captain: assignedCaptain || 'Unassigned'
                 };
               }
-              return t;
+              return tbl;
             })
           };
         }
@@ -276,8 +283,8 @@ export default function TablesModule() {
     if (shouldOpenPOS) {
       let foundTable = null;
       updated.areas.forEach(a => {
-        a.tables.forEach(t => {
-          if (t.id === targetTableId) foundTable = { ...t, areaName: a.name };
+        a.tables.forEach(tbl => {
+          if (tbl.id === targetTableId) foundTable = { ...tbl, areaName: a.name };
         });
       });
 
@@ -301,7 +308,7 @@ export default function TablesModule() {
 
   const handleAddTable = (e) => {
     e.preventDefault();
-    if (!newTableForm.tableName) return alert('Enter Table Name/ID');
+    if (!newTableForm.tableName) return alert(t('tbEnterTableNameAlert'));
 
     const newTable = {
       id: 'table-' + Date.now(),
@@ -337,7 +344,7 @@ export default function TablesModule() {
   };
 
   const handleDeleteTable = (targetAreaId, targetTableId) => {
-    if (!window.confirm('Are you sure you want to delete this table?')) return;
+    if (!window.confirm(t('tbDeleteTableConfirm'))) return;
 
     const updated = {
       ...areasAndTables,
@@ -345,7 +352,7 @@ export default function TablesModule() {
         if (area.id === targetAreaId) {
           return {
             ...area,
-            tables: area.tables.filter(t => t.id !== targetTableId)
+            tables: area.tables.filter(tbl => tbl.id !== targetTableId)
           };
         }
         return area;
@@ -359,7 +366,7 @@ export default function TablesModule() {
 
   const handleAddCaptain = (e) => {
     e.preventDefault();
-    if (!newCaptainForm.name) return alert('Enter captain name');
+    if (!newCaptainForm.name) return alert(t('tbEnterCaptainNameAlert'));
 
     const userEmail = localStorage.getItem('userEmail') || '';
     if (editingCaptain) {
@@ -378,9 +385,9 @@ export default function TablesModule() {
           setEditingCaptain(null);
           setNewCaptainForm({ name: '', phone: '' });
           fetchCaptains(userEmail);
-          alert('Captain updated successfully!');
+          alert(t('tbCaptainUpdatedAlert'));
         } else {
-          alert('Failed to update captain.');
+          alert(t('tbCaptainUpdateFailAlert'));
         }
       })
       .catch(err => alert('Error: ' + err.message));
@@ -399,9 +406,9 @@ export default function TablesModule() {
         if (res.ok) {
           setNewCaptainForm({ name: '', phone: '' });
           fetchCaptains(userEmail);
-          alert('Captain added successfully!');
+          alert(t('tbCaptainAddedAlert'));
         } else {
-          alert('Failed to add captain.');
+          alert(t('tbCaptainAddFailAlert'));
         }
       })
       .catch(err => alert('Error: ' + err.message));
@@ -409,7 +416,7 @@ export default function TablesModule() {
   };
 
   const handleDeleteCaptain = (captainId) => {
-    if (!window.confirm('Are you sure you want to delete this captain?')) return;
+    if (!window.confirm(t('tbDeleteCaptainConfirm'))) return;
     const userEmail = localStorage.getItem('userEmail') || '';
     fetch(`${API_BASE_URL}/api/v1/staff/${captainId}`, {
       method: 'DELETE'
@@ -418,7 +425,7 @@ export default function TablesModule() {
       if (res.ok) {
         fetchCaptains(userEmail);
       } else {
-        alert('Failed to delete captain.');
+        alert(t('tbCaptainDeleteFailAlert'));
       }
     })
     .catch(err => alert('Error: ' + err.message));
@@ -452,7 +459,7 @@ export default function TablesModule() {
     }
 
     if (itemsToSend.length === 0) {
-      alert('No new items added to send to kitchen!');
+      alert(t('tbNoNewItemsKotAlert'));
       return;
     }
 
@@ -522,14 +529,14 @@ export default function TablesModule() {
     })
     .catch(err => {
       console.error(err);
-      alert('Error sending order to kitchen.');
+      alert(t('tbSendKitchenErrorAlert'));
     });
   };
 
   const handleSaveActiveCart = () => {
     if (activeOrderTable) {
       localStorage.setItem(`table_cart_${activeOrderTable.id}`, JSON.stringify(cartItems));
-      showMsg('✅ Order items saved to table session!', 'success');
+      showMsg(t('tbCartSavedToast'), 'success');
     }
   };
 
@@ -542,7 +549,7 @@ export default function TablesModule() {
     
     const printWindow = window.open('', '_blank', 'width=450,height=600');
     if (!printWindow) {
-      alert('Popup blocked! Please allow popups for printing.');
+      alert(t('popupBlockedToast'));
       return;
     }
 
@@ -556,7 +563,7 @@ export default function TablesModule() {
     printWindow.document.write(`
       <html>
         <head>
-          <title>Receipt - ${completedOrderReceipt.orderId}</title>
+          <title>${t('receiptTitlePrefix')} - ${completedOrderReceipt.orderId}</title>
           <style>
             body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: ${receiptConfig.paperSize === '58mm' ? '58mm' : '80mm'}; margin: 0 auto; font-size: ${receiptConfig.density === 'Compact' ? '10px' : '12px'}; }
             .center { text-align: center; }
@@ -571,28 +578,28 @@ export default function TablesModule() {
           ${isFieldOn('restaurantName', true) ? `<div class="center bold" style="font-size: 14px;">${(receiptConfig.restaurantName || 'RESTAURANT').toUpperCase()}</div>` : ''}
           ${isFieldOn('branchName', true) && receiptConfig.branchName ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.branchName}</div>` : ''}
           ${isFieldOn('address', true) && receiptConfig.address ? `<div class="center" style="font-size: 10px; color: #333; margin: 3px 0; white-space: pre-line;">${receiptConfig.address}</div>` : ''}
-          ${isFieldOn('phone', true) && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>` : ''}
+          ${isFieldOn('phone', true) && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">${t('receiptPhoneShort')}: ${receiptConfig.phone}</div>` : ''}
           ${isFieldOn('email', false) && receiptConfig.email ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.email}</div>` : ''}
           ${isFieldOn('gstin', true) && receiptConfig.gstin ? `<div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>` : ''}
           ${isFieldOn('fssai', true) && receiptConfig.fssai ? `<div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>` : ''}
           
           <div class="line"></div>
-          ${isFieldOn('orderId', true) ? `<div><strong>Order ID:</strong> ${completedOrderReceipt.orderId}</div>` : ''}
-          ${isFieldOn('invoiceNo', true) ? `<div><strong>Receipt No:</strong> INV-${completedOrderReceipt.orderId}</div>` : ''}
-          ${isFieldOn('dateAndTime', true) ? `<div><strong>Date:</strong> ${completedOrderReceipt.timestamp}</div>` : ''}
-          <div><strong>Table:</strong> ${completedOrderReceipt.tableName} (${completedOrderReceipt.areaName})</div>
-          <div><strong>Captain:</strong> ${completedOrderReceipt.captain}</div>
-          ${isFieldOn('orderType', true) ? `<div><strong>Type:</strong> ${completedOrderReceipt.orderType}</div>` : ''}
-          ${isFieldOn('paymentMethod', true) ? `<div><strong>Payment:</strong> ${completedOrderReceipt.paymentMode}</div>` : ''}
+          ${isFieldOn('orderId', true) ? `<div><strong>${t('receiptOrderId')}:</strong> ${completedOrderReceipt.orderId}</div>` : ''}
+          ${isFieldOn('invoiceNo', true) ? `<div><strong>${t('receiptNo')}:</strong> INV-${completedOrderReceipt.orderId}</div>` : ''}
+          ${isFieldOn('dateAndTime', true) ? `<div><strong>${t('receiptDate')}:</strong> ${completedOrderReceipt.timestamp}</div>` : ''}
+          <div><strong>${t('tbTableLabel')}:</strong> ${completedOrderReceipt.tableName} (${completedOrderReceipt.areaName})</div>
+          <div><strong>${t('tbCaptainLabel')}:</strong> ${completedOrderReceipt.captain}</div>
+          ${isFieldOn('orderType', true) ? `<div><strong>${t('receiptType')}:</strong> ${translateDbValue(completedOrderReceipt.orderType)}</div>` : ''}
+          ${isFieldOn('paymentMethod', true) ? `<div><strong>${t('receiptPayment')}:</strong> ${completedOrderReceipt.paymentMode}</div>` : ''}
           
           <div class="line"></div>
-          <div class="bold" style="margin-bottom: 6px;">ITEMS:</div>
+          <div class="bold" style="margin-bottom: 6px;">${t('receiptItemsHeading')}:</div>
           ${itemsHtml}
           
           <div class="line"></div>
-          <div class="flex"><span>Subtotal:</span><span>₹${completedOrderReceipt.subtotal.toFixed(2)}</span></div>
-          ${isFieldOn('totalTax', true) ? `<div class="flex"><span>Tax:</span><span>₹${completedOrderReceipt.totalTax.toFixed(2)}</span></div>` : ''}
-          <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>Total:</span><span>₹${completedOrderReceipt.totalAmount}</span></div>
+          <div class="flex"><span>${t('subtotal')}:</span><span>₹${completedOrderReceipt.subtotal.toFixed(2)}</span></div>
+          ${isFieldOn('totalTax', true) ? `<div class="flex"><span>${t('posTaxLabel')}:</span><span>₹${completedOrderReceipt.totalTax.toFixed(2)}</span></div>` : ''}
+          <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>${t('total')}:</span><span>₹${completedOrderReceipt.totalAmount}</span></div>
           
           <div class="line"></div>
           ${isFieldOn('footerText', true) && receiptConfig.footerText ? `<div class="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptConfig.footerText}</div>` : ''}
@@ -616,9 +623,9 @@ export default function TablesModule() {
 
   const allTablesList = [];
   areasAndTables.areas.forEach(a => {
-    (a.tables || []).forEach(t => allTablesList.push({ ...t, areaId: a.id, areaName: a.name }));
+    (a.tables || []).forEach(tbl => allTablesList.push({ ...tbl, areaId: a.id, areaName: a.name }));
   });
-  const availableCount = allTablesList.filter(t => (t.status || 'Available') === 'Available').length;
+  const availableCount = allTablesList.filter(tbl => (tbl.status || 'Available') === 'Available').length;
   const categories = [...new Set(menuItems.map(item => item.category))];
 
   // ==========================================
@@ -635,21 +642,21 @@ export default function TablesModule() {
 
         <div className="tb-pos-header">
           <div className="tb-pos-header-left">
-            <h3 className="tb-pos-title">Table {activeOrderTable.name} ({activeOrderTable.areaName}) POS Terminal</h3>
-            <span className="tb-pos-captain">🧑‍✈️ {activeOrderTable.captain || 'Unassigned'}</span>
+            <h3 className="tb-pos-title">{t('tbTablePrefix')} {activeOrderTable.name} ({activeOrderTable.areaName}) {t('tbPosTerminalTitle')}</h3>
+            <span className="tb-pos-captain">🧑‍✈️ {activeOrderTable.captain || t('tbUnassignedLabel')}</span>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={handleSaveActiveCart} className="tb-exit-btn" style={{ background: '#059669', borderColor: '#10b981' }}>💾 Save Cart</button>
-            <button onClick={() => setActiveOrderTable(null)} className="tb-exit-btn">✕ Exit POS</button>
+            <button onClick={handleSaveActiveCart} className="tb-exit-btn" style={{ background: '#059669', borderColor: '#10b981' }}>💾 {t('tbSaveCartBtn')}</button>
+            <button onClick={() => setActiveOrderTable(null)} className="tb-exit-btn">✕ {t('tbExitPosBtn')}</button>
           </div>
         </div>
 
         <div className="tb-pos-body">
           <div className="tb-menu-panel">
-            <h4 className="tb-panel-title">LIVE RESTAURANT MENU (DATABASE & TAX-MAPPED)</h4>
+            <h4 className="tb-panel-title">{t('tbLiveMenuHeading')}</h4>
             
             {menuItems.length === 0 ? (
-              <div className="tb-empty">No menu items found. Please add items via Menu Management module first.</div>
+              <div className="tb-empty">{t('tbNoMenuItemsHint')}</div>
             ) : (
               categories.map(category => {
                 const catItems = menuItems.filter(item => item.category === category);
@@ -687,10 +694,10 @@ export default function TablesModule() {
           </div>
 
           <div className="tb-cart-panel">
-            <h4 className="tb-panel-title">ORDER RECEIPT & TAX BREAKDOWN</h4>
+            <h4 className="tb-panel-title">{t('tbOrderReceiptTaxHeading')}</h4>
             
             <div className="tb-block">
-              <label className="tb-label">ORDER TYPE</label>
+              <label className="tb-label">{t('tbOrderTypeUpper')}</label>
               <div className="tb-type-row">
                 {['Dine-In', 'Takeaway'].map(type => (
                   <button
@@ -699,7 +706,7 @@ export default function TablesModule() {
                     onClick={() => setOrderType(type)}
                     className={`tb-type-btn ${orderType === type ? 'is-active' : ''}`}
                   >
-                    {type === 'Dine-In' ? '🍽️ Dine-In' : '🛍️ Takeaway'}
+                    {type === 'Dine-In' ? `🍽️ ${t('posDineInMode')}` : `🛍️ ${t('posTakeawayMode')}`}
                   </button>
                 ))}
               </div>
@@ -707,7 +714,7 @@ export default function TablesModule() {
 
             <div className="tb-cart-list">
               {cartItems.length === 0 ? (
-                <div className="tb-cart-empty">Cart is empty. Click items from menu.</div>
+                <div className="tb-cart-empty">{t('tbCartEmptyHint')}</div>
               ) : (
                 cartItems.map((item, idx) => {
                   const itemTotal = item.price * item.qty;
@@ -724,7 +731,7 @@ export default function TablesModule() {
                       </div>
                       <div className="tb-cart-bottom">
                         <span>₹{item.price} x {item.qty} = ₹{itemTotal}</span>
-                        <span className="tb-cart-tax">Tax: +₹{itemTax.toFixed(2)}</span>
+                        <span className="tb-cart-tax">{t('posTaxLabel')}: +₹{itemTax.toFixed(2)}</span>
                       </div>
                     </div>
                   );
@@ -733,10 +740,10 @@ export default function TablesModule() {
             </div>
 
             <div className="tb-block">
-              <label className="tb-label">KITCHEN INSTRUCTION (KOT NOTE)</label>
+              <label className="tb-label">{t('tbKitchenInstructionUpper')}</label>
               <input 
                 type="text" 
-                placeholder="e.g. Extra spicy..." 
+                placeholder={t('tbKitchenNotePlaceholder')} 
                 value={orderNote} 
                 onChange={e => setOrderNote(e.target.value)} 
                 className="tb-input"
@@ -746,15 +753,15 @@ export default function TablesModule() {
             {cartItems.length > 0 && (
               <div className="tb-totals">
                 <div className="tb-totals-row">
-                  <span>Subtotal:</span>
+                  <span>{t('subtotal')}:</span>
                   <span>₹{subtotal.toFixed(2)}</span>
                 </div>
                 <div className="tb-totals-row is-faint">
-                  <span>Total Tax Included:</span>
+                  <span>{t('tbTotalTaxIncluded')}:</span>
                   <span>₹{totalTaxAmount.toFixed(2)}</span>
                 </div>
                 <div className="tb-totals-grand">
-                  <span>Total Amount:</span>
+                  <span>{t('posTotalAmount')}:</span>
                   <span className="tb-green">₹{totalAmount}</span>
                 </div>
               </div>
@@ -771,14 +778,14 @@ export default function TablesModule() {
                 disabled={cartItems.length === 0}
                 className="tb-split-btn"
               >
-                💳 Split Cash & Online Checkout
+                💳 {t('tbSplitCashOnlineBtn')}
               </button>
               <button 
                 onClick={() => handleSendKOT('Cash/Online')}
                 disabled={cartItems.length === 0}
                 className="tb-kot-btn"
               >
-                🖨️ Send KOT to Kitchen & Show Receipt
+                🖨️ {t('tbSendKotReceiptBtn')}
               </button>
             </div>
           </div>
@@ -788,11 +795,11 @@ export default function TablesModule() {
         {showSplitModal && (
           <div className="tb-overlay" onClick={() => setShowSplitModal(false)}>
             <div className="tb-modal" onClick={e => e.stopPropagation()}>
-              <h3 className="tb-modal-title tb-mb">Split Payment (Cash & Online)</h3>
-              <p className="tb-split-total">Total Bill Amount: <strong className="tb-green">₹{totalAmount}</strong></p>
+              <h3 className="tb-modal-title tb-mb">{t('tbSplitModalTitle')}</h3>
+              <p className="tb-split-total">{t('tbTotalBillAmount')}: <strong className="tb-green">₹{totalAmount}</strong></p>
               
               <div className="tb-block">
-                <label className="tb-label">CASH AMOUNT (₹):</label>
+                <label className="tb-label">{t('tbCashAmountLabel')} (₹):</label>
                 <input 
                   type="number" 
                   className="tb-input" 
@@ -808,7 +815,7 @@ export default function TablesModule() {
               </div>
 
               <div className="tb-block tb-block-lg">
-                <label className="tb-label">ONLINE (UPI / CARD) AMOUNT (₹):</label>
+                <label className="tb-label">{t('tbOnlineAmountLabel')} (₹):</label>
                 <input 
                   type="number" 
                   className="tb-input" 
@@ -829,7 +836,13 @@ export default function TablesModule() {
                     const c = Number(cashAmount) || 0;
                     const o = Number(onlineAmount) || 0;
                     if (c + o !== totalAmount) {
-                      return alert(`Split amounts (Cash ₹${c} + Online ₹${o} = ₹${c+o}) must equal Total Bill ₹${totalAmount}!`);
+                      return alert(
+                        t('tbSplitMismatchAlert')
+                          .replace('{cash}', c)
+                          .replace('{online}', o)
+                          .replace('{sum}', c + o)
+                          .replace('{total}', totalAmount)
+                      );
                     }
                     localStorage.removeItem(`table_order_id_${activeOrderTable.id}`);
                     localStorage.removeItem(`table_cart_${activeOrderTable.id}`);
@@ -838,9 +851,9 @@ export default function TablesModule() {
                   }}
                   className="tb-confirm-btn"
                 >
-                  Confirm Split & Complete Settlement
+                  {t('tbConfirmSplitBtn')}
                 </button>
-                <button onClick={() => setShowSplitModal(false)} className="tb-light-btn">Cancel</button>
+                <button onClick={() => setShowSplitModal(false)} className="tb-light-btn">{t('cancelBtn')}</button>
               </div>
             </div>
           </div>
@@ -858,14 +871,14 @@ export default function TablesModule() {
 
       <div className="tb-header">
         <div>
-          <h2 className="tb-title">Restaurant Floor & Tables</h2>
+          <h2 className="tb-title">{t('tbFloorTitle')}</h2>
           <p className="tb-subtitle">
-            <strong className="tb-green">{availableCount}/{allTablesList.length} tables open</strong> · Synced live with Settings
+            <strong className="tb-green">{availableCount}/{allTablesList.length} {t('tbTablesOpenCount')}</strong> · {t('tbSyncedLiveSettings')}
           </p>
         </div>
         <div className="tb-header-btns">
-          <button onClick={() => { setEditingCaptain(null); setNewCaptainForm({ name: '', phone: '' }); setShowCaptainManageModal(true); }} className="tb-captain-btn">🧑‍✈️ Manage Captains ({captainsList.length})</button>
-          <button onClick={() => setShowAddModal(true)} className="tb-add-btn">+ Add Table</button>
+          <button onClick={() => { setEditingCaptain(null); setNewCaptainForm({ name: '', phone: '' }); setShowCaptainManageModal(true); }} className="tb-captain-btn">🧑‍✈️ {t('tbManageCaptainsBtn')} ({captainsList.length})</button>
+          <button onClick={() => setShowAddModal(true)} className="tb-add-btn">+ {t('tbAddTableBtn')}</button>
         </div>
       </div>
 
@@ -878,10 +891,10 @@ export default function TablesModule() {
       {loading ? (
         <div className="tb-center">
           <span className="tb-spinner" aria-hidden="true" />
-          Loading tables from database...
+          {t('tbLoadingTables')}
         </div>
       ) : areasAndTables.areas.length === 0 ? (
-        <div className="tb-empty">No areas or tables found. Add them via Settings or click "+ Add Table" above!</div>
+        <div className="tb-empty">{t('tbNoAreasFound')}</div>
       ) : (
         areasAndTables.areas.map(area => {
           const areaTables = area.tables || [];
@@ -890,7 +903,7 @@ export default function TablesModule() {
           return (
             <div key={area.id} className="tb-area">
               <div className="tb-area-head">
-                <span className="tb-area-chip">🪑 {area.name.toUpperCase()} SECTION</span>
+                <span className="tb-area-chip">🪑 {area.name.toUpperCase()} {t('tbSectionWord')}</span>
               </div>
               <div className="tb-grid">
                 {areaTables.map(table => {
@@ -906,14 +919,14 @@ export default function TablesModule() {
                       <div>
                         <div className="tb-table-top">
                           <span className="tb-table-name">{table.name}</span>
-                          <span className="tb-status">{status}</span>
+                          <span className="tb-status">{translateDbValue(status)}</span>
                         </div>
-                        <div className="tb-capacity">👥 Capacity: {table.pax} pax</div>
+                        <div className="tb-capacity">👥 {t('tbCapacityLabel')}: {table.pax} {t('tbPaxShort')}</div>
                         <div className={`tb-captain-pill ${captainName !== 'Unassigned' ? 'is-assigned' : ''}`}>
-                          🧑‍✈️ Captain: {captainName}
+                          🧑‍✈️ {t('tbCaptainLabel')}: {captainName === 'Unassigned' ? t('tbUnassignedLabel') : captainName}
                         </div>
                       </div>
-                      <div className="tb-table-cta">Manage Table ›</div>
+                      <div className="tb-table-cta">{t('tbManageTableCta')} ›</div>
                     </div>
                   );
                 })}
@@ -927,25 +940,25 @@ export default function TablesModule() {
         <div className="tb-overlay" onClick={() => setSelectedTable(null)}>
           <div className="tb-modal" onClick={e => e.stopPropagation()}>
             <div className="tb-modal-head">
-              <h3 className="tb-modal-title">Table {selectedTable.name} ({selectedTable.areaName}) Control</h3>
+              <h3 className="tb-modal-title">{t('tbTablePrefix')} {selectedTable.name} ({selectedTable.areaName}) {t('tbControlWord')}</h3>
               <button onClick={() => setSelectedTable(null)} className="tb-close-x">✕</button>
             </div>
 
             <div className="tb-block tb-block-lg">
-              <label className="tb-label">ASSIGN FLOOR CAPTAIN</label>
+              <label className="tb-label">{t('tbAssignCaptainUpper')}</label>
               <select 
                 className="tb-input tb-input-flush"
                 defaultValue={selectedTable.captain || 'Unassigned'}
                 onChange={(e) => handleUpdateTableStatusAndCaptain(selectedTable.areaId, selectedTable.id, selectedTable.status || 'Available', e.target.value, false)}
               >
-                <option value="Unassigned">-- Select Captain --</option>
+                <option value="Unassigned">-- {t('tbSelectCaptainOption')} --</option>
                 {captainsList.map(c => (
                   <option key={c.id || c._id || c.name} value={c.name}>{c.name}</option>
                 ))}
               </select>
             </div>
 
-            <label className="tb-label">ACTIONS</label>
+            <label className="tb-label">{t('tbActionsUpper')}</label>
             <div className="tb-action-col">
               <button 
                 onClick={() => {
@@ -955,19 +968,19 @@ export default function TablesModule() {
                 }} 
                 className="tb-action-clear"
               >
-                🟢 Clear Table (Make Available)
+                🟢 {t('tbClearTableBtn')}
               </button>
               <button 
                 onClick={() => handleUpdateTableStatusAndCaptain(selectedTable.areaId, selectedTable.id, 'Occupied', selectedTable.captain, true)} 
                 className="tb-action-open"
               >
-                🚀 Open POS Terminal (Add / Edit Items)
+                🚀 {t('tbOpenPosTerminalBtn')}
               </button>
             </div>
 
             <div className="tb-modal-foot">
-              <button onClick={() => handleDeleteTable(selectedTable.areaId, selectedTable.id)} className="tb-delete-btn">Delete Table</button>
-              <button onClick={() => setSelectedTable(null)} className="tb-close-btn">Close</button>
+              <button onClick={() => handleDeleteTable(selectedTable.areaId, selectedTable.id)} className="tb-delete-btn">{t('tbDeleteTableBtn')}</button>
+              <button onClick={() => setSelectedTable(null)} className="tb-close-btn">{t('closeBtn')}</button>
             </div>
           </div>
         </div>
@@ -976,14 +989,14 @@ export default function TablesModule() {
       {showAddModal && (
         <div className="tb-overlay" onClick={() => setShowAddModal(false)}>
           <form onSubmit={handleAddTable} className="tb-modal" onClick={e => e.stopPropagation()}>
-            <h3 className="tb-modal-title tb-mb">Add New Table</h3>
-            <label className="tb-label">TABLE NAME / ID:</label>
-            <input className="tb-input" placeholder="e.g. T5" value={newTableForm.tableName} onChange={e => setNewTableForm({...newTableForm, tableName: e.target.value})} required />
-            <label className="tb-label">SECTION / AREA NAME:</label>
-            <input className="tb-input" placeholder="e.g. Main, Rooftop" value={newTableForm.areaName} onChange={e => setNewTableForm({...newTableForm, areaName: e.target.value})} required />
-            <label className="tb-label">SEATS (PAX):</label>
+            <h3 className="tb-modal-title tb-mb">{t('tbAddNewTableTitle')}</h3>
+            <label className="tb-label">{t('tbTableNameUpper')}:</label>
+            <input className="tb-input" placeholder={t('tbTableNamePlaceholder')} value={newTableForm.tableName} onChange={e => setNewTableForm({...newTableForm, tableName: e.target.value})} required />
+            <label className="tb-label">{t('tbSectionAreaUpper')}:</label>
+            <input className="tb-input" placeholder={t('tbSectionAreaPlaceholder')} value={newTableForm.areaName} onChange={e => setNewTableForm({...newTableForm, areaName: e.target.value})} required />
+            <label className="tb-label">{t('tbSeatsPaxUpper')}:</label>
             <input type="number" className="tb-input" value={newTableForm.pax} onChange={e => setNewTableForm({...newTableForm, pax: e.target.value})} required />
-            <button type="submit" className="tb-add-btn tb-add-btn-full">Create Table</button>
+            <button type="submit" className="tb-add-btn tb-add-btn-full">{t('tbCreateTableBtn')}</button>
           </form>
         </div>
       )}
@@ -993,13 +1006,13 @@ export default function TablesModule() {
         <div className="tb-overlay" onClick={() => setShowCaptainManageModal(false)}>
           <div className="tb-modal tb-modal-md" onClick={e => e.stopPropagation()}>
             <div className="tb-modal-head">
-              <h3 className="tb-modal-title">🧑‍✈️ Manage Floor Captains</h3>
+              <h3 className="tb-modal-title">🧑‍✈️ {t('tbManageCaptainsTitle')}</h3>
               <button onClick={() => setShowCaptainManageModal(false)} className="tb-close-x">✕</button>
             </div>
 
             <div className="tb-cap-list">
               {captainsList.length === 0 ? (
-                <div className="tb-cap-empty">No captains added yet. Add one below!</div>
+                <div className="tb-cap-empty">{t('tbNoCaptainsYet')}</div>
               ) : (
                 captainsList.map(c => {
                   const cId = c.id || c._id;
@@ -1007,7 +1020,7 @@ export default function TablesModule() {
                     <div key={cId || c.name} className="tb-cap-row">
                       <div>
                         <div className="tb-cap-name">{c.name}</div>
-                        <div className="tb-cap-phone">📞 {c.phone || 'No phone'}</div>
+                        <div className="tb-cap-phone">📞 {c.phone || t('tbNoPhoneLabel')}</div>
                       </div>
                       <div className="tb-cap-btns">
                         <button 
@@ -1017,13 +1030,13 @@ export default function TablesModule() {
                           }}
                           className="tb-edit-btn"
                         >
-                          Edit
+                          {t('tbEditBtn')}
                         </button>
                         <button 
                           onClick={() => handleDeleteCaptain(cId)}
                           className="tb-del-btn"
                         >
-                          Delete
+                          {t('tbDeleteBtn')}
                         </button>
                       </div>
                     </div>
@@ -1034,17 +1047,17 @@ export default function TablesModule() {
 
             <form onSubmit={handleAddCaptain} className="tb-cap-form">
               <h4 className="tb-cap-form-title">
-                {editingCaptain ? `✏️ Edit Captain: ${editingCaptain.name}` : '+ Add New Captain'}
+                {editingCaptain ? `✏️ ${t('tbEditCaptainPrefix')}: ${editingCaptain.name}` : `+ ${t('tbAddNewCaptainTitle')}`}
               </h4>
-              <label className="tb-label">CAPTAIN NAME:</label>
-              <input className="tb-input" placeholder="e.g. Rahul Sharma" value={newCaptainForm.name} onChange={e => setNewCaptainForm({...newCaptainForm, name: e.target.value})} required />
+              <label className="tb-label">{t('tbCaptainNameUpper')}:</label>
+              <input className="tb-input" placeholder={t('tbCaptainNamePlaceholder')} value={newCaptainForm.name} onChange={e => setNewCaptainForm({...newCaptainForm, name: e.target.value})} required />
               
-              <label className="tb-label">PHONE:</label>
-              <input className="tb-input" placeholder="10-digit mobile" value={newCaptainForm.phone} onChange={e => setNewCaptainForm({...newCaptainForm, phone: e.target.value})} />
+              <label className="tb-label">{t('tbPhoneUpper')}:</label>
+              <input className="tb-input" placeholder={t('posTenDigitMobile')} value={newCaptainForm.phone} onChange={e => setNewCaptainForm({...newCaptainForm, phone: e.target.value})} />
               
               <div className="tb-btn-row">
                 <button type="submit" className="tb-captain-btn tb-captain-save">
-                  {editingCaptain ? 'Update Captain' : 'Save Captain'}
+                  {editingCaptain ? t('tbUpdateCaptainBtn') : t('tbSaveCaptainBtn')}
                 </button>
                 {editingCaptain && (
                   <button 
@@ -1052,7 +1065,7 @@ export default function TablesModule() {
                     onClick={() => { setEditingCaptain(null); setNewCaptainForm({ name: '', phone: '' }); }}
                     className="tb-light-btn"
                   >
-                    Cancel
+                    {t('cancelBtn')}
                   </button>
                 )}
               </div>
@@ -1066,20 +1079,20 @@ export default function TablesModule() {
         <div className="tb-overlay" onClick={() => setShowReceiptModal(false)}>
           <div className="tb-modal tb-modal-sm" onClick={e => e.stopPropagation()}>
             <div className="tb-modal-head">
-              <h3 className="tb-modal-title">🧾 Order Receipt & KOT</h3>
+              <h3 className="tb-modal-title">🧾 {t('tbOrderReceiptKotTitle')}</h3>
               <button onClick={() => setShowReceiptModal(false)} className="tb-close-x">✕</button>
             </div>
 
             <div className="tb-receipt">
               <div className="tb-receipt-title">{receiptConfig.restaurantName}</div>
               <div className="tb-receipt-time">{completedOrderReceipt.timestamp}</div>
-              <div><strong>Order ID:</strong> {completedOrderReceipt.orderId}</div>
-              <div><strong>Table:</strong> {completedOrderReceipt.tableName} ({completedOrderReceipt.areaName})</div>
-              <div><strong>Captain:</strong> {completedOrderReceipt.captain}</div>
-              <div><strong>Type:</strong> {completedOrderReceipt.orderType}</div>
-              <div><strong>Payment:</strong> {completedOrderReceipt.paymentMode}</div>
+              <div><strong>{t('receiptOrderId')}:</strong> {completedOrderReceipt.orderId}</div>
+              <div><strong>{t('tbTableLabel')}:</strong> {completedOrderReceipt.tableName} ({completedOrderReceipt.areaName})</div>
+              <div><strong>{t('tbCaptainLabel')}:</strong> {completedOrderReceipt.captain}</div>
+              <div><strong>{t('receiptType')}:</strong> {translateDbValue(completedOrderReceipt.orderType)}</div>
+              <div><strong>{t('receiptPayment')}:</strong> {translateDbValue(completedOrderReceipt.paymentMode)}</div>
               <div className="tb-receipt-line"></div>
-              <div className="tb-receipt-bold">ITEMS:</div>
+              <div className="tb-receipt-bold">{t('receiptItemsHeading')}:</div>
               {completedOrderReceipt.items.map((it, idx) => (
                 <div key={idx} className="tb-receipt-row">
                   <span>{it.qty}x {it.name}</span>
@@ -1088,15 +1101,15 @@ export default function TablesModule() {
               ))}
               <div className="tb-receipt-line"></div>
               <div className="tb-receipt-row">
-                <span>Subtotal:</span>
+                <span>{t('subtotal')}:</span>
                 <span>₹{completedOrderReceipt.subtotal.toFixed(2)}</span>
               </div>
               <div className="tb-receipt-row">
-                <span>Tax:</span>
+                <span>{t('posTaxLabel')}:</span>
                 <span>₹{completedOrderReceipt.totalTax.toFixed(2)}</span>
               </div>
               <div className="tb-receipt-row tb-receipt-total">
-                <span>Total:</span>
+                <span>{t('total')}:</span>
                 <span>₹{completedOrderReceipt.totalAmount}</span>
               </div>
             </div>
@@ -1106,13 +1119,13 @@ export default function TablesModule() {
                 onClick={handlePrintReceipt}
                 className="tb-print-btn"
               >
-                🖨️ Print / Download Receipt
+                🖨️ {t('tbPrintDownloadReceiptBtn')}
               </button>
               <button 
                 onClick={() => setShowReceiptModal(false)}
                 className="tb-done-btn"
               >
-                Done
+                {t('tbDoneBtn')}
               </button>
             </div>
           </div>
