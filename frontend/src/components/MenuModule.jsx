@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from './LanguageContext';
 
-const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
+const API_BASE_URL = 'http://localhost:8080';
 
 const DEFAULT_CATEGORIES = ['Combos', 'Starters', 'Biryanis', 'Sandwiches', 'Burgers', 'Main Course'];
 const AVAILABLE_ICONS = ['🍽️', '🌐', '☕', '🍕', '🥪', '🍦', '🍷', '🍺', '🍲', '🎂', '🥗', '☀️', '🌙', '✨', '⭐', '🍴'];
 
 export default function MenuModule() {
+  const { t, getLocalizedField } = useLanguage();
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,14 +70,14 @@ export default function MenuModule() {
 
   useEffect(() => {
     if (!userEmail) {
-      alert('Please login first.');
+      alert(t('mnLoginFirstAlert'));
       setLoading(false);
       return;
     }
     fetchData(userEmail);
     window.openPausedItemsModal = () => setShowPausedModal(true);
     return () => { delete window.openPausedItemsModal; };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (userEmail) {
@@ -134,7 +136,7 @@ export default function MenuModule() {
   };
 
   const handleDeleteItem = (id, name) => {
-    if (!window.confirm(`Delete "${name}" from menu?`)) return;
+    if (!window.confirm(t('mnDeleteItemConfirm').replace('{name}', name))) return;
     fetch(`${API_BASE_URL}/api/v1/menu/${id}`, { method: 'DELETE' })
       .then(res => {
         if (res.ok) setMenuItems(menuItems.filter(item => item.id !== id));
@@ -150,7 +152,7 @@ export default function MenuModule() {
 
   const handleSaveItem = (e) => {
     e.preventDefault();
-    if (!newItemForm.itemName || !newItemForm.unitPrice) return alert('Please enter Item Name and Price.');
+    if (!newItemForm.itemName || !newItemForm.unitPrice) return alert(t('mnEnterItemNamePriceAlert'));
 
     const payload = {
       itemName: newItemForm.itemName,
@@ -171,7 +173,6 @@ export default function MenuModule() {
       .then(async res => {
         if (res.ok) {
           const savedItem = await res.json().catch(() => ({}));
-          // Save selected tax group mapping in localStorage so it persists across refreshes
           const storedTaxMap = JSON.parse(localStorage.getItem(`itemTaxMap_${userEmail}`) || '{}');
           if (savedItem.id) storedTaxMap[savedItem.id] = newItemForm.taxGroup;
           storedTaxMap[newItemForm.itemName] = newItemForm.taxGroup;
@@ -180,9 +181,9 @@ export default function MenuModule() {
           setShowAddItemModal(false);
           setNewItemForm({ itemName: '', description: '', unitPrice: '', category: 'Main Course', taxGroup: taxGroups[0]?.name || 'Standard Restaurant (5%)' });
           fetchData(userEmail);
-          showMsg('✅ Item added successfully with correct tax group!', 'success');
+          showMsg(t('mnItemAddedToast'), 'success');
         } else {
-          alert('Failed to save menu item.');
+          alert(t('mnSaveItemFailAlert'));
         }
       })
       .catch(err => alert('Error: ' + err.message));
@@ -190,7 +191,7 @@ export default function MenuModule() {
 
   const handleCreateMenu = (e) => {
     e.preventDefault();
-    if (!newMenuForm.name.trim()) return alert('Enter Menu Name');
+    if (!newMenuForm.name.trim()) return alert(t('mnEnterMenuNameAlert'));
 
     const created = {
       id: 'menu-' + Date.now(),
@@ -202,12 +203,12 @@ export default function MenuModule() {
     setMenus([...menus, created]);
     setShowNewMenuModal(false);
     setNewMenuForm({ name: '', description: '', icon: '🍽️', channel: 'In-house' });
-    showMsg('✅ New Menu created successfully!', 'success');
+    showMsg(t('mnNewMenuCreatedToast'), 'success');
   };
 
   const handleSaveCategory = (e) => {
     e.preventDefault();
-    if (!newCatForm.name.trim()) return alert('Enter category name');
+    if (!newCatForm.name.trim()) return alert(t('mnEnterCategoryNameAlert'));
     setCategories([...categories, {
       id: 'cat-' + Date.now(),
       name: newCatForm.name.trim(),
@@ -219,7 +220,7 @@ export default function MenuModule() {
 
   const handleSaveVariant = (e) => {
     e.preventDefault();
-    if (!newVarName.trim()) return alert('Enter variant name');
+    if (!newVarName.trim()) return alert(t('mnEnterVariantNameAlert'));
     setVariants([...variants, { id: 'var-' + Date.now(), name: newVarName.trim() }]);
     setShowAddVariantModal(false);
     setNewVarName('');
@@ -227,7 +228,7 @@ export default function MenuModule() {
 
   const handleSaveGroup = (e) => {
     e.preventDefault();
-    if (!newGroupForm.name.trim()) return alert('Enter group name');
+    if (!newGroupForm.name.trim()) return alert(t('mnEnterGroupNameAlert'));
     setAddonGroups([...addonGroups, {
       id: 'ag-' + Date.now(),
       name: newGroupForm.name.trim(),
@@ -239,7 +240,7 @@ export default function MenuModule() {
 
   const handleSaveAddon = (e) => {
     e.preventDefault();
-    if (!newAddonForm.name.trim() || !newAddonForm.price) return alert('Enter name and price');
+    if (!newAddonForm.name.trim() || !newAddonForm.price) return alert(t('mnEnterNamePriceAlert'));
     setAddons([...addons, {
       id: 'ad-' + Date.now(),
       name: newAddonForm.name.trim(),
@@ -276,32 +277,32 @@ export default function MenuModule() {
 
         <div className="mn-header">
           <div className="mn-header-left">
-            <button onClick={() => setActiveMenu(null)} className="mn-back-btn">← Back to Menus</button>
+            <button onClick={() => setActiveMenu(null)} className="mn-back-btn">← {t('mnBackToMenusBtn')}</button>
             <div>
               <h2 className="mn-title">
-                {activeMenu.icon} {activeMenu.name}
+                {activeMenu.icon} {getLocalizedField(activeMenu, 'name') || activeMenu.name}
               </h2>
               <p className="mn-subtitle">
-                {activeMenu.description || 'Manage items, categories, variants, and add-ons'} · Channel: {activeMenu.channel}
+                {getLocalizedField(activeMenu, 'description') || activeMenu.description || t('mnMenuSubDefault')} · {t('mnChannelWord')}: {activeMenu.channel === 'Online' ? t('mnChannelOnline') : t('mnChannelInHouse')}
               </p>
             </div>
           </div>
 
           <div className="mn-header-actions">
             {activeTab === 'items' && (
-              <button onClick={handleOpenAddItemModal} className="mn-primary-btn">+ Add Item</button>
+              <button onClick={handleOpenAddItemModal} className="mn-primary-btn">+ {t('mnAddItemBtn')}</button>
             )}
             {activeTab === 'categories' && (
-              <button onClick={() => setShowAddCategoryModal(true)} className="mn-primary-btn">+ Add Category</button>
+              <button onClick={() => setShowAddCategoryModal(true)} className="mn-primary-btn">+ {t('mnAddCategoryBtn')}</button>
             )}
             {activeTab === 'variants' && (
-              <button onClick={() => setShowAddVariantModal(true)} className="mn-primary-btn">+ Add Variant</button>
+              <button onClick={() => setShowAddVariantModal(true)} className="mn-primary-btn">+ {t('mnAddVariantBtn')}</button>
             )}
             {activeTab === 'addons' && (
-              <button onClick={() => setShowAddAddonModal(true)} className="mn-primary-btn">+ Add Add-on</button>
+              <button onClick={() => setShowAddAddonModal(true)} className="mn-primary-btn">+ {t('mnAddAddonBtn')}</button>
             )}
             {activeTab === 'addon-groups' && (
-              <button onClick={() => setShowAddGroupModal(true)} className="mn-primary-btn">+ Add Group</button>
+              <button onClick={() => setShowAddGroupModal(true)} className="mn-primary-btn">+ {t('mnAddGroupBtn')}</button>
             )}
           </div>
         </div>
@@ -315,11 +316,11 @@ export default function MenuModule() {
         {/* 5 Sub Navigation Tabs */}
         <div className="mn-tabs">
           {[
-            { id: 'items', label: 'Items' },
-            { id: 'categories', label: 'Categories' },
-            { id: 'variants', label: 'Variants' },
-            { id: 'addon-groups', label: 'Addon Groups' },
-            { id: 'addons', label: 'Addons' }
+            { id: 'items', label: t('mnTabItems') },
+            { id: 'categories', label: t('mnTabCategories') },
+            { id: 'variants', label: t('mnTabVariants') },
+            { id: 'addon-groups', label: t('mnTabAddonGroups') },
+            { id: 'addons', label: t('mnTabAddons') }
           ].map(tab => (
             <button
               key={tab.id}
@@ -335,16 +336,16 @@ export default function MenuModule() {
         {activeTab === 'items' && (
           <div className="mn-panel">
             <div className="mn-summary">
-              <span>{activeCatalogName.toUpperCase()} · <strong>{totalAvailable} AVAILABLE</strong> · <strong className="mn-red">{totalPaused} PAUSED</strong></span>
+              <span>{activeCatalogName.toUpperCase()} · <strong>{totalAvailable} {t('mnAvailableUpper')}</strong> · <strong className="mn-red">{totalPaused} {t('mnPausedUpper')}</strong></span>
             </div>
 
             {loading ? (
               <div className="mn-center">
                 <span className="mn-spinner" aria-hidden="true" />
-                Loading items...
+                {t('mnLoadingItems')}
               </div>
             ) : catalogFilteredItems.length === 0 ? (
-              <div className="mn-empty">No items found in this menu. Click "+ Add Item" above!</div>
+              <div className="mn-empty">{t('mnNoItemsInMenu')}</div>
             ) : (
               dynamicCategories.map(cat => {
                 const catItems = catalogFilteredItems.filter(i => i.category === cat);
@@ -354,24 +355,27 @@ export default function MenuModule() {
                   <div key={cat} className="mn-cat-block">
                     <div className="mn-cat-header">{cat}</div>
                     <div className="mn-cat-card">
-                      {catItems.map((item, idx) => {
+                      {catItems.map((item) => {
                         const isLive = item.status === 'LIVE';
+                        const itemTitle = getLocalizedField(item, 'itemName') || item.itemName;
+                        const itemDesc = getLocalizedField(item, 'description') || item.description;
+
                         return (
                           <div key={item.id} className="mn-item-row">
                             <div className="mn-item-left">
                               <span className={`mn-dot ${isLive ? 'is-live' : 'is-paused'}`}></span>
                               <div>
-                                <span className="mn-item-name">{item.itemName}</span>
-                                {item.description && <div className="mn-item-desc">{item.description}</div>}
+                                <span className="mn-item-name">{itemTitle}</span>
+                                {itemDesc && <div className="mn-item-desc">{itemDesc}</div>}
                               </div>
                             </div>
                             <div className="mn-item-right">
                               <span className="mn-tax-chip">🏷️ {item.taxGroup}</span>
                               <span className="mn-price">₹{Number(item.unitPrice || 0).toFixed(2)}</span>
                               <button onClick={() => handleToggleStatus(item.id, item.status)} className={`mn-toggle ${isLive ? 'is-live' : 'is-paused'}`}>
-                                {isLive ? '🟢 Live' : '🔴 Paused'}
+                                {isLive ? `🟢 ${t('mnStatusLive')}` : `🔴 ${t('mnStatusPaused')}`}
                               </button>
-                              <button onClick={() => handleDeleteItem(item.id, item.itemName)} title="Delete" className="mn-delete-btn">🗑️</button>
+                              <button onClick={() => handleDeleteItem(item.id, itemTitle)} title={t('tbDeleteBtn')} className="mn-delete-btn">🗑️</button>
                             </div>
                           </div>
                         );
@@ -389,16 +393,16 @@ export default function MenuModule() {
           <div className="mn-panel mn-card-box">
             <div className="mn-box-head">
               <div>
-                <h3 className="mn-box-title">Categories</h3>
-                <p className="mn-box-desc">Categories appear on POS sidebar and online menu navigation.</p>
+                <h3 className="mn-box-title">{t('mnTabCategories')}</h3>
+                <p className="mn-box-desc">{t('mnCategoriesDesc')}</p>
               </div>
-              <button onClick={() => setShowAddCategoryModal(true)} className="mn-primary-btn">+ Add Category</button>
+              <button onClick={() => setShowAddCategoryModal(true)} className="mn-primary-btn">+ {t('mnAddCategoryBtn')}</button>
             </div>
             <div className="mn-simple-grid">
               {categories.map(c => (
                 <div key={c.id} className="mn-simple-card">
-                  <div className="mn-simple-name">{c.name}</div>
-                  <div className="mn-simple-sub">Display Name: {c.displayName}</div>
+                  <div className="mn-simple-name">{getLocalizedField(c, 'name') || c.name}</div>
+                  <div className="mn-simple-sub">{t('mnDisplayNamePrefix')}: {getLocalizedField(c, 'displayName') || c.displayName}</div>
                 </div>
               ))}
             </div>
@@ -410,16 +414,16 @@ export default function MenuModule() {
           <div className="mn-panel mn-card-box">
             <div className="mn-box-head">
               <div>
-                <h3 className="mn-box-title">Variants</h3>
-                <p className="mn-box-desc">Size or portion options an item can be sold in.</p>
+                <h3 className="mn-box-title">{t('mnTabVariants')}</h3>
+                <p className="mn-box-desc">{t('mnVariantsDesc')}</p>
               </div>
-              <button onClick={() => setShowAddVariantModal(true)} className="mn-primary-btn">+ Add Variant</button>
+              <button onClick={() => setShowAddVariantModal(true)} className="mn-primary-btn">+ {t('mnAddVariantBtn')}</button>
             </div>
             <div className="mn-simple-col">
               {variants.map(v => (
                 <div key={v.id} className="mn-simple-row">
-                  <span className="mn-simple-name">{v.name}</span>
-                  <span className="mn-active-chip">Active</span>
+                  <span className="mn-simple-name">{getLocalizedField(v, 'name') || v.name}</span>
+                  <span className="mn-active-chip">{t('mnActiveStatus')}</span>
                 </div>
               ))}
             </div>
@@ -431,19 +435,19 @@ export default function MenuModule() {
           <div className="mn-panel mn-card-box">
             <div className="mn-box-head">
               <div>
-                <h3 className="mn-box-title">Add-on groups</h3>
-                <p className="mn-box-desc">Buckets that add-ons belong to, e.g. Dips or Sides.</p>
+                <h3 className="mn-box-title">{t('mnAddonGroupsHeading')}</h3>
+                <p className="mn-box-desc">{t('mnAddonGroupsDesc')}</p>
               </div>
-              <button onClick={() => setShowAddGroupModal(true)} className="mn-primary-btn">+ Add Group</button>
+              <button onClick={() => setShowAddGroupModal(true)} className="mn-primary-btn">+ {t('mnAddGroupBtn')}</button>
             </div>
             <div className="mn-simple-col">
               {addonGroups.map(ag => (
                 <div key={ag.id} className="mn-simple-row">
                   <div>
-                    <div className="mn-simple-name">{ag.name}</div>
-                    <div className="mn-simple-sub">Display: {ag.displayName}</div>
+                    <div className="mn-simple-name">{getLocalizedField(ag, 'name') || ag.name}</div>
+                    <div className="mn-simple-sub">{t('mnDisplayShort')}: {getLocalizedField(ag, 'displayName') || ag.displayName}</div>
                   </div>
-                  <span className="mn-count-chip">1 Add-on</span>
+                  <span className="mn-count-chip">1 {t('mnOneAddonWord')}</span>
                 </div>
               ))}
             </div>
@@ -455,25 +459,25 @@ export default function MenuModule() {
           <div className="mn-panel mn-card-box">
             <div className="mn-box-head">
               <div>
-                <h3 className="mn-box-title">Add-ons</h3>
-                <p className="mn-box-desc">Extras customers can add to an item.</p>
+                <h3 className="mn-box-title">{t('mnTabAddons')}</h3>
+                <p className="mn-box-desc">{t('mnAddonsDesc')}</p>
               </div>
-              <button onClick={() => setShowAddAddonModal(true)} className="mn-primary-btn">+ Add Add-on</button>
+              <button onClick={() => setShowAddAddonModal(true)} className="mn-primary-btn">+ {t('mnAddAddonBtn')}</button>
             </div>
             <div className="mn-table-wrap">
               <table className="mn-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Group</th>
-                    <th>Price</th>
-                    <th>Available</th>
+                    <th>{t('mnNameCol')}</th>
+                    <th>{t('mnGroupCol')}</th>
+                    <th>{t('mnPriceCol')}</th>
+                    <th>{t('mnAvailableCol')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {addons.map(ad => (
                     <tr key={ad.id}>
-                      <td><strong className="mn-strong">{ad.name}</strong></td>
+                      <td><strong className="mn-strong">{getLocalizedField(ad, 'name') || ad.name}</strong></td>
                       <td>{ad.group}</td>
                       <td><strong className="mn-green">₹{ad.price.toFixed(2)}</strong></td>
                       <td>
@@ -495,32 +499,32 @@ export default function MenuModule() {
             <form onSubmit={handleSaveItem} className="mn-modal" onClick={e => e.stopPropagation()}>
               <div className="mn-modal-head">
                 <div>
-                  <h3 className="mn-modal-title">Add Item</h3>
-                  <p className="mn-modal-sub">Every item needs a tax group.</p>
+                  <h3 className="mn-modal-title">{t('mnAddItemModalTitle')}</h3>
+                  <p className="mn-modal-sub">{t('mnAddItemModalSub')}</p>
                 </div>
                 <button type="button" onClick={() => setShowAddItemModal(false)} className="mn-close-x">✕</button>
               </div>
 
-              <label className="mn-label">Item Name *</label>
-              <input type="text" placeholder="e.g. Butter Chicken" value={newItemForm.itemName} onChange={e => setNewItemForm({...newItemForm, itemName: e.target.value})} className="mn-input" required autoFocus />
+              <label className="mn-label">{t('mnItemNameRequired')}</label>
+              <input type="text" placeholder={t('mnItemNamePlaceholder')} value={newItemForm.itemName} onChange={e => setNewItemForm({...newItemForm, itemName: e.target.value})} className="mn-input" required autoFocus />
 
-              <label className="mn-label">Description</label>
-              <textarea placeholder="Short note or ingredients..." value={newItemForm.description} onChange={e => setNewItemForm({...newItemForm, description: e.target.value})} className="mn-input mn-textarea" />
+              <label className="mn-label">{t('mnDescriptionLabel')}</label>
+              <textarea placeholder={t('mnItemDescPlaceholder')} value={newItemForm.description} onChange={e => setNewItemForm({...newItemForm, description: e.target.value})} className="mn-input mn-textarea" />
 
               <div className="mn-two-col">
                 <div className="mn-col">
-                  <label className="mn-label">Price (₹) *</label>
+                  <label className="mn-label">{t('mnPriceRequired')}</label>
                   <input type="number" step="0.01" placeholder="299" value={newItemForm.unitPrice} onChange={e => setNewItemForm({...newItemForm, unitPrice: e.target.value})} className="mn-input" required />
                 </div>
                 <div className="mn-col">
-                  <label className="mn-label">Category</label>
+                  <label className="mn-label">{t('mnCategoryLabel')}</label>
                   <select value={newItemForm.category} onChange={e => setNewItemForm({...newItemForm, category: e.target.value})} className="mn-input">
                     {dynamicCategories.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
               </div>
 
-              <label className="mn-label">Tax Group *</label>
+              <label className="mn-label">{t('mnTaxGroupRequired')}</label>
               <select value={newItemForm.taxGroup} onChange={e => setNewItemForm({...newItemForm, taxGroup: e.target.value})} className="mn-input">
                 {taxGroups.map(tg => (
                   <option key={tg.name} value={tg.name}>{tg.name} ({tg.rate}%)</option>
@@ -531,8 +535,8 @@ export default function MenuModule() {
               </div>
 
               <div className="mn-btn-row">
-                <button type="submit" className="mn-save-btn">Save</button>
-                <button type="button" onClick={() => setShowAddItemModal(false)} className="mn-cancel-btn">Cancel</button>
+                <button type="submit" className="mn-save-btn">{t('mnSaveBtn')}</button>
+                <button type="button" onClick={() => setShowAddItemModal(false)} className="mn-cancel-btn">{t('cancelBtn')}</button>
               </div>
             </form>
           </div>
@@ -542,14 +546,14 @@ export default function MenuModule() {
         {showAddCategoryModal && (
           <div className="mn-overlay" onClick={() => setShowAddCategoryModal(false)}>
             <form onSubmit={handleSaveCategory} className="mn-modal" onClick={e => e.stopPropagation()}>
-              <h3 className="mn-modal-title mn-mb">Add category</h3>
-              <label className="mn-label">Category name *</label>
-              <input type="text" placeholder="e.g. Starters" value={newCatForm.name} onChange={e => setNewCatForm({...newCatForm, name: e.target.value})} className="mn-input" required autoFocus />
-              <label className="mn-label">Display name (optional)</label>
-              <input type="text" placeholder="Shown to customers" value={newCatForm.displayName} onChange={e => setNewCatForm({...newCatForm, displayName: e.target.value})} className="mn-input" />
+              <h3 className="mn-modal-title mn-mb">{t('mnAddCategoryTitle')}</h3>
+              <label className="mn-label">{t('mnCategoryNameRequired')}</label>
+              <input type="text" placeholder={t('mnCategoryNamePlaceholder')} value={newCatForm.name} onChange={e => setNewCatForm({...newCatForm, name: e.target.value})} className="mn-input" required autoFocus />
+              <label className="mn-label">{t('mnDisplayNameOptional')}</label>
+              <input type="text" placeholder={t('mnShownCustomersPlaceholder')} value={newCatForm.displayName} onChange={e => setNewCatForm({...newCatForm, displayName: e.target.value})} className="mn-input" />
               <div className="mn-btn-row mn-mt">
-                <button type="submit" className="mn-save-btn">Save</button>
-                <button type="button" onClick={() => setShowAddCategoryModal(false)} className="mn-cancel-btn">Cancel</button>
+                <button type="submit" className="mn-save-btn">{t('mnSaveBtn')}</button>
+                <button type="button" onClick={() => setShowAddCategoryModal(false)} className="mn-cancel-btn">{t('cancelBtn')}</button>
               </div>
             </form>
           </div>
@@ -559,12 +563,12 @@ export default function MenuModule() {
         {showAddVariantModal && (
           <div className="mn-overlay" onClick={() => setShowAddVariantModal(false)}>
             <form onSubmit={handleSaveVariant} className="mn-modal" onClick={e => e.stopPropagation()}>
-              <h3 className="mn-modal-title mn-mb">Add variant</h3>
-              <label className="mn-label">Variant name *</label>
-              <input type="text" placeholder="e.g. Half / Full" value={newVarName} onChange={e => setNewVarName(e.target.value)} className="mn-input" required autoFocus />
+              <h3 className="mn-modal-title mn-mb">{t('mnAddVariantTitle')}</h3>
+              <label className="mn-label">{t('mnVariantNameRequired')}</label>
+              <input type="text" placeholder={t('mnVariantNamePlaceholder')} value={newVarName} onChange={e => setNewVarName(e.target.value)} className="mn-input" required autoFocus />
               <div className="mn-btn-row mn-mt">
-                <button type="submit" className="mn-save-btn">Save</button>
-                <button type="button" onClick={() => setShowAddVariantModal(false)} className="mn-cancel-btn">Cancel</button>
+                <button type="submit" className="mn-save-btn">{t('mnSaveBtn')}</button>
+                <button type="button" onClick={() => setShowAddVariantModal(false)} className="mn-cancel-btn">{t('cancelBtn')}</button>
               </div>
             </form>
           </div>
@@ -574,14 +578,14 @@ export default function MenuModule() {
         {showAddGroupModal && (
           <div className="mn-overlay" onClick={() => setShowAddGroupModal(false)}>
             <form onSubmit={handleSaveGroup} className="mn-modal" onClick={e => e.stopPropagation()}>
-              <h3 className="mn-modal-title mn-mb">Add add-on group</h3>
-              <label className="mn-label">Group name *</label>
-              <input type="text" placeholder="e.g. Dips or Sides" value={newGroupForm.name} onChange={e => setNewGroupForm({...newGroupForm, name: e.target.value})} className="mn-input" required autoFocus />
-              <label className="mn-label">Display name</label>
-              <input type="text" placeholder="Defaults to group name" value={newGroupForm.displayName} onChange={e => setNewGroupForm({...newGroupForm, displayName: e.target.value})} className="mn-input" />
+              <h3 className="mn-modal-title mn-mb">{t('mnAddAddonGroupTitle')}</h3>
+              <label className="mn-label">{t('mnGroupNameRequired')}</label>
+              <input type="text" placeholder={t('mnGroupNamePlaceholder')} value={newGroupForm.name} onChange={e => setNewGroupForm({...newGroupForm, name: e.target.value})} className="mn-input" required autoFocus />
+              <label className="mn-label">{t('mnDisplayNameLabel')}</label>
+              <input type="text" placeholder={t('mnDefaultsGroupPlaceholder')} value={newGroupForm.displayName} onChange={e => setNewGroupForm({...newGroupForm, displayName: e.target.value})} className="mn-input" />
               <div className="mn-btn-row mn-mt">
-                <button type="submit" className="mn-save-btn">Save</button>
-                <button type="button" onClick={() => setShowAddGroupModal(false)} className="mn-cancel-btn">Cancel</button>
+                <button type="submit" className="mn-save-btn">{t('mnSaveBtn')}</button>
+                <button type="button" onClick={() => setShowAddGroupModal(false)} className="mn-cancel-btn">{t('cancelBtn')}</button>
               </div>
             </form>
           </div>
@@ -591,37 +595,37 @@ export default function MenuModule() {
         {showAddAddonModal && (
           <div className="mn-overlay" onClick={() => setShowAddAddonModal(false)}>
             <form onSubmit={handleSaveAddon} className="mn-modal" onClick={e => e.stopPropagation()}>
-              <h3 className="mn-modal-title mn-mb">Add add-on</h3>
-              <label className="mn-label">Name *</label>
-              <input type="text" placeholder="e.g. Extra Cheese" value={newAddonForm.name} onChange={e => setNewAddonForm({...newAddonForm, name: e.target.value})} className="mn-input" required autoFocus />
-              
+              <h3 className="mn-modal-title mn-mb">{t('mnAddAddonTitle')}</h3>
+              <label className="mn-label">{t('mnNameRequired')}</label>
+              <input type="text" placeholder={t('mnAddonNamePlaceholder')} value={newAddonForm.name} onChange={e => setNewAddonForm({...newAddonForm, name: e.target.value})} className="mn-input" required autoFocus />
+
               <div className="mn-two-col">
                 <div className="mn-col">
-                  <label className="mn-label">Price (₹) *</label>
+                  <label className="mn-label">{t('mnPriceRequired')}</label>
                   <input type="number" step="0.01" placeholder="30" value={newAddonForm.price} onChange={e => setNewAddonForm({...newAddonForm, price: e.target.value})} className="mn-input" required />
                 </div>
                 <div className="mn-col">
-                  <label className="mn-label">Tag</label>
-                  <input type="text" placeholder="Optional" value={newAddonForm.tag} onChange={e => setNewAddonForm({...newAddonForm, tag: e.target.value})} className="mn-input" />
+                  <label className="mn-label">{t('mnTagLabel')}</label>
+                  <input type="text" placeholder={t('mnOptionalPlaceholder')} value={newAddonForm.tag} onChange={e => setNewAddonForm({...newAddonForm, tag: e.target.value})} className="mn-input" />
                 </div>
               </div>
 
-              <label className="mn-label">Group *</label>
+              <label className="mn-label">{t('mnGroupRequired')}</label>
               <select value={newAddonForm.group} onChange={e => setNewAddonForm({...newAddonForm, group: e.target.value})} className="mn-input">
                 {addonGroups.map(ag => <option key={ag.name} value={ag.name}>{ag.name}</option>)}
               </select>
 
-              <label className="mn-label">Description</label>
-              <input type="text" placeholder="Optional" value={newAddonForm.description} onChange={e => setNewAddonForm({...newAddonForm, description: e.target.value})} className="mn-input" />
+              <label className="mn-label">{t('mnDescriptionLabel')}</label>
+              <input type="text" placeholder={t('mnOptionalPlaceholder')} value={newAddonForm.description} onChange={e => setNewAddonForm({...newAddonForm, description: e.target.value})} className="mn-input" />
 
               <div className="mn-avail-row">
                 <input type="checkbox" checked={newAddonForm.available} onChange={e => setNewAddonForm({...newAddonForm, available: e.target.checked})} className="mn-checkbox" />
-                <label className="mn-avail-label">Available</label>
+                <label className="mn-avail-label">{t('mnAvailableCol')}</label>
               </div>
 
               <div className="mn-btn-row mn-mt">
-                <button type="submit" className="mn-save-btn">Save</button>
-                <button type="button" onClick={() => setShowAddAddonModal(false)} className="mn-cancel-btn">Cancel</button>
+                <button type="submit" className="mn-save-btn">{t('mnSaveBtn')}</button>
+                <button type="button" onClick={() => setShowAddAddonModal(false)} className="mn-cancel-btn">{t('cancelBtn')}</button>
               </div>
             </form>
           </div>
@@ -640,27 +644,27 @@ export default function MenuModule() {
 
       <div className="mn-header">
         <div>
-          <h2 className="mn-title mn-title-lg">Menus</h2>
-          <p className="mn-subtitle">Create menus, activate them per channel, and manage items.</p>
+          <h2 className="mn-title mn-title-lg">{t('mnMenusHeading')}</h2>
+          <p className="mn-subtitle">{t('mnMenusSubtitle')}</p>
         </div>
 
         <div className="mn-header-actions">
-          <button 
+          <button
             onClick={() => setShowPausedModal(true)}
             onMouseEnter={() => setHoveredBtn('paused')}
             onMouseLeave={() => setHoveredBtn(null)}
             className={`mn-paused-btn ${totalPaused > 0 ? 'has-paused' : ''}`}
           >
-            🔴 Manage Paused Items <span className="mn-paused-pill">{totalPaused}</span>
+            🔴 {t('managePausedItems')} <span className="mn-paused-pill">{totalPaused}</span>
           </button>
 
-          <button 
+          <button
             onClick={() => setShowNewMenuModal(true)}
             onMouseEnter={() => setHoveredBtn('newMenu')}
             onMouseLeave={() => setHoveredBtn(null)}
             className="mn-primary-btn"
           >
-            + Add Menu
+            + {t('mnAddMenuBtn')}
           </button>
         </div>
       </div>
@@ -674,8 +678,11 @@ export default function MenuModule() {
       {/* Menu Catalog Cards (Reactive Hover Effects) */}
       <div className="mn-catalogs">
         {menus.map(menu => {
+          const menuTitle = getLocalizedField(menu, 'name') || menu.name;
+          const menuDesc = getLocalizedField(menu, 'description') || menu.description;
+
           return (
-            <div 
+            <div
               key={menu.id}
               onClick={() => setActiveMenu(menu)}
               onMouseEnter={() => setHoveredCard(menu.id)}
@@ -684,14 +691,14 @@ export default function MenuModule() {
             >
               <div className="mn-catalog-top">
                 <span className={menu.channel === 'Online' ? 'mn-badge-online' : 'mn-badge-inhouse'}>
-                  {menu.channel === 'Online' ? '🟢 ONLINE CHANNEL' : '🍴 IN-HOUSE MENU'}
+                  {menu.channel === 'Online' ? `🟢 ${t('mnOnlineChannelBadge')}` : `🍴 ${t('mnInHouseMenuBadge')}`}
                 </span>
-                <span className="mn-manage-link">Click to Manage →</span>
+                <span className="mn-manage-link">{t('mnClickToManage')} →</span>
               </div>
               <h3 className="mn-catalog-name">
-                <span className="mn-catalog-icon">{menu.icon}</span> {menu.name}
+                <span className="mn-catalog-icon">{menu.icon}</span> {menuTitle}
               </h3>
-              <p className="mn-catalog-desc">{menu.description}</p>
+              <p className="mn-catalog-desc">{menuDesc}</p>
             </div>
           );
         })}
@@ -703,32 +710,32 @@ export default function MenuModule() {
           <form onSubmit={handleCreateMenu} className="mn-modal" onClick={e => e.stopPropagation()}>
             <div className="mn-modal-head">
               <div>
-                <h3 className="mn-modal-title">New Menu</h3>
-                <p className="mn-modal-sub">Give the menu a name, an icon, and choose which channel it primarily serves.</p>
+                <h3 className="mn-modal-title">{t('mnNewMenuTitle')}</h3>
+                <p className="mn-modal-sub">{t('mnNewMenuSub')}</p>
               </div>
               <button type="button" onClick={() => setShowNewMenuModal(false)} className="mn-close-x">✕</button>
             </div>
 
-            <label className="mn-label">Menu name *</label>
-            <input 
-              type="text" 
-              placeholder="e.g. Lunch Special, Bar Menu" 
-              value={newMenuForm.name} 
-              onChange={e => setNewMenuForm({...newMenuForm, name: e.target.value})} 
-              className="mn-input" 
-              required 
-              autoFocus 
+            <label className="mn-label">{t('mnMenuNameRequired')}</label>
+            <input
+              type="text"
+              placeholder={t('mnMenuNamePlaceholder')}
+              value={newMenuForm.name}
+              onChange={e => setNewMenuForm({...newMenuForm, name: e.target.value})}
+              className="mn-input"
+              required
+              autoFocus
             />
 
-            <label className="mn-label">Description (optional)</label>
-            <textarea 
-              placeholder="Short note shown to captains and staff" 
-              value={newMenuForm.description} 
-              onChange={e => setNewMenuForm({...newMenuForm, description: e.target.value})} 
-              className="mn-input mn-textarea" 
+            <label className="mn-label">{t('mnDescriptionOptional')}</label>
+            <textarea
+              placeholder={t('mnMenuDescPlaceholder')}
+              value={newMenuForm.description}
+              onChange={e => setNewMenuForm({...newMenuForm, description: e.target.value})}
+              className="mn-input mn-textarea"
             />
 
-            <label className="mn-label">Icon</label>
+            <label className="mn-label">{t('mnIconLabel')}</label>
             <div className="mn-icon-grid">
               {AVAILABLE_ICONS.map(ic => (
                 <button
@@ -742,22 +749,22 @@ export default function MenuModule() {
               ))}
             </div>
 
-            <label className="mn-label">Primary channel</label>
-            <select 
-              value={newMenuForm.channel} 
-              onChange={e => setNewMenuForm({...newMenuForm, channel: e.target.value})} 
+            <label className="mn-label">{t('mnPrimaryChannelLabel')}</label>
+            <select
+              value={newMenuForm.channel}
+              onChange={e => setNewMenuForm({...newMenuForm, channel: e.target.value})}
               className="mn-input"
             >
-              <option value="In-house">In-house</option>
-              <option value="Online">Online</option>
+              <option value="In-house">{t('mnChannelInHouse')}</option>
+              <option value="Online">{t('mnChannelOnline')}</option>
             </select>
             <div className="mn-hint mn-hint-lg">
-              Classification only. You can still activate this menu on either channel.
+              {t('mnChannelHint')}
             </div>
 
             <div className="mn-btn-row mn-end">
-              <button type="button" onClick={() => setShowNewMenuModal(false)} className="mn-cancel-btn">Cancel</button>
-              <button type="submit" className="mn-red-btn">Create menu</button>
+              <button type="button" onClick={() => setShowNewMenuModal(false)} className="mn-cancel-btn">{t('cancelBtn')}</button>
+              <button type="submit" className="mn-red-btn">{t('mnCreateMenuBtn')}</button>
             </div>
           </form>
         </div>
@@ -768,28 +775,28 @@ export default function MenuModule() {
         <div className="mn-overlay" onClick={() => setShowPausedModal(false)}>
           <div className="mn-modal" onClick={e => e.stopPropagation()}>
             <div className="mn-modal-head">
-              <h3 className="mn-modal-title">🔴 Manage Paused Items ({allPausedItems.length})</h3>
+              <h3 className="mn-modal-title">🔴 {t('managePausedItems')} ({allPausedItems.length})</h3>
               <button onClick={() => setShowPausedModal(false)} className="mn-close-x">✕</button>
             </div>
 
             {allPausedItems.length === 0 ? (
-              <div className="mn-paused-empty">No paused items across your restaurant menus! All dishes are LIVE.</div>
+              <div className="mn-paused-empty">{t('mnNoPausedItems')}</div>
             ) : (
               <div className="mn-paused-list">
                 {allPausedItems.map(item => (
                   <div key={item.id} className="mn-paused-row">
                     <div>
-                      <div className="mn-paused-name">{item.itemName}</div>
+                      <div className="mn-paused-name">{getLocalizedField(item, 'itemName') || item.itemName}</div>
                       <div className="mn-paused-meta">{item.category} · {item.catalogName || 'Default In-House Menu'}</div>
                     </div>
                     <button onClick={() => handleToggleStatus(item.id, 'PAUSED')} className="mn-make-live">
-                      Make Live 🟢
+                      {t('mnMakeLiveBtn')} 🟢
                     </button>
                   </div>
                 ))}
               </div>
             )}
-            <button onClick={() => setShowPausedModal(false)} className="mn-save-btn">Close Modal</button>
+            <button onClick={() => setShowPausedModal(false)} className="mn-save-btn">{t('mnCloseModalBtn')}</button>
           </div>
         </div>
       )}

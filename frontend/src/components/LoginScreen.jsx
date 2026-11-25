@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './LoginScreen.css';
 
-const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
+const API_BASE_URL = 'http://localhost:8080';
 const GOOGLE_AUTH_URL = import.meta.env.VITE_GOOGLE_AUTH_URL;
 
 const INITIAL_FORM = {
@@ -99,10 +99,18 @@ function PasswordField({ label, name, value, onChange, required = false, placeho
 }
 
 export default function LoginScreen({ onLoginSuccess }) {
-  const [currentView, setCurrentView] = useState('signin');
+  // CHANGED: open on the forgot-password form when Settings left the flag behind
+  const [currentView, setCurrentView] = useState(() =>
+    localStorage.getItem('open_forgot_password') === 'true' ? 'forgot' : 'signin'
+  );
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [forgotEmail, setForgotEmail] = useState('');
+  // CHANGED: prefill the saved email when coming from Settings
+  const [forgotEmail, setForgotEmail] = useState(() =>
+    localStorage.getItem('open_forgot_password') === 'true'
+      ? localStorage.getItem('user_email') || ''
+      : ''
+  );
   const [otpCode, setOtpCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [formData, setFormData] = useState(INITIAL_FORM);
@@ -110,6 +118,14 @@ export default function LoginScreen({ onLoginSuccess }) {
   const [messageType, setMessageType] = useState('error');
   const [loading, setLoading] = useState(false);
   const [rememberStation, setRememberStation] = useState(true);
+
+  // CHANGED: clear the one-time flag (and #forgot) so a later refresh opens sign in
+  useEffect(() => {
+    localStorage.removeItem('open_forgot_password');
+    if (window.location.hash === '#forgot') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
 
   const openView = (view) => {
     setCurrentView(view);

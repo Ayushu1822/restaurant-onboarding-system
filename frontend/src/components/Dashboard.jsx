@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './LoginScreen.css';
+import { useLanguage } from './LanguageContext';
 
 // Import all modular sub-components
 import KitchenModule from './KitchenModule';
@@ -14,7 +15,7 @@ import GalleryModule from './GalleryModule';
 import SettingsModule from "./SettingsModule";
 import { playNotificationChime, unlockNotificationAudio } from './AdvancedSettingsTab';
 
-const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
+const API_BASE_URL = 'http://localhost:8080';
 
 const getOrderNote = (order) => {
   if (!order) return '';
@@ -67,18 +68,6 @@ const isTodayOrder = (value) => {
   return !!d && istDay(d) === istDay(new Date());
 };
 
-// "5 min ago" label. Falls back to the original text if the timestamp can't be parsed.
-const timeAgo = (value, now) => {
-  const d = parseOrderDate(value);
-  if (!d) return { text: String(value || ''), mins: null };
-  const mins = Math.floor((now - d.getTime()) / 60000);
-  if (mins < 0 || mins > 60 * 24 * 7) return { text: String(value || ''), mins: null };
-  if (mins < 1) return { text: 'Just now', mins };
-  if (mins < 60) return { text: `${mins} min ago`, mins };
-  if (mins < 1440) return { text: `${Math.floor(mins / 60)} hr ago`, mins };
-  return { text: `${Math.floor(mins / 1440)} d ago`, mins };
-};
-
 function NavigationIcon({ tab }) {
   const icon = NAVIGATION_ICONS[tab] || NAVIGATION_ICONS['Online Orders'];
   return (
@@ -89,6 +78,7 @@ function NavigationIcon({ tab }) {
 }
 
 export default function Dashboard({ user, onLogout }) {
+  const { t, translateDbValue, getLocalizedField } = useLanguage();
   const loggedInEmail = user?.email || localStorage.getItem('userEmail') || 'novio@gmail.com';
 
   const [activeTab, setActiveTab] = useState('Online Orders');
@@ -102,13 +92,13 @@ export default function Dashboard({ user, onLogout }) {
   const [prepMinutes, setPrepMinutes] = useState(20);
   const [alertsEnabled, setAlertsEnabled] = useState(false);
   const [orderSearch, setOrderSearch] = useState('');
-  
+
   const [toastMessage, setToastMessage] = useState(null);
   const [newOrderPopup, setNewOrderPopup] = useState(null);
 
   const [isProfileFallback, setIsProfileFallback] = useState(false);
   const [isOrdersFallback, setIsOrdersFallback] = useState(false);
-  
+
   const [tableStats, setTableStats] = useState({ open: 5, total: 10, occupied: 3, billing: 1 });
   const [pausedCount, setPausedCount] = useState(0);
 
@@ -173,6 +163,17 @@ export default function Dashboard({ user, onLogout }) {
 
   const knownOrderIdsRef = useRef(new Set());
   const hasLoadedOrdersRef = useRef(false);
+
+  const timeAgo = (value, now) => {
+    const d = parseOrderDate(value);
+    if (!d) return { text: String(value || ''), mins: null };
+    const mins = Math.floor((now - d.getTime()) / 60000);
+    if (mins < 0 || mins > 60 * 24 * 7) return { text: String(value || ''), mins: null };
+    if (mins < 1) return { text: t('justNow'), mins };
+    if (mins < 60) return { text: `${mins} ${t('minAgo')}`, mins };
+    if (mins < 1440) return { text: `${Math.floor(mins / 60)} ${t('hrAgo')}`, mins };
+    return { text: `${Math.floor(mins / 1440)} ${t('daysAgo')}`, mins };
+  };
 
   useEffect(() => {
     setOrderNote(getOrderNote(selectedOrder));
@@ -304,7 +305,7 @@ export default function Dashboard({ user, onLogout }) {
       .then(data => {
         let orderList = Array.isArray(data) ? data : [];
         setIsOrdersFallback(false);
-        
+
         const onlineOnlyList = orderList.filter(o => {
           const ch = (o.channel || o.orderType || '').toUpperCase();
           if (ch.includes('COUNTER') || ch.includes('POS') || ch.includes('WALK-IN')) {
@@ -318,21 +319,22 @@ export default function Dashboard({ user, onLogout }) {
           const mappedItems = rawItems.map(i => {
             const rawPrice = i.unitPrice ?? i.unit_price ?? i.price ?? 150.00;
             const taxRate = i.taxRate ?? 5;
+            const localizedName = getLocalizedField(i, 'itemName') || getLocalizedField(i, 'name') || i.itemName || i.item_name || i.name || t('defaultFoodItem');
+            const localizedDesc = getLocalizedField(i, 'itemDescription') || getLocalizedField(i, 'description') || i.itemDescription || i.item_description || '';
             return {
-              name: i.itemName || i.item_name || i.name || 'Food Item',
+              name: localizedName,
               qty: i.quantity || i.qty || 1,
               price: Number(rawPrice),
               taxRate: Number(taxRate),
-              desc: i.itemDescription || i.item_description || ''
+              desc: localizedDesc
             };
           });
 
           const resolvedOrderId = o.orderId || o.order_id || o.id;
           const resolvedDisplayId = o.displayId || o.display_id || resolvedOrderId || `#KO01/00000${index + 1}`;
-          
           const istTimestamp = o.timestamp || new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
-          const subtotalCalc = mappedItems.length > 0 
+          const subtotalCalc = mappedItems.length > 0
             ? mappedItems.reduce((acc, it) => acc + (it.price * it.qty), 0)
             : (o.subtotal || 500.00);
 
@@ -345,13 +347,13 @@ export default function Dashboard({ user, onLogout }) {
           return {
             id: resolvedDisplayId,
             orderId: resolvedOrderId,
-            customer: o.customerName || o.customer_name || 'Valued Customer',
+            customer: o.customerName || o.customer_name || t('valuedCustomer'),
             time: istTimestamp,
             timestamp: istTimestamp,
             status: o.status || 'New',
             type: o.orderType || o.order_type || 'Delivery',
             channel: o.channel || 'WhatsApp',
-            items: mappedItems.length > 0 ? mappedItems : [{ name: 'Order Meal', qty: 1, price: 200.00, taxRate: 5, desc: '' }],
+            items: mappedItems.length > 0 ? mappedItems : [{ name: t('orderMeal'), qty: 1, price: 200.00, taxRate: 5, desc: '' }],
             address: o.deliveryAddress || o.delivery_address || 'MG Road, Bengaluru',
             phone: o.customerPhone || o.customer_phone || '9876543210',
             customerRequest: getOrderNote(o),
@@ -367,7 +369,7 @@ export default function Dashboard({ user, onLogout }) {
             o => !knownOrderIdsRef.current.has(o.orderId) && ['New', 'Accepted'].includes(o.status)
           );
           if (freshOrders.length > 0) {
-            playNotificationChime(); // reads this device's mute + chosen chime
+            playNotificationChime();
             setNewOrderPopup(freshOrders[0]);
           }
         }
@@ -376,7 +378,6 @@ export default function Dashboard({ user, onLogout }) {
 
         setOrders(formattedOrders);
         if (formattedOrders.length > 0) {
-          // keep the open order in sync (e.g. after auto-approval)
           setSelectedOrder(current =>
             current ? (formattedOrders.find(o => o.orderId === current.orderId) || current) : formattedOrders[0]
           );
@@ -388,7 +389,7 @@ export default function Dashboard({ user, onLogout }) {
         setIsOrdersFallback(true);
         setLoadingOrders(false);
       });
-  }, [loggedInEmail, refreshTick]);
+  }, [loggedInEmail, refreshTick, getLocalizedField, t]);
 
   // 🔄 Poll orders every 5 seconds so new orders and auto-approvals appear without pressing refresh
   useEffect(() => {
@@ -441,10 +442,10 @@ export default function Dashboard({ user, onLogout }) {
         setEditForm(savedProfile);
         setIsEditingProfile(false);
         setShowProfileModal(false);
-        showToast('Profile globally updated and saved to PostgreSQL database!');
+        showToast(t('profileSavedToast'));
       })
       .catch(err => {
-        showToast('Error saving profile globally: ' + err.message, 'error');
+        showToast(`${t('profileErrorToast')}: ${err.message}`, 'error');
       });
   };
 
@@ -468,12 +469,29 @@ export default function Dashboard({ user, onLogout }) {
 
   const getNextActionLabel = (status) => {
     switch (status) {
-      case 'New': return 'Accept Order';
-      case 'Accepted': return 'Start Preparing 🍳';
-      case 'Preparing': return 'Mark Ready 📦';
-      case 'Ready': return 'Complete / Hand Over ✓';
-      default: return 'Completed';
+      case 'New': return t('actionAcceptOrder');
+      case 'Accepted': return `🍳 ${t('actionStartPreparing')}`;
+      case 'Preparing': return `📦 ${t('actionMarkReady')}`;
+      case 'Ready': return `${t('actionCompleteHandOver')} ✓`;
+      default: return t('statusCompleted');
     }
+  };
+
+  const getNavTabLabel = (tab) => {
+    const map = {
+      'Online Orders': t('navOnlineOrders'),
+      'Counter POS': t('navCounterPos'),
+      'Tables': t('navTables'),
+      'Kitchen': t('navKitchen'),
+      'Menu': t('navMenu'),
+      'Reports': t('navReports'),
+      'Promotions': t('navPromotions'),
+      'Customers': t('navCustomers'),
+      'Complaints': t('navComplaints'),
+      'Gallery': t('navGallery'),
+      'Settings': t('navSettings')
+    };
+    return map[tab] || tab;
   };
 
   const orderStatusTabs = ['New', 'Accepted', 'Preparing', 'Ready', 'Picked Up'];
@@ -488,7 +506,7 @@ export default function Dashboard({ user, onLogout }) {
   const handleEnableAlerts = async () => {
     if (!('Notification' in window)) {
       setAlertsEnabled(false);
-      showToast('Notifications not supported by this browser.', 'error');
+      showToast(t('alertsNotSupported'), 'error');
       return;
     }
     const permission = Notification.permission === 'default'
@@ -496,7 +514,7 @@ export default function Dashboard({ user, onLogout }) {
       : Notification.permission;
     setAlertsEnabled(permission === 'granted');
     if (permission === 'granted') {
-      showToast('Desktop alerts successfully enabled!');
+      showToast(t('alertsEnabledToast'));
     }
   };
 
@@ -509,10 +527,10 @@ export default function Dashboard({ user, onLogout }) {
 
   const handlePrintReceipt = () => {
     if (!selectedOrder) return;
-    
+
     const printWindow = window.open('', '_blank', 'width=450,height=600');
     if (!printWindow) {
-      showToast('Popup blocked! Please allow popups for printing.', 'error');
+      showToast(t('popupBlockedToast'), 'error');
       return;
     }
 
@@ -525,15 +543,15 @@ export default function Dashboard({ user, onLogout }) {
           <span>${it.qty}x ${it.name}</span>
           <span>₹${(it.price * it.qty).toFixed(2)}</span>
         </div>
-        ${isFieldOn('itemRate', true) ? `<div style="font-size: 9px; color: #555;">Rate: ₹${it.price} each (${it.taxRate || 5}% tax)</div>` : ''}
-        ${isFieldOn('itemNotes', true) && it.desc ? `<div style="font-size: 9px; color: #b45309; font-style: italic;">&nbsp;• ${it.desc}</div>` : ''}
+        ${isFieldOn('itemRate', true) ? `<div style="font-size: 9px; color: #555;">${t('receiptRate')}: ₹${it.price} (${it.taxRate || 5}% ${t('receiptTaxShort')})</div>` : ''}
+        ${isFieldOn('itemNotes', true) && it.desc ? `<div style="font-size: 9px; color: #b45309; font-style: italic;"> • ${it.desc}</div>` : ''}
       </div>
     `).join('');
 
     printWindow.document.write(`
       <html>
         <head>
-          <title>Receipt - ${selectedOrder.id}</title>
+          <title>${t('receiptTitlePrefix')} - ${selectedOrder.id}</title>
           <style>
             body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: ${paperSize === '58mm' ? '58mm' : '80mm'}; margin: 0 auto; font-size: ${density === 'Compact' ? '10px' : '12px'}; line-height: 1.4; }
             .center { text-align: center; }
@@ -548,43 +566,43 @@ export default function Dashboard({ user, onLogout }) {
           ${isFieldOn('restaurantName', true) ? `<div class="center bold" style="font-size: 14px;">${(receiptConfig.restaurantName || 'RESTAURANT').toUpperCase()}</div>` : ''}
           ${isFieldOn('branchName', true) && receiptConfig.branchName ? `<div class="center" style="font-size: 11px;">${receiptConfig.branchName}</div>` : ''}
           ${isFieldOn('address', true) && receiptConfig.address ? `<div class="center" style="font-size: 10px; color: #333; margin: 3px 0; white-space: pre-line;">${receiptConfig.address}</div>` : ''}
-          ${isFieldOn('phone', true) && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>` : ''}
+          ${isFieldOn('phone', true) && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">${t('receiptPhoneShort')}: ${receiptConfig.phone}</div>` : ''}
           ${isFieldOn('email', false) && receiptConfig.email ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.email}</div>` : ''}
           ${isFieldOn('gstin', true) && receiptConfig.gstin ? `<div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>` : ''}
           ${isFieldOn('fssai', true) && receiptConfig.fssai ? `<div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>` : ''}
-          
+
           <div class="line"></div>
-          ${isFieldOn('invoiceNo', true) ? `<div><strong>Receipt No:</strong> ${selectedOrder.id}</div>` : ''}
-          ${isFieldOn('orderId', true) ? `<div><strong>Order ID:</strong> ${selectedOrder.orderId || selectedOrder.id}</div>` : ''}
-          ${isFieldOn('orderType', true) ? `<div><strong>Type:</strong> ${selectedOrder.type} (${selectedOrder.channel})</div>` : ''}
-          ${isFieldOn('dateAndTime', true) ? `<div><strong>Date:</strong> ${selectedOrder.time}</div>` : ''}
-          ${isFieldOn('customerName', true) && selectedOrder.customer ? `<div><strong>Customer:</strong> ${selectedOrder.customer}</div>` : ''}
-          ${isFieldOn('customerMobile', true) && selectedOrder.phone ? `<div><strong>Mobile:</strong> ${selectedOrder.phone}</div>` : ''}
-          ${isFieldOn('address', true) && selectedOrder.address ? `<div><strong>Delivery Address:</strong> ${selectedOrder.address}</div>` : ''}
-          ${selectedOrder.customerRequest ? `<div><strong>Note:</strong> <span style="color: #b45309; font-weight: bold;">${selectedOrder.customerRequest}</span></div>` : ''}
-          
+          ${isFieldOn('invoiceNo', true) ? `<div><strong>${t('receiptNo')}:</strong> ${selectedOrder.id}</div>` : ''}
+          ${isFieldOn('orderId', true) ? `<div><strong>${t('receiptOrderId')}:</strong> ${selectedOrder.orderId || selectedOrder.id}</div>` : ''}
+          ${isFieldOn('orderType', true) ? `<div><strong>${t('receiptType')}:</strong> ${translateDbValue(selectedOrder.type)} (${translateDbValue(selectedOrder.channel)})</div>` : ''}
+          ${isFieldOn('dateAndTime', true) ? `<div><strong>${t('receiptDate')}:</strong> ${selectedOrder.time}</div>` : ''}
+          ${isFieldOn('customerName', true) && selectedOrder.customer ? `<div><strong>${t('receiptCustomer')}:</strong> ${selectedOrder.customer}</div>` : ''}
+          ${isFieldOn('customerMobile', true) && selectedOrder.phone ? `<div><strong>${t('receiptMobile')}:</strong> ${selectedOrder.phone}</div>` : ''}
+          ${isFieldOn('address', true) && selectedOrder.address ? `<div><strong>${t('receiptDeliveryAddress')}:</strong> ${selectedOrder.address}</div>` : ''}
+          ${selectedOrder.customerRequest ? `<div><strong>${t('receiptNote')}:</strong> <span style="color: #b45309; font-weight: bold;">${selectedOrder.customerRequest}</span></div>` : ''}
+
           <div class="line"></div>
-          <div class="bold" style="margin-bottom: 6px;">ITEMS:</div>
+          <div class="bold" style="margin-bottom: 6px;">${t('receiptItemsHeading')}:</div>
           ${itemsHtml}
-          
+
           <div class="line"></div>
-          <div class="flex"><span>Subtotal:</span><span>₹${selectedOrder.subtotal.toFixed(2)}</span></div>
-          ${isFieldOn('discount', true) && selectedOrder.discount ? `<div class="flex"><span>Discount:</span><span>-₹${Number(selectedOrder.discount).toFixed(2)}</span></div>` : ''}
-          
-          ${isFieldOn('totalTax', true) && !isFieldOn('taxBreakdown', true) ? `<div class="flex"><span>Total Tax:</span><span>₹${(selectedOrder.totalTax || (selectedOrder.subtotal * 0.05)).toFixed(2)}</span></div>` : ''}
+          <div class="flex"><span>${t('subtotal')}:</span><span>₹${selectedOrder.subtotal.toFixed(2)}</span></div>
+          ${isFieldOn('discount', true) && selectedOrder.discount ? `<div class="flex"><span>${t('discount')}:</span><span>-₹${Number(selectedOrder.discount).toFixed(2)}</span></div>` : ''}
+
+          ${isFieldOn('totalTax', true) && !isFieldOn('taxBreakdown', true) ? `<div class="flex"><span>${t('totalTax')}:</span><span>₹${(selectedOrder.totalTax || (selectedOrder.subtotal * 0.05)).toFixed(2)}</span></div>` : ''}
           ${isFieldOn('totalTax', true) && isFieldOn('taxBreakdown', true) ? `
             <div class="flex"><span>CGST (2.5%):</span><span>₹${((selectedOrder.totalTax || (selectedOrder.subtotal * 0.05)) / 2).toFixed(2)}</span></div>
             <div class="flex"><span>SGST (2.5%):</span><span>₹${((selectedOrder.totalTax || (selectedOrder.subtotal * 0.05)) / 2).toFixed(2)}</span></div>
           ` : ''}
-          
-          <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>TOTAL:</span><span>₹${Number(selectedOrder.total).toFixed(2)}</span></div>
-          
+
+          <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>${t('totalUpper')}:</span><span>₹${Number(selectedOrder.total).toFixed(2)}</span></div>
+
           <div class="line"></div>
-          ${isFieldOn('paymentMethod', true) ? `<div><strong>Payment:</strong> PAID Online / ${selectedOrder.channel}</div>` : ''}
-          
+          ${isFieldOn('paymentMethod', true) ? `<div><strong>${t('receiptPayment')}:</strong> ${t('paidOnline')} / ${translateDbValue(selectedOrder.channel)}</div>` : ''}
+
           <div class="line"></div>
           ${isFieldOn('footerText', true) && receiptConfig.footerNote ? `<div class="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptConfig.footerNote}</div>` : ''}
-          
+
           <script>
             window.onload = function() {
               window.print();
@@ -616,10 +634,10 @@ export default function Dashboard({ user, onLogout }) {
         order.orderId === selectedOrder.orderId ? { ...order, ...updatedOrder } : order
       ));
       setSelectedOrder(updatedOrder);
-      showToast('Order notes successfully saved!');
+      showToast(t('notesSavedToast'));
     } catch (error) {
       console.error('Failed to save order notes:', error);
-      showToast(`Unable to save order notes: ${error.message}`, 'error');
+      showToast(`${t('notesErrorToast')}: ${error.message}`, 'error');
     } finally {
       setSavingOrderNotes(false);
     }
@@ -628,8 +646,8 @@ export default function Dashboard({ user, onLogout }) {
   // UI-only helpers (no backend calls)
   const [nowTick, setNowTick] = useState(Date.now());
   useEffect(() => {
-    const t = setInterval(() => setNowTick(Date.now()), 30000);
-    return () => clearInterval(t);
+    const tmr = setInterval(() => setNowTick(Date.now()), 30000);
+    return () => clearInterval(tmr);
   }, []);
   const countByStatus = (s) => orders.filter(o => o.status.toLowerCase() === s.toLowerCase()).length;
   const todayOrders = orders.filter(o => isTodayOrder(o.timestamp));
@@ -1160,7 +1178,7 @@ export default function Dashboard({ user, onLogout }) {
 
       {/* Sidebar */}
       <div className={`dashboardSidebar${isNavExpanded ? ' dashboardSidebarExpanded' : ''}`} style={{ ...styles.sidebar, width: isNavExpanded ? '230px' : '56px' }}>
-        <button type="button" className="sidebarToggle" aria-label={isNavExpanded ? 'Collapse navigation' : 'Expand navigation'} aria-expanded={isNavExpanded} onClick={() => setIsNavExpanded(expanded => !expanded)}>
+        <button type="button" className="sidebarToggle" aria-label={isNavExpanded ? t('collapseNav') : t('expandNav')} aria-expanded={isNavExpanded} onClick={() => setIsNavExpanded(expanded => !expanded)}>
           <span></span><span></span><span></span>
         </button>
         <ul className="sidebarNavLinks" style={styles.navLinks}>
@@ -1168,7 +1186,7 @@ export default function Dashboard({ user, onLogout }) {
             const isActive = activeTab === tab;
             const isHovered = hoveredTab === tab;
             return (
-              <li 
+              <li
                 key={tab}
                 className={`navItem${isActive ? ' navItemActive' : ''}`}
                 style={{ ...styles.navItem, ...(isActive ? styles.navItemActive : {}), ...(isHovered && !isActive ? styles.navItemHover : {}) }}
@@ -1178,7 +1196,7 @@ export default function Dashboard({ user, onLogout }) {
               >
                 <span className="navIcon">
                   <NavigationIcon tab={tab} />
-                  <span className="navLabel">{tab}</span>
+                  <span className="navLabel">{getNavTabLabel(tab)}</span>
                 </span>
                 {tab === 'Online Orders' && <span className="navBadge" style={styles.badgeCount}>{orders.filter(o => o.status === 'New').length}</span>}
               </li>
@@ -1192,21 +1210,21 @@ export default function Dashboard({ user, onLogout }) {
         <div className="header" style={styles.header}>
           <div className="topBrand">
             <span className="topBrandMark">🍽</span>
-            <div><strong>FOODOS</strong><small>Restaurant POS System</small></div>
+            <div><strong>FOODOS</strong><small>{t('restaurantPosSystem')}</small></div>
           </div>
           <div className="headerActions">
             <button className="alertButton" onClick={handleEnableAlerts}>
-              <span>♧</span> {alertsEnabled ? 'Alerts enabled' : 'Enable alerts'}
+              <span>♧</span> {alertsEnabled ? t('alertsEnabled') : t('enableAlerts')}
             </button>
             <button className="profileButton" onClick={() => { setShowProfileModal(true); setIsEditingProfile(false); }}>
-              <span className="profileInitials">K6<i className="activeDot" title="Profile active" /></span>
-              <span className="profileName"><strong>{profileData.ownerName || 'Admin'}</strong><small>Admin</small></span>
+              <span className="profileInitials">K6<i className="activeDot" title={t('profileActive')} /></span>
+              <span className="profileName"><strong>{profileData.ownerName || t('adminRole')}</strong><small>{t('adminRole')}</small></span>
               <span>⌄</span>
             </button>
             <button onClick={() => setActiveTab('Menu')} style={styles.pausedItemsBtn}>
-              🔴 Manage Paused Items <span style={styles.pausedCountBadge}>{pausedCount}</span>
+              🔴 {t('managePausedItems')} <span style={styles.pausedCountBadge}>{pausedCount}</span>
             </button>
-            <button onClick={onLogout} style={styles.topLogoutBtn}>Sign Out</button>
+            <button onClick={onLogout} style={styles.topLogoutBtn}>{t('signOut')}</button>
           </div>
         </div>
 
@@ -1214,19 +1232,19 @@ export default function Dashboard({ user, onLogout }) {
         <div className="tablesBar" style={styles.tablesStatusBar} onClick={() => setActiveTab('Tables')}>
           <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800', color: '#1e293b', fontSize: '12px'}}>
             <span>♜</span>
-            <span>Tables</span>
+            <span>{t('navTables')}</span>
             <span style={{color: '#cbd5e1'}}>·</span>
-            <span style={{color: '#16a34a'}}>{tableStats.open}/{tableStats.total} open</span>
+            <span style={{color: '#16a34a'}}>{tableStats.open}/{tableStats.total} {t('tablesOpen')}</span>
             <span style={{color: '#cbd5e1'}}>·</span>
-            <span>{tableStats.occupied} occupied</span>
-            <span style={{backgroundColor: '#0d9488', color: '#fff', padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '900'}}>{tableStats.billing} billing</span>
+            <span>{tableStats.occupied} {t('tablesOccupied')}</span>
+            <span style={{backgroundColor: '#0d9488', color: '#fff', padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '900'}}>{tableStats.billing} {t('tablesBilling')}</span>
           </div>
-          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><div className="tblProg" title={`${tablePct}% occupied`}><i style={{width: `${tablePct}%`}} /></div><span style={{color: '#64748b', fontSize: '16px', fontWeight: '900'}}>›</span></div>
+          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><div className="tblProg" title={`${tablePct}% ${t('tablesOccupied')}`}><i style={{width: `${tablePct}%`}} /></div><span style={{color: '#64748b', fontSize: '16px', fontWeight: '900'}}>›</span></div>
         </div>
 
         {isOrdersFallback && activeTab === 'Online Orders' && (
           <div style={styles.fallbackNoticeBar}>
-            <span style={{color: '#dc2626', fontWeight: '900'}}>⚠️ Connection Notice:</span> Unable to reach database orders endpoint.
+            <span style={{color: '#dc2626', fontWeight: '900'}}>⚠️ {t('connectionNotice')}:</span> {t('ordersEndpointError')}
           </div>
         )}
 
@@ -1235,12 +1253,12 @@ export default function Dashboard({ user, onLogout }) {
           <div className="moduleFade" style={styles.onlineOrdersContainer}>
             <div className="ordersHeading ordersBar">
               <div className="barRow">
-                <h1><span className="liveDot" />Online orders<em className="liveTag">LIVE</em></h1>
+                <h1><span className="liveDot" />{t('onlineOrdersTitle')}<em className="liveTag">{t('liveTag')}</em></h1>
                 <div className="todayStats">
-                  <span className="todayTag">TODAY</span>
-                  <div className="todayStat"><b>{todayCount}</b><small>Orders</small></div>
-                  <div className="todayStat"><b>{todayItems}</b><small>Items sold</small></div>
-                  <div className="todayStat rev"><b>₹{Math.round(todayRevenue).toLocaleString('en-IN')}</b><small>Revenue</small></div>
+                  <span className="todayTag">{t('todayTag')}</span>
+                  <div className="todayStat"><b>{todayCount}</b><small>{t('statOrders')}</small></div>
+                  <div className="todayStat"><b>{todayItems}</b><small>{t('statItemsSold')}</small></div>
+                  <div className="todayStat rev"><b>₹{Math.round(todayRevenue).toLocaleString('en-IN')}</b><small>{t('statRevenue')}</small></div>
                 </div>
               </div>
               <div className="barRow">
@@ -1258,14 +1276,14 @@ export default function Dashboard({ user, onLogout }) {
                         if (matchingOrders.length > 0) setSelectedOrder(matchingOrders[0]);
                       }}
                     >
-                      <i>{STATUS_ICONS[status]}</i>{status} <span className="cnt" key={countByStatus(status)}>{countByStatus(status)}</span>
+                      <i>{STATUS_ICONS[status]}</i>{translateDbValue(status)} <span className="cnt" key={countByStatus(status)}>{countByStatus(status)}</span>
                     </button>
                   ))}
                 </div>
                 <div className="orderTools">
-                  <button title="Refresh orders" onClick={() => { setLoadingOrders(true); setRefreshTick(tick => tick + 1); }}>↻</button>
-                  <label className="searchOrders"><span>⌕</span><input value={orderSearch} onChange={event => setOrderSearch(event.target.value)} placeholder="Search orders" /></label>
-                  <button className="managePaused" onClick={() => setActiveTab('Menu')}>Manage Paused Items <b>{pausedCount}</b></button>
+                  <button title={t('refreshOrders')} onClick={() => { setLoadingOrders(true); setRefreshTick(tick => tick + 1); }}>↻</button>
+                  <label className="searchOrders"><span>⌕</span><input value={orderSearch} onChange={event => setOrderSearch(event.target.value)} placeholder={t('searchOrdersPlaceholder')} /></label>
+                  <button className="managePaused" onClick={() => setActiveTab('Menu')}>{t('managePausedShort')} <b>{pausedCount}</b></button>
                 </div>
               </div>
             </div>
@@ -1276,7 +1294,7 @@ export default function Dashboard({ user, onLogout }) {
                   {loadingOrders ? (
                     <>{[0, 1, 2].map(i => <div key={i} className="skeleton" />)}</>
                   ) : filteredOrders.length === 0 ? (
-                    <div className="emptyOrders"><span className="emptyIcon">{orders.length === 0 ? '🍽️' : '🔍'}</span><span>{orders.length === 0 ? 'No online orders yet. New orders will appear here.' : 'No orders match this status or search.'}</span></div>
+                    <div className="emptyOrders"><span className="emptyIcon">{orders.length === 0 ? '🍽️' : '🔍'}</span><span>{orders.length === 0 ? t('noOrdersYet') : t('noMatchingOrders')}</span></div>
                   ) : (
                     filteredOrders.map((order, idx) => {
                       const isSelected = selectedOrder?.orderId === order.orderId;
@@ -1284,8 +1302,8 @@ export default function Dashboard({ user, onLogout }) {
                       const ago = timeAgo(order.timestamp, nowTick);
                       const late = ago.mins !== null && ago.mins >= 15 && ['New', 'Accepted'].includes(order.status);
                       return (
-                        <div 
-                          key={order.orderId || order.id} 
+                        <div
+                          key={order.orderId || order.id}
                           className={`orderSummary${isSelected ? ' isSelected' : ''}${late ? ' isLate' : ''}`}
                           style={{ ...styles.orderSummaryCard, '--st': STATUS_COLORS[order.status] || '#16a34a', animationDelay: `${Math.min(idx, 8) * 50}ms`, borderColor: isSelected || isHovered ? '#0d9488' : '#cbd5e1', backgroundColor: '#fff' }}
                           onClick={() => setSelectedOrder(order)}
@@ -1297,18 +1315,18 @@ export default function Dashboard({ user, onLogout }) {
                               <strong style={{fontSize: '16px', color: '#0f172a', fontWeight: '900'}}>{order.customer}</strong>
                               <div style={{fontSize: '12px', color: '#64748b', fontWeight: '800'}}>{order.id}</div>
                             </div>
-                            <span className={`orderStatus${order.status === 'New' ? ' isNew' : ''}`} style={styles.statusBadgeSmall(order.status)}>{order.status}</span>
+                            <span className={`orderStatus${order.status === 'New' ? ' isNew' : ''}`} style={styles.statusBadgeSmall(order.status)}>{translateDbValue(order.status)}</span>
                           </div>
 
                           <div style={{fontSize: '12px', color: '#64748b', marginBottom: '10px', fontWeight: '700'}}>
-                            <span className="orderTypeTag">♧ {order.type}</span> <span className="channelTag">◉ {order.channel}</span>
+                            <span className="orderTypeTag">♧ {translateDbValue(order.type)}</span> <span className="channelTag">◉ {translateDbValue(order.channel)}</span>
                           </div>
 
                           <div className="orderSummaryItems">
                             {order.items.slice(0, 2).map((it, i2) => (
                               <div key={i2}><span>{it.name}</span> <strong>×{it.qty}</strong></div>
                             ))}
-                            {order.items.length > 2 && <small>+ {order.items.length - 2} more</small>}
+                            {order.items.length > 2 && <small>+ {order.items.length - 2} {t('moreItems')}</small>}
                           </div>
 
                           <div className="orderSummaryFooter">
@@ -1323,9 +1341,9 @@ export default function Dashboard({ user, onLogout }) {
 
               <div className="detailPanelColumn" style={styles.detailPanelColumn}>
                 <div className="detailPanelHeading">
-                  <div style={styles.listHeaderTitle}>Selected order</div>
+                  <div style={styles.listHeaderTitle}>{t('selectedOrderHeading')}</div>
                   {selectedOrder && (
-                    <button onClick={handlePrintReceipt} className="detailPrintButton" title="Print order">⎙</button>
+                    <button onClick={handlePrintReceipt} className="detailPrintButton" title={t('printOrderTitle')}>⎙</button>
                   )}
                 </div>
 
@@ -1353,7 +1371,7 @@ export default function Dashboard({ user, onLogout }) {
                             return (
                               <React.Fragment key={step}>
                                 <div className={`step${isDone ? ' done' : ''}${isNow ? ' now' : ''}`}>
-                                  <i>{isDone ? '✓' : i + 1}</i><span>{step}</span>
+                                  <i>{isDone ? '✓' : i + 1}</i><span>{translateDbValue(step)}</span>
                                 </div>
                                 {i < STEPS.length - 1 && <div className={`bar${i < stepIdx || doneStatus ? ' done' : ''}`} />}
                               </React.Fragment>
@@ -1364,36 +1382,38 @@ export default function Dashboard({ user, onLogout }) {
                         <div className="billBody">
                         <div className="infoGrid">
                           <a className="infoRow" href={`tel:${selectedOrder.phone}`}><i>📞</i><span>{selectedOrder.phone}</span></a>
-                          <div className="infoRow"><i>🕒</i><span>{timeAgo(selectedOrder.timestamp, nowTick).text} · {selectedOrder.type} · {selectedOrder.channel}</span></div>
+                          <div className="infoRow"><i>🕒</i><span>{timeAgo(selectedOrder.timestamp, nowTick).text} · {translateDbValue(selectedOrder.type)} · {translateDbValue(selectedOrder.channel)}</span></div>
                           <a className="infoRow addr" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedOrder.address || '')}`} target="_blank" rel="noopener noreferrer"><i>📍</i><span>{selectedOrder.address}</span></a>
                         </div>
 
                         {getOrderNote(selectedOrder) && (
                           <div className="customerRequest">
-                            <strong>⚠ ORDER NOTE · SHARED WITH KITCHEN &amp; STAFF</strong>
+                            <strong>⚠ {t('orderNoteSharedBanner')}</strong>
                             <span style={{whiteSpace: 'pre-wrap'}}>{getOrderNote(selectedOrder)}</span>
                           </div>
                         )}
                         <div className="orderNotesEditor">
                           <label>
-                            Order note (kitchen, staff and receipt)
-                            <textarea value={orderNote} onChange={event => setOrderNote(event.target.value)} rows={1} placeholder="Add a note for the kitchen, staff, or customer" />
+                            {t('orderNoteLabel')}
+                            <textarea value={orderNote} onChange={event => setOrderNote(event.target.value)} rows={1} placeholder={t('orderNotePlaceholder')} />
                           </label>
                           <button type="button" className="saveOrderNotesButton" onClick={saveOrderNotes} disabled={savingOrderNotes}>
-                            {savingOrderNotes ? 'Saving…' : 'Save notes'}
+                            {savingOrderNotes ? t('savingDots') : t('saveNotesBtn')}
                           </button>
                         </div>
 
                         <div className="prepTimeControl">
-                          <span>◷ &nbsp; PREP</span>
+                          <span>◷   {t('prepLabel')}</span>
                           <div>
-                            <button aria-label="Decrease prep time" onClick={() => setPrepMinutes(minutes => Math.max(5, minutes - 5))}>−</button>
-                            <strong>{prepMinutes}<small> min</small></strong>
-                            <button aria-label="Increase prep time" onClick={() => setPrepMinutes(minutes => minutes + 5)}>+</button>
+                            <button aria-label={t('decreasePrepTime')} onClick={() => setPrepMinutes(minutes => Math.max(5, minutes - 5))}>−</button>
+                            <strong>{prepMinutes}<small> {t('minShort')}</small></strong>
+                            <button aria-label={t('increasePrepTime')} onClick={() => setPrepMinutes(minutes => minutes + 5)}>+</button>
                           </div>
                         </div>
 
-                        <div className="itemsHeading">ITEMS ({selectedOrder.items.length} LINES · {selectedOrder.items.reduce((sum, item) => sum + item.qty, 0)} QTY)</div>
+                        <div className="itemsHeading">
+                          {t('itemsUpper')} ({selectedOrder.items.length} {t('linesUpper')} · {selectedOrder.items.reduce((sum, item) => sum + item.qty, 0)} {t('qtyUpper')})
+                        </div>
                         <div className="detailItems">
                           {selectedOrder.items.map((item, index) => (
                             <div className="detailItem" key={`${item.name}-${index}`} style={{ animationDelay: `${Math.min(index, 6) * 60}ms` }}>
@@ -1410,18 +1430,18 @@ export default function Dashboard({ user, onLogout }) {
 
                         <div className="billFoot">
                         <div className="orderTotals">
-                          <div><span>Subtotal</span><strong>₹{selectedOrder.subtotal.toFixed(2)}</strong></div>
-                          <div><span>Tax (Mapped)</span><strong>₹{(selectedOrder.totalTax || (selectedOrder.subtotal * 0.05)).toFixed(2)}</strong></div>
-                          <div className="totalLine"><strong>Total</strong><strong>₹{selectedOrder.total.toFixed(2)}</strong></div>
+                          <div><span>{t('subtotal')}</span><strong>₹{selectedOrder.subtotal.toFixed(2)}</strong></div>
+                          <div><span>{t('taxMapped')}</span><strong>₹{(selectedOrder.totalTax || (selectedOrder.subtotal * 0.05)).toFixed(2)}</strong></div>
+                          <div className="totalLine"><strong>{t('total')}</strong><strong>₹{selectedOrder.total.toFixed(2)}</strong></div>
                         </div>
 
                         <div className="detailActionBar">
                           {!doneStatus ? (
                             <button onClick={() => updateOrderStatus(selectedOrder.orderId, selectedOrder.status)} className="prepareButton" style={{ '--st': nextColor }}>
-                              ♧ &nbsp;{getNextActionLabel(selectedOrder.status)}
+                              ♧  {getNextActionLabel(selectedOrder.status)}
                             </button>
                           ) : (
-                            <span className="completedMessage">Order completed successfully ✓</span>
+                            <span className="completedMessage">{t('orderCompletedMsg')} ✓</span>
                           )}
                         </div>
                         </div>
@@ -1429,7 +1449,7 @@ export default function Dashboard({ user, onLogout }) {
                     );
                   })()
                 ) : (
-                  <div className="emptyDetail"><span className="emptyIcon">🧾</span><span>Select an order to view its details.</span></div>
+                  <div className="emptyDetail"><span className="emptyIcon">🧾</span><span>{t('selectOrderPrompt')}</span></div>
                 )}
               </div>
             </div>
@@ -1457,27 +1477,27 @@ export default function Dashboard({ user, onLogout }) {
         <div className="modalOverlay" style={styles.modalOverlay}>
           <div className="popupCard" style={styles.popupCard}>
             <div className="bell">🔔</div>
-            <h3 style={{margin: '0 0 6px 0', fontSize: '20px', fontWeight: '950', color: '#0f172a'}}>New Online Order Received!</h3>
+            <h3 style={{margin: '0 0 6px 0', fontSize: '20px', fontWeight: '950', color: '#0f172a'}}>{t('newOrderPopupTitle')}</h3>
             <p style={{margin: '0 0 16px 0', fontSize: '13px', color: '#64748b', fontWeight: '800'}}>
-              Order <b>{newOrderPopup.id}</b> from <b>{newOrderPopup.customer}</b> (₹{newOrderPopup.total})
+              {t('orderWord')} <b>{newOrderPopup.id}</b> {t('fromWord')} <b>{newOrderPopup.customer}</b> (₹{newOrderPopup.total})
             </p>
             <div style={{display: 'flex', gap: '10px', width: '100%'}}>
-              <button 
+              <button
                 onClick={() => {
                   setSelectedOrder(newOrderPopup);
                   setActiveTab('Online Orders');
                   setNewOrderPopup(null);
-                }} 
+                }}
                 className="primaryModalBtn"
                 style={styles.primaryModalBtn}
               >
-                View Order
+                {t('viewOrderBtn')}
               </button>
-              <button 
-                onClick={() => setNewOrderPopup(null)} 
+              <button
+                onClick={() => setNewOrderPopup(null)}
                 style={styles.secondaryModalBtn}
               >
-                Dismiss
+                {t('dismissBtn')}
               </button>
             </div>
           </div>
@@ -1504,67 +1524,67 @@ export default function Dashboard({ user, onLogout }) {
           <div className="profileCard" style={styles.modernProfileCard} onClick={(e) => e.stopPropagation()}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1.5px solid #f1f5f9', paddingBottom: '14px'}}>
               <div>
-                <h3 style={{margin: 0, color: '#0f172a', fontSize: '18px', fontWeight: '950'}}>Admin Profile</h3>
-                <span style={{fontSize: '12px', color: '#64748b', fontWeight: '700'}}>Manage your restaurant account details</span>
+                <h3 style={{margin: 0, color: '#0f172a', fontSize: '18px', fontWeight: '950'}}>{t('adminProfileTitle')}</h3>
+                <span style={{fontSize: '12px', color: '#64748b', fontWeight: '700'}}>{t('adminProfileSubtitle')}</span>
               </div>
               <button onClick={() => setShowProfileModal(false)} style={styles.closeXBtn}>✕</button>
             </div>
 
             {isProfileFallback && (
               <div style={{fontSize: '11px', color: '#dc2626', marginBottom: '12px', fontWeight: 'bold', background: '#fef2f2', padding: '8px 12px', borderRadius: '8px'}}>
-                ⚠️ Running on local profile fallback (Database sync pending)
+                ⚠️ {t('profileFallbackNotice')}
               </div>
             )}
-            
+
             {!isEditingProfile ? (
               <div style={{display: 'flex', flexDirection: 'column', gap: '14px'}}>
-                <div className="profileRow" style={styles.profileRow}><span>Business Name</span> <strong>{profileData.businessName}</strong></div>
-                <div className="profileRow" style={styles.profileRow}><span>Owner / Admin Name</span> <strong style={{color: '#059669'}}>{profileData.ownerName}</strong></div>
-                <div className="profileRow" style={styles.profileRow}><span>Login Email</span> <strong>{profileData.email}</strong></div>
-                <div className="profileRow" style={styles.profileRow}><span>Phone Number</span> <strong>{profileData.phone}</strong></div>
-                <div className="profileRow" style={styles.profileRow}><span>WhatsApp Number</span> <strong>{profileData.whatsappNumber}</strong></div>
+                <div className="profileRow" style={styles.profileRow}><span>{t('businessNameLabel')}</span> <strong>{profileData.businessName}</strong></div>
+                <div className="profileRow" style={styles.profileRow}><span>{t('ownerAdminNameLabel')}</span> <strong style={{color: '#059669'}}>{profileData.ownerName}</strong></div>
+                <div className="profileRow" style={styles.profileRow}><span>{t('loginEmailLabel')}</span> <strong>{profileData.email}</strong></div>
+                <div className="profileRow" style={styles.profileRow}><span>{t('phoneNumberLabel')}</span> <strong>{profileData.phone}</strong></div>
+                <div className="profileRow" style={styles.profileRow}><span>{t('whatsappNumberLabel')}</span> <strong>{profileData.whatsappNumber}</strong></div>
 
                 <div style={{display: 'flex', gap: '12px', marginTop: '16px'}}>
-                  <button onClick={() => setIsEditingProfile(true)} className="primaryModalBtn" style={styles.primaryModalBtn}>Edit Profile</button>
-                  <button onClick={() => setShowProfileModal(false)} style={styles.secondaryModalBtn}>Close</button>
+                  <button onClick={() => setIsEditingProfile(true)} className="primaryModalBtn" style={styles.primaryModalBtn}>{t('editProfileBtn')}</button>
+                  <button onClick={() => setShowProfileModal(false)} style={styles.secondaryModalBtn}>{t('closeBtn')}</button>
                 </div>
               </div>
             ) : (
               <form onSubmit={handleSaveProfile} style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-                <label style={styles.modalLabel}>Business Name *</label>
-                <input 
+                <label style={styles.modalLabel}>{t('businessNameRequired')}</label>
+                <input
                   style={styles.modalInput}
-                  value={editForm.businessName} 
-                  onChange={e => setEditForm({...editForm, businessName: e.target.value})} 
-                  required
-                />
-                
-                <label style={styles.modalLabel}>Owner / Admin Name *</label>
-                <input 
-                  style={styles.modalInput}
-                  value={editForm.ownerName} 
-                  onChange={e => setEditForm({...editForm, ownerName: e.target.value})} 
+                  value={editForm.businessName}
+                  onChange={e => setEditForm({...editForm, businessName: e.target.value})}
                   required
                 />
 
-                <label style={styles.modalLabel}>Phone Number (Verified)</label>
-                <input 
+                <label style={styles.modalLabel}>{t('ownerAdminNameRequired')}</label>
+                <input
+                  style={styles.modalInput}
+                  value={editForm.ownerName}
+                  onChange={e => setEditForm({...editForm, ownerName: e.target.value})}
+                  required
+                />
+
+                <label style={styles.modalLabel}>{t('phoneNumberVerified')}</label>
+                <input
                   style={{...styles.modalInput, backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed'}}
-                  value={editForm.phone} 
+                  value={editForm.phone}
                   disabled
                 />
 
-                <label style={styles.modalLabel}>WhatsApp Number *</label>
-                <input 
+                <label style={styles.modalLabel}>{t('whatsappNumberRequired')}</label>
+                <input
                   style={styles.modalInput}
-                  value={editForm.whatsappNumber} 
-                  onChange={e => setEditForm({...editForm, whatsappNumber: e.target.value})} 
+                  value={editForm.whatsappNumber}
+                  onChange={e => setEditForm({...editForm, whatsappNumber: e.target.value})}
                   required
                 />
 
                 <div style={{display: 'flex', gap: '10px', marginTop: '16px'}}>
-                  <button type="submit" className="primaryModalBtn" style={styles.primaryModalBtn}>Save to Database</button>
-                  <button type="button" onClick={() => setIsEditingProfile(false)} style={styles.secondaryModalBtn}>Cancel</button>
+                  <button type="submit" className="primaryModalBtn" style={styles.primaryModalBtn}>{t('saveToDatabaseBtn')}</button>
+                  <button type="button" onClick={() => setIsEditingProfile(false)} style={styles.secondaryModalBtn}>{t('cancelBtn')}</button>
                 </div>
               </form>
             )}

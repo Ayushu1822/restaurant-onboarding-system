@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from './LanguageContext';
 
-const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
+const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const AGE_GROUPS = [
-  '0-6', '6-12', '12-18', '18-24', '25-34', 
+  '0-6', '6-12', '12-18', '18-24', '25-34',
   '35-44', '45-54', '55-64', '65-74', '75-84', '85-100+'
 ];
 
 export default function CounterPOS() {
+  const { t, translateDbValue, getLocalizedField } = useLanguage();
   const [orderType, setOrderType] = useState(null); // 'Dine-In' or 'Takeaway'
 
   const [hoveredCard, setHoveredCard] = useState(null);
@@ -17,8 +19,8 @@ export default function CounterPOS() {
   const [menuItems, setMenuItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState([]);
-  const [specialNote, setSpecialNote] = useState(''); // 📝 Special Note / Instructions state
-  
+  const [specialNote, setSpecialNote] = useState('');
+
   // Receipt Configuration state synced with Settings Module
   const [receiptConfig, setReceiptConfig] = useState({
     restaurantName: 'LINGA FOODS',
@@ -61,7 +63,7 @@ export default function CounterPOS() {
       footerText: true
     }
   });
-  
+
   // Identical Customer Form State matching CustomersModule
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [customerName, setCustomerName] = useState('');
@@ -77,7 +79,7 @@ export default function CounterPOS() {
   const [recentSearchQuery, setRecentSearchQuery] = useState('');
 
   const [paymentMethod, setPaymentMethod] = useState('UPI');
-  
+
   // 💳 Split Payment State for Receipt & Checkout
   const [splitPayment, setSplitPayment] = useState(false);
   const [pay1Method, setPay1Method] = useState('Cash');
@@ -99,8 +101,8 @@ export default function CounterPOS() {
           if (typeof parsedCfg === 'string') {
             try { parsedCfg = JSON.parse(parsedCfg); } catch (e) { parsedCfg = {}; }
           }
-          setReceiptConfig(prev => ({ 
-            ...prev, 
+          setReceiptConfig(prev => ({
+            ...prev,
             ...parsedCfg,
             toggles: {
               ...(prev.toggles || {}),
@@ -121,19 +123,26 @@ export default function CounterPOS() {
             const rawPrice = item.price ?? item.itemPrice ?? item.cost ?? item.rate ?? item.amount ?? item.unitPrice ?? 0;
             const parsedPrice = Number(rawPrice);
             const taxGroupName = item.taxGroup || storedTaxMap[item.id] || storedTaxMap[item.itemName] || 'Standard Restaurant (5%)';
-            
+
             let taxRate = 5;
             const match = taxGroupName.match(/\((\d+)%\)/);
             if (match && match[1]) {
               taxRate = Number(match[1]);
             }
 
+            const rawName = item.name || item.itemName || item.dishName || item.title || t('posUnnamedItem');
+            const localizedName = getLocalizedField(item, 'itemName') || getLocalizedField(item, 'name') || rawName;
+            const rawCat = item.category || item.foodType || item.menuType || 'Dishes';
+            const localizedCat = getLocalizedField(item, 'category') || rawCat;
+
             return {
               ...item,
               id: item.id || item.menuId || idx,
-              name: item.name || item.itemName || item.dishName || item.title || 'Unnamed Item',
+              name: localizedName,
+              rawName,
               price: isNaN(parsedPrice) ? 0 : parsedPrice,
-              category: item.category || item.foodType || item.menuType || 'Dishes',
+              category: localizedCat,
+              rawCategory: rawCat,
               taxGroup: taxGroupName,
               taxRate: taxRate
             };
@@ -148,7 +157,7 @@ export default function CounterPOS() {
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setSavedCustomers(data); })
       .catch(err => console.log("Customers fetch error:", err));
-  }, []);
+  }, [getLocalizedField, t]);
 
   const handlePhoneLookup = (phone) => {
     setCustomerPhone(phone);
@@ -183,17 +192,17 @@ export default function CounterPOS() {
 
   const handleSaveCustomerProfile = (e) => {
     e.preventDefault();
-    if (!customerPhone || !customerName) return alert('Please enter Name and Phone number.');
+    if (!customerPhone || !customerName) return alert(t('posEnterNamePhoneAlert'));
 
     const userEmail = localStorage.getItem('userEmail') || '';
-    const custObj = { 
-      customerName, 
+    const custObj = {
+      customerName,
       gender,
       ageGroup,
       preferredFood,
-      customerPhone, 
+      customerPhone,
       whatsappNumber: whatsappNumber || customerPhone,
-      customerEmail, 
+      customerEmail,
       address,
       restaurantEmail: userEmail
     };
@@ -212,7 +221,7 @@ export default function CounterPOS() {
 
   const handleAddToCart = (item) => {
     const itemId = item.id || item.menuId;
-    const itemName = item.itemName || item.name;
+    const itemName = item.name || item.itemName;
     const itemPrice = item.unitPrice || item.price;
     const taxRate = item.taxRate ?? 5;
     const taxGroup = item.taxGroup || 'Standard Restaurant (5%)';
@@ -240,16 +249,20 @@ export default function CounterPOS() {
   const totalAmount = Math.round(subtotal + tax);
 
   const handleCheckout = () => {
-    if (cart.length === 0) return alert('Cart is empty!');
-    if (!customerPhone || !customerName) return alert('Please add Customer details using the "+ Add Customer" button.');
+    if (cart.length === 0) return alert(t('posCartEmptyAlert'));
+    if (!customerPhone || !customerName) return alert(t('posAddCustomerAlert'));
 
     setIsSubmitting(true);
     const userEmail = localStorage.getItem('userEmail') || '';
     const istTimestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
-    const finalPaymentDescription = splitPayment 
-      ? `Split: ${pay1Method} (₹${pay1Amount || (totalAmount/2).toFixed(2)}) + ${pay2Method} (₹${(totalAmount - (Number(pay1Amount) || totalAmount/2)).toFixed(2)})`
-      : paymentMethod;
+    const pay1Val = pay1Amount || (totalAmount / 2).toFixed(2);
+    const pay2Val = (totalAmount - (Number(pay1Amount) || totalAmount / 2)).toFixed(2);
+    const finalPaymentDescription = splitPayment
+      ? `${t('posSplitPrefix')}: ${translateDbValue(pay1Method)} (₹${pay1Val}) + ${translateDbValue(pay2Method)} (₹${pay2Val})`
+      : translateDbValue(paymentMethod);
+
+    const addressLabel = orderType === 'Dine-In' ? t('posDineInCounterService') : t('posTakeawayCounter');
 
     const orderPayload = {
       displayId: `#POS-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -260,11 +273,11 @@ export default function CounterPOS() {
       customerEmail,
       orderType: orderType,
       channel: 'COUNTER',
-      deliveryAddress: orderType === 'Dine-In' ? 'Dine-In Counter Service' : 'Takeaway Counter',
-      customerRequest: specialNote || '', 
+      deliveryAddress: addressLabel,
+      customerRequest: specialNote || '',
       paymentMethod: finalPaymentDescription,
       paymentStatus: 'PAID',
-      status: 'Preparing', 
+      status: 'Preparing',
       subtotal: subtotal,
       totalTax: tax,
       totalAmount: totalAmount,
@@ -306,15 +319,14 @@ export default function CounterPOS() {
     return receiptConfig[key] !== undefined ? receiptConfig[key] : defVal;
   };
 
-  // Footer printed on the bill: only what is configured in Settings (no hardcoded test text)
   const receiptFooter = receiptConfig.footerText || receiptConfig.footerNote || '';
 
   const handlePrintReceipt = () => {
     if (!lastCompletedOrder) return;
-    
+
     const printWindow = window.open('', '_blank', 'width=450,height=600');
     if (!printWindow) {
-      alert('Popup blocked! Please allow popups for printing.');
+      alert(t('popupBlockedToast'));
       return;
     }
 
@@ -324,15 +336,15 @@ export default function CounterPOS() {
           <span>${it.quantity}x ${it.itemName}</span>
           <span>₹${(it.unitPrice * it.quantity).toFixed(2)}</span>
         </div>
-        ${isFieldOn('itemRate', true) ? `<div style="font-size: 9px; color: #555;">Rate: ₹${it.unitPrice} each (${it.taxRate}% tax)</div>` : ''}
-        ${isFieldOn('itemNotes', true) && it.itemDescription ? `<div style="font-size: 9px; color: #b45309; font-style: italic;">&nbsp;• ${it.itemDescription}</div>` : ''}
+        ${isFieldOn('itemRate', true) ? `<div style="font-size: 9px; color: #555;">${t('receiptRate')}: ₹${it.unitPrice} ${t('posEach')} (${it.taxRate}% ${t('receiptTaxShort')})</div>` : ''}
+        ${isFieldOn('itemNotes', true) && it.itemDescription ? `<div style="font-size: 9px; color: #b45309; font-style: italic;"> • ${it.itemDescription}</div>` : ''}
       </div>
     `).join('');
 
     printWindow.document.write(`
       <html>
         <head>
-          <title>Receipt - ${lastCompletedOrder.id}</title>
+          <title>${t('receiptTitlePrefix')} - ${lastCompletedOrder.id}</title>
           <style>
             body { font-family: monospace; padding: 16px; color: #000; background: #fff; width: ${receiptConfig.paperSize === '58mm' ? '58mm' : '80mm'}; margin: 0 auto; font-size: ${receiptConfig.density === 'Compact' ? '10px' : '12px'}; line-height: 1.4; }
             .center { text-align: center; }
@@ -347,42 +359,42 @@ export default function CounterPOS() {
           ${isFieldOn('restaurantName', true) ? `<div class="center bold" style="font-size: 14px;">${(receiptConfig.restaurantName || 'RESTAURANT').toUpperCase()}</div>` : ''}
           ${isFieldOn('branchName', true) && receiptConfig.branchName ? `<div class="center" style="font-size: 11px;">${receiptConfig.branchName}</div>` : ''}
           ${isFieldOn('address', true) && receiptConfig.address ? `<div class="center" style="font-size: 10px; color: #333; margin: 3px 0; white-space: pre-line;">${receiptConfig.address}</div>` : ''}
-          ${isFieldOn('phone', true) && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">Ph: ${receiptConfig.phone}</div>` : ''}
+          ${isFieldOn('phone', true) && receiptConfig.phone ? `<div class="center" style="font-size: 10px; color: #333;">${t('receiptPhoneShort')}: ${receiptConfig.phone}</div>` : ''}
           ${isFieldOn('email', false) && receiptConfig.email ? `<div class="center" style="font-size: 10px; color: #333;">${receiptConfig.email}</div>` : ''}
           ${isFieldOn('gstin', true) && receiptConfig.gstin ? `<div class="center" style="font-size: 10px; color: #333;">GSTIN: ${receiptConfig.gstin}</div>` : ''}
           ${isFieldOn('fssai', true) && receiptConfig.fssai ? `<div class="center" style="font-size: 10px; color: #333; margin-bottom: 6px;">${receiptConfig.fssai}</div>` : ''}
-          
+
           <div class="line"></div>
-          ${isFieldOn('tokenNumber', true) && lastCompletedOrder.tokenNumber ? `<div class="center" style="font-size: 12px; font-weight: bold; margin-bottom: 4px;">TOKEN: #${lastCompletedOrder.tokenNumber}</div>` : ''}
-          ${isFieldOn('invoiceNo', true) ? `<div><strong>Receipt No:</strong> ${lastCompletedOrder.id}</div>` : ''}
-          ${isFieldOn('orderId', true) ? `<div><strong>Order ID:</strong> ${lastCompletedOrder.id}</div>` : ''}
-          ${isFieldOn('orderType', true) ? `<div><strong>Type:</strong> ${lastCompletedOrder.orderType} (${lastCompletedOrder.deliveryAddress || ''})</div>` : ''}
-          ${isFieldOn('dateAndTime', true) ? `<div><strong>Date:</strong> ${lastCompletedOrder.timestamp}</div>` : ''}
-          ${isFieldOn('customerName', true) && lastCompletedOrder.customerName ? `<div><strong>Customer:</strong> ${lastCompletedOrder.customerName}</div>` : ''}
-          ${isFieldOn('customerMobile', true) && lastCompletedOrder.customerPhone ? `<div><strong>Mobile:</strong> ${lastCompletedOrder.customerPhone}</div>` : ''}
-          
+          ${isFieldOn('tokenNumber', true) && lastCompletedOrder.tokenNumber ? `<div class="center" style="font-size: 12px; font-weight: bold; margin-bottom: 4px;">${t('posTokenLabel')}: #${lastCompletedOrder.tokenNumber}</div>` : ''}
+          ${isFieldOn('invoiceNo', true) ? `<div><strong>${t('receiptNo')}:</strong> ${lastCompletedOrder.id}</div>` : ''}
+          ${isFieldOn('orderId', true) ? `<div><strong>${t('receiptOrderId')}:</strong> ${lastCompletedOrder.id}</div>` : ''}
+          ${isFieldOn('orderType', true) ? `<div><strong>${t('receiptType')}:</strong> ${translateDbValue(lastCompletedOrder.orderType)} (${lastCompletedOrder.deliveryAddress || ''})</div>` : ''}
+          ${isFieldOn('dateAndTime', true) ? `<div><strong>${t('receiptDate')}:</strong> ${lastCompletedOrder.timestamp}</div>` : ''}
+          ${isFieldOn('customerName', true) && lastCompletedOrder.customerName ? `<div><strong>${t('receiptCustomer')}:</strong> ${lastCompletedOrder.customerName}</div>` : ''}
+          ${isFieldOn('customerMobile', true) && lastCompletedOrder.customerPhone ? `<div><strong>${t('receiptMobile')}:</strong> ${lastCompletedOrder.customerPhone}</div>` : ''}
+
           <div class="line"></div>
-          <div class="bold" style="margin-bottom: 6px;">ITEMS:</div>
+          <div class="bold" style="margin-bottom: 6px;">${t('receiptItemsHeading')}:</div>
           ${itemsHtml}
-          
+
           <div class="line"></div>
-          <div class="flex"><span>Subtotal:</span><span>₹${lastCompletedOrder.subtotal.toFixed(2)}</span></div>
-          ${isFieldOn('discount', true) && lastCompletedOrder.discount ? `<div class="flex"><span>Discount:</span><span>-₹${Number(lastCompletedOrder.discount).toFixed(2)}</span></div>` : ''}
-          
-          ${isFieldOn('totalTax', true) && !isFieldOn('taxBreakdown', true) ? `<div class="flex"><span>Total Tax:</span><span>₹${lastCompletedOrder.totalTax.toFixed(2)}</span></div>` : ''}
+          <div class="flex"><span>${t('subtotal')}:</span><span>₹${lastCompletedOrder.subtotal.toFixed(2)}</span></div>
+          ${isFieldOn('discount', true) && lastCompletedOrder.discount ? `<div class="flex"><span>${t('discount')}:</span><span>-₹${Number(lastCompletedOrder.discount).toFixed(2)}</span></div>` : ''}
+
+          ${isFieldOn('totalTax', true) && !isFieldOn('taxBreakdown', true) ? `<div class="flex"><span>${t('totalTax')}:</span><span>₹${lastCompletedOrder.totalTax.toFixed(2)}</span></div>` : ''}
           ${isFieldOn('totalTax', true) && isFieldOn('taxBreakdown', true) ? `
             <div class="flex"><span>CGST (2.5%):</span><span>₹${(lastCompletedOrder.totalTax / 2).toFixed(2)}</span></div>
             <div class="flex"><span>SGST (2.5%):</span><span>₹${(lastCompletedOrder.totalTax / 2).toFixed(2)}</span></div>
           ` : ''}
-          
-          <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>TOTAL:</span><span>₹${Number(lastCompletedOrder.totalAmount).toFixed(2)}</span></div>
-          
+
+          <div class="flex bold" style="font-size: 13px; margin-top: 6px;"><span>${t('totalUpper')}:</span><span>₹${Number(lastCompletedOrder.totalAmount).toFixed(2)}</span></div>
+
           <div class="line"></div>
-          ${isFieldOn('paymentMethod', true) ? `<div><strong>Payment:</strong> ${splitPayment ? `Split (${pay1Method} + ${pay2Method})` : lastCompletedOrder.paymentMethod}</div>` : ''}
-          
+          ${isFieldOn('paymentMethod', true) ? `<div><strong>${t('receiptPayment')}:</strong> ${splitPayment ? `${t('posSplitPrefix')} (${translateDbValue(pay1Method)} + ${translateDbValue(pay2Method)})` : lastCompletedOrder.paymentMethod}</div>` : ''}
+
           <div class="line"></div>
           ${isFieldOn('footerText', true) && receiptFooter ? `<div class="center" style="font-size: 10px; white-space: pre-line; margin-top: 6px;">${receiptFooter}</div>` : ''}
-          
+
           <script>
             window.onload = function() {
               window.print();
@@ -397,13 +409,20 @@ export default function CounterPOS() {
 
   const filteredMenu = menuItems.filter(item => {
     const isLive = (item.status || 'LIVE') === 'LIVE';
-    const name = item.itemName || item.name || '';
+    const name = item.name || item.itemName || '';
+    const rawName = item.rawName || '';
     const cat = item.category || '';
-    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) || cat.toLowerCase().includes(searchQuery.toLowerCase());
+    const rawCat = item.rawCategory || '';
+    const q = searchQuery.toLowerCase();
+    const matchesSearch =
+      name.toLowerCase().includes(q) ||
+      rawName.toLowerCase().includes(q) ||
+      cat.toLowerCase().includes(q) ||
+      rawCat.toLowerCase().includes(q);
     return isLive && matchesSearch;
   });
 
-  const uniqueCategories = Array.from(new Set(filteredMenu.map(i => i.category || 'Dishes')));
+  const uniqueCategories = Array.from(new Set(filteredMenu.map(i => i.category || t('posDishesCategory'))));
 
   const filteredRecentCustomers = savedCustomers.filter(c => {
     const q = recentSearchQuery.toLowerCase();
@@ -417,30 +436,30 @@ export default function CounterPOS() {
         <style>{css}</style>
         <div className="cp-select-card">
           <div className="cp-select-icon">🍽️</div>
-          <h2 className="cp-select-title">Counter POS Workstation</h2>
-          <p className="cp-select-sub">Select order fulfillment channel to proceed</p>
-          
+          <h2 className="cp-select-title">{t('posWorkstationTitle')}</h2>
+          <p className="cp-select-sub">{t('posSelectChannelSub')}</p>
+
           <div className="cp-mode-row">
-            <div 
+            <div
               onClick={() => setOrderType('Dine-In')}
               onMouseEnter={() => setHoveredCard('Dine-In')}
               onMouseLeave={() => setHoveredCard(null)}
               className="cp-mode"
             >
               <span className="cp-mode-icon">🪑</span>
-              <div className="cp-mode-name">DINE IN</div>
-              <div className="cp-mode-sub">Table Service Counter</div>
+              <div className="cp-mode-name">{t('posDineInMode')}</div>
+              <div className="cp-mode-sub">{t('posTableServiceCounter')}</div>
             </div>
 
-            <div 
+            <div
               onClick={() => setOrderType('Takeaway')}
               onMouseEnter={() => setHoveredCard('Takeaway')}
               onMouseLeave={() => setHoveredCard(null)}
               className="cp-mode is-takeaway"
             >
               <span className="cp-mode-icon">🛍️</span>
-              <div className="cp-mode-name">TAKEAWAY</div>
-              <div className="cp-mode-sub">Counter Parcel Pickup</div>
+              <div className="cp-mode-name">{t('posTakeawayMode')}</div>
+              <div className="cp-mode-sub">{t('posCounterParcelPickup')}</div>
             </div>
           </div>
         </div>
@@ -451,28 +470,28 @@ export default function CounterPOS() {
   return (
     <div className="cp">
       <style>{css}</style>
-      
+
       {/* Main Counter POS Workspace */}
       <div className="cp-menu">
         <div className="cp-head">
           <div>
-            <h2 className="cp-title">Counter POS ({orderType})</h2>
-            <span className="cp-subtitle"><i className="cp-live" />Live Menu & Tax Synchronized</span>
+            <h2 className="cp-title">{t('navCounterPos')} ({translateDbValue(orderType)})</h2>
+            <span className="cp-subtitle"><i className="cp-live" />{t('posLiveMenuTaxSynced')}</span>
           </div>
           <div className="cp-head-tools">
-            <input 
+            <input
               className="cp-search"
-              placeholder="🔍 Search dishes or categories..."
+              placeholder={`🔍 ${t('posSearchDishesPlaceholder')}`}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
-            <button 
-              onClick={() => setOrderType(null)} 
+            <button
+              onClick={() => setOrderType(null)}
               onMouseEnter={() => setHoveredBtn('changeMode')}
               onMouseLeave={() => setHoveredBtn(null)}
               className="cp-switch-btn"
             >
-              Change Mode
+              {t('posChangeModeBtn')}
             </button>
           </div>
         </div>
@@ -482,11 +501,11 @@ export default function CounterPOS() {
           {filteredMenu.length === 0 ? (
             <div className="cp-empty">
               <span className="cp-empty-icon">🍽️</span>
-              No live menu items found. Add dishes in the Menu Module!
+              {t('posNoLiveMenuItems')}
             </div>
           ) : (
             uniqueCategories.map(cat => {
-              const catItems = filteredMenu.filter(item => (item.category || 'Dishes') === cat);
+              const catItems = filteredMenu.filter(item => (item.category || t('posDishesCategory')) === cat);
               if (catItems.length === 0) return null;
 
               return (
@@ -495,15 +514,16 @@ export default function CounterPOS() {
                   <div className="cp-grid">
                     {catItems.map(item => {
                       const itemId = item.id || item.menuId;
-                      const itemName = item.itemName || item.name;
+                      const itemName = item.name || item.itemName;
                       const itemPrice = item.unitPrice || item.price;
-                      const itemCat = item.category || 'Dishes';
-                      const isInCart = cart.some(i => i.id === itemId);
+                      const itemCat = item.category || t('posDishesCategory');
+                      const cartItem = cart.find(i => i.id === itemId);
+                      const isInCart = Boolean(cartItem);
 
                       return (
-                        <div 
-                          key={itemId} 
-                          onClick={() => handleAddToCart(item)} 
+                        <div
+                          key={itemId}
+                          onClick={() => handleAddToCart(item)}
                           onMouseEnter={() => setHoveredCard(itemId)}
                           onMouseLeave={() => setHoveredCard(null)}
                           className={`cp-card ${isInCart ? 'is-in-cart' : ''}`}
@@ -525,7 +545,7 @@ export default function CounterPOS() {
                           <div className="cp-card-bottom">
                             <span className="cp-card-price">₹{itemPrice}</span>
                             <span className="cp-add-chip">
-                              {isInCart ? 'Added (' + cart.find(i => i.id === itemId).qty + ')' : '+ Add'}
+                              {isInCart ? `${t('posAddedLabel')} (${cartItem.qty})` : `+ ${t('posAddBtn')}`}
                             </span>
                           </div>
                         </div>
@@ -542,26 +562,26 @@ export default function CounterPOS() {
       {/* Right Billing & Cart Sidebar */}
       <div className="cp-cart">
         <div className="cp-cart-head">
-          <h3 className="cp-cart-title">Current Bill</h3>
-          <button 
+          <h3 className="cp-cart-title">{t('posCurrentBill')}</h3>
+          <button
             onClick={() => setShowCustomerModal(true)}
             onMouseEnter={() => setHoveredBtn('addCustomer')}
             onMouseLeave={() => setHoveredBtn(null)}
             className={`cp-customer-btn ${customerPhone ? 'has-customer' : ''}`}
           >
-            {customerPhone ? '👤 ' + customerName : '+ Add Customer'}
+            {customerPhone ? `👤 ${customerName}` : `+ ${t('posAddCustomerBtn')}`}
           </button>
         </div>
 
         <div className="cp-cart-list">
           {cart.length === 0 ? (
-            <div className="cp-cart-empty"><span className="cp-empty-icon">🛒</span>Cart is empty. Tap menu items.</div>
+            <div className="cp-cart-empty"><span className="cp-empty-icon">🛒</span>{t('posCartEmptyHint')}</div>
           ) : (
             cart.map(item => (
               <div key={item.id} className="cp-cart-row">
                 <div className="cp-cart-info">
                   <div className="cp-cart-name">{item.name}</div>
-                  <div className="cp-cart-meta">₹{item.price} each · <span className="cp-cart-tax">{item.taxRate}% Tax</span></div>
+                  <div className="cp-cart-meta">₹{item.price} {t('posEach')} · <span className="cp-cart-tax">{item.taxRate}% {t('posTaxLabel')}</span></div>
                 </div>
                 <div className="cp-qty-wrap">
                   <button onClick={() => handleUpdateQty(item.id, -1)} className="cp-qty-btn">-</button>
@@ -576,10 +596,10 @@ export default function CounterPOS() {
 
         {/* 📝 Special Note / Customer Instructions Input Box */}
         <div className="cp-note-block">
-          <label className="cp-note-label">SPECIAL NOTE / KITCHEN INSTRUCTION</label>
-          <input 
+          <label className="cp-note-label">{t('posSpecialNoteUpper')}</label>
+          <input
             className="cp-note-input"
-            placeholder="e.g. Less spicy, Extra cheese..."
+            placeholder={t('posSpecialNotePlaceholder')}
             value={specialNote}
             onChange={e => setSpecialNote(e.target.value)}
           />
@@ -587,38 +607,38 @@ export default function CounterPOS() {
 
         <div className="cp-cart-footer">
           <div className="cp-sum-row">
-            <span>Subtotal</span>
+            <span>{t('subtotal')}</span>
             <span>₹{subtotal.toFixed(2)}</span>
           </div>
           <div className="cp-sum-row cp-sum-tax">
-            <span>Total Tax (Mapped)</span>
+            <span>{t('totalTax')} ({t('posMappedWord')})</span>
             <span>₹{tax.toFixed(2)}</span>
           </div>
           <div className="cp-sum-total">
-            <span>Total Amount</span>
+            <span>{t('posTotalAmount')}</span>
             <span className="cp-green">₹{totalAmount.toFixed(2)}</span>
           </div>
 
           <div className="cp-pay-row">
             {['UPI', 'CASH', 'CARD'].map(m => (
-              <button 
-                key={m} 
-                onClick={() => setPaymentMethod(m)} 
+              <button
+                key={m}
+                onClick={() => setPaymentMethod(m)}
                 className={`cp-pay-btn ${paymentMethod === m ? 'is-active' : ''}`}
               >
-                {m}
+                {translateDbValue(m)}
               </button>
             ))}
           </div>
 
-          <button 
-            onClick={handleCheckout} 
-            disabled={isSubmitting} 
+          <button
+            onClick={handleCheckout}
+            disabled={isSubmitting}
             onMouseEnter={() => setHoveredBtn('checkout')}
             onMouseLeave={() => setHoveredBtn(null)}
             className="cp-checkout-btn"
           >
-            {isSubmitting ? 'Processing...' : 'Complete Order & Print Bill'}
+            {isSubmitting ? t('posProcessingDots') : t('posCompleteOrderPrintBtn')}
           </button>
         </div>
       </div>
@@ -628,15 +648,15 @@ export default function CounterPOS() {
         <div className="cp-overlay">
           <div className="cp-modal">
             <div className="cp-modal-head">
-              <h3 className="cp-modal-title">Add Customer Profile</h3>
+              <h3 className="cp-modal-title">{t('posAddCustomerProfileTitle')}</h3>
               <button onClick={() => setShowCustomerModal(false)} className="cp-close-x">✕</button>
             </div>
 
             <form onSubmit={handleSaveCustomerProfile} className="cp-form">
-              <label className="cp-label">Customer Name *</label>
-              <input 
+              <label className="cp-label">{t('posCustomerNameRequired')}</label>
+              <input
                 className="cp-input"
-                placeholder="Full Name"
+                placeholder={t('posFullNamePlaceholder')}
                 value={customerName}
                 onChange={e => setCustomerName(e.target.value)}
                 required
@@ -644,50 +664,50 @@ export default function CounterPOS() {
 
               <div className="cp-two-col">
                 <div className="cp-col">
-                  <label className="cp-label">Gender</label>
-                  <select 
+                  <label className="cp-label">{t('posGenderLabel')}</label>
+                  <select
                     className="cp-input"
                     value={gender}
                     onChange={e => setGender(e.target.value)}
                   >
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
+                    <option value="Male">{t('posGenderMale')}</option>
+                    <option value="Female">{t('posGenderFemale')}</option>
+                    <option value="Other">{t('posGenderOther')}</option>
                   </select>
                 </div>
 
                 <div className="cp-col">
-                  <label className="cp-label">Age Group</label>
-                  <select 
+                  <label className="cp-label">{t('posAgeGroupLabel')}</label>
+                  <select
                     className="cp-input"
                     value={ageGroup}
                     onChange={e => setAgeGroup(e.target.value)}
                   >
-                    {AGE_GROUPS.map(ag => <option key={ag} value={ag}>{ag} yrs</option>)}
+                    {AGE_GROUPS.map(ag => <option key={ag} value={ag}>{ag} {t('posYrsShort')}</option>)}
                   </select>
                 </div>
               </div>
 
               <div className="cp-two-col">
                 <div className="cp-col">
-                  <label className="cp-label">Preferred Food</label>
-                  <select 
+                  <label className="cp-label">{t('posPreferredFoodLabel')}</label>
+                  <select
                     className="cp-input"
                     value={preferredFood}
                     onChange={e => setPreferredFood(e.target.value)}
                   >
-                    <option value="Veg">Veg</option>
-                    <option value="Non-Veg">Non-Veg</option>
-                    <option value="Vegan">Vegan</option>
-                    <option value="Eggetarian">Eggetarian</option>
+                    <option value="Veg">{t('posFoodVeg')}</option>
+                    <option value="Non-Veg">{t('posFoodNonVeg')}</option>
+                    <option value="Vegan">{t('posFoodVegan')}</option>
+                    <option value="Eggetarian">{t('posFoodEggetarian')}</option>
                   </select>
                 </div>
 
                 <div className="cp-col">
-                  <label className="cp-label">Phone Number *</label>
-                  <input 
+                  <label className="cp-label">{t('posPhoneNumberRequired')}</label>
+                  <input
                     className="cp-input"
-                    placeholder="10-digit mobile"
+                    placeholder={t('posTenDigitMobile')}
                     value={customerPhone}
                     onChange={e => handlePhoneLookup(e.target.value)}
                     required
@@ -695,32 +715,32 @@ export default function CounterPOS() {
                 </div>
               </div>
 
-              <label className="cp-label">Email Address</label>
-              <input 
+              <label className="cp-label">{t('posEmailAddressLabel')}</label>
+              <input
                 className="cp-input"
                 placeholder="customer@email.com"
                 value={customerEmail}
                 onChange={e => setCustomerEmail(e.target.value)}
               />
 
-              <label className="cp-label">Delivery Address</label>
-              <textarea 
+              <label className="cp-label">{t('receiptDeliveryAddress')}</label>
+              <textarea
                 className="cp-input cp-textarea"
-                placeholder="Street, Area, City"
+                placeholder={t('posAddressPlaceholder')}
                 value={address}
                 onChange={e => setAddress(e.target.value)}
               />
 
-              <button type="submit" className="cp-save-btn">Save & Apply Profile</button>
+              <button type="submit" className="cp-save-btn">{t('posSaveApplyProfileBtn')}</button>
             </form>
 
             {savedCustomers.length > 0 && (
               <div className="cp-recent">
                 <div className="cp-recent-head">
-                  <span className="cp-recent-title">Recent Customers</span>
-                  <input 
+                  <span className="cp-recent-title">{t('posRecentCustomers')}</span>
+                  <input
                     className="cp-recent-search"
-                    placeholder="Filter list..."
+                    placeholder={t('posFilterListPlaceholder')}
                     value={recentSearchQuery}
                     onChange={e => setRecentSearchQuery(e.target.value)}
                   />
@@ -728,11 +748,11 @@ export default function CounterPOS() {
 
                 <div className="cp-recent-list">
                   {filteredRecentCustomers.length === 0 ? (
-                    <div className="cp-recent-empty">No matching recent guests</div>
+                    <div className="cp-recent-empty">{t('posNoMatchingGuests')}</div>
                   ) : (
                     filteredRecentCustomers.map((c, idx) => (
-                      <div 
-                        key={idx} 
+                      <div
+                        key={idx}
                         onClick={() => handleSelectExistingCustomer(c)}
                         onMouseEnter={() => setHoveredRow(idx)}
                         onMouseLeave={() => setHoveredRow(null)}
@@ -742,9 +762,9 @@ export default function CounterPOS() {
                           <div className="cp-recent-name">{c.customerName}</div>
                           <div className="cp-recent-phone">{c.customerPhone} {c.ageGroup ? `• ${c.ageGroup}` : ''}</div>
                         </div>
-                        <button 
+                        <button
                           onClick={(e) => handleDeleteCustomer(e, c.customerPhone)}
-                          title="Remove from recent list"
+                          title={t('posRemoveRecentTitle')}
                           className="cp-recent-del"
                         >
                           🗑️
@@ -768,15 +788,15 @@ export default function CounterPOS() {
               <div className="cp-receipt-header-text">{receiptConfig.headerText}</div>
               <div className="cp-receipt-address">{receiptConfig.address}</div>
               <div className="cp-receipt-id">
-                Order ID: {lastCompletedOrder.id} · {lastCompletedOrder.timestamp}
+                {t('receiptOrderId')}: {lastCompletedOrder.id} · {lastCompletedOrder.timestamp}
               </div>
             </div>
 
             <div className="cp-receipt-info">
-              <div><strong>Customer:</strong> {lastCompletedOrder.customerName} ({lastCompletedOrder.customerPhone})</div>
-              <div><strong>Fulfillment:</strong> {lastCompletedOrder.orderType} ({lastCompletedOrder.deliveryAddress})</div>
+              <div><strong>{t('receiptCustomer')}:</strong> {lastCompletedOrder.customerName} ({lastCompletedOrder.customerPhone})</div>
+              <div><strong>{t('posFulfillmentLabel')}:</strong> {translateDbValue(lastCompletedOrder.orderType)} ({lastCompletedOrder.deliveryAddress})</div>
               {lastCompletedOrder.customerRequest && (
-                <div><strong>Note:</strong> <span className="cp-receipt-note">{lastCompletedOrder.customerRequest}</span></div>
+                <div><strong>{t('receiptNote')}:</strong> <span className="cp-receipt-note">{lastCompletedOrder.customerRequest}</span></div>
               )}
             </div>
 
@@ -790,15 +810,15 @@ export default function CounterPOS() {
             </div>
 
             <div className="cp-receipt-sum">
-              <span>Subtotal:</span>
+              <span>{t('subtotal')}:</span>
               <span>₹{lastCompletedOrder.subtotal.toFixed(2)}</span>
             </div>
             <div className="cp-receipt-sum cp-receipt-sum-tax">
-              <span>Total Tax:</span>
+              <span>{t('totalTax')}:</span>
               <span>₹{lastCompletedOrder.totalTax.toFixed(2)}</span>
             </div>
             <div className="cp-receipt-total">
-              <span>Total Amount:</span>
+              <span>{t('posTotalAmount')}:</span>
               <span className="cp-green">₹{Number(lastCompletedOrder.totalAmount).toFixed(2)}</span>
             </div>
 
@@ -806,8 +826,8 @@ export default function CounterPOS() {
             <div className="cp-split-box">
               <div className="cp-split-head">
                 <div>
-                  <div className="cp-split-title">⚡ Split Payment</div>
-                  <div className="cp-split-sub">Divide bill across two payment modes</div>
+                  <div className="cp-split-title">⚡ {t('posSplitPaymentTitle')}</div>
+                  <div className="cp-split-sub">{t('posSplitPaymentSub')}</div>
                 </div>
                 <input
                   type="checkbox"
@@ -820,22 +840,22 @@ export default function CounterPOS() {
               {splitPayment && (
                 <div className="cp-split-body">
                   <div className="cp-split-row">
-                    <span className="cp-split-label">Pay 1:</span>
+                    <span className="cp-split-label">{t('posPay1Label')}:</span>
                     <select value={pay1Method} onChange={e => setPay1Method(e.target.value)} className="cp-split-select">
-                      <option value="Cash">Cash 💵</option>
-                      <option value="UPI">UPI 📱</option>
-                      <option value="Card">Card 💳</option>
+                      <option value="Cash">{t('posPayCash')} 💵</option>
+                      <option value="UPI">{t('posPayUpi')} 📱</option>
+                      <option value="Card">{t('posPayCard')} 💳</option>
                     </select>
-                    <input 
+                    <input
                       type="number"
-                      placeholder="Amount"
+                      placeholder={t('posAmountPlaceholder')}
                       value={pay1Amount}
                       onChange={e => setPay1Amount(e.target.value)}
                       className="cp-split-input"
                     />
                   </div>
                   <div className="cp-split-pay2">
-                    Pay 2 ({pay2Method}): ₹{(lastCompletedOrder.totalAmount - (Number(pay1Amount) || 0)).toFixed(2)}
+                    {t('posPay2Label')} ({translateDbValue(pay2Method)}): ₹{(lastCompletedOrder.totalAmount - (Number(pay1Amount) || 0)).toFixed(2)}
                   </div>
                 </div>
               )}
@@ -843,10 +863,10 @@ export default function CounterPOS() {
 
             <div className="cp-btn-row">
               <button onClick={handlePrintReceipt} className="cp-print-btn">
-                🖨️ Print / Download Bill
+                🖨️ {t('posPrintDownloadBillBtn')}
               </button>
               <button onClick={() => { setLastCompletedOrder(null); setCart([]); setCustomerPhone(''); setCustomerName(''); setSpecialNote(''); setOrderType(null); setSplitPayment(false); }} className="cp-new-btn">
-                New Order
+                {t('posNewOrderBtn')}
               </button>
             </div>
           </div>

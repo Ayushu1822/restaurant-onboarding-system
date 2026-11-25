@@ -1,14 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from './LanguageContext';
 
-const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
+const API_BASE_URL = 'http://localhost:8080';
+
+const LOCALE_MAP = {
+  English: 'en-IN',
+  Hindi: 'hi-IN',
+  Marathi: 'mr-IN',
+  Telugu: 'te-IN',
+  Tamil: 'ta-IN',
+};
 
 export default function KitchenModule() {
+  const { t, translateDbValue, getLocalizedField, language } = useLanguage();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchKitchenOrders = () => {
     const userEmail = localStorage.getItem('userEmail') || '';
-    
+
     fetch(`${API_BASE_URL}/api/v1/orders?email=${userEmail}`)
       .then(res => {
         if (!res.ok) throw new Error('Server error');
@@ -65,7 +75,7 @@ export default function KitchenModule() {
   // 🖨️ Thermal KOT Slip Print Handler (Fetches live updated settings from backend & localStorage)
   const handlePrintKOT = async (order) => {
     const userEmail = localStorage.getItem('userEmail') || '';
-    
+
     // Default fallback config
     let activeConfig = {
       restaurantName: 'RESTAURANT',
@@ -102,17 +112,36 @@ export default function KitchenModule() {
 
     const printWindow = window.open('', '_blank', 'width=450,height=600');
     if (!printWindow) {
-      alert('Popup blocked! Please allow popups for kitchen printing.');
+      alert(t('kdsPopupBlocked'));
       return;
     }
 
     const items = order.items || order.orderItems || order.order_items || [];
-    const itemsHtml = items.map(it => `
-      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-        <span>${it.quantity || it.qty || 1}x ${it.itemName || it.item_name || it.name || 'Item'}</span>
-        <span>${it.itemDescription || it.item_description || ''}</span>
-      </div>
-    `).join('');
+    const itemsHtml = items.map(it => {
+      const localizedName =
+        getLocalizedField(it, 'itemName') ||
+        getLocalizedField(it, 'name') ||
+        it.itemName ||
+        it.item_name ||
+        it.name ||
+        t('kdsFoodItem');
+      const localizedDesc =
+        getLocalizedField(it, 'itemDescription') ||
+        getLocalizedField(it, 'description') ||
+        it.itemDescription ||
+        it.item_description ||
+        '';
+      return `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+          <span>${it.quantity || it.qty || 1}x ${localizedName}</span>
+          <span>${localizedDesc}</span>
+        </div>
+      `;
+    }).join('');
+
+    const orderTypeLabel = translateDbValue(order.type || order.orderType || 'Dine-In');
+    const channelLabel = translateDbValue(order.channel || 'COUNTER');
+    const formattedTime = new Date().toLocaleTimeString(LOCALE_MAP[language] || 'en-IN');
 
     printWindow.document.write(`
       <html>
@@ -126,21 +155,21 @@ export default function KitchenModule() {
           </style>
         </head>
         <body>
-          <div class="center bold" style="font-size: 14px;">*** KITCHEN ORDER TICKET ***</div>
+          <div class="center bold" style="font-size: 14px;">${t('kdsKotHeader')}</div>
           <div class="center bold" style="font-size: 13px; margin-top: 2px;">${(activeConfig.restaurantName || 'RESTAURANT').toUpperCase()}</div>
-          ${activeConfig.branchName ? `<div class="center" style="font-size: 10px; color: #333;">Branch: ${activeConfig.branchName}</div>` : ''}
+          ${activeConfig.branchName ? `<div class="center" style="font-size: 10px; color: #333;">${t('kdsBranch')} ${activeConfig.branchName}</div>` : ''}
           <div class="line"></div>
-          <div><strong>Order ID:</strong> ${order.displayId || order.id || 'N/A'}</div>
-          <div><strong>Customer / Table:</strong> ${order.customer || order.customerName || 'Walk-In'}</div>
-          <div><strong>Type:</strong> ${order.type || order.orderType || 'Dine-In'}</div>
-          <div><strong>Channel:</strong> ${order.channel || 'COUNTER'}</div>
-          <div><strong>Time:</strong> ${new Date().toLocaleTimeString()}</div>
-          ${order.customerRequest || order.specialNote ? `<div style="margin-top: 6px;"><strong>Note:</strong> ${order.customerRequest || order.specialNote}</div>` : ''}
+          <div><strong>${t('kdsOrderId')}</strong> ${order.displayId || order.id || 'N/A'}</div>
+          <div><strong>${t('kdsCustomerTable')}</strong> ${order.customer || order.customerName || t('kdsWalkIn')}</div>
+          <div><strong>${t('kdsType')}</strong> ${orderTypeLabel}</div>
+          <div><strong>${t('kdsChannel')}</strong> ${channelLabel}</div>
+          <div><strong>${t('kdsTime')}</strong> ${formattedTime}</div>
+          ${order.customerRequest || order.specialNote ? `<div style="margin-top: 6px;"><strong>${t('kdsNote')}</strong> ${order.customerRequest || order.specialNote}</div>` : ''}
           <div class="line"></div>
-          <div class="bold" style="margin-bottom: 6px;">ITEMS:</div>
+          <div class="bold" style="margin-bottom: 6px;">${t('kdsItems')}</div>
           ${itemsHtml}
           <div class="line"></div>
-          <div class="center" style="font-size: 10px;">*** PREPARE FRESH ***</div>
+          <div class="center" style="font-size: 10px;">${t('kdsPrepareFresh')}</div>
           <script>
             window.onload = function() {
               window.print();
@@ -165,33 +194,33 @@ export default function KitchenModule() {
       <div className="kds-header">
         <div className="kds-heading">
           <h2 className="kds-title">
-            Kitchen Display System (KDS)
+            {t('kdsTitle')}
             <span className="kds-live" aria-hidden="true" />
           </h2>
-          <span className="kds-subtitle">Live synchronized order preparation queue for your account</span>
+          <span className="kds-subtitle">{t('kdsSubtitle')}</span>
         </div>
         <button onClick={fetchKitchenOrders} className="kds-refresh">
-          <span className="kds-refresh-icon">🔄</span> Refresh Queue
+          <span className="kds-refresh-icon">🔄</span> {t('kdsRefresh')}
         </button>
       </div>
 
       {loading ? (
         <div className="kds-center">
           <span className="kds-spinner" aria-hidden="true" />
-          Loading live kitchen orders...
+          {t('kdsLoading')}
         </div>
       ) : activeOrders.length === 0 ? (
-        <div className="kds-center kds-empty">🎉 All kitchen orders are completed! Queue is empty.</div>
+        <div className="kds-center kds-empty">{t('kdsEmpty')}</div>
       ) : (
         <div className="kds-grid">
           {activeOrders.map((o, idx) => {
             const orderId = o.id || o.orderId || o.displayId;
             const displayId = o.displayId || o.display_id || `#ORD-${idx+1}`;
-            const customerName = o.customer || o.customerName || o.customer_name || 'Walk-In Guest';
+            const customerName = o.customer || o.customerName || o.customer_name || t('kdsWalkInGuest');
             const orderType = o.type || o.orderType || o.order_type || 'Dine-In';
             const channel = o.channel || 'COUNTER';
             const status = o.status || 'New';
-            
+
             const specialNote = o.customerRequest || o.customer_request || o.notes || o.specialNote || o.instruction || '';
             const items = o.items || o.orderItems || o.order_items || [];
 
@@ -206,17 +235,17 @@ export default function KitchenModule() {
                 <div className="kds-card-header">
                   <div className="kds-badges">
                     <span className="kds-id">{displayId}</span>
-                    <span className="kds-channel">{channel}</span>
+                    <span className="kds-channel">{translateDbValue(channel)}</span>
                   </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <button 
-                      onClick={() => handlePrintKOT(o)} 
+                    <button
+                      onClick={() => handlePrintKOT(o)}
                       className="kds-print-pill"
-                      title="Print KOT Slip"
+                      title={t('kdsPrintKot')}
                     >
-                      🖨️ Print KOT
+                      🖨️ {t('kdsPrintKot')}
                     </button>
-                    <span className="kds-type">{orderType}</span>
+                    <span className="kds-type">{translateDbValue(orderType)}</span>
                   </div>
                 </div>
 
@@ -227,15 +256,27 @@ export default function KitchenModule() {
 
                 {specialNote && (
                   <div className="kds-note">
-                    <span className="kds-note-label">📝 Special Note:</span> {specialNote}
+                    <span className="kds-note-label">📝 {t('kdsSpecialNote')}</span> {specialNote}
                   </div>
                 )}
 
                 <div className="kds-items">
                   {items.map((it, iIdx) => {
-                    const itemName = it.itemName || it.item_name || it.name || 'Food Item';
+                    const itemName =
+                      getLocalizedField(it, 'itemName') ||
+                      getLocalizedField(it, 'name') ||
+                      it.itemName ||
+                      it.item_name ||
+                      it.name ||
+                      t('kdsFoodItem');
                     const itemQty = it.quantity || it.qty || 1;
-                    const itemDesc = it.itemDescription || it.item_description || it.description || '';
+                    const itemDesc =
+                      getLocalizedField(it, 'itemDescription') ||
+                      getLocalizedField(it, 'description') ||
+                      it.itemDescription ||
+                      it.item_description ||
+                      it.description ||
+                      '';
                     return (
                       <div key={iIdx} className="kds-item">
                         <span className="kds-item-qty">{itemQty}x</span>
@@ -251,31 +292,31 @@ export default function KitchenModule() {
                 <div className="kds-footer">
                   <div className="kds-actions">
                     <span className="kds-status">
-                      Status: {status}
+                      {t('kdsStatusLabel')} {translateDbValue(status)}
                     </span>
-                    
+
                     {showMarkReady && (
-                      <button 
+                      <button
                         onClick={() => handleUpdateStatus(orderId, 'Ready')}
                         className="kds-btn kds-btn-ready"
                       >
-                        ✅ Mark Ready
+                        ✅ {t('kdsMarkReady')}
                       </button>
                     )}
 
                     {currentStatus === 'ready' && (
-                      <button 
+                      <button
                         onClick={() => handleUpdateStatus(orderId, 'Completed')}
                         className="kds-btn kds-btn-complete"
                       >
-                        🚀 Complete
+                        🚀 {t('kdsComplete')}
                       </button>
                     )}
 
-                    <button 
+                    <button
                       onClick={() => handleDeleteOrder(orderId)}
                       className="kds-btn-clear"
-                      title="Clear / Dismiss"
+                      title={t('kdsClearTitle')}
                     >
                       🗑️
                     </button>

@@ -1,10 +1,113 @@
 // FILE: src/components/SettingsModule.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import AdvancedSettingsTab from './AdvancedSettingsTab';
+import { useLanguage } from './LanguageContext';
 
-const API_BASE_URL = 'https://restaurant-backend-fphb.onrender.com';
+const API_BASE_URL = 'http://localhost:8080';
+
+/* =====================================================================
+   UI STYLESHEET  (flame palette · animated border on hover · responsive)
+   orange #f97316 · amber #fb923c · deep orange #ea580c · red-orange #ef4444
+   Inline styles can't do :hover / :focus / media queries, so they live here.
+   Nothing in this block touches logic.
+   ===================================================================== */
+
+const UI_CSS = `
+@property --sm-angle{syntax:'<angle>';initial-value:0deg;inherits:false}
+@keyframes sm-spin{to{--sm-angle:360deg}}
+@keyframes sm-in{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+
+/* ---------- animated border: a bright highlight circles the border on hover ---------- */
+.sm-card{position:relative;transition:box-shadow .25s ease,border-color .25s ease,transform .2s ease}
+.sm-card::before{
+  content:'';position:absolute;inset:-2px;border-radius:inherit;padding:2px;pointer-events:none;z-index:2;
+  background:conic-gradient(from var(--sm-angle),
+    rgba(254,215,170,0) 0%,rgba(254,215,170,0) 40%,
+    #fed7aa 58%,#ffffff 68%,#fb923c 78%,#ef4444 88%,rgba(254,215,170,0) 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  mask-composite:exclude;
+  opacity:0;transition:opacity .35s ease;animation:sm-spin 3.4s linear infinite}
+.sm-card:hover::before,.sm-card:focus-within::before{opacity:1}
+.sm-card:hover{border-color:#fbd5b5 !important;box-shadow:0 0 0 1px rgba(253,186,116,.25),0 14px 30px -16px rgba(249,115,22,.5) !important}
+.sm-lift:hover{transform:translateY(-2px)}
+
+/* ---------- buttons ---------- */
+.sm-btn-primary{background-image:linear-gradient(110deg,#fb923c 0%,#f97316 35%,#fdba74 50%,#f97316 65%,#ef4444 100%);background-size:300% 100%;background-position:100% 0;
+  transition:background-position .6s ease,box-shadow .2s ease,transform .1s ease}
+.sm-btn-primary:not(:disabled):hover{background-position:0 0;box-shadow:0 8px 20px -6px rgba(249,115,22,.6)}
+.sm-btn-primary:not(:disabled):active{transform:translateY(1px);box-shadow:none}
+.sm-btn-primary:disabled{opacity:.65;cursor:not-allowed}
+
+.sm-btn-ghost{transition:background-color .2s ease,border-color .2s ease,color .2s ease,box-shadow .2s ease,transform .1s ease}
+.sm-btn-ghost:hover{background-color:#fff7ed !important;border-color:#fb923c !important;color:#c2410c !important;box-shadow:0 4px 12px -4px rgba(249,115,22,.35)}
+.sm-btn-ghost:active{transform:translateY(1px);box-shadow:none}
+
+.sm-btn-link{transition:background-color .15s ease,color .15s ease;padding:4px 8px !important;border-radius:6px !important}
+.sm-btn-link:hover{background:#fff1e6 !important}
+
+.sm-icon-btn{transition:background-color .15s ease,transform .15s ease;border-radius:8px !important;padding:4px 6px !important}
+.sm-icon-btn:hover{background:#fff1e6 !important;transform:scale(1.12)}
+
+.sm-sidebar-btn{transition:background-color .2s ease,border-color .2s ease,color .2s ease,transform .2s ease,box-shadow .2s ease}
+.sm-sidebar-btn:not(.is-active):hover{background-color:#fff7ed !important;border-color:#fed7aa !important;color:#c2410c !important;transform:translateX(3px)}
+.sm-sidebar-btn.is-active{background-image:linear-gradient(135deg,#fff7ed,#ffedd5);box-shadow:0 8px 18px -12px rgba(249,115,22,.7)}
+
+.sm-btn-primary:focus-visible,.sm-btn-ghost:focus-visible,.sm-btn-link:focus-visible,.sm-icon-btn:focus-visible,.sm-sidebar-btn:focus-visible{
+  outline:2px solid #fb923c;outline-offset:2px}
+
+/* ---------- form fields (every input/select inside the module) ---------- */
+.sm-root input:not([type=checkbox]):not([type=radio]),.sm-root select{transition:border-color .2s ease,box-shadow .2s ease,background-color .2s ease}
+.sm-root input:not([type=checkbox]):not([type=radio]):not(:disabled):hover,.sm-root select:hover{border-color:#fb923c !important}
+.sm-root input:not([type=checkbox]):not([type=radio]):focus,.sm-root select:focus{border-color:#f97316 !important;box-shadow:0 0 0 3px rgba(251,146,60,.25);outline:none}
+
+/* ---------- table ---------- */
+.sm-tr{transition:background-color .15s ease}
+.sm-tr:hover{background-color:#fff8f3}
+
+/* ---------- misc ---------- */
+.sm-alert{animation:sm-in .25s ease}
+.sm-user-grid{display:grid;grid-template-columns:1.6fr .9fr 1fr 1fr auto;gap:12px;align-items:flex-end}
+
+/* ---------- responsive ---------- */
+@media (max-width:1100px){
+  .sm-user-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:900px){
+  .sm-root{padding:14px !important}
+  .sm-layout{flex-direction:column !important;gap:14px !important}
+  .sm-sidebar{width:100% !important;flex-direction:row !important;overflow-x:auto;box-sizing:border-box;-webkit-overflow-scrolling:touch}
+  .sm-sidebar-btn{width:auto !important;flex:0 0 auto;white-space:nowrap}
+  .sm-sidebar-btn:not(.is-active):hover{transform:translateY(-1px)}
+  .sm-content{width:100%;box-sizing:border-box;min-height:0 !important;padding:16px !important}
+}
+@media (max-width:720px){
+  .sm-header{flex-direction:column;align-items:stretch !important;gap:12px;padding:14px 16px !important}
+  .sm-header-actions{justify-content:space-between;flex-wrap:wrap;gap:10px !important}
+  .sm-banner,.sm-row-card,.sm-day-head,.sm-area-head,.sm-wrap{flex-wrap:wrap;gap:10px}
+  .sm-time-row{flex-wrap:wrap}
+  .sm-time-input{width:auto !important;flex:1 1 120px;min-width:0}
+}
+@media (max-width:560px){
+  .sm-user-grid{grid-template-columns:minmax(0,1fr)}
+  .sm-wrap > input,.sm-wrap > select{flex:1 1 100% !important}
+}
+
+/* ---------- accessibility ---------- */
+@media (prefers-reduced-motion:reduce){
+  .sm-card::before{animation:none !important}
+  .sm-card,.sm-btn-primary,.sm-btn-ghost,.sm-btn-link,.sm-icon-btn,.sm-sidebar-btn,.sm-tr,.sm-alert{transition:none !important;animation:none !important}
+}
+`;
+
+function UiStyles() {
+  return <style>{UI_CSS}</style>;
+}
 
 export default function SettingsModule() {
+  const { setLanguage, t, translateDbValue } = useLanguage();
+
   const [activeTab, setActiveTab] = useState('business');
   const [receiptSubTab, setReceiptSubTab] = useState('printers');
   const [loading, setLoading] = useState(true);
@@ -97,7 +200,7 @@ export default function SettingsModule() {
   useEffect(() => {
     const loggedInEmail = localStorage.getItem('userEmail');
     if (!loggedInEmail) {
-      alert('No logged-in user found! Please login first.');
+      alert(t('tbNoLoggedInUserAlert'));
       setLoading(false);
       return;
     }
@@ -110,7 +213,7 @@ export default function SettingsModule() {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/email/${email}`);
-      if (!res.ok) throw new Error('Failed to fetch profile from database');
+      if (!res.ok) throw new Error(t('smFetchProfileFail'));
       const data = await res.json();
       setFullProfile(data);
 
@@ -129,19 +232,28 @@ export default function SettingsModule() {
       let parsedPrinter = data.printerInfo;
       if (typeof parsedPrinter === 'string') { try { parsedPrinter = JSON.parse(parsedPrinter); } catch (e) {} }
 
-      setFormData(prev => ({ 
-        ...prev, ...data, email,
-        serviceHours: parsedHours || prev.serviceHours,
-        areasAndTables: parsedAreas || prev.areasAndTables,
-        deliveryConfig: parsedDelivery || prev.deliveryConfig,
-        billingConfig: parsedBilling || prev.billingConfig,
-        receiptConfig: parsedReceipt ? { ...prev.receiptConfig, ...parsedReceipt } : prev.receiptConfig,
-        printRules: parsedRules || prev.printRules,
-        printerInfo: parsedPrinter || prev.printerInfo
-      }));
+      setFormData(prev => {
+        const cachedLang = localStorage.getItem('preferredLanguage');
+        const resolvedLang = cachedLang || data.preferredLanguage || prev.preferredLanguage || 'Telugu';
+        setLanguage(resolvedLang);
+
+        return {
+          ...prev,
+          ...data,
+          email,
+          preferredLanguage: resolvedLang,
+          serviceHours: parsedHours || prev.serviceHours,
+          areasAndTables: parsedAreas || prev.areasAndTables,
+          deliveryConfig: parsedDelivery || prev.deliveryConfig,
+          billingConfig: parsedBilling || prev.billingConfig,
+          receiptConfig: parsedReceipt ? { ...prev.receiptConfig, ...parsedReceipt } : prev.receiptConfig,
+          printRules: parsedRules || prev.printRules,
+          printerInfo: parsedPrinter || prev.printerInfo
+        };
+      });
     } catch (err) {
       console.error('Error fetching profile:', err);
-      showMsg('Failed to load profile from database.', 'error');
+      showMsg(t('smLoadProfileFail'), 'error');
     } finally {
       setLoading(false);
     }
@@ -156,9 +268,9 @@ export default function SettingsModule() {
 
   const handleSaveUser = (e) => {
     e.preventDefault();
-    if (!newUserForm.name.trim()) return alert('Enter user name');
+    if (!newUserForm.name.trim()) return alert(t('smEnterUserNameAlert'));
     const userEmail = formData.email || localStorage.getItem('userEmail') || '';
-    
+
     if (editingUserId) {
       const targetUser = usersList.find(u => (u.id || u._id) === editingUserId);
       const payload = {
@@ -173,8 +285,8 @@ export default function SettingsModule() {
           setEditingUserId(null);
           setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' });
           fetchUsers(userEmail);
-          showMsg('✅ User successfully updated!', 'success');
-        } else { alert('Failed to update user.'); }
+          showMsg(t('smUserUpdatedToast'), 'success');
+        } else { alert(t('smUserUpdateFailAlert')); }
       }).catch(err => alert('Error: ' + err.message));
     } else {
       fetch(`${API_BASE_URL}/api/v1/staff`, {
@@ -184,8 +296,8 @@ export default function SettingsModule() {
         if (res.ok) {
           setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' });
           fetchUsers(userEmail);
-          showMsg('✅ User successfully created & synced!', 'success');
-        } else { alert('Failed to add user.'); }
+          showMsg(t('smUserCreatedToast'), 'success');
+        } else { alert(t('smUserAddFailAlert')); }
       }).catch(err => alert('Error: ' + err.message));
     }
   };
@@ -203,13 +315,13 @@ export default function SettingsModule() {
     fetch(`${API_BASE_URL}/api/v1/staff/${userId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
     }).then(res => {
-      if (res.ok) { fetchUsers(userEmail); showMsg(`✅ User status updated to ${nextStatus}`, 'success'); }
-      else { alert('Failed to update user status.'); }
+      if (res.ok) { fetchUsers(userEmail); showMsg(t('smUserStatusUpdatedToast').replace('{status}', translateDbValue(nextStatus)), 'success'); }
+      else { alert(t('smUserStatusFailAlert')); }
     }).catch(err => alert('Error: ' + err.message));
   };
 
   const handleDeleteUser = (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
+    if (!window.confirm(t('smDeleteUserConfirm'))) return;
     const userEmail = formData.email || localStorage.getItem('userEmail') || '';
     fetch(`${API_BASE_URL}/api/v1/staff/${userId}`, { method: 'DELETE' })
       .then(res => { if (res.ok) fetchUsers(userEmail); })
@@ -218,6 +330,9 @@ export default function SettingsModule() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === 'preferredLanguage') {
+      setLanguage(value);
+    }
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -272,19 +387,19 @@ export default function SettingsModule() {
       ...prev, areasAndTables: {
         ...prev.areasAndTables,
         areas: (prev.areasAndTables?.areas || []).map(area => area.id === areaId ? {
-          ...area, tables: (area.tables || []).map(t => t.id === tableId ? { ...t, qrEnabled: !t.qrEnabled } : t)
+          ...area, tables: (area.tables || []).map(tb => tb.id === tableId ? { ...tb, qrEnabled: !tb.qrEnabled } : tb)
         } : area)
       }
     }));
   };
 
   const handleDeleteTable = (areaId, tableId) => {
-    if (!window.confirm('Are you sure you want to delete this table?')) return;
+    if (!window.confirm(t('tbDeleteTableConfirm'))) return;
     setFormData(prev => ({
       ...prev, areasAndTables: {
         ...prev.areasAndTables,
         areas: (prev.areasAndTables?.areas || []).map(area => area.id === areaId ? {
-          ...area, tables: (area.tables || []).filter(t => t.id !== tableId)
+          ...area, tables: (area.tables || []).filter(tb => tb.id !== tableId)
         } : area)
       }
     }));
@@ -314,7 +429,7 @@ export default function SettingsModule() {
   };
 
   const handleDeleteAgent = (agentId) => {
-    if (!window.confirm('Are you sure you want to delete this delivery agent?')) return;
+    if (!window.confirm(t('smDeleteAgentConfirm'))) return;
     setFormData(prev => ({
       ...prev, deliveryConfig: {
         ...prev.deliveryConfig, agents: (prev.deliveryConfig?.agents || []).filter(ag => ag.id !== agentId)
@@ -344,7 +459,7 @@ export default function SettingsModule() {
 
   const handleSaveTaxGroup = (e) => {
     e.preventDefault();
-    if (!taxFormData.name.trim()) return alert('Enter Group Name');
+    if (!taxFormData.name.trim()) return alert(t('smEnterTaxGroupNameAlert'));
     const rateNum = parseFloat(taxFormData.rate) || 0;
     const halfRate = rateNum / 2;
     const groupObj = {
@@ -371,7 +486,7 @@ export default function SettingsModule() {
   };
 
   const handleDeleteTaxGroup = (tgId) => {
-    if (!window.confirm('Are you sure you want to delete this Tax Group?')) return;
+    if (!window.confirm(t('smDeleteTaxGroupConfirm'))) return;
     setFormData(prev => ({
       ...prev, billingConfig: {
         ...prev.billingConfig, taxGroups: (prev.billingConfig?.taxGroups || []).filter(tg => tg.id !== tgId)
@@ -394,7 +509,7 @@ export default function SettingsModule() {
       const [h1, m1] = (end1 || '14:00').split(':').map(Number);
       const [h2, m2] = (start2 || '17:00').split(':').map(Number);
       const diff = (h2 * 60 + m2) - (h1 * 60 + m1);
-      if (diff <= 0) return 'Overlapping';
+      if (diff <= 0) return t('smBreakOverlapping');
       const hours = Math.floor(diff / 60);
       const mins = diff % 60;
       return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
@@ -414,7 +529,7 @@ export default function SettingsModule() {
       try {
         const parsedLatestAreas = typeof latestData.areasAndTables === 'string' ? JSON.parse(latestData.areasAndTables) : latestData.areasAndTables;
         if (parsedLatestAreas?.areas) {
-          parsedLatestAreas.areas.forEach(a => (a.tables || []).forEach(t => { existingAreasMap[t.id] = { status: t.status, captain: t.captain, qrEnabled: t.qrEnabled }; }));
+          parsedLatestAreas.areas.forEach(a => (a.tables || []).forEach(tb => { existingAreasMap[tb.id] = { status: tb.status, captain: tb.captain, qrEnabled: tb.qrEnabled }; }));
         }
       } catch (err) {}
 
@@ -423,11 +538,11 @@ export default function SettingsModule() {
         autoOpenQrScan: currentAreasAndTables.autoOpenQrScan ?? true,
         areas: (currentAreasAndTables.areas || []).map(area => ({
           ...area,
-          tables: (area.tables || []).map(t => ({
-            ...t,
-            status: existingAreasMap[t.id]?.status || t.status || 'Available',
-            captain: existingAreasMap[t.id]?.captain || t.captain || 'Unassigned',
-            qrEnabled: t.qrEnabled ?? true
+          tables: (area.tables || []).map(tb => ({
+            ...tb,
+            status: existingAreasMap[tb.id]?.status || tb.status || 'Available',
+            captain: existingAreasMap[tb.id]?.captain || tb.captain || 'Unassigned',
+            qrEnabled: tb.qrEnabled ?? true
           }))
         }))
       };
@@ -441,7 +556,6 @@ export default function SettingsModule() {
         receiptConfig: JSON.stringify(formData.receiptConfig || {}),
         printRules: JSON.stringify(formData.printRules || {}),
         printerInfo: JSON.stringify(formData.printerInfo || {}),
-        // System settings are saved from the System tab; keep the server's latest copy so this button never reverts them
         autoApproval: latestData.autoApproval ?? formData.autoApproval,
         counterOrdering: latestData.counterOrdering ?? formData.counterOrdering
       };
@@ -449,14 +563,14 @@ export default function SettingsModule() {
       const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/${formData.restaurantId}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
-      if (!res.ok) throw new Error(await res.text() || 'Failed to update settings in database');
+      if (!res.ok) throw new Error(await res.text() || t('smSaveSettingsFail'));
 
       const updated = await res.json();
       setFullProfile(updated);
-      showMsg('✅ All settings, printers & receipt configurations successfully saved!', 'success');
+      showMsg(t('smAllSavedToast'), 'success');
     } catch (err) {
       console.error('Error saving profile:', err);
-      showMsg(`❌ Error: ${err.message}`, 'error');
+      showMsg(`❌ ${t('smErrorPrefix')}: ${err.message}`, 'error');
     } finally { setSaving(false); }
   };
 
@@ -470,20 +584,19 @@ export default function SettingsModule() {
     return { autoApprove: parse(formData.autoApproval), counter: parse(formData.counterOrdering) };
   }, [formData.autoApproval, formData.counterOrdering]);
 
-  // Saves ONE field only, so it never touches the rest of the profile
   const saveSystemField = async (field, payloadObj) => {
-    if (!formData.restaurantId) throw new Error('Restaurant profile is not loaded yet.');
+    if (!formData.restaurantId) throw new Error(t('smProfileNotLoadedErr'));
     const asString = JSON.stringify(payloadObj);
     const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/${formData.restaurantId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: formData.email, [field]: asString })
     });
-    if (!res.ok) throw new Error((await res.text()) || 'Failed to save settings');
+    if (!res.ok) throw new Error((await res.text()) || t('smSaveSettingsFail'));
 
     const saved = await res.json();
     if (saved[field] !== asString) {
-      throw new Error('The server did not store this setting. Deploy the updated RestaurantProfileController to the backend.');
+      throw new Error(t('smServerNotStoredErr'));
     }
     setFormData(prev => ({ ...prev, [field]: asString }));
   };
@@ -497,87 +610,89 @@ export default function SettingsModule() {
   };
 
   const sidebarItems = [
-    { id: 'business', label: 'Business Information', icon: '🏢' },
-    { id: 'profile', label: 'Profile', icon: '👤' },
-    { id: 'hours', label: 'Service Hours', icon: '⏰' },
-    { id: 'tables', label: 'Areas & Tables', icon: '🪑' },
-    { id: 'users', label: 'Users', icon: '👥' },
-    { id: 'delivery', label: 'Delivery', icon: '🛵' },
-    { id: 'billing', label: 'Billing', icon: '💳' },
-    { id: 'printers', label: 'Printers & Receipts', icon: '🖨️' },
-    { id: 'system', label: 'System', icon: '⚙️' }
+    { id: 'business', label: t('businessInfo'), icon: '🏢' },
+    { id: 'profile', label: t('profile'), icon: '👤' },
+    { id: 'hours', label: t('serviceHours'), icon: '⏰' },
+    { id: 'tables', label: t('areasTables'), icon: '🪑' },
+    { id: 'users', label: t('users'), icon: '👥' },
+    { id: 'delivery', label: t('delivery'), icon: '🛵' },
+    { id: 'billing', label: t('billing'), icon: '💳' },
+    { id: 'printers', label: t('printersReceipts'), icon: '🖨️' },
+    { id: 'system', label: t('system'), icon: '⚙️' }
   ];
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-  if (loading) return <div style={styles.centerMsg}>Loading settings from database...</div>;
+  if (loading) return <div style={styles.centerMsg}>{t('smLoadingSettings')}</div>;
 
   const toggles = formData.receiptConfig?.toggles || {};
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
+    <div className="sm-root" style={styles.container}>
+      <UiStyles />
+
+      <div className="sm-header" style={styles.header}>
         <div>
-          <h2 style={styles.title}>Settings</h2>
-          <span style={styles.subtitle}>Manage your business configurations & Tax mappings (Account: {formData.email})</span>
+          <h2 style={styles.title}>{t('settingsTitle')}</h2>
+          <span style={styles.subtitle}>{t('settingsSubtitle')} ({t('smAccountLabel')}: {formData.email})</span>
         </div>
-        <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-          <span style={styles.statusBadge}>🟢 Live Account Synced</span>
-          <button onClick={handleSave} style={styles.saveBtn} disabled={saving}>
-            {saving ? 'Saving to DB...' : '💾 Save Changes'}
+        <div className="sm-header-actions" style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+          <span style={styles.statusBadge}>🟢 {t('liveSynced')}</span>
+          <button onClick={handleSave} className="sm-btn-primary" style={styles.saveBtn} disabled={saving}>
+            {saving ? t('savingToDb') : `💾 ${t('saveChanges')}`}
           </button>
         </div>
       </div>
 
       {message.text && (
-        <div style={{...styles.alert, backgroundColor: message.type === 'error' ? '#fef2f2' : '#f0fdf4', color: message.type === 'error' ? '#991b1b' : '#166534', borderColor: message.type === 'error' ? '#f87171' : '#4ade80'}}>
+        <div className="sm-alert" role="status" style={{...styles.alert, backgroundColor: message.type === 'error' ? '#fef2f2' : '#f0fdf4', color: message.type === 'error' ? '#991b1b' : '#166534', borderColor: message.type === 'error' ? '#f87171' : '#4ade80'}}>
           {message.text}
         </div>
       )}
 
-      <div style={styles.layout}>
-        <div style={styles.sidebar}>
+      <div className="sm-layout" style={styles.layout}>
+        <div className="sm-sidebar" style={styles.sidebar}>
           {sidebarItems.map(item => (
-            <button key={item.id} onClick={() => setActiveTab(item.id)} style={{...styles.sidebarBtn, ...(activeTab === item.id ? styles.activeSidebarBtn : {})}}>
+            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`sm-sidebar-btn${activeTab === item.id ? ' is-active' : ''}`} style={{...styles.sidebarBtn, ...(activeTab === item.id ? styles.activeSidebarBtn : {})}}>
               <span>{item.icon}</span> {item.label}
             </button>
           ))}
         </div>
 
-        <div style={styles.contentPanel}>
+        <div className="sm-content" style={styles.contentPanel}>
           <form onSubmit={handleSave} style={styles.formContainer}>
-            
+
             {/* TAB 1: BUSINESS INFORMATION */}
             {activeTab === 'business' && (
               <div style={styles.sectionGroup}>
-                <h3 style={styles.sectionTitle}>🏢 Business Information & Identity</h3>
+                <h3 style={styles.sectionTitle}>🏢 {t('smBizInfoIdentityTitle')}</h3>
                 <div style={styles.grid2}>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Business Name *</label><input type="text" name="businessName" value={formData.businessName || ''} onChange={handleChange} style={styles.input} required /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Owner Name *</label><input type="text" name="ownerName" value={formData.ownerName || ''} onChange={handleChange} style={styles.input} required /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Email ID (Login ID)</label><input type="email" name="email" value={formData.email || ''} style={{...styles.input, backgroundColor: '#f1f5f9'}} disabled /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>WhatsApp Business Number *</label><input type="text" name="whatsappNumber" value={formData.whatsappNumber || ''} onChange={handleChange} style={styles.input} required /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Mobile Number *</label><input type="text" name="phoneNumber" value={formData.phoneNumber || ''} onChange={handleChange} style={styles.input} required /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Website</label><input type="text" name="website" value={formData.website || ''} onChange={handleChange} placeholder="https://" style={styles.input} /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>GSTN Number *</label><input type="text" name="gstnNumber" value={formData.gstnNumber || ''} onChange={handleChange} style={styles.input} /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Business License Number *</label><input type="text" name="businessLicenseNumber" value={formData.businessLicenseNumber || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('businessNameRequired')}</label><input type="text" name="businessName" value={formData.businessName || ''} onChange={handleChange} style={styles.input} required /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smOwnerNameReq')}</label><input type="text" name="ownerName" value={formData.ownerName || ''} onChange={handleChange} style={styles.input} required /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('emailLoginId')}</label><input type="email" name="email" value={formData.email || ''} style={{...styles.input, backgroundColor: '#fdeee3'}} disabled /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('whatsappNumberRequired')}</label><input type="text" name="whatsappNumber" value={formData.whatsappNumber || ''} onChange={handleChange} style={styles.input} required /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smMobileNumReq')}</label><input type="text" name="phoneNumber" value={formData.phoneNumber || ''} onChange={handleChange} style={styles.input} required /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smWebsiteLabel')}</label><input type="text" name="website" value={formData.website || ''} onChange={handleChange} placeholder="https://" style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smGstnNumReq')}</label><input type="text" name="gstnNumber" value={formData.gstnNumber || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smLicenseNumReq')}</label><input type="text" name="businessLicenseNumber" value={formData.businessLicenseNumber || ''} onChange={handleChange} style={styles.input} /></div>
                 </div>
 
-                <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>🏷️ Display Names & Codes</h3>
+                <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>🏷️ {t('smDisplayNamesCodesTitle')}</h3>
                 <div style={styles.grid2}>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Online Restaurant Name *</label><input type="text" name="onlineRestaurantName" value={formData.onlineRestaurantName || ''} onChange={handleChange} placeholder="e.g. FOODOS Kitchen" style={styles.input} /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Branch Display Name *</label><input type="text" name="branchDisplayName" value={formData.branchDisplayName || ''} onChange={handleChange} placeholder="e.g. Koramangala" style={styles.input} /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Business Short Code *</label><input type="text" name="businessShortCode" value={formData.businessShortCode || ''} onChange={handleChange} maxLength="5" placeholder="e.g. KO" style={styles.input} /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Branch Short Code *</label><input type="text" name="branchShortCode" value={formData.branchShortCode || ''} onChange={handleChange} maxLength="2" placeholder="e.g. 01" style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smOnlineRestNameReq')}</label><input type="text" name="onlineRestaurantName" value={formData.onlineRestaurantName || ''} onChange={handleChange} placeholder={t('smPhOnlineRestName')} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smBranchDispNameReq')}</label><input type="text" name="branchDisplayName" value={formData.branchDisplayName || ''} onChange={handleChange} placeholder={t('smPhBranchDispName')} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smBizShortCodeReq')}</label><input type="text" name="businessShortCode" value={formData.businessShortCode || ''} onChange={handleChange} maxLength="5" placeholder={t('smPhBizShortCode')} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smBranchShortCodeReq')}</label><input type="text" name="branchShortCode" value={formData.branchShortCode || ''} onChange={handleChange} maxLength="2" placeholder={t('smPhBranchShortCode')} style={styles.input} /></div>
                 </div>
 
-                <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>📍 Address & Location</h3>
+                <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>📍 {t('smAddressLocationTitle')}</h3>
                 <div style={styles.grid2}>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Address Line 1</label><input type="text" name="addressLine1" value={formData.addressLine1 || ''} onChange={handleChange} style={styles.input} /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Address Line 2</label><input type="text" name="addressLine2" value={formData.addressLine2 || ''} onChange={handleChange} style={styles.input} /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Area</label><input type="text" name="area" value={formData.area || ''} onChange={handleChange} style={styles.input} /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>City</label><input type="text" name="city" value={formData.city || ''} onChange={handleChange} style={styles.input} /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>State</label><input type="text" name="state" value={formData.state || ''} onChange={handleChange} style={styles.input} /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>PIN Code</label><input type="text" name="pinCode" value={formData.pinCode || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smAddrLine1')}</label><input type="text" name="addressLine1" value={formData.addressLine1 || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smAddrLine2')}</label><input type="text" name="addressLine2" value={formData.addressLine2 || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smAreaLabel')}</label><input type="text" name="area" value={formData.area || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smCityLabel')}</label><input type="text" name="city" value={formData.city || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smStateLabel')}</label><input type="text" name="state" value={formData.state || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smPinCodeLabel')}</label><input type="text" name="pinCode" value={formData.pinCode || ''} onChange={handleChange} style={styles.input} /></div>
                 </div>
               </div>
             )}
@@ -585,17 +700,21 @@ export default function SettingsModule() {
             {/* TAB 2: PROFILE */}
             {activeTab === 'profile' && (
               <div style={styles.sectionGroup}>
-                <h3 style={styles.sectionTitle}>👤 Admin & User Profile</h3>
+                <h3 style={styles.sectionTitle}>👤 {t('adminUserProfile')}</h3>
                 <div style={styles.grid2}>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Owner / Admin Name *</label><input type="text" name="ownerName" value={formData.ownerName || ''} onChange={handleChange} style={styles.input} required /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>First Name</label><input type="text" name="firstName" value={formData.firstName || ''} onChange={handleChange} style={styles.input} /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Last Name</label><input type="text" name="lastName" value={formData.lastName || ''} onChange={handleChange} style={styles.input} /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Email (Login ID)</label><input type="email" name="email" value={formData.email || ''} style={{...styles.input, backgroundColor: '#f1f5f9'}} disabled /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Mobile Number</label><input type="text" name="phoneNumber" value={formData.phoneNumber || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('ownerAdminName')}</label><input type="text" name="ownerName" value={formData.ownerName || ''} onChange={handleChange} style={styles.input} required /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('firstName')}</label><input type="text" name="firstName" value={formData.firstName || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('lastName')}</label><input type="text" name="lastName" value={formData.lastName || ''} onChange={handleChange} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('emailLoginId')}</label><input type="email" name="email" value={formData.email || ''} style={{...styles.input, backgroundColor: '#fdeee3'}} disabled /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('mobileNumber')}</label><input type="text" name="phoneNumber" value={formData.phoneNumber || ''} onChange={handleChange} style={styles.input} /></div>
                   <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Preferred Language</label>
+                    <label style={styles.label}>{t('preferredLanguage')}</label>
                     <select name="preferredLanguage" value={formData.preferredLanguage || 'Telugu'} onChange={handleChange} style={styles.input}>
-                      <option value="English">English</option><option value="Telugu">Telugu</option><option value="Hindi">Hindi</option><option value="Tamil">Tamil</option>
+                      <option value="English">English</option>
+                      <option value="Telugu">Telugu</option>
+                      <option value="Hindi">Hindi</option>
+                      <option value="Tamil">Tamil</option>
+                      <option value="Marathi">Marathi</option>
                     </select>
                   </div>
                 </div>
@@ -605,15 +724,15 @@ export default function SettingsModule() {
             {/* TAB 3: SERVICE HOURS */}
             {activeTab === 'hours' && (
               <div style={styles.sectionGroup}>
-                <div style={styles.serviceHoursBanner}>
+                <div className="sm-banner" style={styles.serviceHoursBanner}>
                   <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
                     <span style={{fontSize: '22px'}}>⏰</span>
                     <div>
-                      <div style={{fontWeight: '950', color: '#0369a1', fontSize: '15px'}}>Online Ordering Hours</div>
-                      <div style={{fontSize: '12px', color: '#0c4a6e', marginTop: '3px', fontWeight: '800'}}>Configure working days with multiple shifts. Gaps between shifts are treated as breaks automatically.</div>
+                      <div style={{fontWeight: '950', color: '#c2410c', fontSize: '15px'}}>{t('smOnlineHoursTitle')}</div>
+                      <div style={{fontSize: '12px', color: '#7c2d12', marginTop: '3px', fontWeight: '800'}}>{t('smOnlineHoursDesc')}</div>
                     </div>
                   </div>
-                  <button type="button" onClick={() => setIsEditingHours(!isEditingHours)} style={styles.editHoursBtn}>✏️ {isEditingHours ? 'Lock Hours' : 'Edit Hours'}</button>
+                  <button type="button" onClick={() => setIsEditingHours(!isEditingHours)} className="sm-btn-ghost" style={styles.editHoursBtn}>✏️ {isEditingHours ? t('smLockHoursBtn') : t('smEditHoursBtn')}</button>
                 </div>
 
                 <div style={{display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '10px'}}>
@@ -623,34 +742,34 @@ export default function SettingsModule() {
                     const isHovered = hoveredCard === day;
 
                     return (
-                      <div key={day} style={{...styles.dayCard, ...(isHovered ? styles.dayCardHover : {})}} onMouseEnter={() => setHoveredCard(day)} onMouseLeave={() => setHoveredCard(null)}>
-                        <div style={styles.dayCardHeader}>
+                      <div key={day} className="sm-card" style={{...styles.dayCard, ...(isHovered ? styles.dayCardHover : {})}} onMouseEnter={() => setHoveredCard(day)} onMouseLeave={() => setHoveredCard(null)}>
+                        <div className="sm-day-head" style={styles.dayCardHeader}>
                           <div style={{display: 'flex', alignItems: 'center', gap: '14px'}}>
-                            <span style={{fontWeight: '950', fontSize: '16px', color: '#0f172a', width: '110px'}}>{day}</span>
+                            <span style={{fontWeight: '950', fontSize: '16px', color: '#2a1710', width: '110px'}}>{t(`smDay${day}`) || day}</span>
                             <span style={{backgroundColor: dayData.holiday ? '#fef2f2' : '#ecfdf5', color: dayData.holiday ? '#dc2626' : '#059669', padding: '4px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '950', border: '1px solid currentColor'}}>
-                              {dayData.holiday ? 'Holiday' : 'Open'}
+                              {dayData.holiday ? t('smHolidayLabel') : t('smOpenLabel')}
                             </span>
                           </div>
                           <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                            <span style={{fontSize: '12px', fontWeight: '900', color: '#0f172a'}}>Holiday</span>
-                            <input type="checkbox" checked={dayData.holiday || false} onChange={e => handleHourChange(day, 'holiday', e.target.checked)} style={{width: '18px', height: '18px', cursor: 'pointer', accentColor: '#059669'}} />
+                            <span style={{fontSize: '12px', fontWeight: '900', color: '#2a1710'}}>{t('smHolidayLabel')}</span>
+                            <input type="checkbox" checked={dayData.holiday || false} onChange={e => handleHourChange(day, 'holiday', e.target.checked)} style={{width: '18px', height: '18px', cursor: 'pointer', accentColor: '#f97316'}} />
                           </div>
                         </div>
 
                         {!dayData.holiday && (
                           <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px'}}>
-                            <div style={{display: 'flex', gap: '14px', alignItems: 'center'}}>
-                              <input type="text" value={dayData.shift1Start || ''} onChange={e => handleHourChange(day, 'shift1Start', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
-                              <span style={{fontWeight: '900', color: '#334155'}}>to</span>
-                              <input type="text" value={dayData.shift1End || ''} onChange={e => handleHourChange(day, 'shift1End', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
+                            <div className="sm-time-row" style={{display: 'flex', gap: '14px', alignItems: 'center'}}>
+                              <input type="text" className="sm-time-input" value={dayData.shift1Start || ''} onChange={e => handleHourChange(day, 'shift1Start', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
+                              <span style={{fontWeight: '900', color: '#5a3a2a'}}>{t('pmToWord')}</span>
+                              <input type="text" className="sm-time-input" value={dayData.shift1End || ''} onChange={e => handleHourChange(day, 'shift1End', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
                             </div>
                             <div style={{textAlign: 'center', fontSize: '12px', fontWeight: '950', color: '#b45309', backgroundColor: '#fef3c7', padding: '8px', borderRadius: '8px', border: '1.5px dashed #f59e0b'}}>
-                              Break {dayData.shift1End || '14:00'}–{dayData.shift2Start || '17:00'} ({breakDuration})
+                              {t('smBreakPrefix')} {dayData.shift1End || '14:00'}–{dayData.shift2Start || '17:00'} ({breakDuration})
                             </div>
-                            <div style={{display: 'flex', gap: '14px', alignItems: 'center'}}>
-                              <input type="text" value={dayData.shift2Start || ''} onChange={e => handleHourChange(day, 'shift2Start', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
-                              <span style={{fontWeight: '900', color: '#334155'}}>to</span>
-                              <input type="text" value={dayData.shift2End || ''} onChange={e => handleHourChange(day, 'shift2End', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
+                            <div className="sm-time-row" style={{display: 'flex', gap: '14px', alignItems: 'center'}}>
+                              <input type="text" className="sm-time-input" value={dayData.shift2Start || ''} onChange={e => handleHourChange(day, 'shift2Start', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
+                              <span style={{fontWeight: '900', color: '#5a3a2a'}}>{t('pmToWord')}</span>
+                              <input type="text" className="sm-time-input" value={dayData.shift2End || ''} onChange={e => handleHourChange(day, 'shift2End', e.target.value)} disabled={!isEditingHours} style={styles.timeInput} />
                             </div>
                           </div>
                         )}
@@ -664,74 +783,74 @@ export default function SettingsModule() {
             {/* TAB 4: AREAS & TABLES */}
             {activeTab === 'tables' && (
               <div style={styles.sectionGroup}>
-                <div style={styles.serviceHoursBanner}>
+                <div className="sm-banner" style={styles.serviceHoursBanner}>
                   <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
-                    <div style={{fontWeight: '950', color: '#0369a1', fontSize: '15px'}}>Auto-Open on QR Scan</div>
-                    <div style={{fontSize: '12px', color: '#0c4a6e', fontWeight: '800'}}>Let customers open a table by scanning, without staff opening it first.</div>
+                    <div style={{fontWeight: '950', color: '#c2410c', fontSize: '15px'}}>{t('smAutoOpenQrTitle')}</div>
+                    <div style={{fontSize: '12px', color: '#7c2d12', fontWeight: '800'}}>{t('smAutoOpenQrDesc')}</div>
                   </div>
-                  <input type="checkbox" checked={formData.areasAndTables?.autoOpenQrScan ?? true} onChange={e => handleAutoOpenToggle(e.target.checked)} style={{width: '22px', height: '22px', cursor: 'pointer', accentColor: '#0284c7'}} />
+                  <input type="checkbox" checked={formData.areasAndTables?.autoOpenQrScan ?? true} onChange={e => handleAutoOpenToggle(e.target.checked)} style={{width: '22px', height: '22px', cursor: 'pointer', accentColor: '#ea580c'}} />
                 </div>
 
                 <div style={{display: 'flex', justifyContent: 'flex-end', marginTop: '10px'}}>
-                  <button type="button" onClick={() => setShowAddAreaBox(true)} style={styles.addAreaBtn}>+ Add Area</button>
+                  <button type="button" onClick={() => setShowAddAreaBox(true)} className="sm-btn-primary" style={styles.addAreaBtn}>+ {t('smAddAreaBtn')}</button>
                 </div>
 
                 {showAddAreaBox && (
-                  <div style={styles.inlineCardForm}>
-                    <h4 style={{margin: '0 0 10px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Add New Area</h4>
-                    <div style={{display: 'flex', gap: '10px'}}>
-                      <input type="text" placeholder="Enter area name (e.g., Rooftop, Balcony)" value={newAreaNameInput} onChange={e => setNewAreaNameInput(e.target.value)} style={styles.input} autoFocus />
-                      <button type="button" onClick={handleSaveNewArea} style={styles.saveInlineBtn}>Save Area</button>
-                      <button type="button" onClick={() => setShowAddAreaBox(false)} style={styles.cancelInlineBtn}>Cancel</button>
+                  <div className="sm-card" style={styles.inlineCardForm}>
+                    <h4 style={{margin: '0 0 10px 0', fontSize: '15px', fontWeight: '950', color: '#2a1710'}}>{t('smAddNewAreaTitle')}</h4>
+                    <div className="sm-wrap" style={{display: 'flex', gap: '10px'}}>
+                      <input type="text" placeholder={t('smPhAreaName')} value={newAreaNameInput} onChange={e => setNewAreaNameInput(e.target.value)} style={styles.input} autoFocus />
+                      <button type="button" onClick={handleSaveNewArea} className="sm-btn-primary" style={styles.saveInlineBtn}>{t('smSaveAreaBtn')}</button>
+                      <button type="button" onClick={() => setShowAddAreaBox(false)} className="sm-btn-ghost" style={styles.cancelInlineBtn}>{t('cancelBtn')}</button>
                     </div>
                   </div>
                 )}
 
-                <div style={styles.noticeBanner}>Every table can have its own QR code. Customers scan it to view the menu and add items directly to the table's order in POS.</div>
+                <div style={styles.noticeBanner}>{t('smQrNoticeBanner')}</div>
 
                 <div style={{display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '10px'}}>
                   {(formData.areasAndTables?.areas || []).map(area => (
-                    <div key={area.id} style={styles.areaContainer}>
-                      <div style={styles.areaHeader}>
+                    <div key={area.id} className="sm-card" style={styles.areaContainer}>
+                      <div className="sm-area-head" style={styles.areaHeader}>
                         <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
                           <span style={{fontSize: '16px'}}>🪑</span>
-                          <span style={{fontWeight: '950', fontSize: '16px', color: '#0f172a'}}>{area.name}</span>
-                          <span style={{fontSize: '12px', color: '#64748b', fontWeight: '800'}}>({area.tables?.length || 0} tables)</span>
+                          <span style={{fontWeight: '950', fontSize: '16px', color: '#2a1710'}}>{area.name}</span>
+                          <span style={{fontSize: '12px', color: '#8a6a58', fontWeight: '800'}}>({area.tables?.length || 0} {t('navTables').toLowerCase()})</span>
                         </div>
-                        <button type="button" onClick={() => setActiveAreaForTableBox(area.id)} style={styles.addTableBtn}>+ Add Table</button>
+                        <button type="button" onClick={() => setActiveAreaForTableBox(area.id)} className="sm-btn-primary" style={styles.addTableBtn}>+ {t('tbAddTableBtn')}</button>
                       </div>
 
                       {activeAreaForTableBox === area.id && (
-                        <div style={{...styles.inlineCardForm, marginBottom: '16px'}}>
-                          <h4 style={{margin: '0 0 10px 0', fontSize: '14px', fontWeight: '950', color: '#0f172a'}}>Add Table in {area.name}</h4>
-                          <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
-                            <input type="text" placeholder="Table Name (e.g. T5)" value={newTableForm.name} onChange={e => setNewTableForm({...newTableForm, name: e.target.value})} style={{...styles.input, flex: 2}} autoFocus />
-                            <input type="number" placeholder="Pax (seats)" value={newTableForm.pax} onChange={e => setNewTableForm({...newTableForm, pax: e.target.value})} style={{...styles.input, flex: 1}} />
-                            <button type="button" onClick={e => handleSaveNewTable(e, area.id)} style={styles.saveInlineBtn}>Save Table</button>
-                            <button type="button" onClick={() => setActiveAreaForTableBox(null)} style={styles.cancelInlineBtn}>Cancel</button>
+                        <div className="sm-card" style={{...styles.inlineCardForm, marginBottom: '16px'}}>
+                          <h4 style={{margin: '0 0 10px 0', fontSize: '14px', fontWeight: '950', color: '#2a1710'}}>{t('smAddTableInArea').replace('{area}', area.name)}</h4>
+                          <div className="sm-wrap" style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+                            <input type="text" placeholder={t('smPhTableName')} value={newTableForm.name} onChange={e => setNewTableForm({...newTableForm, name: e.target.value})} style={{...styles.input, flex: 2}} autoFocus />
+                            <input type="number" placeholder={t('smPhPaxSeats')} value={newTableForm.pax} onChange={e => setNewTableForm({...newTableForm, pax: e.target.value})} style={{...styles.input, flex: 1}} />
+                            <button type="button" onClick={e => handleSaveNewTable(e, area.id)} className="sm-btn-primary" style={styles.saveInlineBtn}>{t('smSaveTableBtn')}</button>
+                            <button type="button" onClick={() => setActiveAreaForTableBox(null)} className="sm-btn-ghost" style={styles.cancelInlineBtn}>{t('cancelBtn')}</button>
                           </div>
                         </div>
                       )}
 
                       <div style={styles.tablesGrid}>
-                        {(area.tables || []).map(table => (
-                          <div key={table.id} style={styles.tableCard}>
+                        {(area.tables || []).map(tb => (
+                          <div key={tb.id} className="sm-card sm-lift" style={styles.tableCard}>
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
                               <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                                <span style={{fontWeight: '950', fontSize: '15px', color: '#0f172a'}}>{table.name}</span>
-                                <span style={{backgroundColor: '#f1f5f9', color: '#334155', padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '900', border: '1px solid #cbd5e1'}}># QR {table.qrEnabled ? 'on' : 'off'}</span>
+                                <span style={{fontWeight: '950', fontSize: '15px', color: '#2a1710'}}>{tb.name}</span>
+                                <span style={{backgroundColor: '#fff1e6', color: '#c2410c', padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '900', border: '1px solid #fed7aa'}}># QR {tb.qrEnabled ? t('smQrOnShort') : t('smQrOffShort')}</span>
                               </div>
-                              <button type="button" onClick={() => handleDeleteTable(area.id, table.id)} style={styles.iconBtn} title="Delete Table">🗑️</button>
+                              <button type="button" onClick={() => handleDeleteTable(area.id, tb.id)} className="sm-icon-btn" style={styles.iconBtn} title={t('tbDeleteTableBtn')}>🗑️</button>
                             </div>
-                            <div style={{fontSize: '12px', color: '#475569', fontWeight: '800', marginBottom: '14px'}}>
-                              {table.pax} pax · <strong style={{color: table.status === 'Occupied' ? '#dc2626' : '#059669'}}>{table.status || 'Available'}</strong>
+                            <div style={{fontSize: '12px', color: '#6b4a38', fontWeight: '800', marginBottom: '14px'}}>
+                              {tb.pax} {t('tbPaxShort')} · <strong style={{color: tb.status === 'Occupied' ? '#dc2626' : '#059669'}}>{translateDbValue(tb.status || 'Available')}</strong>
                             </div>
-                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1.5px solid #f1f5f9', paddingTop: '10px'}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1.5px solid #fdeee3', paddingTop: '10px', gap: '8px', flexWrap: 'wrap'}}>
                               <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
-                                <input type="checkbox" checked={table.qrEnabled ?? true} onChange={() => handleToggleTableQr(area.id, table.id)} style={{width: '16px', height: '16px', cursor: 'pointer', accentColor: '#059669'}} />
-                                <span style={{fontSize: '12px', fontWeight: '900', color: '#0f172a'}}>QR ordering</span>
+                                <input type="checkbox" checked={tb.qrEnabled ?? true} onChange={() => handleToggleTableQr(area.id, tb.id)} style={{width: '16px', height: '16px', cursor: 'pointer', accentColor: '#f97316'}} />
+                                <span style={{fontSize: '12px', fontWeight: '900', color: '#2a1710'}}>{t('smQrOrderingLabel')}</span>
                               </div>
-                              <button type="button" onClick={() => alert(`Viewing QR Code for ${table.name}`)} style={styles.viewQrBtn}>📱 View QR</button>
+                              <button type="button" onClick={() => alert(t('smViewQrAlert').replace('{name}', tb.name))} className="sm-btn-ghost" style={styles.viewQrBtn}>📱 {t('smViewQrBtn')}</button>
                             </div>
                           </div>
                         ))}
@@ -745,33 +864,36 @@ export default function SettingsModule() {
             {/* TAB 5: USERS */}
             {activeTab === 'users' && (
               <div style={styles.sectionGroup}>
-                <h3 style={styles.sectionTitle}>👥 Users & Floor Staff</h3>
-                <p style={{fontSize: '12px', color: '#64748b', fontWeight: '800', marginTop: '-8px', marginBottom: '16px'}}>
-                  Create or edit Captains, Managers, and Staff here. They will appear simultaneously across Tables for assignment and order tracking.
+                <h3 style={styles.sectionTitle}>👥 {t('smUsersFloorStaffTitle')}</h3>
+                <p style={{fontSize: '12px', color: '#8a6a58', fontWeight: '800', marginTop: '-8px', marginBottom: '16px'}}>
+                  {t('smUsersFloorStaffDesc')}
                 </p>
 
-                <div style={styles.userAddCard}>
-                  <h4 style={{margin: '0 0 14px 0', fontSize: '14px', fontWeight: '950', color: '#0f172a'}}>{editingUserId ? '✏️ Edit User / Captain' : '👤 Add User'}</h4>
-                  <div style={{display: 'grid', gridTemplateColumns: '1.6fr 0.9fr 1fr 1fr auto', gap: '12px', alignItems: 'flex-end'}}>
-                    <div style={styles.fieldGroup}><label style={styles.label}>Name *</label><input type="text" placeholder="e.g. Ravi Kumar" value={newUserForm.name} onChange={e => setNewUserForm({...newUserForm, name: e.target.value})} style={styles.input} /></div>
-                    <div style={styles.fieldGroup}><label style={styles.label}>User ID *</label><input type="text" placeholder="U01" value={newUserForm.userId} onChange={e => setNewUserForm({...newUserForm, userId: e.target.value})} style={styles.input} maxLength="5" /></div>
-                    <div style={styles.fieldGroup}><label style={styles.label}>Phone No</label><input type="text" placeholder="10-digit mobile" value={newUserForm.phone} onChange={e => setNewUserForm({...newUserForm, phone: e.target.value})} style={styles.input} /></div>
+                <div className="sm-card" style={styles.userAddCard}>
+                  <h4 style={{margin: '0 0 14px 0', fontSize: '14px', fontWeight: '950', color: '#2a1710'}}>{editingUserId ? `✏️ ${t('smEditUserCaptainTitle')}` : `👤 ${t('smAddUserTitle')}`}</h4>
+                  <div className="sm-user-grid">
+                    <div style={styles.fieldGroup}><label style={styles.label}>{t('smNameReq')}</label><input type="text" placeholder={t('smPhSampleName')} value={newUserForm.name} onChange={e => setNewUserForm({...newUserForm, name: e.target.value})} style={styles.input} /></div>
+                    <div style={styles.fieldGroup}><label style={styles.label}>{t('smUserIdReq')}</label><input type="text" placeholder="U01" value={newUserForm.userId} onChange={e => setNewUserForm({...newUserForm, userId: e.target.value})} style={styles.input} maxLength="5" /></div>
+                    <div style={styles.fieldGroup}><label style={styles.label}>{t('smPhoneNoLabel')}</label><input type="text" placeholder={t('posTenDigitMobile')} value={newUserForm.phone} onChange={e => setNewUserForm({...newUserForm, phone: e.target.value})} style={styles.input} /></div>
                     <div style={styles.fieldGroup}>
-                      <label style={styles.label}>Role</label>
+                      <label style={styles.label}>{t('smRoleLabel')}</label>
                       <select value={newUserForm.role} onChange={e => setNewUserForm({...newUserForm, role: e.target.value})} style={styles.input}>
-                        <option value="Captain">Captain</option><option value="Manager">Manager</option><option value="Admin">Admin</option><option value="Kitchen">Kitchen Staff</option>
+                        <option value="Captain">{t('tbCaptainLabel')}</option>
+                        <option value="Manager">{t('smRoleManager')}</option>
+                        <option value="Admin">{t('adminRole')}</option>
+                        <option value="Kitchen">{t('smRoleKitchen')}</option>
                       </select>
                     </div>
                     <div style={{display: 'flex', gap: '6px'}}>
-                      <button type="button" onClick={handleSaveUser} style={styles.addUserBtn}>{editingUserId ? 'Update' : '+ Add'}</button>
-                      {editingUserId && (<button type="button" onClick={() => { setEditingUserId(null); setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' }); }} style={styles.cancelInlineBtn}>Cancel</button>)}
+                      <button type="button" onClick={handleSaveUser} className="sm-btn-primary" style={styles.addUserBtn}>{editingUserId ? t('tbUpdateCaptainBtn').split(' ')[0] : `+ ${t('posAddBtn')}`}</button>
+                      {editingUserId && (<button type="button" onClick={() => { setEditingUserId(null); setNewUserForm({ name: '', userId: '', role: 'Captain', phone: '' }); }} className="sm-btn-ghost" style={styles.cancelInlineBtn}>{t('cancelBtn')}</button>)}
                     </div>
                   </div>
                 </div>
 
-                <h4 style={{margin: '20px 0 12px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Users ({usersList.length})</h4>
+                <h4 style={{margin: '20px 0 12px 0', fontSize: '15px', fontWeight: '950', color: '#2a1710'}}>{t('users')} ({usersList.length})</h4>
                 {usersList.length === 0 ? (
-                  <div style={styles.emptyUsersBox}>No users added yet. Use the form above to add your first captain or manager!</div>
+                  <div style={styles.emptyUsersBox}>{t('smNoUsersYet')}</div>
                 ) : (
                   <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
                     {usersList.map(u => {
@@ -779,24 +901,24 @@ export default function SettingsModule() {
                       const status = u.status || 'Active';
                       const isActive = status === 'Active';
                       return (
-                        <div key={uId || u.name} style={styles.userRowCard}>
+                        <div key={uId || u.name} className="sm-card sm-row-card" style={styles.userRowCard}>
                           <div style={{display: 'flex', alignItems: 'center', gap: '14px'}}>
                             <div style={styles.userAvatar}>{u.name.charAt(0).toUpperCase()}</div>
                             <div>
                               <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                                <span style={{fontWeight: '950', fontSize: '15px', color: '#0f172a'}}>{u.name}</span>
+                                <span style={{fontWeight: '950', fontSize: '15px', color: '#2a1710'}}>{u.name}</span>
                                 <span style={styles.userCodeBadge}>{u.userIdCode || 'U01'}</span>
                               </div>
-                              <div style={{fontSize: '12px', color: '#64748b', fontWeight: '800', marginTop: '3px'}}>
-                                {u.role || 'Captain'} {u.phone ? `· 📞 ${u.phone}` : ''}
+                              <div style={{fontSize: '12px', color: '#8a6a58', fontWeight: '800', marginTop: '3px'}}>
+                                {translateDbValue(u.role || 'Captain')} {u.phone ? `· 📞 ${u.phone}` : ''}
                               </div>
                             </div>
                           </div>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                            <span style={{backgroundColor: isActive ? '#dcfce7' : '#fee2e2', color: isActive ? '#15803d' : '#991b1b', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '950'}}>{isActive ? 'Active' : 'Inactive'}</span>
-                            <button type="button" onClick={() => { setEditingUserId(uId); setNewUserForm({ name: u.name || '', userId: u.userIdCode || '', role: u.role || 'Captain', phone: u.phone || '' }); }} style={styles.actionEditBtn}>Edit</button>
-                            <button type="button" onClick={() => handleToggleUserStatus(uId)} style={styles.userToggleBtn}>{isActive ? 'Deactivate' : 'Activate'}</button>
-                            <button type="button" onClick={() => handleDeleteUser(uId)} style={styles.iconBtn} title="Delete User">🗑️</button>
+                          <div className="sm-wrap" style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                            <span style={{backgroundColor: isActive ? '#dcfce7' : '#fee2e2', color: isActive ? '#15803d' : '#991b1b', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '950'}}>{isActive ? t('mnActiveStatus') : t('pmInactiveWord')}</span>
+                            <button type="button" onClick={() => { setEditingUserId(uId); setNewUserForm({ name: u.name || '', userId: u.userIdCode || '', role: u.role || 'Captain', phone: u.phone || '' }); }} className="sm-btn-link" style={styles.actionEditBtn}>{t('tbEditBtn')}</button>
+                            <button type="button" onClick={() => handleToggleUserStatus(uId)} className="sm-btn-ghost" style={styles.userToggleBtn}>{isActive ? t('smDeactivateBtn') : t('pmActivateBtn')}</button>
+                            <button type="button" onClick={() => handleDeleteUser(uId)} className="sm-icon-btn" style={styles.iconBtn} title={t('smDeleteUserTitle')}>🗑️</button>
                           </div>
                         </div>
                       );
@@ -809,63 +931,68 @@ export default function SettingsModule() {
             {/* TAB 6: DELIVERY */}
             {activeTab === 'delivery' && (
               <div style={styles.sectionGroup}>
-                <h3 style={styles.sectionTitle}>🛵 Delivery Setup</h3>
+                <h3 style={styles.sectionTitle}>🛵 {t('smDeliverySetupTitle')}</h3>
                 <div style={styles.grid2}>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Service Radius (KM)</label><input type="number" value={formData.deliveryConfig?.serviceRadius || '5'} onChange={e => handleDeliveryChange('serviceRadius', e.target.value)} style={styles.input} /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Point of Contact Name</label><input type="text" value={formData.deliveryConfig?.contactName || ''} onChange={e => handleDeliveryChange('contactName', e.target.value)} placeholder="e.g. Ramesh" style={styles.input} /></div>
-                  <div style={styles.fieldGroup}><label style={styles.label}>Point of Contact Number</label><input type="text" value={formData.deliveryConfig?.contactNumber || ''} onChange={e => handleDeliveryChange('contactNumber', e.target.value)} placeholder="+91..." style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smServiceRadiusLabel')}</label><input type="number" value={formData.deliveryConfig?.serviceRadius || '5'} onChange={e => handleDeliveryChange('serviceRadius', e.target.value)} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smPocNameLabel')}</label><input type="text" value={formData.deliveryConfig?.contactName || ''} onChange={e => handleDeliveryChange('contactName', e.target.value)} placeholder={t('smPhPocName')} style={styles.input} /></div>
+                  <div style={styles.fieldGroup}><label style={styles.label}>{t('smPocPhoneLabel')}</label><input type="text" value={formData.deliveryConfig?.contactNumber || ''} onChange={e => handleDeliveryChange('contactNumber', e.target.value)} placeholder="+91..." style={styles.input} /></div>
                 </div>
 
-                <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>📦 Delivery Method</h3>
+                <h3 style={{...styles.sectionTitle, marginTop: '28px'}}>📦 {t('smDeliveryMethodTitle')}</h3>
                 <div style={styles.grid2}>
                   <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Delivery Partner</label>
+                    <label style={styles.label}>{t('smDeliveryPartnerLabel')}</label>
                     <select value={formData.deliveryConfig?.deliveryPartner || 'WhatsCom'} onChange={e => handleDeliveryChange('deliveryPartner', e.target.value)} style={styles.input}>
-                      <option value="WhatsCom">WhatsCom</option><option value="Dunzo">Dunzo</option><option value="Shadowfax">Shadowfax</option><option value="In-House">In-House Fleet</option>
+                      <option value="WhatsCom">WhatsCom</option>
+                      <option value="Dunzo">Dunzo</option>
+                      <option value="Shadowfax">Shadowfax</option>
+                      <option value="In-House">{t('smInHouseFleetOpt')}</option>
                     </select>
                   </div>
                   <div style={styles.fieldGroup}>
-                    <label style={styles.label}>Delivery Fee Charged To</label>
+                    <label style={styles.label}>{t('smFeeChargedToLabel')}</label>
                     <select value={formData.deliveryConfig?.deliveryFeeChargedTo || 'Customer'} onChange={e => handleDeliveryChange('deliveryFeeChargedTo', e.target.value)} style={styles.input}>
-                      <option value="Customer">Customer</option><option value="Restaurant">Restaurant</option><option value="Free">Free Delivery</option>
+                      <option value="Customer">{t('receiptCustomer')}</option>
+                      <option value="Restaurant">{t('smRestaurantOpt')}</option>
+                      <option value="Free">{t('smFreeDeliveryOpt')}</option>
                     </select>
                   </div>
                 </div>
 
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '28px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px'}}>
-                  <h3 style={{fontSize: '17px', fontWeight: '950', color: '#0f172a', margin: 0}}>👥 Delivery Agents ({formData.deliveryConfig?.agents?.length || 0})</h3>
-                  <button type="button" onClick={() => setShowAddAgentBox(true)} style={styles.addAreaBtn}>+ Add Agent</button>
+                <div className="sm-area-head" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '28px', borderBottom: '2px solid #fed7aa', paddingBottom: '8px'}}>
+                  <h3 style={{fontSize: '17px', fontWeight: '950', color: '#2a1710', margin: 0}}>👥 {t('smDeliveryAgentsHeading')} ({formData.deliveryConfig?.agents?.length || 0})</h3>
+                  <button type="button" onClick={() => setShowAddAgentBox(true)} className="sm-btn-primary" style={styles.addAreaBtn}>+ {t('smAddAgentBtn')}</button>
                 </div>
 
                 {showAddAgentBox && (
-                  <div style={styles.inlineCardForm}>
-                    <h4 style={{margin: '0 0 10px 0', fontSize: '15px', fontWeight: '950', color: '#0f172a'}}>Add New Delivery Agent</h4>
-                    <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
-                      <input type="text" placeholder="Agent Name *" value={newAgentForm.name} onChange={e => setNewAgentForm({...newAgentForm, name: e.target.value})} style={{...styles.input, flex: 2}} autoFocus />
-                      <input type="text" placeholder="Phone Number (+91...)" value={newAgentForm.phone} onChange={e => setNewAgentForm({...newAgentForm, phone: e.target.value})} style={{...styles.input, flex: 1.5}} />
-                      <input type="text" placeholder="Vehicle No (e.g., TS 09 AB 1234)" value={newAgentForm.vehicleNo} onChange={e => setNewAgentForm({...newAgentForm, vehicleNo: e.target.value})} style={{...styles.input, flex: 1.5}} />
-                      <button type="button" onClick={handleSaveNewAgent} style={styles.saveInlineBtn}>Save Agent</button>
-                      <button type="button" onClick={() => setShowAddAgentBox(false)} style={styles.cancelInlineBtn}>Cancel</button>
+                  <div className="sm-card" style={styles.inlineCardForm}>
+                    <h4 style={{margin: '0 0 10px 0', fontSize: '15px', fontWeight: '950', color: '#2a1710'}}>{t('smAddNewAgentTitle')}</h4>
+                    <div className="sm-wrap" style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+                      <input type="text" placeholder={t('smPhAgentNameReq')} value={newAgentForm.name} onChange={e => setNewAgentForm({...newAgentForm, name: e.target.value})} style={{...styles.input, flex: 2}} autoFocus />
+                      <input type="text" placeholder={t('smPhAgentPhone')} value={newAgentForm.phone} onChange={e => setNewAgentForm({...newAgentForm, phone: e.target.value})} style={{...styles.input, flex: 1.5}} />
+                      <input type="text" placeholder={t('smPhVehicleNo')} value={newAgentForm.vehicleNo} onChange={e => setNewAgentForm({...newAgentForm, vehicleNo: e.target.value})} style={{...styles.input, flex: 1.5}} />
+                      <button type="button" onClick={handleSaveNewAgent} className="sm-btn-primary" style={styles.saveInlineBtn}>{t('smSaveAgentBtn')}</button>
+                      <button type="button" onClick={() => setShowAddAgentBox(false)} className="sm-btn-ghost" style={styles.cancelInlineBtn}>{t('cancelBtn')}</button>
                     </div>
                   </div>
                 )}
 
                 <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px'}}>
                   {(formData.deliveryConfig?.agents || []).map(agent => (
-                    <div key={agent.id} style={styles.agentCard}>
+                    <div key={agent.id} className="sm-card sm-row-card" style={styles.agentCard}>
                       <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                        <div style={{width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '950', fontSize: '14px'}}>
+                        <div style={{width: '36px', height: '36px', flexShrink: 0, borderRadius: '50%', backgroundColor: '#ffedd5', color: '#c2410c', border: '1.5px solid #fed7aa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '950', fontSize: '14px'}}>
                           {agent.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <div style={{fontWeight: '950', fontSize: '15px', color: '#0f172a'}}>{agent.name}</div>
-                          <div style={{fontSize: '12px', color: '#64748b', fontWeight: '800', marginTop: '2px'}}>📞 {agent.phone} · 🚗 {agent.vehicleNo || 'No Vehicle No.'}</div>
+                          <div style={{fontWeight: '950', fontSize: '15px', color: '#2a1710'}}>{agent.name}</div>
+                          <div style={{fontSize: '12px', color: '#8a6a58', fontWeight: '800', marginTop: '2px'}}>📞 {agent.phone} · 🚗 {agent.vehicleNo || t('smNoVehicleNo')}</div>
                         </div>
                       </div>
-                      <div style={{display: 'flex', alignItems: 'center', gap: '14px'}}>
-                        <span style={{backgroundColor: agent.status === 'Available' ? '#dcfce7' : '#fee2e2', color: agent.status === 'Available' ? '#15803d' : '#991b1b', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '950'}}>{agent.status || 'Available'}</span>
-                        <button type="button" onClick={() => handleToggleAgentStatus(agent.id)} style={styles.agentToggleBtn}>{agent.status === 'Available' ? 'Set unavailable' : 'Set available'}</button>
-                        <button type="button" onClick={() => handleDeleteAgent(agent.id)} style={{background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px'}} title="Delete Agent">🗑️</button>
+                      <div className="sm-wrap" style={{display: 'flex', alignItems: 'center', gap: '14px'}}>
+                        <span style={{backgroundColor: agent.status === 'Available' ? '#dcfce7' : '#fee2e2', color: agent.status === 'Available' ? '#15803d' : '#991b1b', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '950'}}>{translateDbValue(agent.status || 'Available')}</span>
+                        <button type="button" onClick={() => handleToggleAgentStatus(agent.id)} className="sm-btn-ghost" style={styles.agentToggleBtn}>{agent.status === 'Available' ? t('smSetUnavailableBtn') : t('smSetAvailableBtn')}</button>
+                        <button type="button" onClick={() => handleDeleteAgent(agent.id)} className="sm-icon-btn" style={{background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px'}} title={t('smDeleteAgentTitle')}>🗑️</button>
                       </div>
                     </div>
                   ))}
@@ -878,18 +1005,18 @@ export default function SettingsModule() {
               <div style={styles.sectionGroup}>
                 {taxFormMode === 'list' ? (
                   <>
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+                    <div className="sm-area-head" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
                       <div>
-                        <h3 style={{fontSize: '17px', fontWeight: '950', color: '#0f172a', margin: 0}}>Tax Groups</h3>
-                        <p style={{fontSize: '12px', color: '#64748b', fontWeight: '800', margin: '4px 0 0 0'}}>Shared GST rates assigned to menu items and mapped to receipts.</p>
+                        <h3 style={{fontSize: '17px', fontWeight: '950', color: '#2a1710', margin: 0}}>{t('smTaxGroupsTitle')}</h3>
+                        <p style={{fontSize: '12px', color: '#8a6a58', fontWeight: '800', margin: '4px 0 0 0'}}>{t('smTaxGroupsDesc')}</p>
                       </div>
-                      <button type="button" onClick={handleOpenAddTaxForm} style={styles.addTaxGroupBtn}>+ New Tax Group</button>
+                      <button type="button" onClick={handleOpenAddTaxForm} className="sm-btn-primary" style={styles.addTaxGroupBtn}>+ {t('smNewTaxGroupBtn')}</button>
                     </div>
 
                     <div style={{marginBottom: '20px', maxWidth: '360px'}}>
-                      <label style={{fontSize: '12px', fontWeight: '950', color: '#0f172a', display: 'block', marginBottom: '6px'}}>Default Tax Group</label>
+                      <label style={{fontSize: '12px', fontWeight: '950', color: '#2a1710', display: 'block', marginBottom: '6px'}}>{t('smDefaultTaxGroupLabel')}</label>
                       <select value={formData.billingConfig?.defaultTaxGroup || 'Standard Restaurant (5%)'} onChange={e => handleBillingDefaultChange(e.target.value)} style={styles.input}>
-                        <option value="No default">No default</option>
+                        <option value="No default">{t('smNoDefaultOpt')}</option>
                         {(formData.billingConfig?.taxGroups || []).map(tg => (
                           <option key={tg.id} value={tg.name}>{tg.name}</option>
                         ))}
@@ -900,30 +1027,32 @@ export default function SettingsModule() {
                       <table style={styles.table}>
                         <thead>
                           <tr style={styles.tableHeaderRow}>
-                            <th style={styles.th}>Tax Group Name</th>
-                            <th style={styles.th}>Rate</th>
+                            <th style={styles.th}>{t('smTaxGroupNameCol')}</th>
+                            <th style={styles.th}>{t('receiptRate')}</th>
                             <th style={styles.th}>CGST</th>
                             <th style={styles.th}>SGST</th>
-                            <th style={styles.th}>HSN/SAC Code</th>
-                            <th style={styles.th}>Status</th>
-                            <th style={{...styles.th, textAlign: 'right'}}>Actions</th>
+                            <th style={styles.th}>{t('smHsnCodeCol')}</th>
+                            <th style={styles.th}>{t('rpStatusCol')}</th>
+                            <th style={{...styles.th, textAlign: 'right'}}>{t('rpActionsCol')}</th>
                           </tr>
                         </thead>
                         <tbody>
                           {(formData.billingConfig?.taxGroups || []).map(tg => (
-                            <tr key={tg.id} style={styles.tableRow}>
-                              <td style={styles.td}><strong style={{color: '#0f172a'}}>{tg.name}</strong></td>
+                            <tr key={tg.id} className="sm-tr" style={styles.tableRow}>
+                              <td style={styles.td}><strong style={{color: '#2a1710'}}>{tg.name}</strong></td>
                               <td style={styles.td}>{tg.rate}%</td>
                               <td style={styles.td}>{tg.cgst}%</td>
                               <td style={styles.td}>{tg.sgst}%</td>
                               <td style={styles.td}>{tg.hsnCode}</td>
                               <td style={styles.td}>
-                                <span style={{backgroundColor: tg.status === 'Active' ? '#dcfce7' : '#fee2e2', color: tg.status === 'Active' ? '#15803d' : '#991b1b', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '950'}}>{tg.status}</span>
+                                <span style={{backgroundColor: tg.status === 'Active' ? '#dcfce7' : '#fee2e2', color: tg.status === 'Active' ? '#15803d' : '#991b1b', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '950'}}>{tg.status === 'Active' ? t('mnActiveStatus') : t('pmInactiveWord')}</span>
                               </td>
-                              <td style={{...styles.td, textAlign: 'right', display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center'}}>
-                                <button type="button" onClick={() => handleOpenEditTaxForm(tg)} style={styles.actionEditBtn}>Edit</button>
-                                <button type="button" onClick={() => handleToggleTaxGroupStatus(tg.id)} style={styles.actionDeactivateBtn}>{tg.status === 'Active' ? 'Deactivate' : 'Activate'}</button>
-                                <button type="button" onClick={() => handleDeleteTaxGroup(tg.id)} style={styles.actionDeleteBtn}>Delete</button>
+                              <td style={{...styles.td, textAlign: 'right'}}>
+                                <div style={{display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center'}}>
+                                  <button type="button" onClick={() => handleOpenEditTaxForm(tg)} className="sm-btn-link" style={styles.actionEditBtn}>{t('tbEditBtn')}</button>
+                                  <button type="button" onClick={() => handleToggleTaxGroupStatus(tg.id)} className="sm-btn-link" style={styles.actionDeactivateBtn}>{tg.status === 'Active' ? t('smDeactivateBtn') : t('pmActivateBtn')}</button>
+                                  <button type="button" onClick={() => handleDeleteTaxGroup(tg.id)} className="sm-btn-link" style={styles.actionDeleteBtn}>{t('tbDeleteBtn')}</button>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -932,26 +1061,26 @@ export default function SettingsModule() {
                     </div>
                   </>
                 ) : (
-                  <div style={styles.screenCardForm}>
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '2px solid #e2e8f0', paddingBottom: '12px'}}>
+                  <div className="sm-card" style={styles.screenCardForm}>
+                    <div className="sm-area-head" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '2px solid #fed7aa', paddingBottom: '12px'}}>
                       <div>
-                        <h3 style={{margin: '0 0 4px 0', fontSize: '18px', fontWeight: '950', color: '#0f172a'}}>{taxFormMode === 'add' ? 'New Tax Group' : 'Edit Tax Group'}</h3>
-                        <p style={{margin: 0, fontSize: '12px', color: '#64748b', fontWeight: '800'}}>CGST and SGST are calculated automatically.</p>
+                        <h3 style={{margin: '0 0 4px 0', fontSize: '18px', fontWeight: '950', color: '#2a1710'}}>{taxFormMode === 'add' ? t('smNewTaxGroupTitle') : t('smEditTaxGroupTitle')}</h3>
+                        <p style={{margin: 0, fontSize: '12px', color: '#8a6a58', fontWeight: '800'}}>{t('smCgstSgstAutoHint')}</p>
                       </div>
-                      <button type="button" onClick={() => setTaxFormMode('list')} style={{background: 'none', border: 'none', fontSize: '18px', fontWeight: '950', cursor: 'pointer', color: '#64748b'}}>✕</button>
+                      <button type="button" onClick={() => setTaxFormMode('list')} className="sm-icon-btn" style={{background: 'none', border: 'none', fontSize: '18px', fontWeight: '950', cursor: 'pointer', color: '#8a6a58'}}>✕</button>
                     </div>
 
                     <div style={{display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '600px'}}>
-                      <div style={styles.fieldGroup}><label style={styles.label}>Group Name *</label><input type="text" placeholder="e.g. Standard Restaurant (5%)" value={taxFormData.name} onChange={e => setTaxFormData({...taxFormData, name: e.target.value})} style={styles.input} required /></div>
-                      <div style={styles.fieldGroup}><label style={styles.label}>Tax Rate % *</label><input type="number" placeholder="e.g. 5, 12, 18" value={taxFormData.rate} onChange={e => handleTaxRateChange(e.target.value)} style={styles.input} required /></div>
+                      <div style={styles.fieldGroup}><label style={styles.label}>{t('smGroupNameReq')}</label><input type="text" placeholder={t('smPhTaxGroupName')} value={taxFormData.name} onChange={e => setTaxFormData({...taxFormData, name: e.target.value})} style={styles.input} required /></div>
+                      <div style={styles.fieldGroup}><label style={styles.label}>{t('smTaxRatePctReq')}</label><input type="number" placeholder="e.g. 5, 12, 18" value={taxFormData.rate} onChange={e => handleTaxRateChange(e.target.value)} style={styles.input} required /></div>
                       <div style={styles.grid2}>
-                        <div style={styles.fieldGroup}><label style={styles.label}>CGST %</label><input type="text" value={taxFormData.cgst} onChange={e => setTaxFormData({...taxFormData, cgst: e.target.value})} style={{...styles.input, backgroundColor: '#f8fafc'}} /></div>
-                        <div style={styles.fieldGroup}><label style={styles.label}>SGST %</label><input type="text" value={taxFormData.sgst} onChange={e => setTaxFormData({...taxFormData, sgst: e.target.value})} style={{...styles.input, backgroundColor: '#f8fafc'}} /></div>
+                        <div style={styles.fieldGroup}><label style={styles.label}>CGST %</label><input type="text" value={taxFormData.cgst} onChange={e => setTaxFormData({...taxFormData, cgst: e.target.value})} style={{...styles.input, backgroundColor: '#fff8f3'}} /></div>
+                        <div style={styles.fieldGroup}><label style={styles.label}>SGST %</label><input type="text" value={taxFormData.sgst} onChange={e => setTaxFormData({...taxFormData, sgst: e.target.value})} style={{...styles.input, backgroundColor: '#fff8f3'}} /></div>
                       </div>
-                      <div style={styles.fieldGroup}><label style={styles.label}>HSN/SAC Code *</label><input type="text" value={taxFormData.hsnCode} onChange={e => setTaxFormData({...taxFormData, hsnCode: e.target.value})} style={styles.input} required /></div>
-                      <div style={{display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px'}}>
-                        <button type="button" onClick={() => setTaxFormMode('list')} style={styles.cancelFormBtn}>Cancel</button>
-                        <button type="button" onClick={handleSaveTaxGroup} style={styles.saveFormBtn}>Save Tax Group</button>
+                      <div style={styles.fieldGroup}><label style={styles.label}>{t('smHsnSacReq')}</label><input type="text" value={taxFormData.hsnCode} onChange={e => setTaxFormData({...taxFormData, hsnCode: e.target.value})} style={styles.input} required /></div>
+                      <div style={{display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px', flexWrap: 'wrap'}}>
+                        <button type="button" onClick={() => setTaxFormMode('list')} className="sm-btn-ghost" style={styles.cancelFormBtn}>{t('cancelBtn')}</button>
+                        <button type="button" onClick={handleSaveTaxGroup} className="sm-btn-primary" style={styles.saveFormBtn}>{t('smSaveTaxGroupBtn')}</button>
                       </div>
                     </div>
                   </div>
@@ -984,74 +1113,81 @@ export default function SettingsModule() {
   );
 }
 
+/* =====================================================================
+   STYLES  (flame palette: orange #f97316 / amber #fb923c / deep #ea580c /
+   red-orange #ef4444 on warm cream surfaces, dark warm-brown ink #2a1710)
+   Keys are unchanged because AdvancedSettingsTab reuses several of them.
+   ===================================================================== */
+
 const styles = {
-  container: { display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', backgroundColor: '#f1f5f9', overflowY: 'auto', boxSizing: 'border-box', textAlign: 'left' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', backgroundColor: '#fff', padding: '16px 24px', borderRadius: '16px', border: '2px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' },
-  title: { margin: '0 0 4px 0', fontSize: '22px', fontWeight: '950', color: '#0f172a' },
-  subtitle: { fontSize: '12px', color: '#475569', fontWeight: '800' },
-  statusBadge: { backgroundColor: '#dcfce7', color: '#15803d', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '950', border: '1.5px solid #86efac' },
-  saveBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.25)' },
+  container: { display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', background: 'linear-gradient(160deg,#fff7ed 0%,#fff1e6 45%,#ffe8d6 100%)', overflowY: 'auto', boxSizing: 'border-box', textAlign: 'left' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', background: 'linear-gradient(180deg,#ffffff 0%,#fff9f5 100%)', padding: '16px 24px', borderRadius: '16px', border: '2px solid #f4e1d3', boxShadow: '0 6px 18px -8px rgba(249,115,22,0.18)' },
+  title: { margin: '0 0 4px 0', fontSize: '22px', fontWeight: '950', color: '#2a1710' },
+  subtitle: { fontSize: '12px', color: '#6b4a38', fontWeight: '800', wordBreak: 'break-word' },
+  statusBadge: { backgroundColor: '#dcfce7', color: '#15803d', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '950', border: '1.5px solid #86efac', whiteSpace: 'nowrap' },
+  saveBtn: { backgroundColor: '#f97316', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(249,115,22,0.30)' },
   alert: { padding: '12px 16px', borderRadius: '10px', marginBottom: '16px', fontSize: '13px', fontWeight: '900', border: '2px solid' },
   layout: { display: 'flex', gap: '24px', flex: 1, alignItems: 'flex-start' },
-  sidebar: { width: '260px', backgroundColor: '#fff', borderRadius: '16px', border: '2px solid #cbd5e1', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' },
-  sidebarBtn: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', backgroundColor: 'transparent', border: '2px solid transparent', borderRadius: '10px', fontWeight: '900', fontSize: '13px', color: '#1e293b', cursor: 'pointer', textAlign: 'left', width: '100%' },
-  activeSidebarBtn: { backgroundColor: '#ecfdf5', color: '#047857', borderColor: '#10b981' },
-  contentPanel: { flex: 1, backgroundColor: '#fff', borderRadius: '16px', border: '2px solid #cbd5e1', padding: '24px', minHeight: '600px' },
+  sidebar: { width: '260px', flexShrink: 0, background: 'linear-gradient(180deg,#ffffff 0%,#fff9f5 100%)', borderRadius: '16px', border: '2px solid #f4e1d3', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', boxShadow: '0 6px 18px -10px rgba(249,115,22,0.18)' },
+  sidebarBtn: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', backgroundColor: 'transparent', border: '2px solid transparent', borderRadius: '10px', fontWeight: '900', fontSize: '13px', color: '#3a2216', cursor: 'pointer', textAlign: 'left', width: '100%' },
+  activeSidebarBtn: { backgroundColor: '#fff7ed', color: '#c2410c', borderColor: '#f97316' },
+  contentPanel: { flex: 1, minWidth: 0, background: 'linear-gradient(180deg,#ffffff 0%,#fffaf6 100%)', borderRadius: '16px', border: '2px solid #f4e1d3', padding: '24px', minHeight: '600px', boxShadow: '0 6px 18px -10px rgba(249,115,22,0.18)' },
   formContainer: { display: 'flex', flexDirection: 'column', gap: '20px' },
   sectionGroup: { display: 'flex', flexDirection: 'column', gap: '16px' },
-  sectionTitle: { fontSize: '17px', fontWeight: '950', color: '#0f172a', margin: '0 0 12px 0', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px' },
-  grid2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' },
-  grid3: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' },
-  fieldGroup: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  label: { fontSize: '12px', fontWeight: '950', color: '#0f172a' },
-  input: { padding: '10px 14px', borderRadius: '10px', border: '2px solid #94a3b8', fontSize: '13px', fontWeight: '900', color: '#0f172a', outline: 'none', backgroundColor: '#fff', width: '100%', boxSizing: 'border-box' },
+  sectionTitle: { fontSize: '17px', fontWeight: '950', color: '#2a1710', margin: '0 0 12px 0', borderBottom: '2px solid #fed7aa', paddingBottom: '8px' },
+  grid2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '16px' },
+  grid3: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: '16px' },
+  fieldGroup: { display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 },
+  label: { fontSize: '12px', fontWeight: '950', color: '#2a1710' },
+  input: { padding: '10px 14px', borderRadius: '10px', border: '2px solid #e8c9b3', fontSize: '13px', fontWeight: '900', color: '#2a1710', outline: 'none', backgroundColor: '#fff', width: '100%', boxSizing: 'border-box' },
   subTabBtn: { border: 'none', padding: '8px 16px', fontSize: '13px', fontWeight: '950', cursor: 'pointer', borderRadius: '8px' },
-  infoBox: { backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '16px' },
-  refreshBtn: { marginTop: '10px', backgroundColor: '#fff', color: '#334155', border: '1.5px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' },
-  addAreaBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '900', fontSize: '12px', cursor: 'pointer' },
-  toggleRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: '10px 14px', borderRadius: '10px', border: '1px solid #e2e8f0' },
-  toggleLabel: { fontSize: '13px', fontWeight: '900', color: '#0f172a' },
-  checkbox: { width: '16px', height: '16px', cursor: 'pointer', accentColor: '#059669' },
-  ruleCard: { backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '20px' },
-  ruleLabel: { fontSize: '12px', fontWeight: '950', color: '#0f172a', display: 'block', marginBottom: '8px' },
-  radioLabel: { fontSize: '12px', fontWeight: '800', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' },
-  centerMsg: { padding: '40px', textAlign: 'center', fontWeight: '900', color: '#334155' },
-  serviceHoursBanner: { backgroundColor: '#e0f2fe', border: '2px solid #7dd3fc', borderRadius: '12px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  editHoursBtn: { backgroundColor: '#fff', color: '#0369a1', border: '2px solid #38bdf8', padding: '8px 16px', borderRadius: '10px', fontWeight: '950', fontSize: '12px', cursor: 'pointer' },
-  dayCard: { backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '14px', padding: '18px' },
-  dayCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  timeInput: { padding: '8px 14px', borderRadius: '8px', border: '2px solid #94a3b8', fontSize: '13px', fontWeight: '900', color: '#0f172a', backgroundColor: '#fff', width: '150px', outline: 'none' },
-  noticeBanner: { backgroundColor: '#fef2f2', border: '1.5px solid #fecaca', color: '#991b1b', padding: '12px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: '800' },
-  areaContainer: { backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '14px', padding: '16px' },
-  areaHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1.5px solid #e2e8f0', paddingBottom: '10px' },
-  addTableBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' },
-  tablesGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' },
-  tableCard: { backgroundColor: '#fff', border: '2px solid #cbd5e1', borderRadius: '12px', padding: '14px' },
+  infoBox: { backgroundColor: '#fff8f3', border: '1.5px solid #f4e1d3', borderRadius: '14px', padding: '16px' },
+  refreshBtn: { marginTop: '10px', backgroundColor: '#fff', color: '#5a3a2a', border: '1.5px solid #e8c9b3', padding: '6px 12px', borderRadius: '8px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' },
+  addAreaBtn: { backgroundColor: '#f97316', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '900', fontSize: '12px', cursor: 'pointer' },
+  toggleRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: '10px 14px', borderRadius: '10px', border: '1px solid #f4e1d3' },
+  toggleLabel: { fontSize: '13px', fontWeight: '900', color: '#2a1710' },
+  checkbox: { width: '16px', height: '16px', cursor: 'pointer', accentColor: '#f97316' },
+  ruleCard: { backgroundColor: '#fff8f3', border: '1.5px solid #f4e1d3', borderRadius: '16px', padding: '20px' },
+  ruleLabel: { fontSize: '12px', fontWeight: '950', color: '#2a1710', display: 'block', marginBottom: '8px' },
+  radioLabel: { fontSize: '12px', fontWeight: '800', color: '#5a3a2a', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' },
+  centerMsg: { padding: '40px', textAlign: 'center', fontWeight: '900', color: '#5a3a2a' },
+  serviceHoursBanner: { background: 'linear-gradient(135deg,#fff7ed,#ffedd5)', border: '2px solid #fdba74', borderRadius: '12px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' },
+  editHoursBtn: { backgroundColor: '#fff', color: '#c2410c', border: '2px solid #fb923c', padding: '8px 16px', borderRadius: '10px', fontWeight: '950', fontSize: '12px', cursor: 'pointer' },
+  dayCard: { background: 'linear-gradient(180deg,#ffffff 0%,#fff8f3 100%)', border: '2px solid #f4e1d3', borderRadius: '14px', padding: '18px' },
+  dayCardHover: { borderColor: '#fdba74', boxShadow: '0 14px 30px -16px rgba(249,115,22,0.5)' },
+  dayCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' },
+  timeInput: { padding: '8px 14px', borderRadius: '8px', border: '2px solid #e8c9b3', fontSize: '13px', fontWeight: '900', color: '#2a1710', backgroundColor: '#fff', width: '150px', outline: 'none', boxSizing: 'border-box' },
+  noticeBanner: { backgroundColor: '#fef2f2', border: '1.5px solid #fecaca', color: '#991b1b', padding: '12px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: '800', lineHeight: 1.5 },
+  areaContainer: { background: 'linear-gradient(180deg,#ffffff 0%,#fff8f3 100%)', border: '2px solid #f4e1d3', borderRadius: '14px', padding: '16px' },
+  areaHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1.5px solid #fed7aa', paddingBottom: '10px', gap: '10px' },
+  addTableBtn: { backgroundColor: '#f97316', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' },
+  tablesGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))', gap: '14px' },
+  tableCard: { backgroundColor: '#fff', border: '2px solid #f4e1d3', borderRadius: '12px', padding: '14px' },
   iconBtn: { backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px' },
-  viewQrBtn: { backgroundColor: '#f1f5f9', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '4px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' },
-  agentCard: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '14px', padding: '16px' },
-  agentToggleBtn: { backgroundColor: '#fff', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '6px 14px', borderRadius: '8px', fontWeight: '950', fontSize: '11px', cursor: 'pointer' },
+  viewQrBtn: { backgroundColor: '#fff8f3', color: '#2a1710', border: '1.5px solid #e8c9b3', padding: '4px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' },
+  agentCard: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', background: 'linear-gradient(180deg,#ffffff 0%,#fff8f3 100%)', border: '2px solid #f4e1d3', borderRadius: '14px', padding: '16px' },
+  agentToggleBtn: { backgroundColor: '#fff', color: '#2a1710', border: '1.5px solid #e8c9b3', padding: '6px 14px', borderRadius: '8px', fontWeight: '950', fontSize: '11px', cursor: 'pointer' },
   addTaxGroupBtn: { backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '900', fontSize: '12px', cursor: 'pointer' },
-  tableWrapper: { width: '100%', overflowX: 'auto', border: '2px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#fff' },
+  tableWrapper: { width: '100%', overflowX: 'auto', border: '2px solid #f4e1d3', borderRadius: '12px', backgroundColor: '#fff' },
   table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' },
-  tableHeaderRow: { backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' },
-  th: { padding: '12px 16px', fontWeight: '950', color: '#475569' },
-  tableRow: { borderBottom: '1px solid #f1f5f9' },
-  td: { padding: '14px 16px', fontWeight: '800', color: '#334155' },
-  actionEditBtn: { background: 'none', border: 'none', color: '#2563eb', fontWeight: '900', cursor: 'pointer' },
+  tableHeaderRow: { backgroundColor: '#fff3e8', borderBottom: '2px solid #fed7aa' },
+  th: { padding: '12px 16px', fontWeight: '950', color: '#6b4a38', whiteSpace: 'nowrap' },
+  tableRow: { borderBottom: '1px solid #fdeee3' },
+  td: { padding: '14px 16px', fontWeight: '800', color: '#5a3a2a' },
+  actionEditBtn: { background: 'none', border: 'none', color: '#ea580c', fontWeight: '900', cursor: 'pointer' },
   actionDeactivateBtn: { background: 'none', border: 'none', color: '#d97706', fontWeight: '900', cursor: 'pointer' },
   actionDeleteBtn: { background: 'none', border: 'none', color: '#dc2626', fontWeight: '900', cursor: 'pointer' },
-  inlineCardForm: { backgroundColor: '#fff', border: '2px solid #0f172a', borderRadius: '12px', padding: '16px', marginBottom: '16px' },
-  saveInlineBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '950', fontSize: '12px', cursor: 'pointer' },
-  cancelInlineBtn: { backgroundColor: '#f1f5f9', color: '#334155', border: '1.5px solid #cbd5e1', padding: '8px 14px', borderRadius: '8px', fontWeight: '950', fontSize: '12px', cursor: 'pointer' },
-  screenCardForm: { backgroundColor: '#fff', border: '2.5px solid #cbd5e1', borderRadius: '16px', padding: '24px' },
+  inlineCardForm: { backgroundColor: '#fff', border: '2px solid #fdba74', borderRadius: '12px', padding: '16px', marginBottom: '16px' },
+  saveInlineBtn: { backgroundColor: '#f97316', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '950', fontSize: '12px', cursor: 'pointer' },
+  cancelInlineBtn: { backgroundColor: '#fdeee3', color: '#5a3a2a', border: '1.5px solid #e8c9b3', padding: '8px 14px', borderRadius: '8px', fontWeight: '950', fontSize: '12px', cursor: 'pointer' },
+  screenCardForm: { backgroundColor: '#fff', border: '2.5px solid #f4e1d3', borderRadius: '16px', padding: '24px' },
   saveFormBtn: { backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '11px 22px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer' },
-  cancelFormBtn: { backgroundColor: '#fff', color: '#334155', border: '2px solid #cbd5e1', padding: '11px 18px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer' },
-  userAddCard: { backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '20px' },
-  addUserBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', height: '41px' },
-  emptyUsersBox: { textAlign: 'center', color: '#64748b', fontSize: '14px', fontWeight: '800', padding: '32px', backgroundColor: '#f8fafc', borderRadius: '14px', border: '2px dashed #cbd5e1' },
-  userRowCard: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '14px 18px' },
-  userAvatar: { width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '950', fontSize: '15px', border: '1.5px solid #a7f3d0' },
-  userCodeBadge: { backgroundColor: '#f1f5f9', color: '#334155', padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '900', border: '1px solid #cbd5e1' },
-  userToggleBtn: { backgroundColor: '#f1f5f9', color: '#0f172a', border: '1.5px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }
+  cancelFormBtn: { backgroundColor: '#fff', color: '#5a3a2a', border: '2px solid #e8c9b3', padding: '11px 18px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer' },
+  userAddCard: { background: 'linear-gradient(180deg,#ffffff 0%,#fff8f3 100%)', border: '1.5px solid #f4e1d3', borderRadius: '16px', padding: '20px' },
+  addUserBtn: { backgroundColor: '#f97316', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '950', fontSize: '13px', cursor: 'pointer', height: '41px' },
+  emptyUsersBox: { textAlign: 'center', color: '#8a6a58', fontSize: '14px', fontWeight: '800', padding: '32px', backgroundColor: '#fff8f3', borderRadius: '14px', border: '2px dashed #e8c9b3' },
+  userRowCard: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', backgroundColor: '#fff', border: '1.5px solid #f4e1d3', borderRadius: '14px', padding: '14px 18px' },
+  userAvatar: { width: '38px', height: '38px', flexShrink: 0, borderRadius: '50%', backgroundColor: '#fff1e6', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '950', fontSize: '15px', border: '1.5px solid #fed7aa' },
+  userCodeBadge: { backgroundColor: '#fff1e6', color: '#c2410c', padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '900', border: '1px solid #fed7aa' },
+  userToggleBtn: { backgroundColor: '#fff8f3', color: '#2a1710', border: '1.5px solid #e8c9b3', padding: '6px 12px', borderRadius: '8px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }
 };
