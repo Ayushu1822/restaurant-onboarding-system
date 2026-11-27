@@ -236,8 +236,10 @@ export default function SettingsModule() {
       if (typeof parsedPrinter === 'string') { try { parsedPrinter = JSON.parse(parsedPrinter); } catch (e) {} }
 
       setFormData(prev => {
+        // English is the default. The server value is ignored on load; only a
+        // language the user explicitly picked on this device (localStorage) overrides it.
         const cachedLang = localStorage.getItem('preferredLanguage');
-        const resolvedLang = cachedLang || data.preferredLanguage || prev.preferredLanguage || 'English';
+        const resolvedLang = cachedLang || 'English';
         setLanguage(resolvedLang);
 
         return {
@@ -335,6 +337,8 @@ export default function SettingsModule() {
     const { name, value } = e.target;
     if (name === 'preferredLanguage') {
       setLanguage(value);
+      // Remember the choice on this device so it survives a refresh.
+      localStorage.setItem('preferredLanguage', value);
     }
     setFormData(prev => ({ ...prev, [name]: value }));
   };
