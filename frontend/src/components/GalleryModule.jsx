@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from './LanguageContext';
 
-const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = (
+  import.meta.env?.VITE_API_BASE_URL ||
+  import.meta.env?.VITE_API_URL ||
+  'http://localhost:8080'
+).replace(/\/$/, '');
 
 export default function GalleryModule({ restaurantId = 'ae41c831-372b-4f56-8905-f67a93b8045b' }) {
   const { t, getLocalizedField } = useLanguage();

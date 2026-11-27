@@ -3,8 +3,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import AdvancedSettingsTab from './AdvancedSettingsTab';
 import { useLanguage } from './LanguageContext';
 
-const API_BASE_URL = 'http://localhost:8080';
-
+const API_BASE_URL = (
+  import.meta.env?.VITE_API_BASE_URL ||
+  import.meta.env?.VITE_API_URL ||
+  'http://localhost:8080'
+).replace(/\/$/, '');
 /* =====================================================================
    UI STYLESHEET  (flame palette · animated border on hover · responsive)
    orange #f97316 · amber #fb923c · deep orange #ea580c · red-orange #ef4444

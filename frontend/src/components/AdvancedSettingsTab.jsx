@@ -9,8 +9,12 @@ const BRAND_DARK = '#ea580c';
 const BRAND_LIGHT = '#fdba74';
 const RED = '#ef4444';
 const AMBER = '#d97706';
-const API_BASE_URL = 'http://localhost:8080';
 
+const API_BASE_URL = (
+  import.meta.env?.VITE_API_BASE_URL ||
+  import.meta.env?.VITE_API_URL ||
+  'http://localhost:8080'
+).replace(/\/$/, '');
 /* =====================================================================
    UI STYLESHEET (hover / focus / responsive)
    Inline styles can't do :hover, :focus or media queries, so these live in
