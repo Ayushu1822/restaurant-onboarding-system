@@ -2,9 +2,8 @@ package com.restaurant.auth_service.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
@@ -18,14 +17,11 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    // Completely bypass Spring Security for API paths so 403s are impossible
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
         return (web) -> web.ignoring().requestMatchers(
-            "/api/**", 
-            "/api/v1/**", 
-            "/error", 
-            "/swagger-ui/**", 
+            "/error",
+            "/swagger-ui/**",
             "/v3/api-docs/**"
         );
     }
@@ -33,7 +29,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> {})
+            .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .anyRequest().permitAll()
@@ -46,10 +42,11 @@ public class SecurityConfig {
     public CorsFilter corsFilter() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration configuration = new CorsConfiguration();
-        
+
         configuration.setAllowedOrigins(List.of(
-            "https://restaurant-system-sand-gamma.vercel.app", 
-            "http://localhost:3000", 
+            "https://restaurant-onboarding-system.pages.dev",
+            "https://restaurant-system-sand-gamma.vercel.app",
+            "http://localhost:3000",
             "http://localhost:5173"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
