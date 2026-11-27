@@ -12,7 +12,15 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1")
-@CrossOrigin(origins = "*")
+@CrossOrigin(
+    origins = {
+        "https://restaurant-onboarding-system.pages.dev",
+        "https://restaurant-system-sand-gamma.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173"
+    },
+    allowCredentials = "true"
+)
 public class PromotionController {
 
     @Autowired

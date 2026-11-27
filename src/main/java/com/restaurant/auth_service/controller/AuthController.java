@@ -11,7 +11,15 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-@CrossOrigin(origins = {"https://restaurant-system-sand-gamma.vercel.app", "http://localhost:3000", "http://localhost:5173"}, allowCredentials = "true")
+@CrossOrigin(
+    origins = {
+        "https://restaurant-onboarding-system.pages.dev",
+        "https://restaurant-system-sand-gamma.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173"
+    },
+    allowCredentials = "true"
+)
 public class AuthController {
 
     @Autowired

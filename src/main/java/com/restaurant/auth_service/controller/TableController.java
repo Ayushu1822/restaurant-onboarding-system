@@ -13,7 +13,15 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping({"/api/tables", "/api/v1/tables"})
-@CrossOrigin(origins = {"https://restaurant-system-sand-gamma.vercel.app", "http://localhost:3000", "http://localhost:5173"}, allowCredentials = "true")
+@CrossOrigin(
+    origins = {
+        "https://restaurant-onboarding-system.pages.dev",
+        "https://restaurant-system-sand-gamma.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173"
+    },
+    allowCredentials = "true"
+)
 public class TableController {
 
     @Autowired

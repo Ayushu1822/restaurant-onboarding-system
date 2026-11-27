@@ -24,7 +24,15 @@ import java.util.stream.Collectors;
 @EnableScheduling // ✅ turns on @Scheduled for the whole app
 @RestController
 @RequestMapping({"/api/orders", "/api/v1/orders"})
-@CrossOrigin(origins = {"https://restaurant-system-sand-gamma.vercel.app", "http://localhost:3000", "http://localhost:5173"}, allowCredentials = "true")
+@CrossOrigin(
+    origins = {
+        "https://restaurant-onboarding-system.pages.dev",
+        "https://restaurant-system-sand-gamma.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173"
+    },
+    allowCredentials = "true"
+)
 public class OrderController {
 
     // Matches what the dashboard's Accept button sends

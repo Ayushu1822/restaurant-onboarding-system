@@ -13,7 +13,15 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping({"/api/restaurants", "/api/v1/restaurants"})
-@CrossOrigin(origins = {"https://restaurant-system-sand-gamma.vercel.app", "http://localhost:3000", "http://localhost:5173"}, allowCredentials = "true")
+@CrossOrigin(
+    origins = {
+        "https://restaurant-onboarding-system.pages.dev",
+        "https://restaurant-system-sand-gamma.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173"
+    },
+    allowCredentials = "true"
+)
 public class RestaurantProfileController {
 
     @Autowired
